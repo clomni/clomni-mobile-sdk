@@ -26,6 +26,9 @@ public final class HomeController {
     /// Called after `home` or `messages` changed.
     public var onChange: (() -> Void)?
 
+    /// For the theme: the brand's colours and appearance.
+    public var config: MessengerConfig? { snapshot.config }
+
     public var userName: String? {
         didSet { render() }
     }

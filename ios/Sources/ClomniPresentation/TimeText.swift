@@ -29,7 +29,8 @@ public struct TimeText: Sendable {
     public func day(_ date: Date, now: Date) -> String {
         let time = clock(date)
         if calendar.isDate(date, inSameDayAs: now) { return "\(strings[.today]) \(time)" }
-        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
             return "\(strings[.yesterday]) \(time)"
         }
         let separator = strings.language == "en" ? ", " : " "

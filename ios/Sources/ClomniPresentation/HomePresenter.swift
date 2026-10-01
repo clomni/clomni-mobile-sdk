@@ -178,7 +178,8 @@ public struct HomePresenter: Sendable {
         let ago = time.ago(message.createdAt, now: now)
         let unread = conversation.unreadCount > 0
         return ConversationRow(
-            id: conversation.id, avatarUrl: other.avatar, initial: other.name.first.map { String($0).uppercased() } ?? "",
+            id: conversation.id, avatarUrl: other.avatar,
+            initial: other.name.first.map { String($0).uppercased() } ?? "",
             preview: preview, detail: "\(name) · \(ago)", unread: unread,
             accessibilityLabel: "\(name), \(ago): \(preview)" + (unread ? ". \(strings[.unread])" : ""))
     }
@@ -206,8 +207,9 @@ public struct HomePresenter: Sendable {
     private func tabs(_ snapshot: MessengerSnapshot) -> HomeScreen.Tabs {
         let unread = snapshot.unreadTotal > 0 || snapshot.conversations.contains { $0.unreadCount > 0 }
         let messages = strings[.tabMessages]
+        let label = unread ? "\(messages), \(strings[.unreadMessages])" : messages
         return HomeScreen.Tabs(home: strings[.tabHome], messages: messages, messagesUnread: unread,
-                               messagesAccessibilityLabel: unread ? "\(messages), \(strings[.unreadMessages])" : messages)
+                               messagesAccessibilityLabel: label)
     }
 
     private var failure: HomeScreen.Failure {

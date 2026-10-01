@@ -87,6 +87,7 @@ final class HomeControllerTests: XCTestCase {
         XCTAssertEqual(renders, 2, "once from the cache, once after the refresh")
         XCTAssertEqual(home.home.phase, .ready)
         XCTAssertEqual(home.home.header.brandName, "Apar")
+        XCTAssertEqual(home.config?.brand.primaryColor, "#1F9D63")
         XCTAssertEqual(home.home.recent?.row.detail, "Leyla · 2 dəq")
         XCTAssertEqual(home.messages.rows.count, 1)
     }

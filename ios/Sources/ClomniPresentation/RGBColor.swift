@@ -24,7 +24,8 @@ public struct RGBColor: Sendable, Hashable, CustomStringConvertible {
     public static let black = RGBColor(red: 0, green: 0, blue: 0)
 
     public var hex: String {
-        String(format: "#%02X%02X%02X", Int((red * 255).rounded()), Int((green * 255).rounded()), Int((blue * 255).rounded()))
+        let channels = [red, green, blue].map { Int(($0 * 255).rounded()) }
+        return String(format: "#%02X%02X%02X", channels[0], channels[1], channels[2])
     }
 
     public var description: String { hex }
