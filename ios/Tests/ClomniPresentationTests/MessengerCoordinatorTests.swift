@@ -97,6 +97,12 @@ final class CapturedLog: @unchecked Sendable {
         defer { lock.unlock() }
         return lines.contains { $0.contains(text) }
     }
+
+    var isEmpty: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return lines.isEmpty
+    }
 }
 
 /// What the app was told.
@@ -346,6 +352,90 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(heard.unread, [4, 0])
         XCTAssertEqual(heard.closed, 1)
         XCTAssertFalse(messenger.wantsAnyView)
+    }
+
+    // MARK: - Push
+
+    /// What APNs hands the app: the alert in `aps`, the Clomni keys next to it (brief 6.5).
+    private func push(_ conversation: String = "conv_5521", unread: Int? = 2) -> [AnyHashable: Any] {
+        var userInfo: [AnyHashable: Any] = [
+            "aps": ["alert": ["title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı."], "sound": "default",
+                    "badge": 2, "mutable-content": 1] as [String: Any],
+            "clomni": "1", "type": "message", "conversation_id": conversation, "message_id": "msg_f02",
+            "title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı.", "avatar_url": "https://app.clomni.ai/a/l.png",
+        ]
+        if let unread { userInfo["unread_total"] = unread }
+        return userInfo
+    }
+
+    func testATapOnAPushOpensItsConversation() async {
+        await session.set(loggedIn: true)
+        let messenger = coordinator()
+        await messenger.start()
+        var counts: [Int] = []
+        messenger.addUnreadCountListener { counts.append($0) }
+
+        XCTAssertTrue(messenger.handlePush(push()))
+        XCTAssertEqual(messenger.route, .conversation("conv_5521"))
+        XCTAssertEqual(messenger.source, "push")
+        XCTAssertEqual(heard.opened, ["push"])
+        XCTAssertEqual(counts, [0, 2])
+        XCTAssertEqual(heard.unread, [2])
+
+        // Already open: the messenger moves to the push's conversation, still opened once.
+        messenger.navigate(to: .home)
+        XCTAssertTrue(messenger.handlePush(push("conv_7", unread: nil)))
+        XCTAssertEqual(messenger.route, .conversation("conv_7"))
+        XCTAssertEqual(heard.opened, ["push"])
+        XCTAssertEqual(counts, [0, 2], "no count in the push, no change")
+    }
+
+    func testTheAppsOwnPushesAreLeftAlone() async {
+        await session.set(loggedIn: true)
+        let messenger = coordinator()
+        await messenger.start()
+        let order: [AnyHashable: Any] = ["aps": ["alert": "Sifarişiniz yoldadır"] as [String: Any], "order_id": 7]
+        XCTAssertFalse(messenger.handlePush(order))
+        XCTAssertTrue(messenger.shouldShowForeground(order))
+        XCTAssertNil(messenger.route)
+        XCTAssertTrue(log.isEmpty, "not even a log line")
+
+        // A Clomni push this version cannot read opens nothing, shows as it came, and is logged.
+        let later: [AnyHashable: Any] = ["aps": ["alert": "Sorğu"] as [String: Any], "clomni": "1", "type": "survey"]
+        XCTAssertFalse(messenger.handlePush(later))
+        XCTAssertTrue(messenger.shouldShowForeground(later))
+        XCTAssertNil(messenger.route)
+        XCTAssertFalse(log.isEmpty)
+        XCTAssertEqual(heard.opened, [])
+        XCTAssertEqual(heard.unread, [])
+    }
+
+    /// Brief 8 · 5.5: a push for the conversation on screen is not shown.
+    func testForegroundSuppression() async {
+        await session.set(loggedIn: true)
+        let messenger = coordinator()
+        await messenger.start()
+        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 3)), "messenger closed")
+        XCTAssertEqual(heard.unread, [3], "the count still reaches the app")
+        messenger.present()
+        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 3)), "Home is not the conversation")
+        messenger.navigate(to: .conversation("conv_5521"))
+        XCTAssertFalse(messenger.shouldShowForeground(push(unread: 3)))
+        XCTAssertTrue(messenger.shouldShowForeground(push("conv_7", unread: 4)), "another conversation")
+        messenger.navigate(to: .startingConversation)
+        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 4)))
+        messenger.dismiss()
+        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 4)))
+        XCTAssertEqual(heard.unread, [3, 4])
+    }
+
+    func testASwitchedOffInboxOpensNothingFromAPush() async {
+        await session.set(loggedIn: true, disabled: true)
+        let messenger = coordinator()
+        await messenger.start()
+        XCTAssertFalse(messenger.handlePush(push()))
+        XCTAssertNil(messenger.route)
+        XCTAssertEqual(heard.opened, [])
     }
 
     func testTheEngineIsAMessengerSession() {

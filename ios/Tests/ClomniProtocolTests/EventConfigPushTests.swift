@@ -198,6 +198,10 @@ final class PushPayloadTests: ProtocolTestCase {
     }
 
     func testOtherPushesAreNotClomni() {
+        XCTAssertTrue(ProtocolJSON.isClomniPush(["aps": [:] as [String: Any], "clomni": "1"] as [AnyHashable: Any]))
+        XCTAssertFalse(ProtocolJSON.isClomniPush(["aps": ["alert": "Your order shipped"] as [String: Any]] as [AnyHashable: Any]))
+        XCTAssertFalse(ProtocolJSON.isClomniPush(["clomni": "2"] as [AnyHashable: Any]))
+        XCTAssertFalse(ProtocolJSON.isClomniPush(["clomni": 1] as [AnyHashable: Any]))
         XCTAssertNil(ProtocolJSON.parsePush(["aps": ["alert": "Your order shipped"] as [String: Any], "order": 7] as [AnyHashable: Any]))
         XCTAssertNil(ProtocolJSON.parsePush(["clomni": "2", "type": "message", "conversation_id": "c", "title": "T",
                                              "body": "B"] as [AnyHashable: Any]))

@@ -256,6 +256,37 @@ public final class MessengerCoordinator {
         return true
     }
 
+    // MARK: - Push
+
+    /// `Clomni.handlePush`, for a tap on a notification: a Clomni push opens its conversation (`opened_from` "push")
+    /// and its unread count reaches the listeners. false for the app's own pushes, and when nothing opens.
+    @discardableResult
+    public func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool {
+        guard let push = clomniPush(userInfo) else { return false }
+        takeUnread(from: push)
+        return presentConversation(push.conversationId, source: "push")
+    }
+
+    /// `Clomni.shouldShowForeground`, for a push that arrives while the app is open: not while the messenger shows
+    /// its conversation (foreground suppression). The app's own pushes are always shown.
+    public func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool {
+        guard let push = clomniPush(userInfo) else { return true }
+        takeUnread(from: push)
+        return route != .conversation(push.conversationId)
+    }
+
+    private func clomniPush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
+        guard ProtocolJSON.isClomniPush(userInfo) else { return nil }
+        return ProtocolJSON.parsePush(userInfo)
+    }
+
+    /// The server's count when it sent the push; the socket's next count replaces it.
+    private func takeUnread(from push: PushPayload) {
+        guard let total = push.unreadTotal, total != unreadTotal else { return }
+        updateUnread(total)
+        changed()
+    }
+
     // MARK: - Launcher
 
     public func setLauncherVisible(_ visible: Bool) {

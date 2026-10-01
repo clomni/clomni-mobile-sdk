@@ -44,6 +44,12 @@ public enum ProtocolJSON {
         decode(data, "push") { try PushPayload($0) }
     }
 
+    /// Whether a push is Clomni's (`"clomni": "1"` next to `aps`), without reading the rest: the app's own pushes are
+    /// none of the SDK's business.
+    public static func isClomniPush(_ userInfo: [AnyHashable: Any]) -> Bool {
+        userInfo["clomni"] as? String == "1"
+    }
+
     /// An APNs `userInfo`. Only the top-level scalars are read: the Clomni keys sit next to `aps`.
     public static func parsePush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
         var fields: [String: Any] = [:]
