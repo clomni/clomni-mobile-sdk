@@ -8,5 +8,7 @@
     <string name="payment_failed">Ödəniş xətası (avtomatik)</string>
     <string name="launcher">Üzən düymə</string>
     <string name="close_in_3">3 saniyəyə bağla (Clomni.dismiss)</string>
+    <string name="fake_push">Saxta Clomni push-u (ClomniPush.handle)</string>
+    <string name="own_push">Tətbiqin öz push-u (Clomni toxunmur)</string>
     <string name="events">Hadisələr</string>
 </resources>

@@ -1,8 +1,12 @@
 package ai.clomni.messenger.sample
 
 import ai.clomni.messenger.Clomni
+import ai.clomni.messenger.ClomniPush
 import ai.clomni.messenger.UnreadCountListener
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -67,6 +71,22 @@ class MainActivity : Activity() {
             setText(R.string.launcher)
             setOnCheckedChangeListener { _, on -> Clomni.setLauncherVisible(on) }
         })
+        // What the app's FirebaseMessagingService does (android/docs/push.md), with a payload made here: the sample
+        // has no Firebase.
+        column.addView(button(R.string.fake_push) {
+            ClomniPush.handle(
+                this,
+                mapOf(
+                    "clomni" to "1", "type" to "message", "conversation_id" to "conv_sample", "message_id" to "msg_1",
+                    "title" to "Leyla · Apar", "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
+                    "avatar_url" to "https://app.clomni.ai/a/leyla.png", "unread_total" to "1",
+                ),
+            )
+        })
+        column.addView(button(R.string.own_push) {
+            val handled = ClomniPush.handle(this, mapOf("order_id" to "A-1042", "title" to "Sifarişiniz yoldadır"))
+            note(if (handled) "Clomni push" else "the app's own push: ClomniPush.handle returned false")
+        })
         column.addView(button(R.string.close_in_3) {
             Clomni.present(source = "dismiss_demo")
             Handler(Looper.getMainLooper()).postDelayed({ Clomni.dismiss() }, 3_000)
@@ -84,6 +104,11 @@ class MainActivity : Activity() {
         Clomni.onMessengerClosed = { note("closed") }
         Clomni.onConversationStarted = { id -> note("conversation $id") }
         Clomni.onFlowCompleted = { flow -> note("flow completed: $flow") }
+
+        // Android 13+: notifications need the user's yes, asked by the app.
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
     }
 
     override fun onStart() {
