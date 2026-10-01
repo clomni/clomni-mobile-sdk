@@ -1,0 +1,431 @@
+package ai.clomni.messenger.presentation
+
+import ai.clomni.messenger.protocol.ClientMessage
+import ai.clomni.messenger.protocol.Conversation
+import ai.clomni.messenger.protocol.Message
+import ai.clomni.messenger.protocol.MessageContent
+import ai.clomni.messenger.protocol.ProtocolFiles
+import ai.clomni.messenger.protocol.ProtocolJson
+import ai.clomni.messenger.protocol.Sender
+import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.store.PendingMessage
+import ai.clomni.messenger.store.PendingUpload
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+import java.util.TimeZone
+
+/** Message fixtures for the conversation screen, with fields replaced. */
+internal object ChatFixture {
+    private val protocol = ProtocolJson()
+
+    /** Fixture [name] with [changes] (`created_at`, `id`, `seq`, `content` …) as JSON values. */
+    fun message(name: String, vararg changes: Pair<String, Any>): Message {
+        val fields = Json.parseToJsonElement(ProtocolFiles.read("fixtures/$name")).jsonObject.toMutableMap()
+        for ((key, value) in changes) fields[key] = json(value)
+        return protocol.parseMessage(JsonObject(fields).toString()) ?: error(name)
+    }
+
+    /** A conversation in a given state, for the header; [assignee] is JSON. */
+    fun conversation(status: String, assignee: String = "null", id: String = "conv_5521"): Conversation =
+        protocol.parseConversation(
+            """{"id":"$id","status":"$status","assignee":$assignee,"created_at":"2026-10-01T10:00:00Z"}""",
+        )!!
+
+    fun config(json: String) = protocol.parseConfig(json)!!
+
+    private fun json(value: Any): JsonElement = when (value) {
+        is JsonElement -> value
+        is String -> JsonPrimitive(value)
+        is Number -> JsonPrimitive(value)
+        is Map<*, *> -> JsonObject(value.entries.associate { (k, v) -> k.toString() to json(v!!) })
+        else -> error("$value")
+    }
+}
+
+class ChatPresenterTest {
+    /** 2026-10-01T10:32Z. */
+    private val now = 1_790_850_720_000L
+    private val utc = TimeZone.getTimeZone("UTC")
+
+    private fun screen(messages: List<Message>, build: (ChatSnapshot) -> ChatSnapshot = { it }): ChatScreen {
+        val snapshot = build(
+            ChatSnapshot(
+                config = Fixture.aparConfig,
+                conversation = ChatFixture.conversation("bot"),
+                messages = messages,
+                load = MessengerSnapshot.Load.LOADED,
+            ),
+        )
+        val strings = ClomniStrings("az", snapshot.config?.strings.orEmpty())
+        return ChatPresenter(strings, utc, now).screen(snapshot)
+    }
+
+    private fun bubbles(screen: ChatScreen) = screen.items.filterIsInstance<ChatItem.BubbleItem>().map { it.bubble }
+
+    private fun text(bubble: Bubble?) = (bubble?.body as? Bubble.TextBody)?.runs?.joinToString("") { it.text }
+
+    private fun pending(content: ClientMessage, preview: String?, upload: PendingUpload? = null) =
+        PendingMessage("conv_5521", content, preview, now, upload = upload)
+
+    @Test
+    fun aBotRunHasOneAvatarAndOneMeta() {
+        val first = ChatFixture.message("01-text-bot.json", "id" to "msg_a", "seq" to 1, "created_at" to "2026-10-01T10:30:50Z")
+        val second = ChatFixture.message(
+            "01-text-bot.json", "id" to "msg_b", "seq" to 2, "created_at" to "2026-10-01T10:31:30Z",
+            "content" to mapOf("text" to "İkinci"),
+        )
+        val later = ChatFixture.message(
+            "01-text-bot.json", "id" to "msg_c", "seq" to 3, "created_at" to "2026-10-01T10:32:40Z",
+            "content" to mapOf("text" to "Üçüncü"),
+        )
+        val list = bubbles(screen(listOf(first, second, later)))
+        assertEquals(
+            "70 s later starts a new run",
+            listOf(Bubble.Position.FIRST, Bubble.Position.LAST, Bubble.Position.SINGLE),
+            list.map { it.position },
+        )
+        assertNull(list[0].avatar)
+        assertNull(list[0].meta)
+        assertEquals("Clomni · Bot · indi", list[1].meta)
+        assertEquals(ChatAvatar("https://app.clomni.ai/a/bot.png", "C", true), list[1].avatar)
+        assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
+        assertEquals("Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
+    }
+
+    @Test
+    fun timeSeparators() {
+        val first = ChatFixture.message("01-text-bot.json", "created_at" to "2026-10-01T08:00:00Z")
+        val near = ChatFixture.message("03-text-user.json", "created_at" to "2026-10-01T08:59:00Z")
+        val far = ChatFixture.message("02-text-operator-markdown.json", "created_at" to "2026-10-01T10:30:00Z")
+        val times = screen(listOf(first, near, far)).items.filterIsInstance<ChatItem.TimeItem>().map { it.text }
+        assertEquals("after more than an hour, again", listOf("Bu gün 08:00", "Bu gün 10:30"), times)
+        assertTrue("the first message has one", screen(listOf(first)).items.first() is ChatItem.TimeItem)
+    }
+
+    @Test
+    fun operatorBubbleAndMarkdown() {
+        val reply = bubbles(
+            screen(listOf(ChatFixture.message("02-text-operator-markdown.json", "created_at" to "2026-10-01T10:30:00Z"))),
+        ).first()
+        assertEquals("Leyla · 2 dəq", reply.meta)
+        assertEquals("L", reply.avatar?.initial)
+        val runs = (reply.body as Bubble.TextBody).runs
+        assertEquals(TextRun("Gedişinizi yoxladıq.", bold = true), runs.first())
+        assertEquals("https://apar.az/sertler", runs.last().link)
+        assertEquals("Leyla, 10:30: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı.\nƏtraflı: şərtlər", reply.accessibilityLabel)
+    }
+
+    @Test
+    fun statusOfTheUsersLastMessage() {
+        val mine = ChatFixture.message("03-text-user.json")
+        assertEquals("Göndərildi", bubbles(screen(listOf(mine))).last().status?.text)
+        assertEquals("Oxundu", bubbles(screen(listOf(mine)) { it.copy(readUpTo = 3) }).last().status?.text)
+        assertEquals("Göndərildi", bubbles(screen(listOf(mine)) { it.copy(readUpTo = 2) }).last().status?.text)
+        // A bot message after it: no status under the user's, nor under the bot's.
+        val answer = ChatFixture.message("01-text-bot.json", "seq" to 4, "created_at" to "2026-10-01T10:36:00Z")
+        assertNull(bubbles(screen(listOf(mine, answer))).first().status)
+        assertNull(bubbles(screen(listOf(mine, answer))).last().status)
+        val alone = bubbles(screen(listOf(mine))).last()
+        assertEquals(Bubble.Side.OUTGOING, alone.side)
+        assertNull(alone.avatar)
+        assertNull(alone.meta)
+    }
+
+    @Test
+    fun pendingMessages() {
+        val mine = ChatFixture.message("03-text-user.json", "created_at" to "2026-10-01T10:31:30Z")
+        val sending = pending(ClientMessage.Text("Hələ yoldadır"), "Hələ yoldadır")
+        val list = bubbles(screen(listOf(mine)) { it.copy(pending = listOf(sending)) })
+        assertNull("only the last message has a status", list[0].status)
+        assertEquals("Hələ yoldadır", text(list[1]))
+        assertEquals("Göndərilir", list[1].status?.text)
+        assertEquals(
+            "the user's messages a minute apart form a run",
+            listOf(Bubble.Position.FIRST, Bubble.Position.LAST),
+            list.map { it.position },
+        )
+
+        val failed = sending.copy(state = PendingMessage.State.FAILED)
+        val back = pending(ClientMessage.back("msg_f10"), null)
+        val form = pending(ClientMessage.FormSubmit("msg_f19", "frm_contact", emptyMap()), null)
+        val withFailure = bubbles(screen(emptyList()) { it.copy(pending = listOf(failed, back, form)) })
+        assertEquals("a submitted form has no bubble of its own", 2, withFailure.size)
+        assertEquals(Bubble.Status("Göndərilmədi · Yenidən cəhd et", true, failed.id), withFailure[0].status)
+        assertEquals("← Geri", text(withFailure[1]))
+        assertEquals("Göndərilir", withFailure[1].status?.text)
+        assertEquals("Siz, 10:32: ← Geri", withFailure[1].accessibilityLabel)
+    }
+
+    @Test
+    fun pendingAttachments() {
+        val photo = pending(
+            ClientMessage.Attachment("", "Velosiped"),
+            "Velosiped",
+            PendingUpload("velo.jpg", "image/jpeg", 1_000, "upload-1"),
+        )
+        val pdf = pending(ClientMessage.Attachment("", null), null, PendingUpload("qaime.pdf", "application/pdf", 182_340, "upload-2"))
+        val bare = pending(ClientMessage.Attachment("upl_7", "Yalnız mətn"), "Yalnız mətn")
+        val file = File("/tmp/upload-1")
+        val list = bubbles(screen(emptyList()) { it.copy(pending = listOf(photo, pdf, bare), localFiles = mapOf(photo.id to file)) })
+        val image = list[0].body as Bubble.ImageBody
+        assertEquals(file, image.localFile)
+        assertEquals(listOf(TextRun("Velosiped")), image.caption)
+        assertFalse(image.sizeKnown)
+        assertEquals(Bubble.FileBody("qaime.pdf", "182 KB", Media.FileIcon.PDF, null), list[1].body)
+        assertEquals("Siz, 10:32: qaime.pdf", list[1].accessibilityLabel)
+        assertEquals("an attachment the app uploaded itself shows its caption", "Yalnız mətn", text(list[2]))
+    }
+
+    @Test
+    fun header() {
+        val bot = screen(emptyList()).header
+        assertEquals(ChatHeader.Lead.Team(Fixture.aparConfig.team.avatars), bot.lead)
+        assertEquals("Apar", bot.title)
+        assertEquals("Komanda da kömək edə bilər", bot.subtitle)
+        assertEquals("Geri", bot.backLabel)
+        assertEquals("Bağla", bot.closeLabel)
+
+        val queued = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("queued")) }.header
+        assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", queued.subtitle)
+
+        val leyla = """{"name":"Leyla","avatar_url":"https://app.clomni.ai/a/leyla.png","online":true}"""
+        val open = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", leyla)) }.header
+        assertEquals(ChatHeader.Lead.Person(ChatAvatar("https://app.clomni.ai/a/leyla.png", "L", false), true), open.lead)
+        assertEquals("Leyla", open.title)
+        assertEquals("Apar · onlayn", open.subtitle)
+
+        val away = """{"name":"Leyla","online":false}"""
+        assertEquals("Apar", screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", away)) }.header.subtitle)
+        val queuedWithLeyla = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("queued", leyla)) }.header
+        assertEquals("still the team while queued", "Apar", queuedWithLeyla.title)
+
+        val closedHours = ChatFixture.config(
+            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},"team":{"office_hours":{"open_now":false},"reply_time":"Tez"}}""",
+        )
+        val afterHours = screen(emptyList()) {
+            it.copy(config = closedHours, conversation = ChatFixture.conversation("queued"))
+        }.header
+        assertEquals("no next_open_at: just that it is closed", "Hazırda iş saatı deyil", afterHours.subtitle)
+        assertEquals(ChatHeader.Lead.Team(emptyList()), afterHours.lead)
+
+        val nextOpen = ChatFixture.config(
+            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},
+               "team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}""",
+        )
+        assertEquals(
+            "local time; these tests run in UTC",
+            "Növbəti iş saatı: 05:00",
+            screen(emptyList()) { it.copy(config = nextOpen) }.header.subtitle,
+        )
+        val hidden = Fixture.aparConfig.let { it.copy(home = it.home.copy(showTeamAvatars = false)) }
+        assertEquals(ChatHeader.Lead.Team(emptyList()), screen(emptyList()) { it.copy(config = hidden) }.header.lead)
+    }
+
+    @Test
+    fun quickReplies() {
+        val languages = ChatFixture.message("07-language-select.json")
+        val open = screen(listOf(languages)) { it.copy(answerable = setOf(languages.id)) }
+        val block = (open.items.last() as ChatItem.RepliesItem).block
+        assertEquals(listOf("🇦🇿 Azərbaycan dili", "🇬🇧 English", "🇷🇺 Русский"), block.buttons.map { it.title })
+        assertEquals(listOf("az", "en", "ru"), block.buttons.map { it.id })
+        assertEquals("Düymə, Azərbaycan dili, 1-ci, cəmi 3", block.buttons[0].accessibilityLabel)
+        assertEquals(MessageContent.QuickRepliesLayout.VERTICAL, block.layout)
+        assertNull(block.back)
+        assertEquals(ChatComposer.Mode.Open, open.composer.mode)
+        assertTrue(text(bubbles(open).first())!!.startsWith("Salam, Clomni-yə"))
+        assertEquals("replies-msg_f07", open.items.last().id)
+
+        // Answered (fixture 08): the buttons are gone, the text stays.
+        val answered = screen(listOf(ChatFixture.message("08-language-select-answered.json")))
+        assertTrue(answered.items.none { it is ChatItem.RepliesItem })
+        assertEquals(1, bubbles(answered).size)
+
+        // Apar S: chips, the back button, the composer locked.
+        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val chips = screen(listOf(step)) { it.copy(answerable = setOf(step.id)) }
+        val chipsBlock = (chips.items.last() as ChatItem.RepliesItem).block
+        assertEquals(MessageContent.QuickRepliesLayout.CHIPS, chipsBlock.layout)
+        assertEquals(ReplyButton("back", "← Geri", "Düymə, Geri"), chipsBlock.back)
+        assertEquals(ChatComposer.Mode.Locked("Yuxarıdakı variantlardan birini seçin"), chips.composer.mode)
+
+        // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
+        val long = ChatFixture.message("13-button-title-over-80.json")
+        val longBlock = (screen(listOf(long)) { it.copy(answerable = setOf(long.id)) }.items.last() as ChatItem.RepliesItem).block
+        assertEquals(112, longBlock.buttons[0].title.length)
+        val ten = ChatFixture.message("14-ten-buttons.json")
+        val tenBlock = (screen(listOf(ten)) { it.copy(answerable = setOf(ten.id)) }.items.last() as ChatItem.RepliesItem).block
+        assertEquals(10, tenBlock.buttons.size)
+        assertEquals("Düymə, Variant 10, 10-cu, cəmi 10", tenBlock.buttons[9].accessibilityLabel)
+        val bare = ChatFixture.message("15-quick-replies-no-text.json")
+        val bareScreen = screen(listOf(bare)) { it.copy(answerable = setOf(bare.id)) }
+        assertTrue("no text, no bubble", bubbles(bareScreen).isEmpty())
+        assertEquals("input_disabled false", ChatComposer.Mode.Open, bareScreen.composer.mode)
+    }
+
+    @Test
+    fun forms() {
+        val contact = ChatFixture.message("19-form-contact.json")
+        val live = screen(listOf(contact)) {
+            it.copy(answerable = setOf(contact.id), known = mapOf("name" to "Aysel Məmmədova", "email" to "aysel@example.com"))
+        }
+        val card = bubbles(live).first().body as FormCard
+        assertFalse(card.readOnly)
+        assertEquals(listOf("name", "phone", "email"), card.fields.map { it.id })
+        assertEquals(listOf("Aysel Məmmədova", "", "aysel@example.com"), card.fields.map { it.initialValue })
+        assertEquals("Göndər", card.submitTitle)
+        assertNull(card.sentLabel)
+        assertEquals("Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.text?.first()?.text)
+
+        val sent = bubbles(screen(listOf(ChatFixture.message("21-form-submitted.json")))).first().body as FormCard
+        assertTrue(sent.readOnly)
+        assertEquals("Göndərildi", sent.sentLabel)
+        assertEquals(listOf("Aysel Məmmədova", "+994501234567", "aysel@example.com"), sent.submitted.map { it.value })
+
+        val stale = bubbles(screen(listOf(contact))).first().body as FormCard
+        assertTrue("no longer the live step", stale.readOnly)
+        assertEquals(
+            "Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
+            bubbles(screen(listOf(contact))).first().accessibilityLabel,
+        )
+    }
+
+    @Test
+    fun imagesAndFiles() {
+        val image = bubbles(screen(listOf(ChatFixture.message("16-image.json")))).first().body as Bubble.ImageBody
+        assertEquals("the thumbnail", "https://app.clomni.ai/f/velo_480.jpg", image.url)
+        assertEquals("https://app.clomni.ai/f/velo.jpg", image.fullUrl)
+        assertEquals(listOf(220.0, 165.0), listOf(image.width, image.height))
+        assertTrue(image.sizeKnown)
+        assertEquals(listOf(TextRun("Velosiped Nizami küçəsindədir")), image.caption)
+        assertEquals(
+            "Siz, 10:45: Şəkil: Velosiped Nizami küçəsindədir",
+            bubbles(screen(listOf(ChatFixture.message("16-image.json")))).first().accessibilityLabel,
+        )
+
+        val unknown = bubbles(screen(listOf(ChatFixture.message("17-image-no-dimensions.json")))).first()
+        val placeholder = unknown.body as Bubble.ImageBody
+        assertFalse(placeholder.sizeKnown)
+        assertEquals("https://app.clomni.ai/f/receipt.png", placeholder.url)
+        assertEquals("Leyla, 10:46: Şəkil", unknown.accessibilityLabel)
+
+        val file = bubbles(screen(listOf(ChatFixture.message("18-file-pdf.json")))).first()
+        assertEquals(Bubble.FileBody("qaime.pdf", "182 KB", Media.FileIcon.PDF, "https://app.clomni.ai/f/qaime.pdf"), file.body)
+        assertEquals("Leyla, 10:47: Fayl: qaime.pdf, 182 KB", file.accessibilityLabel)
+    }
+
+    @Test
+    fun systemLinesAndFallbacks() {
+        val leyla = """{"name":"Leyla","avatar_url":"https://app.clomni.ai/a/leyla.png"}"""
+        val system = screen(
+            listOf(
+                "22-system-waiting-in-queue.json", "23-system-operator-joined.json", "24-system-conversation-closed.json",
+                "25-system-unknown-event.json",
+            ).map { ChatFixture.message(it) },
+        ) { it.copy(conversation = ChatFixture.conversation("open", leyla)) }
+        val lines = system.items.filterIsInstance<ChatItem.SystemItem>().map { it.line }
+        assertEquals(
+            listOf("Sizi operatora yönləndiririk", "Leyla söhbətə qoşuldu", "Söhbət bağlanıb", "Sizə qısa sorğu göndəriləcək"),
+            lines.map { it.text },
+        )
+        assertEquals("the team waits with them", 3, lines[0].avatars.size)
+        assertEquals("L", lines[1].avatars.first().initial)
+        assertTrue(lines[2].avatars.isEmpty())
+        assertTrue(bubbles(system).isEmpty())
+        assertNull("a system line is not news", system.announcement)
+        val nobody = screen(listOf(ChatFixture.message("23-system-operator-joined.json")))
+        assertTrue(nobody.items.filterIsInstance<ChatItem.SystemItem>().single().line.avatars.isEmpty())
+
+        // card, carousel and rating are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
+        for ((file, fallback) in listOf(
+            "26-card.json" to "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az",
+            "27-carousel.json" to "Tarif 1 / Tarif 2 / Tarif 3",
+            "28-rating.json" to "Xidmətimizi 1-5 qiymətləndirin",
+            "29-unknown-type.json" to "Hansı saat uyğundur? 10:00 / 14:00",
+        )) {
+            val bubble = bubbles(screen(listOf(ChatFixture.message(file)))).first()
+            assertEquals(file, fallback, text(bubble))
+            assertEquals(file, Bubble.Side.INCOMING, bubble.side)
+            assertTrue(file, bubble.accessibilityLabel.endsWith(fallback))
+        }
+    }
+
+    @Test
+    fun composer() {
+        val open = screen(emptyList()).composer
+        assertEquals(ChatComposer.Mode.Open, open.mode)
+        assertEquals("Mesaj yazın…", open.placeholder)
+        assertTrue(open.showsAttach && open.showsEmoji)
+        assertEquals(4_000, open.limit)
+        assertEquals("Göndər", open.sendLabel)
+        assertEquals(
+            listOf("Fayl əlavə et", "Şəkil", "Fayl", "Emoji"),
+            listOf(open.attachLabel, open.imageLabel, open.fileLabel, open.emojiLabel),
+        )
+        val closed = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("closed")) }.composer
+        assertEquals(ChatComposer.Mode.Closed("Söhbət bağlanıb", "Yeni söhbət başlat"), closed.mode)
+        val minimal = screen(emptyList()) { it.copy(config = Fixture.minimalConfig) }.composer
+        assertEquals("the SDK's own text", "Mesaj yazın…", minimal.placeholder)
+        val bare = screen(emptyList()) { it.copy(config = null) }
+        assertEquals("Mesaj yazın…", bare.composer.placeholder)
+        assertEquals("", bare.header.title)
+        assertTrue(ChatPresenter.canSend(" Salam ", 10))
+        assertFalse(ChatPresenter.canSend(" \n ", 10))
+        assertFalse(ChatPresenter.canSend("12345678901", 10))
+        assertTrue("emoji count once", ChatPresenter.canSend("👍👍👍", 3))
+    }
+
+    @Test
+    fun typingStatesAndAnnouncement() {
+        val operatorTyping = screen(listOf(ChatFixture.message("01-text-bot.json"))) {
+            it.copy(typing = Sender(SenderType.OPERATOR, name = "Leyla"))
+        }
+        val line = (operatorTyping.items.last() as ChatItem.TypingItem).line
+        assertEquals("Leyla yazır", line.accessibilityLabel)
+        assertEquals("L", line.avatar.initial)
+        assertEquals(
+            Announcement("msg_f01", "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."),
+            operatorTyping.announcement,
+        )
+        assertNull("the user's own message is not news", screen(listOf(ChatFixture.message("03-text-user.json"))).announcement)
+        val botTyping = screen(emptyList()) { it.copy(typing = Sender(SenderType.BOT)) }
+        assertEquals("Clomni yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
+        val someone = screen(emptyList()) { it.copy(typing = Sender(SenderType.UNKNOWN)) }
+        assertEquals("Apar yazır", (someone.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
+
+        val presenter = ChatPresenter(ClomniStrings("az"), utc, now)
+        assertEquals(HomeScreen.Phase.LOADING, presenter.screen(ChatSnapshot()).phase)
+        val failed = presenter.screen(ChatSnapshot(load = MessengerSnapshot.Load.FAILED, isOffline = true))
+        assertEquals(HomeScreen.Phase.FAILED, failed.phase)
+        assertEquals("Yenidən cəhd et", failed.failure?.retry)
+        assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", failed.offline)
+        val cached = presenter.screen(ChatSnapshot(messages = listOf(ChatFixture.message("01-text-bot.json"))))
+        assertEquals("what is cached shows while loading", HomeScreen.Phase.READY, cached.phase)
+    }
+
+    /** Every message fixture, valid or not, reaches the screen as something. */
+    @Test
+    fun everyMessageFixtureRenders() {
+        val protocol = ProtocolJson()
+        var rendered = 0
+        for (entry in ProtocolFiles.index("fixtures")) {
+            if (entry.schema != "message.json") continue
+            val file = entry.path
+            val message = protocol.parseMessage(ProtocolFiles.read(file)) ?: continue
+            val chat = screen(listOf(message)) {
+                it.copy(answerable = if (message.flow?.interactive == true) setOf(message.id) else emptySet())
+            }
+            assertFalse(file, chat.items.none { it !is ChatItem.TimeItem })
+            rendered++
+        }
+        assertTrue("$rendered", rendered >= 35)
+    }
+}

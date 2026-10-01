@@ -26,6 +26,8 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val textSecondary: RgbColor,
         val border: RgbColor,
         val unread: RgbColor,
+        /** The operator's online dot in the conversation header. */
+        val online: RgbColor,
         /** The thin yellow "no internet" strip (brief 8·7.5) and its text. */
         val warning: RgbColor,
         val onWarning: RgbColor,
@@ -112,6 +114,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                 textSecondary = hex(if (dark) "#9A9DA6" else "#707480"),
                 border = hex(if (dark) "#2A2C32" else "#E7E8EB"),
                 unread = hex("#E5484D"),
+                online = hex("#30C26B"),
                 warning = hex(if (dark) "#3D3415" else "#FFF4CC"),
                 onWarning = hex(if (dark) "#F2DC8B" else "#5C4400"),
             )

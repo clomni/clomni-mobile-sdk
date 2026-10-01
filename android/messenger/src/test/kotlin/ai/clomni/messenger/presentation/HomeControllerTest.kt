@@ -64,7 +64,7 @@ private class FakeSource : MessengerDataSource {
 }
 
 /** Work queued and run when the test says, so it can tap twice "at once". */
-private class Queue : Executor {
+internal class Queue : Executor {
     private val tasks = ArrayDeque<Runnable>()
 
     override fun execute(command: Runnable) {
