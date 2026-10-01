@@ -37,5 +37,24 @@ jobs:
           -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO
 
+      # The snapshot tests need UIKit. A run without references records them and passes; the pictures are in the
+      # "snapshots" artifact, to be checked and committed under ios/Tests/ClomniMessengerTests/__Snapshots__.
+      - name: Snapshot tests on the iOS Simulator
+        run: >
+          xcodebuild test
+          -scheme ClomniMessenger-Package
+          -destination 'platform=iOS Simulator,name=iPhone 15'
+          -only-testing:ClomniMessengerTests
+          -skipPackagePluginValidation
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Keep the snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: ios/Tests/ClomniMessengerTests/__Snapshots__
+          if-no-files-found: ignore
+
       - name: pod lib lint
         run: pod lib lint ClomniMessenger.podspec --platforms=ios

@@ -46,6 +46,9 @@ public final class ChatController {
         didSet { render() }
     }
 
+    /// For the theme: the brand's colours and appearance.
+    public var config: MessengerConfig? { snapshot.config }
+
     private let source: ChatDataSource
     private let language: String?
     private let timeZone: TimeZone

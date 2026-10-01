@@ -62,6 +62,7 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual([light.colors.background, light.colors.canvas, light.colors.surface, light.colors.textPrimary,
                         light.colors.textSecondary, light.colors.border, light.colors.unread].map(\.hex),
                        ["#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#707480", "#E7E8EB", "#E5484D"])
+        XCTAssertEqual(light.colors.online.hex, "#30C26B")
         let dark = ClomniTheme.make(brand: nil, dark: true)
         XCTAssertTrue(dark.isDark)
         XCTAssertEqual([dark.colors.background, dark.colors.canvas, dark.colors.surface, dark.colors.textPrimary,

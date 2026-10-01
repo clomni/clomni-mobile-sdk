@@ -141,6 +141,7 @@ final class ChatControllerTests: XCTestCase {
         let made = await calls()
         XCTAssertEqual(made, ["refreshConversation conv_5521", "load conv_5521", "read conv_5521"])
         XCTAssertEqual(chat.screen.header.title, "Apar")
+        XCTAssertEqual(chat.config?.brand.name, "Apar")
         await chat.load()
         let observers = await source.observerCount
         XCTAssertEqual(observers, 1)

@@ -66,6 +66,7 @@ struct AvatarView: View {
     let initial: String
     let size: Double
     let theme: ClomniTheme
+    @Environment(\.clomniLoadsRemoteImages) private var loadsImages
 
     var body: some View {
         ZStack {
@@ -73,7 +74,7 @@ struct AvatarView: View {
             Text(initial)
                 .font(.system(size: CGFloat(size * 0.41), weight: .semibold))
                 .foregroundStyle(Color.white)
-            if let url = url {
+            if let url = url, loadsImages {
                 AsyncImage(url: url) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()

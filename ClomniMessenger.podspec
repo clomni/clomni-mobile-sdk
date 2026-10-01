@@ -16,5 +16,5 @@ Pod::Spec.new do |s|
 
   # All four SwiftPM targets compile into this one module; system frameworks only.
   s.source_files = 'ios/Sources/**/*.swift'
-  s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI'
+  s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers'
 end

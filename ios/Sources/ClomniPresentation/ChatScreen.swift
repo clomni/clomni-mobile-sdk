@@ -198,6 +198,9 @@ public struct ChatComposer: Sendable, Equatable {
     public let sendLabel: String
     public let attachLabel: String
     public let emojiLabel: String
+    /// The attachment menu: a picture, or any file.
+    public let imageLabel: String
+    public let fileLabel: String
 }
 
 /// What the conversation screen is built from.

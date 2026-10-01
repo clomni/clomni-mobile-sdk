@@ -22,6 +22,7 @@ let package = Package(
         .testTarget(name: "ClomniCoreTests", dependencies: ["ClomniCore"], path: "ios/Tests/ClomniCoreTests"),
         .testTarget(name: "ClomniPresentationTests", dependencies: ["ClomniPresentation"],
                     path: "ios/Tests/ClomniPresentationTests"),
-        .testTarget(name: "ClomniMessengerTests", dependencies: ["ClomniMessenger"], path: "ios/Tests/ClomniMessengerTests"),
+        .testTarget(name: "ClomniMessengerTests", dependencies: ["ClomniMessenger", "ClomniPresentation", "ClomniProtocol"],
+                    path: "ios/Tests/ClomniMessengerTests"),
     ]
 )

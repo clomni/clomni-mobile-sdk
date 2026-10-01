@@ -81,7 +81,7 @@ public struct ChatPresenter: Sendable {
             mode: mode, placeholder: config?.composer.placeholder ?? strings[.messagePlaceholder],
             showsAttach: config?.composer.attachments ?? true, showsEmoji: config?.composer.emoji ?? true,
             limit: config?.limits.textChars ?? 4_000, sendLabel: strings[.send], attachLabel: strings[.attach],
-            emojiLabel: strings[.emoji])
+            emojiLabel: strings[.emoji], imageLabel: strings[.image], fileLabel: strings[.file])
     }
 
     // MARK: - Transcript

@@ -24,6 +24,8 @@ public struct ClomniTheme: Sendable, Equatable {
         public let textSecondary: RGBColor
         public let border: RGBColor
         public let unread: RGBColor
+        /// The operator's online dot in the conversation header.
+        public let online: RGBColor
         /// The thin yellow "no internet" strip (brief 8 · 7.5) and its text.
         public let warning: RGBColor
         public let onWarning: RGBColor
@@ -113,6 +115,7 @@ public struct ClomniTheme: Sendable, Equatable {
             textSecondary: hex(dark ? "#9A9DA6" : "#707480"),
             border: hex(dark ? "#2A2C32" : "#E7E8EB"),
             unread: hex("#E5484D"),
+            online: hex("#30C26B"),
             warning: hex(dark ? "#3D3415" : "#FFF4CC"),
             onWarning: hex(dark ? "#F2DC8B" : "#5C4400"))
         return ClomniTheme(colors: colors, isDark: dark)
