@@ -149,6 +149,9 @@ public actor ClomniEngine {
     /// Opens the socket (and keeps it open, reconnecting) while the app is in the foreground.
     public func connect() async {
         wantsSocket = true
+        #if canImport(UIKit) && !os(watchOS)
+        observeApplicationState()
+        #endif
         await realtime.setHandler { [weak self] event in await self?.handle(event) }
         await realtime.start()
         deliver()

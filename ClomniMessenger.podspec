@@ -14,7 +14,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '15.0'
   s.swift_versions = ['5.9']
 
-  # Both SwiftPM targets compile into this one module; system frameworks only.
+  # All three SwiftPM targets compile into this one module; system frameworks only.
   s.source_files = 'ios/Sources/**/*.swift'
-  s.frameworks = 'Foundation'
+  s.frameworks = 'Foundation', 'Security', 'UIKit'
 end
