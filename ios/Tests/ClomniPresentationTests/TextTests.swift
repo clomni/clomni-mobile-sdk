@@ -71,4 +71,19 @@ final class TimeTextTests: XCTestCase {
         XCTAssertEqual(TimeText(strings: ClomniStrings(language: "az"), timeZone: TimeZone(identifier: "UTC")!)
             .clock(now), "06:30", "the device's time zone")
     }
+
+    /// The header's "away_until": the day only when it is not today.
+    func testUpcoming() {
+        let az = text("az")
+        XCTAssertEqual(az.upcoming(now.addingTimeInterval(90 * 60), now: now), "12:00")
+        XCTAssertEqual(az.upcoming(now.addingTimeInterval(13 * 3_600 + 29 * 60), now: now), "23:59")
+        XCTAssertEqual(az.upcoming(now.addingTimeInterval(13 * 3_600 + 30 * 60), now: now), "sabah 00:00")
+        XCTAssertEqual(az.upcoming(now.addingTimeInterval(22 * 3_600 + 30 * 60), now: now), "sabah 09:00")
+        XCTAssertEqual(az.upcoming(now.addingTimeInterval(46 * 3_600 + 30 * 60), now: now), "3 oktyabr 09:00")
+        XCTAssertEqual(az.upcoming(now.addingTimeInterval(100 * 86_400), now: now), "9 yanvar 2027 10:30")
+        XCTAssertEqual(text("en").upcoming(now.addingTimeInterval(22 * 3_600 + 30 * 60), now: now), "tomorrow 09:00")
+        XCTAssertEqual(text("en").upcoming(now.addingTimeInterval(46 * 3_600 + 30 * 60), now: now), "October 3, 09:00")
+        XCTAssertEqual(text("ru").upcoming(now.addingTimeInterval(22 * 3_600 + 30 * 60), now: now), "завтра 09:00")
+        XCTAssertEqual(text("ru").upcoming(now.addingTimeInterval(90 * 60), now: now), "12:00")
+    }
 }

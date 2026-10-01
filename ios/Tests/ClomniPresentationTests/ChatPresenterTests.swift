@@ -183,7 +183,7 @@ final class ChatPresenterTests: XCTestCase {
              "team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}
             """##.utf8))
         let untilMorning = screen([]) { $0.config = nextOpen }.header
-        XCTAssertEqual(untilMorning.subtitle, "Növbəti iş saatı: 05:00", "local time; these tests run in UTC")
+        XCTAssertEqual(untilMorning.subtitle, "Növbəti iş saatı: sabah 05:00", "local time; these tests run in UTC")
     }
 
     func testQuickReplies() throws {

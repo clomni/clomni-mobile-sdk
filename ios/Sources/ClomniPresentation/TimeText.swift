@@ -37,6 +37,18 @@ package struct TimeText: Sendable {
         return dayAndMonth(date, withYear: !sameYear(date, now)) + separator + time
     }
 
+    /// When something comes next, as the header's "away_until" says it: "09:00" today, "sabah 09:00" tomorrow,
+    /// "2 oktyabr 09:00" later, with the year when it is not this one.
+    package func upcoming(_ date: Date, now: Date) -> String {
+        let time = clock(date)
+        if calendar.isDate(date, inSameDayAs: now) { return time }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(date, inSameDayAs: tomorrow) {
+            return "\(strings[.tomorrow]) \(time)"
+        }
+        let separator = strings.language == "en" ? ", " : " "
+        return dayAndMonth(date, withYear: !sameYear(date, now)) + separator + time
+    }
+
     /// 24-hour "10:30".
     package func clock(_ date: Date) -> String {
         let parts = calendar.dateComponents([.hour, .minute], from: date)

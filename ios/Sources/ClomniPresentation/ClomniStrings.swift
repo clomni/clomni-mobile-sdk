@@ -4,7 +4,7 @@ import Foundation
 /// carries az, en and ru for every key, so a minimal config still reads well.
 package struct ClomniStrings: Sendable, Equatable {
     package enum Key: String, CaseIterable, Sendable {
-        case today, yesterday, send
+        case today, yesterday, tomorrow, send
         case newConversation = "new_conversation"
         case greetingHello = "greeting_hello"
         case greetingTitle = "greeting_title"
@@ -100,7 +100,7 @@ package struct ClomniStrings: Sendable, Equatable {
 
     static let fallbacks: [String: [Key: String]] = [
         "az": [
-            .today: "Bu gün", .yesterday: "Dünən", .send: "Göndər", .newConversation: "Bizə mesaj göndərin",
+            .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .newConversation: "Bizə mesaj göndərin",
             .greetingHello: "Salam", .greetingTitle: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
             .followUs: "Bizi izləyin", .tabHome: "Ana səhifə", .tabMessages: "Mesajlar",
             .noConversations: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
@@ -119,7 +119,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .fileTooLarge: "Fayl çox böyükdür (maks. %d MB)",
         ],
         "en": [
-            .today: "Today", .yesterday: "Yesterday", .send: "Send", .newConversation: "Send us a message",
+            .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .newConversation: "Send us a message",
             .greetingHello: "Hi", .greetingTitle: "How can we help?", .recentMessage: "Recent message",
             .followUs: "Follow us", .tabHome: "Home", .tabMessages: "Messages",
             .noConversations: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
@@ -139,7 +139,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .fileTooLarge: "The file is too large (max %d MB)",
         ],
         "ru": [
-            .today: "Сегодня", .yesterday: "Вчера", .send: "Отправить", .newConversation: "Напишите нам",
+            .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .newConversation: "Напишите нам",
             .greetingHello: "Здравствуйте", .greetingTitle: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
             .followUs: "Мы в соцсетях", .tabHome: "Главная", .tabMessages: "Сообщения",
             .noConversations: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",

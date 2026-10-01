@@ -141,8 +141,8 @@ struct BubbleRow: View {
                 } else {
                     Spacer(minLength: 40)
                 }
+                // The other side's bubbles keep their 222 pt even on a narrow screen: no spacer after them.
                 BubbleBody(bubble: bubble, theme: theme, shape: shape, actions: actions)
-                if incoming { Spacer(minLength: 40) }
             }
             if let meta = bubble.meta {
                 Text(meta)
@@ -198,8 +198,9 @@ struct BubbleBody: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text(bubble.accessibilityLabel))
         case .image(let image):
+            // Brief 7.4: an image is rounded 12 all round, not cut to the bubble's shape.
             ImageBubble(image: image, theme: theme, fill: fill, ink: ink, open: actions.openImage)
-                .clipShape(shape)
+                .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(bubble.accessibilityLabel))
                 .accessibilityAddTraits(.isImage)
