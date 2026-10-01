@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Clomni Messenger</string>
+    <string name="profile">Profil</string>
+    <string name="support">Dəstək</string>
+    <string name="new_conversation">Yeni söhbət</string>
+    <string name="report_problem">Bu gediş haqqında yaz</string>
+    <string name="payment_failed">Ödəniş xətası (avtomatik)</string>
+    <string name="launcher">Üzən düymə</string>
+    <string name="close_in_3">3 saniyəyə bağla (Clomni.dismiss)</string>
+    <string name="events">Hadisələr</string>
+</resources>

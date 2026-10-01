@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The "İnternet yoxdur" strip of the open messenger. No other permission: the launcher lives in the app's own
+         windows (no SYSTEM_ALERT_WINDOW), photos come from the Photo Picker. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application>
+        <activity
+            android:name="ai.clomni.messenger.ui.ClomniMessengerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:exported="false"
+            android:theme="@style/clomni_messenger"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
+
+</manifest>
