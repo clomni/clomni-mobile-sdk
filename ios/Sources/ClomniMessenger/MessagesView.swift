@@ -38,6 +38,7 @@ struct MessagesView: View {
                 SkeletonBlock(height: 58, theme: theme)
             }
             .padding(CGFloat(ClomniTheme.Space.l))
+            .loadingElement(screen.loadingLabel)
         case .failed:
             if let failure = screen.failure {
                 FailureView(failure: failure, theme: theme, retry: actions.retry)

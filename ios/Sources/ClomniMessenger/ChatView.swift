@@ -53,6 +53,7 @@ struct ChatView: View {
     @State private var announced: String?
     @State private var hasOlder = true
     @State private var loadingOlder = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
         let brand = model.config?.brand
@@ -123,6 +124,7 @@ struct ChatView: View {
                 Spacer()
             }
             .padding(CGFloat(ClomniTheme.Space.xl))
+            .loadingElement(model.screen.loadingLabel)
         case .failed:
             VStack {
                 if let failure = model.screen.failure {
@@ -143,7 +145,8 @@ struct ChatView: View {
                 }
                 .onChange(of: model.screen.items.last?.id) { last in
                     guard let last else { return }
-                    withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo(last, anchor: .bottom) }
+                    // Reduce Motion: the transcript jumps to the new message instead of sliding.
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) { proxy.scrollTo(last, anchor: .bottom) }
                 }
             }
         }

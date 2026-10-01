@@ -85,6 +85,9 @@ struct FormCardView: View {
         Task { @MainActor in
             errors = await submit(values)
             sending = false
+            if let first = card.announcement(for: errors) {
+                UIAccessibility.post(notification: .announcement, argument: first)
+            }
         }
     }
 }
@@ -109,6 +112,8 @@ struct FormFieldView: View {
             Text(field.required ? "\(field.label) *" : field.label)
                 .clomniFont(ClomniTheme.FontSize.label, .semibold, relativeTo: .caption)
                 .foregroundStyle(theme.colors.textPrimary.color)
+                // The input carries it, with "məcburi" for the star.
+                .accessibilityHidden(true)
             input
                 .clomniFont(ClomniTheme.FontSize.text)
                 .foregroundStyle(theme.colors.textPrimary.color)
@@ -118,11 +123,14 @@ struct FormFieldView: View {
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(theme.colors.background.color))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(error == nil ? theme.colors.border.color : theme.colors.unread.color, lineWidth: 1))
-                .accessibilityLabel(Text(field.label))
+                .accessibilityLabel(Text(field.accessibilityLabel))
+                .accessibilityHint(Text(error ?? ""))
             if let error {
+                // Read with the input, and announced when the submit comes back.
                 Text(error)
                     .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption)
                     .foregroundStyle(theme.colors.unread.color)
+                    .accessibilityHidden(true)
             }
         }
         .disabled(disabled)

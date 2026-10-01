@@ -113,15 +113,18 @@ struct ComposerView: View {
 
     @ViewBuilder
     private var input: some View {
+        // The placeholder is gone once something is written; the label stays.
         if #available(iOS 16.0, *) {
             TextField(composer.placeholder, text: $text, axis: .vertical)
                 .lineLimit(1...5)
                 .clomniFont(ClomniTheme.FontSize.text)
                 .focused($focused)
+                .accessibilityLabel(Text(composer.placeholder))
         } else {
             TextField(composer.placeholder, text: $text)
                 .clomniFont(ClomniTheme.FontSize.text)
                 .focused($focused)
+                .accessibilityLabel(Text(composer.placeholder))
         }
     }
 

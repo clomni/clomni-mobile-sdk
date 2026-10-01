@@ -88,6 +88,9 @@ final class ChatPresenterTests: XCTestCase {
         let mine = Fixture.message("03-text-user.json")
         XCTAssertEqual(bubbles(screen([mine])).last?.status?.text, "Göndərildi")
         XCTAssertEqual(bubbles(screen([mine]) { $0.readUpTo = 3 }).last?.status?.text, "Oxundu")
+        // VoiceOver reads the status with the bubble: one element.
+        let read = bubbles(screen([mine]) { $0.readUpTo = 3 }).last?.accessibilityLabel
+        XCTAssertTrue(read?.hasPrefix("Siz, ") == true && read?.hasSuffix(". Oxundu") == true, read ?? "")
         XCTAssertEqual(bubbles(screen([mine]) { $0.readUpTo = 2 }).last?.status?.text, "Göndərildi")
         // A bot message after it: no status under the user's.
         let answer = Fixture.message("01-text-bot.json", ["seq": 4, "created_at": "2026-10-01T10:36:00Z"])
@@ -120,6 +123,8 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(withFailure.count, 2, "a submitted form has no bubble of its own")
         XCTAssertEqual(withFailure[0].status, Bubble.Status(text: "Göndərilmədi · Yenidən cəhd et", isFailure: true,
                                                             retryId: failed.id))
+        XCTAssertEqual(withFailure[0].accessibilityLabel, "Siz, 10:32: Hələ yoldadır",
+                       "a failure is a button of its own, not part of the bubble")
         XCTAssertEqual(text(withFailure[1]), "← Geri")
         XCTAssertEqual(withFailure[1].status?.text, "Göndərilir")
     }
@@ -143,7 +148,9 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(image.caption, [TextRun("Velosiped")])
         guard case .file(let card) = list[1].body else { return XCTFail() }
         XCTAssertEqual(card, Bubble.FileBody(name: "qaime.pdf", size: "182 KB", symbol: "doc.richtext", url: nil))
-        XCTAssertEqual(list[1].accessibilityLabel, "Siz, 10:32: qaime.pdf")
+        XCTAssertEqual(list[1].accessibilityLabel, "Siz, 10:32: qaime.pdf. Göndərilir")
+        XCTAssertEqual(list[0].accessibilityHint, "Şəkli tam ekranda açır")
+        XCTAssertNil(list[1].accessibilityHint, "not on the server yet: nothing to open")
     }
 
     func testHeader() {
@@ -238,6 +245,11 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(card.fields.map(\.id), ["name", "phone", "email"])
         XCTAssertEqual(card.fields.map(\.initialValue), ["Aysel Məmmədova", "", "aysel@example.com"])
         XCTAssertEqual(card.submitTitle, "Göndər")
+        XCTAssertEqual(card.fields.map(\.accessibilityLabel), ["Ad, soyad, məcburi", "Telefon, məcburi", "Email"])
+        XCTAssertEqual(card.announcement(for: ["email": "Email düzgün deyil"]), "Email: Email düzgün deyil")
+        XCTAssertEqual(card.announcement(for: ["email": "Email düzgün deyil", "phone": "Bu sahəni doldurun"]),
+                       "Telefon: Bu sahəni doldurun", "the first field on screen")
+        XCTAssertNil(card.announcement(for: [:]))
         XCTAssertNil(card.sentLabel)
         XCTAssertEqual(card.text?.first?.text, "Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.")
 
@@ -273,6 +285,9 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(card, Bubble.FileBody(name: "qaime.pdf", size: "182 KB", symbol: "doc.richtext",
                                              url: URL(string: "https://app.clomni.ai/f/qaime.pdf")))
         XCTAssertEqual(file?.accessibilityLabel, "Leyla, 10:47: Fayl: qaime.pdf, 182 KB")
+        XCTAssertEqual(file?.accessibilityHint, "Faylı açır")
+        XCTAssertEqual(unknown?.accessibilityHint, "Şəkli tam ekranda açır")
+        XCTAssertNil(bubbles(screen([Fixture.message("01-text-bot.json")])).first?.accessibilityHint)
     }
 
     func testSystemLinesAndFallbacks() {
@@ -334,6 +349,7 @@ final class ChatPresenterTests: XCTestCase {
         var loading = ChatSnapshot(config: nil)
         let presenter = ChatPresenter(strings: ClomniStrings(language: "az"), timeZone: utc, now: now)
         XCTAssertEqual(presenter.screen(loading).phase, .loading)
+        XCTAssertEqual(presenter.screen(loading).loadingLabel, "Yüklənir")
         loading.load = .failed
         loading.isOffline = true
         let failed = presenter.screen(loading)

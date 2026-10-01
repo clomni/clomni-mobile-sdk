@@ -38,6 +38,11 @@ package struct ClomniStrings: Sendable, Equatable {
         case minutesShort = "minutes_short"
         case hoursShort = "hours_short"
         case daysShort = "days_short"
+        // VoiceOver (CM-087).
+        case loading
+        case required
+        case opensImage = "opens_image"
+        case opensFile = "opens_file"
     }
 
     /// az, en or ru; anything else reads as az.
@@ -116,7 +121,8 @@ package struct ClomniStrings: Sendable, Equatable {
             .emoji: "Emoji", .image: "Şəkil", .file: "Fayl", .fieldRequired: "Bu sahəni doldurun",
             .invalidEmail: "Email düzgün deyil", .invalidPhone: "Telefon nömrəsi düzgün deyil",
             .invalidNumber: "Rəqəm yazın", .tooLong: "Ən çox %d simvol", .chooseOption: "Variantlardan birini seçin",
-            .fileTooLarge: "Fayl çox böyükdür (maks. %d MB)",
+            .fileTooLarge: "Fayl çox böyükdür (maks. %d MB)", .loading: "Yüklənir", .required: "məcburi",
+            .opensImage: "Şəkli tam ekranda açır", .opensFile: "Faylı açır",
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .newConversation: "Send us a message",
@@ -136,7 +142,8 @@ package struct ClomniStrings: Sendable, Equatable {
             .fieldRequired: "Fill in this field", .invalidEmail: "Enter a valid email",
             .invalidPhone: "Enter a valid phone number", .invalidNumber: "Enter a number",
             .tooLong: "At most %d characters", .chooseOption: "Choose one of the options",
-            .fileTooLarge: "The file is too large (max %d MB)",
+            .fileTooLarge: "The file is too large (max %d MB)", .loading: "Loading", .required: "required",
+            .opensImage: "Opens the picture full screen", .opensFile: "Opens the file",
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .newConversation: "Напишите нам",
@@ -155,7 +162,8 @@ package struct ClomniStrings: Sendable, Equatable {
             .emoji: "Эмодзи", .image: "Изображение", .file: "Файл", .fieldRequired: "Заполните это поле",
             .invalidEmail: "Неверный email", .invalidPhone: "Неверный номер телефона",
             .invalidNumber: "Введите число", .tooLong: "Не больше %d символов", .chooseOption: "Выберите вариант",
-            .fileTooLarge: "Файл слишком большой (макс. %d МБ)",
+            .fileTooLarge: "Файл слишком большой (макс. %d МБ)", .loading: "Загрузка", .required: "обязательно",
+            .opensImage: "Открывает изображение на весь экран", .opensFile: "Открывает файл",
         ],
     ]
 }

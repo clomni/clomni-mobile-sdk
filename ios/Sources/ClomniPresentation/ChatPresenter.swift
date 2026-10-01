@@ -38,7 +38,8 @@ package struct ChatPresenter: Sendable {
             composer: composer(snapshot),
             offline: snapshot.isOffline ? strings[.offline] : nil,
             failure: phase == .failed ? HomeScreen.Failure(message: strings[.error], retry: strings[.retry]) : nil,
-            announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) })
+            announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) },
+            loadingLabel: strings[.loading])
     }
 
     // MARK: - Header
@@ -194,9 +195,12 @@ package struct ChatPresenter: Sendable {
                     : offset == 0 ? .first : offset == run.count - 1 ? .last : .middle
                 let closesRun = offset == run.count - 1 && draft.side == .incoming
                 let meta = draft.metaName.map { "\($0) · \(time.ago(draft.date, now: now))" }
+                let status = draft.status.flatMap { $0.isFailure ? nil : $0.text }
                 items.append(.bubble(Bubble(id: draft.id, side: draft.side, body: draft.body, position: position,
                                             avatar: closesRun ? draft.avatar : nil, meta: closesRun ? meta : nil,
-                                            status: draft.status, accessibilityLabel: draft.accessibilityLabel)))
+                                            status: draft.status,
+                                            accessibilityLabel: draft.accessibilityLabel + (status.map { ". \($0)" } ?? ""),
+                                            accessibilityHint: hint(draft.body))))
             }
             index += run.count
         }
@@ -212,6 +216,14 @@ package struct ChatPresenter: Sendable {
             date: message.createdAt, body: body, avatar: outgoing ? nil : who.avatar,
             metaName: outgoing ? nil : message.sender.type == .bot ? "\(who.name) · \(strings[.bot])" : who.name,
             status: nil, accessibilityLabel: label(message, snapshot))
+    }
+
+    private func hint(_ body: Bubble.Body) -> String? {
+        switch body {
+        case .image: return strings[.opensImage]
+        case .file(let file): return file.url == nil ? nil : strings[.opensFile]
+        case .text, .form: return nil
+        }
     }
 
     /// "Clomni bot, 10:30: Salam…" (brief 8 · 7.6).
@@ -311,6 +323,7 @@ package struct ChatPresenter: Sendable {
             fields: form.fields.map { field in
                 FormCard.Field(id: field.key, type: field.type, label: field.label, required: field.required,
                                placeholder: field.placeholder, maxLength: field.maxLength, options: field.options,
+                               accessibilityLabel: field.required ? "\(field.label), \(strings[.required])" : field.label,
                                initialValue: prefill[field.key] ?? "")
             },
             submitTitle: form.submitTitle,

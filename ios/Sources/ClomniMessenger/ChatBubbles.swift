@@ -203,7 +203,9 @@ struct BubbleBody: View {
                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(bubble.accessibilityLabel))
-                .accessibilityAddTraits(.isImage)
+                .accessibilityHint(Text(bubble.accessibilityHint ?? ""))
+                .accessibilityAddTraits([.isImage, .isButton])
+                .accessibilityAction { if let url = image.fullUrl ?? image.url { actions.openImage(url) } }
         case .file(let file):
             Button {
                 if let url = file.url { openURL(url) }
@@ -213,6 +215,7 @@ struct BubbleBody: View {
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel(Text(bubble.accessibilityLabel))
+            .accessibilityHint(Text(bubble.accessibilityHint ?? ""))
         case .form(let card):
             FormCardView(card: card, theme: theme, submit: { values in await actions.submit(card.messageId, values) })
                 .background(shape.fill(fill))
@@ -367,8 +370,10 @@ struct StatusLine: View {
         }
     }
 
+    /// Only the failure stays its own element (a button); "Göndərildi" and "Oxundu" are read with the bubble.
     private var label: some View {
         Text(status.text)
+            .accessibilityHidden(!status.isFailure)
             .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
             .foregroundStyle(status.isFailure ? theme.colors.unread.color : theme.colors.textSecondary.color)
     }

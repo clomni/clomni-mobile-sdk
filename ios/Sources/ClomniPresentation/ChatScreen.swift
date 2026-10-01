@@ -15,6 +15,8 @@ package struct ChatScreen: Sendable, Equatable {
     package let failure: HomeScreen.Failure?
     /// The newest incoming message, for VoiceOver to read out when it changes.
     package let announcement: Announcement?
+    /// What VoiceOver reads over the skeleton: "Yüklənir".
+    package let loadingLabel: String
 }
 
 package struct Announcement: Sendable, Equatable {
@@ -121,7 +123,11 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     package let meta: String?
     /// Under the user's message when it is the last one, or when it failed.
     package let status: Status?
+    /// The message, who sent it and when, and its status unless that is a failure (which is a button of its own):
+    /// "Siz, 10:30: Salam. Oxundu". VoiceOver reads the bubble, its meta line and its status as one element.
     package let accessibilityLabel: String
+    /// What a tap does, where it is not plain: "Şəkli tam ekranda açır", "Faylı açır".
+    package let accessibilityHint: String?
 }
 
 package struct SystemLine: Sendable, Equatable {
@@ -160,6 +166,8 @@ package struct FormCard: Sendable, Equatable {
         package let placeholder: String?
         package let maxLength: Int?
         package let options: [MessageContent.FormField.Option]
+        /// "Ad, məcburi": the input's own label, so VoiceOver need not read the caption above it as well.
+        package let accessibilityLabel: String
         /// The logged-in user's known value, filled in before they type.
         package let initialValue: String
     }
@@ -178,6 +186,11 @@ package struct FormCard: Sendable, Equatable {
     package let submitted: [Line]
     /// "Göndərildi" under a sent form.
     package let sentLabel: String?
+
+    /// What VoiceOver says when a submit comes back with errors: the first field's, "E-poçt: Email düzgün deyil".
+    package func announcement(for errors: [String: String]) -> String? {
+        fields.lazy.compactMap { field in errors[field.id].map { "\(field.label): \($0)" } }.first
+    }
 }
 
 package struct ChatComposer: Sendable, Equatable {

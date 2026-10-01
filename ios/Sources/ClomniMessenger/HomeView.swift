@@ -161,8 +161,11 @@ struct HomeCardsView: View {
         VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
             switch screen.phase {
             case .loading:
-                SkeletonBlock(height: 58, theme: theme)
-                SkeletonBlock(height: 74, theme: theme)
+                VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
+                    SkeletonBlock(height: 58, theme: theme)
+                    SkeletonBlock(height: 74, theme: theme)
+                }
+                .loadingElement(screen.loadingLabel)
             case .failed:
                 if let failure = screen.failure {
                     FailureView(failure: failure, theme: theme, retry: actions.retry)

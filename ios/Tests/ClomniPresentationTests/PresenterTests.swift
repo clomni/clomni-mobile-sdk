@@ -175,6 +175,9 @@ final class PresenterTests: XCTestCase {
         var nothing = MessengerSnapshot()
         XCTAssertEqual(presenter(config: nil).home(nothing).phase, .loading)
         XCTAssertEqual(presenter(config: nil).messages(nothing).phase, .loading)
+        // VoiceOver hears this over the skeleton blocks.
+        XCTAssertEqual(presenter(config: nil).home(nothing).loadingLabel, "Yüklənir")
+        XCTAssertEqual(presenter("en", config: nil).messages(nothing).loadingLabel, "Loading")
         nothing.configLoad = .failed
         nothing.conversationsLoad = .failed
         let failed = presenter(config: nil).home(nothing)

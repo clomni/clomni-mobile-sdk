@@ -76,6 +76,8 @@ package struct HomeScreen: Sendable, Equatable {
     /// The thin yellow strip under the header.
     package let offline: String?
     package let failure: Failure?
+    /// What VoiceOver reads over the skeleton: "Yüklənir".
+    package let loadingLabel: String
 }
 
 /// A conversation in a list, and the "Son mesaj" card.
@@ -102,6 +104,7 @@ package struct MessagesScreen: Sendable, Equatable {
     package let newConversation: HomeScreen.NewConversationCard
     package let offline: String?
     package let failure: HomeScreen.Failure?
+    package let loadingLabel: String
 }
 
 /// What the screens are built from.
@@ -151,7 +154,8 @@ package struct HomePresenter: Sendable {
             channels: channels.isEmpty ? nil : HomeScreen.ChannelsCard(label: strings[.followUs], items: channels),
             tabs: tabs(snapshot),
             offline: snapshot.isOffline ? strings[.offline] : nil,
-            failure: failed ? failure : nil)
+            failure: failed ? failure : nil,
+            loadingLabel: strings[.loading])
     }
 
     package func messages(_ snapshot: MessengerSnapshot) -> MessagesScreen {
@@ -164,7 +168,8 @@ package struct HomePresenter: Sendable {
             empty: phase == .ready && rows.isEmpty ? strings[.noConversations] : nil,
             newConversation: newConversation(snapshot.config),
             offline: snapshot.isOffline ? strings[.offline] : nil,
-            failure: failed ? failure : nil)
+            failure: failed ? failure : nil,
+            loadingLabel: strings[.loading])
     }
 
     /// A conversation with a last message; one without has nothing to show yet.

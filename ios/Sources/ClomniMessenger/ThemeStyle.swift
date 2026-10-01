@@ -102,6 +102,11 @@ extension View {
         modifier(FixedFont(size: size, weight: weight))
     }
 
+    /// Skeleton blocks are one element for VoiceOver, "Yüklənir", instead of nothing at all.
+    func loadingElement(_ label: String) -> some View {
+        accessibilityElement(children: .ignore).accessibilityLabel(Text(label))
+    }
+
     /// A Home card: background, radius 12, padding 12×14, soft shadow (a 1 pt border in dark mode).
     func clomniCard(_ theme: ClomniTheme) -> some View {
         modifier(CardStyle(theme: theme))

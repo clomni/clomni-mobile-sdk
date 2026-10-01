@@ -60,8 +60,9 @@ final class UIKitMessenger: MessengerRenderer {
             return ClomniLog.error("no window to present the messenger from")
         }
         let host = UIHostingController(rootView: root)
-        // Full screen, sliding up; closing returns the app to where it was.
+        // Full screen, sliding up (a fade with Reduce Motion); closing returns the app to where it was.
         host.modalPresentationStyle = .fullScreen
+        host.modalTransitionStyle = UIAccessibility.isReduceMotionEnabled ? .crossDissolve : .coverVertical
         presented = host
         top.present(host, animated: true)
     }
