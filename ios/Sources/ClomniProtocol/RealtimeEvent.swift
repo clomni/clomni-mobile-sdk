@@ -46,7 +46,7 @@ extension RealtimeEvent {
         do {
             data = try Payload(event: event, data: f["data"])
         } catch {
-            ProtocolLog.write("\(event): \(error); event ignored")
+            ClomniLog.warning("\(event): \(error); event ignored")
             data = .unknown(name: event)
         }
     }
@@ -76,7 +76,7 @@ extension RealtimeEvent.Payload {
         case "unread.changed": self = .unreadChanged(total: try JSONFields(data, path: path).int("total"))
         case "config.changed": self = .configChanged(etag: try JSONFields(data, path: path).string("etag"))
         default:
-            ProtocolLog.write("unknown event \"\(event)\" ignored")
+            ClomniLog.debug("unknown event \"\(event)\" ignored")
             self = .unknown(name: event)
         }
     }

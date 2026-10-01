@@ -131,11 +131,12 @@ final class MessengerCoordinatorTests: XCTestCase {
 
     override func setUp() async throws {
         let log = log
-        ProtocolJSON.logHandler = { log.append($0) }
+        ClomniLog.handler = { _, line in log.append(line) }
+        ClomniLog.level = .debug
     }
 
     override func tearDown() async throws {
-        ProtocolJSON.logHandler = nil
+        ClomniLog.reset()
     }
 
     private func coordinator() -> MessengerCoordinator {

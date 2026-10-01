@@ -1,14 +1,8 @@
 import Foundation
 
 /// The protocol's entry points. None of them throws or traps: input they cannot use gives nil (or, inside a message,
-/// `.unknown` content), and a line goes to `logHandler`.
+/// `.unknown` content), and a line goes to `ClomniLog`.
 package enum ProtocolJSON {
-    /// Receives one line for everything that was dropped or downgraded. The SDK sets it from its log level; nil (the
-    /// default) discards the lines.
-    package static var logHandler: (@Sendable (String) -> Void)? {
-        get { ProtocolLog.shared.handler }
-        set { ProtocolLog.shared.handler = newValue }
-    }
 
     /// A message as REST or the socket sends it; nil when its envelope is unusable (no id, seq, sender …).
     package static func parseMessage(_ data: Data) -> Message? {
@@ -88,7 +82,7 @@ package enum ProtocolJSON {
 
     static func decode<T>(_ data: Data, _ what: String, _ build: (JSONFields) throws -> T) -> T? {
         guard let json = decode(data) else {
-            ProtocolLog.write("\(what): not JSON, dropped")
+            ClomniLog.warning("\(what): not JSON, dropped")
             return nil
         }
         return read(json, what, build)
@@ -98,32 +92,8 @@ package enum ProtocolJSON {
         do {
             return try build(JSONFields(json, path: what))
         } catch {
-            ProtocolLog.write("\(error); \(what) dropped")
+            ClomniLog.warning("\(error); \(what) dropped")
             return nil
         }
-    }
-}
-
-final class ProtocolLog: @unchecked Sendable {
-    static let shared = ProtocolLog()
-
-    private let lock = NSLock()
-    private var _handler: (@Sendable (String) -> Void)?
-
-    var handler: (@Sendable (String) -> Void)? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _handler
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _handler = newValue
-        }
-    }
-
-    static func write(_ line: String) {
-        shared.handler?("[ClomniProtocol] \(line)")
     }
 }

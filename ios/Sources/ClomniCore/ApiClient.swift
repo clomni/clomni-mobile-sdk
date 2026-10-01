@@ -182,7 +182,7 @@ actor ApiClient {
                 keep(try read(response, ProtocolJSON.parseSession))
                 return
             } catch ClomniError.server(let status, _) where status == 401 {
-                CoreLog.write("refresh token refused; logging in again")
+                ClomniLog.info("refresh token refused; logging in again")
             }
         }
         guard let identity else { throw ClomniError.notLoggedIn }
@@ -365,9 +365,9 @@ actor ApiClient {
         let error = ProtocolJSON.parseServerError(response.body)
         // The developer's console is where a wrong key or hash is found (brief 8 · 6.6).
         switch error?.code {
-        case "invalid_api_key": CoreLog.write("api_key səhvdir və ya bu platforma üçün deyil")
-        case "identity_verification_failed": CoreLog.write("user_hash səhvdir. identity_secret və user_id-ni yoxlayın")
-        case "app_disabled": CoreLog.write("this App SDK inbox is switched off in Clomni")
+        case "invalid_api_key": ClomniLog.error("api_key səhvdir və ya bu platforma üçün deyil")
+        case "identity_verification_failed": ClomniLog.error("user_hash səhvdir. identity_secret və user_id-ni yoxlayın")
+        case "app_disabled": ClomniLog.error("this App SDK inbox is switched off in Clomni")
         default: break
         }
         return .server(status: response.status, error: error)
@@ -437,12 +437,5 @@ struct DeviceInfo: Equatable {
         var info = utsname()
         uname(&info)
         return withUnsafeBytes(of: &info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
-    }
-}
-
-/// Core's lines go to the same handler as the protocol's (`ProtocolJSON.logHandler`, set from the log level).
-enum CoreLog {
-    static func write(_ line: String) {
-        ProtocolJSON.logHandler?("[ClomniCore] \(line)")
     }
 }

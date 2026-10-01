@@ -161,9 +161,9 @@ package final class MessengerCoordinator {
         if disabled {
             readiness = .disabled
             route = nil
-            log("this App SDK inbox is switched off in Clomni: the messenger does not open")
+            ClomniLog.error("this App SDK inbox is switched off in Clomni: the messenger does not open")
         } else {
-            log(reason)
+            ClomniLog.error(reason)
         }
         changed()
         return false
@@ -243,7 +243,7 @@ package final class MessengerCoordinator {
     @discardableResult
     private func open(_ route: MessengerRoute, source: String?) -> Bool {
         guard readiness != .disabled else {
-            log("this App SDK inbox is switched off in Clomni: present() does nothing")
+            ClomniLog.warning("this App SDK inbox is switched off in Clomni: present() does nothing")
             return false
         }
         let wasClosed = self.route == nil
@@ -363,10 +363,5 @@ package final class MessengerCoordinator {
 
     private func changed() {
         onChange?()
-    }
-
-    private func log(_ line: String) {
-        guard !line.isEmpty else { return }
-        ProtocolJSON.logHandler?("[Clomni] \(line)")
     }
 }

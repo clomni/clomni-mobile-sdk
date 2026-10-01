@@ -279,7 +279,7 @@ package actor ClomniEngine {
             }
         } catch {
             noteDisabled(error)
-            CoreLog.write("config not refreshed: \(error)")
+            ClomniLog.warning("config not refreshed: \(error)")
         }
         return config
     }
@@ -524,7 +524,7 @@ package actor ClomniEngine {
                 let seq = store.message(replyTo, in: entry.conversationId)?.seq
                 Task { try? await self.fetch(entry.conversationId, after: max(0, (seq ?? 1) - 1)) }
             }
-            CoreLog.write("\(entry.id): \(error?.code ?? "409"), dropped")
+            ClomniLog.warning("\(entry.id): \(error?.code ?? "409"), dropped")
         } catch ClomniError.server(let status, let error) where (400..<500).contains(status) && status != 401 && status != 429 {
             outbox.update(entry.id) {
                 $0.state = .failed

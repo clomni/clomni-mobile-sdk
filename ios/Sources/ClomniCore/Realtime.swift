@@ -134,7 +134,7 @@ actor RealtimeClient {
                 lastFrame = time.now()
                 try await receive(from: connection)
             } catch {
-                if !Task.isCancelled { CoreLog.write("socket closed: \(error)") }
+                if !Task.isCancelled { ClomniLog.debug("socket closed: \(error)") }
             }
             opened?.close()
             guard !Task.isCancelled, generation == self.generation else { return }
@@ -161,7 +161,7 @@ actor RealtimeClient {
             try? await time.sleep(seconds: heartbeat)
             guard !Task.isCancelled else { return }
             if time.now().timeIntervalSince(lastFrame) >= 2 * heartbeat {
-                CoreLog.write("no frame for \(Int(2 * heartbeat)) s; reconnecting")
+                ClomniLog.info("no frame for \(Int(2 * heartbeat)) s; reconnecting")
                 connection.close()
                 return
             }
@@ -171,7 +171,7 @@ actor RealtimeClient {
     private func handle(_ text: String, from connection: WebSocketConnection) async {
         lastFrame = time.now()
         guard let json = ProtocolJSON.decode(Data(text.utf8)) else {
-            return CoreLog.write("socket frame is not JSON, ignored")
+            return ClomniLog.warning("socket frame is not JSON, ignored")
         }
         switch json["event"]?.stringValue {
         case "ping":

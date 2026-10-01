@@ -179,7 +179,7 @@ final class MessengerRuntime {
     }
 
     static func log(_ line: String) {
-        ProtocolJSON.logHandler?("[Clomni] \(line)")
+        ClomniLog.error(line)
     }
 
     func initialize(appId: String, apiKey: String, region: String, baseURL: URL?) {

@@ -174,7 +174,7 @@ extension MessageContent {
 
 extension MessageContent {
     /// Reads `json` as the content of a message of `type`. Never fails: an unknown type or broken content gives
-    /// `.unknown`, with a line to `ProtocolJSON.logHandler`.
+    /// `.unknown`, with a line to `ClomniLog`.
     package init(type: String, json: JSONValue) {
         self.init(type: type, json: json, messageId: nil)
     }
@@ -193,11 +193,11 @@ extension MessageContent {
             case "card": self = .card(try f.nonEmptyArray("cards") { try CardItem($0) })
             case "rating": self = .rating(try Rating(f))
             default:
-                ProtocolLog.write("\(prefix)unknown type \"\(type)\", shown as fallback_text")
+                ClomniLog.info("\(prefix)unknown type \"\(type)\", shown as fallback_text")
                 self = .unknown(type: type, raw: json)
             }
         } catch {
-            ProtocolLog.write("\(prefix)\(error); shown as fallback_text")
+            ClomniLog.warning("\(prefix)\(error); shown as fallback_text")
             self = .unknown(type: type, raw: json)
         }
     }

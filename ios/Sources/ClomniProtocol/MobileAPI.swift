@@ -93,7 +93,7 @@ extension JSONFields {
             do {
                 return try item(JSONFields(value, path: "\(path).\(key)[\(index)]"))
             } catch {
-                ProtocolLog.write("\(error); item dropped")
+                ClomniLog.warning("\(error); item dropped")
                 return nil
             }
         }

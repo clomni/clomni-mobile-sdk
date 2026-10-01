@@ -104,12 +104,6 @@ final class RobustnessTests: ProtocolTestCase {
         XCTAssertEqual(content("video", ["url": "https://a/v.mp4"]), .unknown(type: "video", raw: ["url": "https://a/v.mp4"]))
         XCTAssertEqual(content("video", [1, 2]), .unknown(type: "video", raw: [1, 2]))
     }
-
-    func testNoLogHandlerIsFine() {
-        ProtocolJSON.logHandler = nil
-        XCTAssertNil(ProtocolJSON.parseMessage(Data("{}".utf8)))
-        XCTAssertNil(ProtocolJSON.logHandler)
-    }
 }
 
 final class JSONValueTests: XCTestCase {

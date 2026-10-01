@@ -15,11 +15,12 @@ final class ApiClientTests: XCTestCase {
         server = FakeServer(time: time)
         vault = MemorySecureStore()
         let log = log
-        ProtocolJSON.logHandler = { log.append($0) }
+        ClomniLog.handler = { _, line in log.append(line) }
+        ClomniLog.level = .debug
     }
 
     override func tearDown() {
-        ProtocolJSON.logHandler = nil
+        ClomniLog.reset()
         super.tearDown()
     }
 

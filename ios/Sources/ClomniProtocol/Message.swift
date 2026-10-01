@@ -90,7 +90,7 @@ extension Message {
             do {
                 flow = try FlowRef(JSONFields(value, path: "\(f.path).flow"))
             } catch {
-                ProtocolLog.write("\(id): \(error); shown without its flow")
+                ClomniLog.warning("\(id): \(error); shown without its flow")
             }
         }
         // Content last, so a message rejected for its envelope does not also log about its content.

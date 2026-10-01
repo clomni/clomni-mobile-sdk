@@ -208,7 +208,7 @@ struct DiskCache: Sendable {
             try data.write(to: url, options: .atomic)
             #endif
         } catch {
-            CoreLog.write("could not write \(name): \(error)")
+            ClomniLog.warning("could not write \(name): \(error)")
         }
     }
 
