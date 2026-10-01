@@ -333,6 +333,21 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(messenger.config?.brand.name, "Clomni, Inc.")
     }
 
+    func testLoggingOutHidesEverything() async {
+        await session.set(loggedIn: true, unread: 4)
+        let messenger = coordinator()
+        messenger.setLauncherVisible(true)
+        await messenger.start()
+        messenger.present()
+        messenger.loggedOut()
+        XCTAssertNil(messenger.route)
+        XCTAssertEqual(messenger.readiness, .notReady)
+        XCTAssertEqual(messenger.unreadTotal, 0)
+        XCTAssertEqual(heard.unread, [4, 0])
+        XCTAssertEqual(heard.closed, 1)
+        XCTAssertFalse(messenger.wantsAnyView)
+    }
+
     func testTheEngineIsAMessengerSession() {
         let engine: MessengerSession = ClomniEngine(appId: "app_test", apiKey: "ios_sdk-test")
         XCTAssertNotNil(engine)

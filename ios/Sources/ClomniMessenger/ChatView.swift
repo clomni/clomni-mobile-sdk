@@ -40,6 +40,8 @@ struct ChatView: View {
     @ObservedObject var model: ChatModel
     let back: () -> Void
     let close: () -> Void
+    /// "Yeni söhbət başlat" started one (the app's onConversationStarted).
+    var conversationStarted: (String) -> Void = { _ in }
     @Environment(\.colorScheme) private var colorScheme
     @State private var draft = ""
     @State private var writeAnyway = false
@@ -166,7 +168,9 @@ struct ChatView: View {
 
     private func startNew() {
         writeAnyway = false
-        Task { @MainActor in _ = await model.controller.startNewConversation() }
+        Task { @MainActor in
+            if let id = await model.controller.startNewConversation() { conversationStarted(id) }
+        }
     }
 
     private func sendFile(at url: URL) {

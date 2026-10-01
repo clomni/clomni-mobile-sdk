@@ -106,7 +106,9 @@ public final class MessengerCoordinator {
     /// Present only when turned on (`setLauncherVisible`, else the config's `launcher.visible`), the SDK is ready
     /// and the messenger is closed.
     public var launcher: LauncherState? {
-        guard readiness == .ready, route == nil, launcherOverride ?? config?.launcher.visible ?? false else { return nil }
+        guard readiness == .ready, route == nil, launcherOverride ?? config?.launcher.visible ?? false else {
+            return nil
+        }
         let badge = unreadTotal > 0 ? (unreadTotal > 99 ? "99+" : String(unreadTotal)) : nil
         let label = strings[.newConversation] + (unreadTotal > 0 ? ", \(strings[.unreadMessages])" : "")
         return LauncherState(side: config?.launcher.position ?? .right,
@@ -165,6 +167,15 @@ public final class MessengerCoordinator {
         }
         changed()
         return false
+    }
+
+    /// After `logout`: the messenger closes, the count goes to 0, and nothing shows until the next login.
+    public func loggedOut() {
+        dismiss()
+        if readiness == .ready { readiness = .notReady }
+        updateUnread(0)
+        finished = [:]
+        changed()
     }
 
     // MARK: - Opening and closing
