@@ -21,10 +21,14 @@ public enum PushToken {
         return entitlements["aps-environment"] as? String == "development"
     }
 
-    /// This app's own profile (none in App Store builds).
+    /// This app's own profile (none in App Store builds). The Simulator has no profile and its tokens are sandbox ones.
     public static var appIsSandbox: Bool {
-        isSandbox(provisioningProfile: Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision")
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return isSandbox(provisioningProfile: Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision")
             .flatMap { try? Data(contentsOf: $0) })
+        #endif
     }
 }
 

@@ -1,6 +1,7 @@
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
 import UIKit
+import UserNotifications
 #if canImport(ClomniCore)
 import ClomniProtocol
 import ClomniCore
@@ -83,6 +84,40 @@ extension Clomni {
         MessengerRuntime.shared.removeUnreadCountListener(token)
     }
 
+    /// From `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`. Registered for whoever is logged in,
+    /// and again for the next user. The APNs environment comes from the app's signature: a development profile means
+    /// the sandbox; App Store and TestFlight builds are production.
+    public static func setDeviceToken(_ token: Data) {
+        MessengerRuntime.shared.setDeviceToken(PushToken.hex(token))
+    }
+
+    /// Whether a notification is Clomni's; the app's own pushes are none of the SDK's business.
+    public nonisolated static func isClomniPush(_ userInfo: [AnyHashable: Any]) -> Bool {
+        ProtocolJSON.isClomniPush(userInfo)
+    }
+
+    /// From `userNotificationCenter(_:didReceive:withCompletionHandler:)` with
+    /// `response.notification.request.content.userInfo`: opens the push's conversation. false for the app's own
+    /// pushes.
+    @discardableResult
+    public static func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool {
+        guard let coordinator = MessengerRuntime.shared.coordinator else {
+            MessengerRuntime.log("handlePush: call Clomni.initialize first")
+            return false
+        }
+        return coordinator.handlePush(userInfo)
+    }
+
+    /// From `userNotificationCenter(_:willPresent:withCompletionHandler:)`: false while the messenger shows the push's
+    /// conversation, true otherwise and for the app's own pushes.
+    public static func shouldShowForeground(_ notification: UNNotification) -> Bool {
+        shouldShowForeground(notification.request.content.userInfo)
+    }
+
+    public static func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool {
+        MessengerRuntime.shared.coordinator?.shouldShowForeground(userInfo) ?? true
+    }
+
     public static var onMessengerOpened: ((String?) -> Void)? {
         get { MessengerRuntime.shared.events.messengerOpened }
         set { MessengerRuntime.shared.events.messengerOpened = newValue }
@@ -128,6 +163,8 @@ final class MessengerRuntime {
     private var listeners: [(UUID, (Int) -> Void)] = []
     /// Their tokens, to the coordinator's.
     private var tokens: [UUID: UUID] = [:]
+    /// An APNs token given before `initialize`, registered then.
+    private var deviceToken: String?
     private var presented: UIViewController?
     private let rootModel = MessengerRootModel()
     private let launcher = LauncherController()
@@ -158,6 +195,16 @@ final class MessengerRuntime {
         self.engine = engine
         self.coordinator = coordinator
         Task { await coordinator.start() }
+        if let deviceToken { setDeviceToken(deviceToken) }
+    }
+
+    func setDeviceToken(_ token: String) {
+        deviceToken = token
+        guard let engine else { return }
+        // The profile is read from disk: off the main thread.
+        Task.detached(priority: .utility) {
+            await engine.setDeviceToken(token, sandbox: PushToken.appIsSandbox)
+        }
     }
 
     func login(_ action: @escaping (ClomniEngine) async throws -> Void) {
