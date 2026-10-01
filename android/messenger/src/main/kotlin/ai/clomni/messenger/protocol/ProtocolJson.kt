@@ -51,6 +51,76 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
     public fun parseClientMessage(json: String): ClientMessage? =
         guard("client message") { clientMessage(json.toJsonObject()) }
 
+    /** POST /mobile/sessions and /mobile/sessions/refresh. */
+    public fun parseSession(json: String): MobileSession? = guard("session") { session(json.toJsonObject()) }
+
+    public fun parseConversation(json: String): Conversation? =
+        guard("conversation") { conversation(json.toJsonObject()) }
+
+    /** GET /conversations. */
+    public fun parseConversationPage(json: String): ConversationPage? = guard("conversations") {
+        val o = json.toJsonObject()
+        ConversationPage(o.items("conversations", ::conversation), o.string("next_cursor"))
+    }
+
+    /** GET /conversations/{id}/messages. */
+    public fun parseMessagePage(json: String): MessagePage? = guard("messages") {
+        val o = json.toJsonObject()
+        MessagePage(o.items("messages", ::message), o.boolean("has_more") ?: false)
+    }
+
+    /** POST /conversations. */
+    public fun parseConversationWithMessages(json: String): ConversationWithMessages? =
+        guard("conversation") { conversationWithMessages(json.toJsonObject()) }
+
+    /** POST /flows/trigger. */
+    public fun parseFlowTrigger(json: String): FlowTriggerResult? = guard("flow trigger") {
+        val o = json.toJsonObject()
+        FlowTriggerResult(
+            started = o.boolean("started") ?: throw ProtocolException("started: expected a boolean"),
+            conversation = (o["conversation"] as? JsonObject)?.let(::conversationWithMessages),
+        )
+    }
+
+    public fun parseUser(json: String): MobileUser? = guard("user") {
+        val o = json.toJsonObject()
+        MobileUser(
+            id = o.requireString("id"),
+            anonymous = o.boolean("anonymous") ?: throw ProtocolException("anonymous: expected a boolean"),
+            name = o.string("name"),
+            email = o.string("email"),
+            phone = o.string("phone"),
+            language = o.string("language"),
+            customAttributes = o["custom_attributes"] as? JsonObject ?: emptyMap(),
+        )
+    }
+
+    public fun parseUpload(json: String): UploadedFile? = guard("upload") {
+        val o = json.toJsonObject()
+        UploadedFile(
+            uploadId = o.requireString("upload_id"),
+            url = o.requireString("url"),
+            name = o.requireString("name"),
+            size = o.long("size") ?: throw ProtocolException("size: expected an integer"),
+            mime = o.requireString("mime"),
+        )
+    }
+
+    /** Null for a body that is not an `Error` (a proxy's HTML page, say); the status then says what happened. */
+    public fun parseServerError(json: String): ServerError? = try {
+        val error = json.toJsonObject().requireObject("error")
+        ServerError(
+            code = error.requireString("code"),
+            message = error.string("message").orEmpty(),
+            requestId = error.string("request_id"),
+            fields = error.section("fields").let { fields ->
+                fields.keys.mapNotNull { key -> fields.string(key)?.let { key to it } }.toMap()
+            },
+        )
+    } catch (e: Exception) {
+        null
+    }
+
     /** The request body for POST /v1/conversations/{id}/messages. */
     public fun encode(message: ClientMessage): String = buildJsonObject {
         put("client_id", message.clientId)
@@ -99,8 +169,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
         val content = o["content"] as? JsonObject ?: throw ProtocolException("content: expected an object")
         val conversationId = o.requireString("conversation_id")
         val sender = sender(o.requireObject("sender"))
-        val createdAt = o.requireString("created_at")
-            .let { Iso8601.parseMillis(it) ?: throw ProtocolException("created_at: expected an ISO 8601 time") }
+        val createdAt = o.requireTime("created_at")
         val seq = o.long("seq") ?: throw ProtocolException("seq: expected an integer")
         val lang = o.requireString("lang")
         val fallbackText = o.requireString("fallback_text")
@@ -315,9 +384,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 RealtimeEvent.ConversationUpdate(
                     id = d.requireString("id"),
                     status = ConversationStatus.from(d.requireString("status")),
-                    assignee = (d["assignee"] as? JsonObject)?.let {
-                        Assignee(it.requireString("name"), it.string("avatar_url"), it.boolean("online"))
-                    },
+                    assignee = (d["assignee"] as? JsonObject)?.let(::assignee),
                     unreadCount = d.int("unread_count"),
                 ),
             )
@@ -331,6 +398,52 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
             }
         }
     }
+
+    private fun assignee(o: JsonObject) = Assignee(o.requireString("name"), o.string("avatar_url"), o.boolean("online"))
+
+    // Mobile API bodies
+
+    private fun session(o: JsonObject): MobileSession {
+        val user = o.requireObject("user")
+        return MobileSession(
+            sessionToken = o.requireString("session_token"),
+            expiresAt = o.requireTime("expires_at"),
+            refreshToken = o.requireString("refresh_token"),
+            userId = user.requireString("id"),
+            anonymous = user.boolean("anonymous") ?: throw ProtocolException("anonymous: expected a boolean"),
+            language = user.string("language"),
+            wsUrl = o.requireString("ws_url"),
+        )
+    }
+
+    private fun conversation(o: JsonObject) = Conversation(
+        id = o.requireString("id"),
+        status = ConversationStatus.from(o.requireString("status")),
+        assignee = (o["assignee"] as? JsonObject)?.let(::assignee),
+        unreadCount = o.int("unread_count") ?: 0,
+        lastMessage = (o["last_message"] as? JsonObject)?.let(::message),
+        flow = (o["flow"] as? JsonObject)?.let { flow ->
+            val flowId = flow.string("flow_id")
+            val nodeId = flow.string("node_id")
+            if (flowId != null && nodeId != null) Conversation.FlowStep(flowId, nodeId) else null
+        },
+        openedFrom = o.string("opened_from"),
+        createdAt = o.requireTime("created_at"),
+    )
+
+    private fun conversationWithMessages(o: JsonObject) =
+        ConversationWithMessages(conversation(o.requireObject("conversation")), o.items("messages", ::message))
+
+    /** A required array whose unreadable items are dropped with a log line. */
+    private fun <T> JsonObject.items(key: String, read: (JsonObject) -> T): List<T> =
+        requireArray(key).mapIndexedNotNull { index, element ->
+            try {
+                read(element.asObject("$key[$index]"))
+            } catch (e: ProtocolException) {
+                logger("$key[$index]: ${e.message}; item dropped")
+                null
+            }
+        }
 
     // Config, push and client messages
 
@@ -486,6 +599,9 @@ private fun JsonObject.boolean(key: String): Boolean? =
     (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull
 
 private fun JsonObject.requireObject(key: String): JsonObject = this[key].asObject(key)
+
+private fun JsonObject.requireTime(key: String): Long =
+    string(key)?.let(Iso8601::parseMillis) ?: throw ProtocolException("$key: expected an ISO 8601 time")
 
 private fun JsonObject.requireArray(key: String): JsonArray =
     this[key] as? JsonArray ?: throw ProtocolException("$key: expected an array")

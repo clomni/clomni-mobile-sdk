@@ -1,7 +1,8 @@
 package ai.clomni.messenger.protocol
 
 /**
- * Parses an RFC 3339 / ISO 8601 date-time (`2026-10-01T10:30:00.000Z`, or with an offset) to epoch milliseconds.
+ * Parses an RFC 3339 / ISO 8601 date-time (`2026-10-01T10:30:00.000Z`, or with an offset) to epoch milliseconds, and
+ * formats one back.
  * Hand-written because java.time needs API 26 (or desugaring in every customer app) and minSdk is 23.
  */
 internal object Iso8601 {
@@ -25,6 +26,25 @@ internal object Iso8601 {
         val offset = (offsetHours * 60 + offsetMinutes) * (if (groups[9] == "-") -1 else 1)
         val seconds = daysFromCivil(year, month, day) * 86_400 + hour * 3_600 + (minute - offset) * 60 + second
         return seconds * 1_000 + millis
+    }
+
+    /** `2026-10-01T10:30:00.000Z`: UTC with milliseconds, the form the server sends. */
+    fun format(millis: Long): String {
+        val days = millis.floorDiv(86_400_000L)
+        val ofDay = millis - days * 86_400_000L
+        // Howard Hinnant's civil_from_days.
+        val z = days + 719_468
+        val era = z.floorDiv(146_097L)
+        val dayOfEra = z - era * 146_097
+        val yearOfEra = (dayOfEra - dayOfEra / 1_460 + dayOfEra / 36_524 - dayOfEra / 146_096) / 365
+        val dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra / 4 - yearOfEra / 100)
+        val mp = (5 * dayOfYear + 2) / 153
+        val day = dayOfYear - (153 * mp + 2) / 5 + 1
+        val month = if (mp < 10) mp + 3 else mp - 9
+        val year = yearOfEra + era * 400 + (if (month <= 2) 1 else 0)
+        fun pad(value: Long, width: Int) = value.toString().padStart(width, '0')
+        return "${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}T${pad(ofDay / 3_600_000, 2)}:" +
+            "${pad(ofDay / 60_000 % 60, 2)}:${pad(ofDay / 1_000 % 60, 2)}.${pad(ofDay % 1_000, 3)}Z"
     }
 
     private fun daysInMonth(year: Int, month: Int): Int = when (month) {
