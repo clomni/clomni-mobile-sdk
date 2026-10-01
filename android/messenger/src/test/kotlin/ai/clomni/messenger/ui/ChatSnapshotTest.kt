@@ -266,7 +266,9 @@ class ChatSnapshotTest {
     @Test
     fun referenceOperator() {
         reference()
+        // The bot's greeting is above the screen, as in the reference (its feed is scrolled to the end).
         val messages = listOf(
+            message("m0", 1, "10:29:00Z", bot, "text", """{"text":"Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."}"""),
             message("m1", 1, "10:30:00Z", user, "text", """{"text":"Gedişim bitmədi, pul çıxılmağa davam edir"}"""),
             message("m2", 2, "10:30:10Z", """{"type":"system"}""", "system", """{"event":"waiting_in_queue","text":"Sizi komandaya yönləndiririk"}"""),
             message("m3", 3, "10:30:40Z", """{"type":"system"}""", "system", """{"event":"operator_joined","text":"Leyla söhbətə qoşuldu"}"""),

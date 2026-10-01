@@ -69,13 +69,16 @@ internal fun Avatar(url: String?, initial: String, size: Float, theme: ClomniThe
     }
 }
 
-/** Up to three 24 dp avatars overlapping by 7, each in a 2 dp [ring] of the colour behind them. */
+/**
+ * Up to three 24 dp avatars overlapping by 7, each in a 2 dp [ring] of the colour behind them. The ring is drawn
+ * outside the layout, as the reference's box-shadow is: the stack is 58 dp wide.
+ */
 @Composable
 internal fun TeamAvatars(urls: List<String>, ring: RgbColor, theme: ClomniTheme) {
     if (urls.isEmpty()) return
     val width = 2.dp
     Row(
-        Modifier.clearAndSetSemantics {},
+        Modifier.bleed(width, width).clearAndSetSemantics {},
         horizontalArrangement = Arrangement.spacedBy(-ClomniTheme.Size.headerAvatarOverlap.dp - width * 2),
     ) {
         for (url in urls) {

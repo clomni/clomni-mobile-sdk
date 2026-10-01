@@ -194,8 +194,9 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             } else {
                 Spacer(Modifier.width(40.dp))
             }
+            // The other side's bubbles are only capped (222 dp), as in the reference: on its 282 dp phone the cap is
+            // the whole row after the avatar.
             Box(Modifier.weight(1f, fill = false)) { BubbleBody(bubble, theme, actions) }
-            if (incoming) Spacer(Modifier.width(40.dp))
         }
         bubble.meta?.let { meta ->
             BasicText(
@@ -356,7 +357,7 @@ private fun SystemLineView(line: SystemLine, theme: ClomniTheme) {
         if (line.avatars.isNotEmpty()) {
             val ring = 2.dp
             Row(
-                Modifier.clearAndSetSemantics {},
+                Modifier.bleed(ring, ring).clearAndSetSemantics {},
                 horizontalArrangement = Arrangement.spacedBy(-ClomniTheme.Size.headerAvatarOverlap.dp - ring * 2),
             ) {
                 for (avatar in line.avatars) {
