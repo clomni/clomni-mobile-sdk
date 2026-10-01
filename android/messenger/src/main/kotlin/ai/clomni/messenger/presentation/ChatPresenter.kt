@@ -60,7 +60,7 @@ internal class ChatPresenter(
         val hours = config?.team?.officeHours
         val subtitle = when {
             hours?.openNow == false ->
-                hours.nextOpenAt?.let { strings.format(Key.AWAY_UNTIL, time.clock(it)) } ?: strings[Key.AWAY]
+                hours.nextOpenAt?.let { strings.format(Key.AWAY_UNTIL, time.upcoming(it, now)) } ?: strings[Key.AWAY]
             status == ConversationStatus.QUEUED -> config?.team?.replyTime ?: strings[Key.TEAM_CAN_HELP]
             else -> strings[Key.TEAM_CAN_HELP]
         }

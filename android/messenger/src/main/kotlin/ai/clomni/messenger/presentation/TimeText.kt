@@ -34,6 +34,21 @@ internal class TimeText(private val strings: ClomniStrings, private val timeZone
         return dayAndMonth(date, withYear = !sameYear(date, now)) + separator + time
     }
 
+    /**
+     * A time to come, for "Növbəti iş saatı: …": "09:00" today, "sabah 09:00" tomorrow, "2 oktyabr 09:00" after that
+     * (with the year when it is not this one).
+     */
+    fun upcoming(date: Long, now: Long): String {
+        val time = clock(date)
+        val day = calendar(date)
+        val next = calendar(now)
+        if (sameDay(day, next)) return time
+        next.add(Calendar.DAY_OF_MONTH, 1)
+        if (sameDay(day, next)) return "${strings[ClomniStrings.Key.TOMORROW]} $time"
+        val separator = if (strings.language == "en") ", " else " "
+        return dayAndMonth(date, withYear = !sameYear(date, now)) + separator + time
+    }
+
     /** 24-hour "10:30". */
     fun clock(date: Long): String {
         val calendar = calendar(date)

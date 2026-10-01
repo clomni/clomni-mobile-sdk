@@ -11,6 +11,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
     enum class Key(val wire: String) {
         TODAY("today"),
         YESTERDAY("yesterday"),
+        TOMORROW("tomorrow"),
         SEND("send"),
         NEW_CONVERSATION("new_conversation"),
         GREETING_HELLO("greeting_hello"),
@@ -118,7 +119,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
 
         val FALLBACKS: Map<String, Map<Key, String>> = mapOf(
             "az" to mapOf(
-                Key.TODAY to "Bu gün", Key.YESTERDAY to "Dünən", Key.SEND to "Göndər",
+                Key.TODAY to "Bu gün", Key.YESTERDAY to "Dünən", Key.TOMORROW to "sabah", Key.SEND to "Göndər",
                 Key.NEW_CONVERSATION to "Bizə mesaj göndərin", Key.GREETING_HELLO to "Salam",
                 Key.GREETING_TITLE to "Necə kömək edə bilərik?", Key.RECENT_MESSAGE to "Son mesaj",
                 Key.FOLLOW_US to "Bizi izləyin", Key.TAB_HOME to "Ana səhifə", Key.TAB_MESSAGES to "Mesajlar",
@@ -140,7 +141,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)",
             ),
             "en" to mapOf(
-                Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.SEND to "Send",
+                Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
                 Key.NEW_CONVERSATION to "Send us a message", Key.GREETING_HELLO to "Hi",
                 Key.GREETING_TITLE to "How can we help?", Key.RECENT_MESSAGE to "Recent message",
                 Key.FOLLOW_US to "Follow us", Key.TAB_HOME to "Home", Key.TAB_MESSAGES to "Messages",
@@ -163,7 +164,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FILE_TOO_LARGE to "The file is too large (max %d MB)",
             ),
             "ru" to mapOf(
-                Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.SEND to "Отправить",
+                Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
                 Key.NEW_CONVERSATION to "Напишите нам", Key.GREETING_HELLO to "Здравствуйте",
                 Key.GREETING_TITLE to "Чем можем помочь?", Key.RECENT_MESSAGE to "Последнее сообщение",
                 Key.FOLLOW_US to "Мы в соцсетях", Key.TAB_HOME to "Главная", Key.TAB_MESSAGES to "Сообщения",

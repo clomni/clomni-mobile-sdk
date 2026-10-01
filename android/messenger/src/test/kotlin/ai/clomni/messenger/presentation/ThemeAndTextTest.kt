@@ -186,4 +186,18 @@ class TimeTextTest {
         assertEquals("Dün 23:30", TimeText(ClomniStrings("az", mapOf("yesterday" to "Dün")), baku).day(ago(11 * 3_600), now))
         assertEquals("the device's time zone", "06:30", TimeText(ClomniStrings("az"), TimeZone.getTimeZone("UTC")).clock(now))
     }
+
+    /** When the team is back: "09:00" today, "sabah 09:00" tomorrow, the date after that. */
+    @Test
+    fun upcoming() {
+        val az = text("az")
+        val hour = 3_600L
+        assertEquals("23:30", az.upcoming(now + 13 * hour * 1_000, now))
+        assertEquals("sabah 09:00", az.upcoming(now + (22 * hour + 1_800) * 1_000, now))
+        assertEquals("tomorrow 09:00", text("en").upcoming(now + (22 * hour + 1_800) * 1_000, now))
+        assertEquals("завтра 09:00", text("ru").upcoming(now + (22 * hour + 1_800) * 1_000, now))
+        assertEquals("3 oktyabr 09:00", az.upcoming(now + (46 * hour + 1_800) * 1_000, now))
+        assertEquals("October 3, 09:00", text("en").upcoming(now + (46 * hour + 1_800) * 1_000, now))
+        assertEquals("4 yanvar 2027 09:00", az.upcoming(now + (94 * 24 * hour + 22 * hour + 1_800) * 1_000, now))
+    }
 }

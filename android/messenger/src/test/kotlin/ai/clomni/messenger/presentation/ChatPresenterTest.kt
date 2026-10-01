@@ -222,8 +222,8 @@ class ChatPresenterTest {
                "team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}""",
         )
         assertEquals(
-            "local time; these tests run in UTC",
-            "Növbəti iş saatı: 05:00",
+            "local time (these tests run in UTC), tomorrow",
+            "Növbəti iş saatı: sabah 05:00",
             screen(emptyList()) { it.copy(config = nextOpen) }.header.subtitle,
         )
         val hidden = Fixture.aparConfig.let { it.copy(home = it.home.copy(showTeamAvatars = false)) }
