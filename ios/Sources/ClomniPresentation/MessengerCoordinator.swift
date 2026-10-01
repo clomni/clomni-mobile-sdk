@@ -315,7 +315,9 @@ public final class MessengerCoordinator {
         }
     }
 
-    /// A message from the END node means its flow is complete (the server's convention, fixture 50).
+    /// A message from the END node means its flow is complete (the server's convention, fixture 50). The only
+    /// place onFlowCompleted is decided: when the socket's `flow.completed` {conversation_id, flow_id} event lands
+    /// (CM-024), it replaces this guess here (CM-086).
     private func reportFinishedFlows(in conversationId: String, _ messages: [Message]) {
         let ends = messages.filter { $0.flow?.nodeId == "END" }
         guard let seen = finished[conversationId] else {
