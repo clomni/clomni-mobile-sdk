@@ -1,16 +1,16 @@
 import Foundation
 
 /// The APNs side of a device: its token as text, and which APNs environment it belongs to.
-public enum PushToken {
+package enum PushToken {
     /// The token APNs hands the app (`didRegisterForRemoteNotificationsWithDeviceToken`) as lower-case hex.
-    public static func hex(_ token: Data) -> String {
+    package static func hex(_ token: Data) -> String {
         token.map { String(format: "%02x", $0) }.joined()
     }
 
     /// Whether the app is signed for the APNs sandbox: the `aps-environment` entitlement in its
     /// embedded.mobileprovision says "development". App Store and TestFlight builds carry no such profile, or one
     /// that says "production": both are production, as is anything unreadable.
-    public static func isSandbox(provisioningProfile: Data?) -> Bool {
+    package static func isSandbox(provisioningProfile: Data?) -> Bool {
         guard let profile = provisioningProfile,
               // The profile is a signed envelope around a plain XML property list.
               let start = profile.range(of: Data("<?xml".utf8)),
@@ -22,7 +22,7 @@ public enum PushToken {
     }
 
     /// This app's own profile (none in App Store builds). The Simulator has no profile and its tokens are sandbox ones.
-    public static var appIsSandbox: Bool {
+    package static var appIsSandbox: Bool {
         #if targetEnvironment(simulator)
         return true
         #else

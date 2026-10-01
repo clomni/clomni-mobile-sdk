@@ -1,7 +1,7 @@
 import Foundation
 
 /// Raw JSON: the content of an unknown message type, form values, custom data.
-public enum JSONValue: Sendable, Equatable {
+package enum JSONValue: Sendable, Equatable {
     case null
     case bool(Bool)
     case number(Double)
@@ -9,39 +9,39 @@ public enum JSONValue: Sendable, Equatable {
     case array([JSONValue])
     case object([String: JSONValue])
 
-    public subscript(key: String) -> JSONValue? {
+    package subscript(key: String) -> JSONValue? {
         if case .object(let fields) = self { return fields[key] }
         return nil
     }
 
-    public var stringValue: String? {
+    package var stringValue: String? {
         if case .string(let value) = self { return value }
         return nil
     }
 
-    public var boolValue: Bool? {
+    package var boolValue: Bool? {
         if case .bool(let value) = self { return value }
         return nil
     }
 
-    public var doubleValue: Double? {
+    package var doubleValue: Double? {
         if case .number(let value) = self { return value }
         return nil
     }
 
     /// The number when it is a whole one that fits in `Int`; 5 and 5.0 both read as 5.
-    public var intValue: Int? {
+    package var intValue: Int? {
         guard case .number(let value) = self, value.rounded(.towardZero) == value,
               value >= -9.0e15, value <= 9.0e15 else { return nil }
         return Int(value)
     }
 
-    public var arrayValue: [JSONValue]? {
+    package var arrayValue: [JSONValue]? {
         if case .array(let value) = self { return value }
         return nil
     }
 
-    public var objectValue: [String: JSONValue]? {
+    package var objectValue: [String: JSONValue]? {
         if case .object(let value) = self { return value }
         return nil
     }
@@ -50,7 +50,7 @@ public enum JSONValue: Sendable, Equatable {
 extension JSONValue {
     /// An app's own values as JSON (`Clomni.startFlow(event, data: ["ride_id": ride.id])`): strings, numbers,
     /// booleans, arrays, string-keyed dictionaries and nil. nil for anything else, such as a Date.
-    public init?(any value: Any?) {
+    package init?(any value: Any?) {
         guard let value else { self = .null; return }
         switch value {
         case let json as JSONValue: self = json
@@ -81,7 +81,7 @@ extension JSONValue {
 }
 
 extension JSONValue: Codable {
-    public init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self = .null
@@ -98,7 +98,7 @@ extension JSONValue: Codable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case .null: try container.encodeNil()
@@ -121,13 +121,13 @@ extension JSONValue: Codable {
 
 extension JSONValue: ExpressibleByNilLiteral, ExpressibleByBooleanLiteral, ExpressibleByIntegerLiteral,
     ExpressibleByFloatLiteral, ExpressibleByStringLiteral, ExpressibleByArrayLiteral, ExpressibleByDictionaryLiteral {
-    public init(nilLiteral: ()) { self = .null }
-    public init(booleanLiteral value: Bool) { self = .bool(value) }
-    public init(integerLiteral value: Int) { self = .number(Double(value)) }
-    public init(floatLiteral value: Double) { self = .number(value) }
-    public init(stringLiteral value: String) { self = .string(value) }
-    public init(arrayLiteral elements: JSONValue...) { self = .array(elements) }
-    public init(dictionaryLiteral elements: (String, JSONValue)...) {
+    package init(nilLiteral: ()) { self = .null }
+    package init(booleanLiteral value: Bool) { self = .bool(value) }
+    package init(integerLiteral value: Int) { self = .number(Double(value)) }
+    package init(floatLiteral value: Double) { self = .number(value) }
+    package init(stringLiteral value: String) { self = .string(value) }
+    package init(arrayLiteral elements: JSONValue...) { self = .array(elements) }
+    package init(dictionaryLiteral elements: (String, JSONValue)...) {
         self = .object(Dictionary(elements, uniquingKeysWith: { _, last in last }))
     }
 }

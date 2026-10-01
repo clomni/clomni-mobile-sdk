@@ -4,21 +4,21 @@ import Foundation
 ///
 /// Ids are opaque: never parse them or sort by them; order is `seq`. An unknown `type`, or content that does not
 /// match its type, arrives as `.unknown` and is shown through `fallbackText`.
-public struct Message: Sendable, Equatable, Identifiable {
-    public let id: String
+package struct Message: Sendable, Equatable, Identifiable {
+    package let id: String
     /// The UUID the client sent with its own message; it matches the optimistic bubble to the server's copy.
-    public let clientId: String?
-    public let conversationId: String
-    public let type: String
-    public let sender: Sender
-    public let createdAt: Date
-    public let seq: Int
-    public let lang: String
-    public let flow: FlowRef?
-    public let content: MessageContent
-    public let fallbackText: String
+    package let clientId: String?
+    package let conversationId: String
+    package let type: String
+    package let sender: Sender
+    package let createdAt: Date
+    package let seq: Int
+    package let lang: String
+    package let flow: FlowRef?
+    package let content: MessageContent
+    package let fallbackText: String
 
-    public init(id: String, clientId: String? = nil, conversationId: String, type: String, sender: Sender,
+    package init(id: String, clientId: String? = nil, conversationId: String, type: String, sender: Sender,
                 createdAt: Date, seq: Int, lang: String, flow: FlowRef? = nil, content: MessageContent,
                 fallbackText: String) {
         self.id = id
@@ -35,7 +35,7 @@ public struct Message: Sendable, Equatable, Identifiable {
     }
 }
 
-public enum SenderType: String, Sendable, Equatable {
+package enum SenderType: String, Sendable, Equatable {
     case bot
     case `operator`
     case user
@@ -43,13 +43,13 @@ public enum SenderType: String, Sendable, Equatable {
     case unknown
 }
 
-public struct Sender: Sendable, Equatable {
-    public let type: SenderType
-    public let id: String?
-    public let name: String?
-    public let avatarUrl: URL?
+package struct Sender: Sendable, Equatable {
+    package let type: SenderType
+    package let id: String?
+    package let name: String?
+    package let avatarUrl: URL?
 
-    public init(type: SenderType, id: String? = nil, name: String? = nil, avatarUrl: URL? = nil) {
+    package init(type: SenderType, id: String? = nil, name: String? = nil, avatarUrl: URL? = nil) {
         self.type = type
         self.id = id
         self.name = name
@@ -58,13 +58,13 @@ public struct Sender: Sendable, Equatable {
 }
 
 /// The flow node a message came from. `interactive == false` disables the message's buttons.
-public struct FlowRef: Sendable, Equatable {
-    public let flowId: String
-    public let nodeId: String
-    public let version: Int?
-    public let interactive: Bool
+package struct FlowRef: Sendable, Equatable {
+    package let flowId: String
+    package let nodeId: String
+    package let version: Int?
+    package let interactive: Bool
 
-    public init(flowId: String, nodeId: String, version: Int? = nil, interactive: Bool) {
+    package init(flowId: String, nodeId: String, version: Int? = nil, interactive: Bool) {
         self.flowId = flowId
         self.nodeId = nodeId
         self.version = version

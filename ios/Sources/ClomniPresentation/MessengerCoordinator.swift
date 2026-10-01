@@ -5,7 +5,7 @@ import ClomniCore
 #endif
 
 /// What opening the messenger needs from the SDK below; `ClomniEngine` is one, tests use a fake.
-public protocol MessengerSession: Sendable {
+package protocol MessengerSession: Sendable {
     var isLoggedIn: Bool { get async }
     var isAppDisabled: Bool { get async }
     var unreadTotal: Int { get async }
@@ -23,7 +23,7 @@ public protocol MessengerSession: Sendable {
 extension ClomniEngine: MessengerSession {}
 
 /// Where the open messenger is.
-public enum MessengerRoute: Sendable, Equatable {
+package enum MessengerRoute: Sendable, Equatable {
     case home
     /// A conversation being created: a skeleton until the server answers.
     case startingConversation
@@ -31,54 +31,54 @@ public enum MessengerRoute: Sendable, Equatable {
 }
 
 /// The optional floating button (brief 8 · 7.2): off unless the app or the panel turns it on.
-public struct LauncherState: Sendable, Equatable {
-    public static let size: Double = 56
+package struct LauncherState: Sendable, Equatable {
+    package static let size: Double = 56
     /// From the screen's side and bottom edges.
-    public static let edgePadding: Double = 18
+    package static let edgePadding: Double = 18
 
-    public let side: MessengerConfig.LauncherPosition
+    package let side: MessengerConfig.LauncherPosition
     /// Above the bottom edge, for a tab bar (`setBottomPadding`).
-    public let bottomPadding: Double
+    package let bottomPadding: Double
     /// The unread count on the button: "3", "99+"; nil when nothing is unread.
-    public let badge: String?
-    public let accessibilityLabel: String
+    package let badge: String?
+    package let accessibilityLabel: String
 }
 
 /// The app's callbacks (brief 8 · 9).
-public struct MessengerEvents {
+package struct MessengerEvents {
     /// With the `source` the app passed to `present`.
-    public var messengerOpened: ((String?) -> Void)?
-    public var messengerClosed: (() -> Void)?
-    public var conversationStarted: ((String) -> Void)?
-    public var unreadCountChanged: ((Int) -> Void)?
+    package var messengerOpened: ((String?) -> Void)?
+    package var messengerClosed: (() -> Void)?
+    package var conversationStarted: ((String) -> Void)?
+    package var unreadCountChanged: ((Int) -> Void)?
     /// A flow reached its END node, with the flow's id.
-    public var flowCompleted: ((String) -> Void)?
+    package var flowCompleted: ((String) -> Void)?
 
-    public init() {}
+    package init() {}
 }
 
 /// Opening and closing the messenger, the unread count, and the launcher's rule, without any UI: the UIKit layer
 /// presents what `route` says and draws what `launcher` says, nothing else. With the launcher off and the messenger
 /// closed, it asks for no view at all.
 @MainActor
-public final class MessengerCoordinator {
-    public enum Readiness: Sendable, Equatable {
+package final class MessengerCoordinator {
+    package enum Readiness: Sendable, Equatable {
         case notReady
         case ready
         /// The App SDK inbox is switched off (403 app_disabled): nothing opens, no launcher.
         case disabled
     }
 
-    public private(set) var readiness = Readiness.notReady
+    package private(set) var readiness = Readiness.notReady
     /// nil while the messenger is closed.
-    public private(set) var route: MessengerRoute?
+    package private(set) var route: MessengerRoute?
     /// The `source` of the open messenger, written to a new conversation's `opened_from`.
-    public private(set) var source: String?
-    public private(set) var unreadTotal = 0
-    public private(set) var config: MessengerConfig?
-    public var events = MessengerEvents()
+    package private(set) var source: String?
+    package private(set) var unreadTotal = 0
+    package private(set) var config: MessengerConfig?
+    package var events = MessengerEvents()
     /// Called after `route`, `readiness`, `unreadTotal` or the launcher changed.
-    public var onChange: (() -> Void)?
+    package var onChange: (() -> Void)?
 
     private let session: MessengerSession
     private let language: String?
@@ -89,7 +89,7 @@ public final class MessengerCoordinator {
     /// END messages already seen, per conversation; a conversation's first look reports none (they are history).
     private var finished: [String: Set<String>] = [:]
 
-    public init(session: MessengerSession, language: String? = nil) {
+    package init(session: MessengerSession, language: String? = nil) {
         self.session = session
         self.language = language
     }
@@ -99,13 +99,13 @@ public final class MessengerCoordinator {
     }
 
     /// Whether the UIKit layer should hold any Clomni view: only while the messenger is open or the launcher shows.
-    public var wantsAnyView: Bool {
+    package var wantsAnyView: Bool {
         route != nil || launcher != nil
     }
 
     /// Present only when turned on (`setLauncherVisible`, else the config's `launcher.visible`), the SDK is ready
     /// and the messenger is closed.
-    public var launcher: LauncherState? {
+    package var launcher: LauncherState? {
         guard readiness == .ready, route == nil, launcherOverride ?? config?.launcher.visible ?? false else {
             return nil
         }
@@ -119,7 +119,7 @@ public final class MessengerCoordinator {
     // MARK: - Getting ready
 
     /// After initialize and login: listens to the SDK, takes the cached config and unread count, opens the socket.
-    public func start() async {
+    package func start() async {
         await listen()
         config = await session.config
         updateUnread(await session.unreadTotal)
@@ -137,7 +137,7 @@ public final class MessengerCoordinator {
     /// needs. While this runs the screens show skeletons. false when the inbox is switched off or nothing could
     /// be reached.
     @discardableResult
-    public func prepare() async -> Bool {
+    package func prepare() async -> Bool {
         guard readiness != .disabled else { return false }
         await listen()
         if !(await session.isLoggedIn) {
@@ -170,7 +170,7 @@ public final class MessengerCoordinator {
     }
 
     /// After `logout`: the messenger closes, the count goes to 0, and nothing shows until the next login.
-    public func loggedOut() {
+    package func loggedOut() {
         dismiss()
         if readiness == .ready { readiness = .notReady }
         updateUnread(0)
@@ -182,19 +182,19 @@ public final class MessengerCoordinator {
 
     /// Home. false (and nothing opens) when the inbox is switched off.
     @discardableResult
-    public func present(source: String? = nil) -> Bool {
+    package func present(source: String? = nil) -> Bool {
         open(.home, source: source)
     }
 
     /// One conversation; from a push, `source` is "push".
     @discardableResult
-    public func presentConversation(_ id: String, source: String? = nil) -> Bool {
+    package func presentConversation(_ id: String, source: String? = nil) -> Bool {
         open(.conversation(id), source: source)
     }
 
     /// Starts the inbox's new-conversation flow and shows it; its id, or nil when it could not start (Home stays).
     @discardableResult
-    public func presentNewConversation(source: String? = nil) async -> String? {
+    package func presentNewConversation(source: String? = nil) async -> String? {
         guard open(.startingConversation, source: source) else { return nil }
         guard await prepare(), let conversation = try? await session.startConversation(openedFrom: self.source) else {
             if route == .startingConversation { route = .home }
@@ -209,7 +209,7 @@ public final class MessengerCoordinator {
 
     /// `Clomni.startFlow`: the flow bound to an app event, in a new conversation, shown when `openMessenger`.
     @discardableResult
-    public func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
+    package func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                           source: String? = nil) async -> String? {
         guard readiness != .disabled, await prepare() else { return nil }
         let started = try? await session.startFlow(event, data: data, openMessenger: openMessenger, openedFrom: source)
@@ -220,14 +220,14 @@ public final class MessengerCoordinator {
     }
 
     /// A move inside the open messenger: Home, or a conversation picked there.
-    public func navigate(to route: MessengerRoute) {
+    package func navigate(to route: MessengerRoute) {
         guard self.route != nil else { return }
         self.route = route
         changed()
     }
 
     /// `Clomni.dismiss()`, or the user closing it; the app returns to where it was.
-    public func dismiss() {
+    package func dismiss() {
         guard route != nil else { return }
         route = nil
         source = nil
@@ -236,7 +236,7 @@ public final class MessengerCoordinator {
     }
 
     /// A conversation the user started from Home.
-    public func conversationStarted(_ id: String) {
+    package func conversationStarted(_ id: String) {
         events.conversationStarted?(id)
     }
 
@@ -261,7 +261,7 @@ public final class MessengerCoordinator {
     /// `Clomni.handlePush`, for a tap on a notification: a Clomni push opens its conversation (`opened_from` "push")
     /// and its unread count reaches the listeners. false for the app's own pushes, and when nothing opens.
     @discardableResult
-    public func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool {
+    package func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool {
         guard let push = clomniPush(userInfo) else { return false }
         takeUnread(from: push)
         return presentConversation(push.conversationId, source: "push")
@@ -269,7 +269,7 @@ public final class MessengerCoordinator {
 
     /// `Clomni.shouldShowForeground`, for a push that arrives while the app is open: not while the messenger is open,
     /// on any screen, since it updates itself (foreground suppression). The app's own pushes are always shown.
-    public func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool {
+    package func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool {
         guard let push = clomniPush(userInfo) else { return true }
         takeUnread(from: push)
         return route == nil
@@ -289,13 +289,13 @@ public final class MessengerCoordinator {
 
     // MARK: - Launcher
 
-    public func setLauncherVisible(_ visible: Bool) {
+    package func setLauncherVisible(_ visible: Bool) {
         launcherOverride = visible
         changed()
     }
 
     /// Lifts the launcher above a bottom bar.
-    public func setBottomPadding(_ padding: Double) {
+    package func setBottomPadding(_ padding: Double) {
         bottomPaddingOverride = max(0, padding)
         changed()
     }
@@ -304,14 +304,14 @@ public final class MessengerCoordinator {
 
     /// Called at once with the current count, then with every change, until removed.
     @discardableResult
-    public func addUnreadCountListener(_ listener: @escaping (Int) -> Void) -> UUID {
+    package func addUnreadCountListener(_ listener: @escaping (Int) -> Void) -> UUID {
         let token = UUID()
         listeners[token] = listener
         listener(unreadTotal)
         return token
     }
 
-    public func removeUnreadCountListener(_ token: UUID) {
+    package func removeUnreadCountListener(_ token: UUID) {
         listeners[token] = nil
     }
 

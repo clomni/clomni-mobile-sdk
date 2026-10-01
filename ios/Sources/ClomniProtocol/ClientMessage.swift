@@ -1,17 +1,17 @@
 import Foundation
 
 /// A client → server message: the body of POST /v1/conversations/{id}/messages (protocol/schema/client-message.json).
-public struct ClientMessage: Sendable, Equatable {
+package struct ClientMessage: Sendable, Equatable {
     /// UUID v4. A retry sends the same one, and the server never handles one client id twice.
-    public let clientId: String
-    public let content: Content
+    package let clientId: String
+    package let content: Content
 
-    public init(clientId: String = ClientMessage.newClientId(), content: Content) {
+    package init(clientId: String = ClientMessage.newClientId(), content: Content) {
         self.clientId = clientId
         self.content = content
     }
 
-    public enum Content: Sendable, Equatable {
+    package enum Content: Sendable, Equatable {
         /// Up to 4000 characters; the composer never sends an empty one.
         case text(String)
         /// A flow button. `payload` goes back exactly as the server sent it.
@@ -22,13 +22,13 @@ public struct ClientMessage: Sendable, Equatable {
         case ratingSubmit(replyTo: String, score: Int, comment: String?)
 
         /// The back button under quick replies with `allowBack`.
-        public static func back(replyTo: String) -> Content {
+        package static func back(replyTo: String) -> Content {
             .buttonReply(replyTo: replyTo, buttonId: "back", payload: "nav:back")
         }
     }
 
     /// The wire `type`.
-    public var type: String {
+    package var type: String {
         switch content {
         case .text: return "text"
         case .buttonReply: return "button_reply"
@@ -38,7 +38,7 @@ public struct ClientMessage: Sendable, Equatable {
         }
     }
 
-    public static func newClientId() -> String {
+    package static func newClientId() -> String {
         UUID().uuidString.lowercased()
     }
 }

@@ -1,15 +1,15 @@
 import Foundation
 
 /// The Clomni keys of a push (protocol/schema/push.json). On APNs they sit next to `aps`.
-public struct PushPayload: Sendable, Equatable {
+package struct PushPayload: Sendable, Equatable {
     /// "message" in v1.
-    public let type: String
-    public let conversationId: String
-    public let messageId: String?
-    public let title: String
-    public let body: String
-    public let avatarUrl: URL?
-    public let unreadTotal: Int?
+    package let type: String
+    package let conversationId: String
+    package let messageId: String?
+    package let title: String
+    package let body: String
+    package let avatarUrl: URL?
+    package let unreadTotal: Int?
 }
 
 extension PushPayload {

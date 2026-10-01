@@ -3,12 +3,6 @@ import XCTest
 import ClomniMessenger
 
 final class ClomniMessengerTests: XCTestCase {
-    /// An app that imports only ClomniMessenger sees the protocol types too.
-    func testReexportsTheProtocol() {
-        let message = ClientMessage(clientId: "c", content: .text("Salam"))
-        XCTAssertEqual(ProtocolJSON.parseClientMessage(ProtocolJSON.encode(message)), message)
-    }
-
     private let root = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 

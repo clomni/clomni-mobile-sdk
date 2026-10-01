@@ -5,9 +5,9 @@ import ClomniProtocol
 
 /// What a form's fields hold while the user fills them in, checked here before anything is sent (the server checks
 /// again; its `validation_failed` fields land in the same place).
-public enum FormInput {
+package enum FormInput {
     /// field key → error text; empty when the form can be sent.
-    public static func errors(_ form: MessageContent.Form, values: [String: String],
+    package static func errors(_ form: MessageContent.Form, values: [String: String],
                               strings: ClomniStrings) -> [String: String] {
         var errors: [String: String] = [:]
         for field in form.fields {
@@ -42,7 +42,7 @@ public enum FormInput {
 
     /// The `values` of a form_submit: every field, numbers as numbers, phones in international form, an empty
     /// optional field as "".
-    public static func payload(_ form: MessageContent.Form, values: [String: String]) -> [String: JSONValue] {
+    package static func payload(_ form: MessageContent.Form, values: [String: String]) -> [String: JSONValue] {
         var payload: [String: JSONValue] = [:]
         for field in form.fields {
             let value = (values[field.key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -57,7 +57,7 @@ public enum FormInput {
 
     /// What the logged-in user's known details fill in before they type: name, email, phone by the field's key or
     /// type.
-    public static func prefill(_ form: MessageContent.Form, known: [String: String]) -> [String: String] {
+    package static func prefill(_ form: MessageContent.Form, known: [String: String]) -> [String: String] {
         var values: [String: String] = [:]
         for field in form.fields {
             let byType: String? = field.type == .email ? known["email"] : field.type == .phone ? known["phone"] : nil
@@ -67,7 +67,7 @@ public enum FormInput {
     }
 
     /// A submitted form as label · value lines, in the form's order.
-    public static func submittedLines(_ form: MessageContent.Form) -> [(label: String, value: String)] {
+    package static func submittedLines(_ form: MessageContent.Form) -> [(label: String, value: String)] {
         guard let submitted = form.submitted else { return [] }
         return form.fields.compactMap { field in
             guard let value = submitted[field.key] else { return nil }
@@ -84,7 +84,7 @@ public enum FormInput {
 
     /// "+994501234567" from "+994 50 123 45 67", "050 123 45 67" or "501234567" with default country AZ; nil when
     /// it cannot be a phone number.
-    public static func phone(_ raw: String, defaultCountry: String?) -> String? {
+    package static func phone(_ raw: String, defaultCountry: String?) -> String? {
         let international = raw.trimmingCharacters(in: .whitespaces).hasPrefix("+")
         let allowed = CharacterSet(charactersIn: "0123456789+ -().")
         guard raw.unicodeScalars.allSatisfy(allowed.contains) else { return nil }

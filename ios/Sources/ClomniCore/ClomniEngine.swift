@@ -4,7 +4,7 @@ import ClomniProtocol
 #endif
 
 /// What changed, for the screens to redraw.
-public enum ClomniChange: Sendable, Equatable {
+package enum ClomniChange: Sendable, Equatable {
     case session
     case config
     case conversations
@@ -20,7 +20,7 @@ public enum ClomniChange: Sendable, Equatable {
 /// Messages are sent through the outbox: each one is on disk until the server has it, and is repeated with the same
 /// `client_id` until then, so a message written offline or lost with the connection arrives once. Three failed
 /// attempts mark it failed; `retry` sends it again.
-public actor ClomniEngine {
+package actor ClomniEngine {
     static let attempts = 3
     static let cachedMessagesPerConversation = 100
 
@@ -31,10 +31,10 @@ public actor ClomniEngine {
     private let time: TimeSource
     private var store: MessageStore
     private var outbox: Outbox
-    public private(set) var config: MessengerConfig?
+    package private(set) var config: MessengerConfig?
     private var configETag: String?
     /// The inbox is switched off in Clomni: the messenger must not open.
-    public private(set) var isAppDisabled = false
+    package private(set) var isAppDisabled = false
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
     private var wantsSocket = false
     private var delivering: Task<Void, Never>?
@@ -49,7 +49,7 @@ public actor ClomniEngine {
     private var pushRegistration: Task<Void, Never>?
     private var registerPushAgain = false
 
-    public init(appId: String, apiKey: String, baseURL: URL? = nil) {
+    package init(appId: String, apiKey: String, baseURL: URL? = nil) {
         #if canImport(Security)
         let vault: SecureStore = KeychainStore(appId: appId)
         #else
@@ -86,30 +86,30 @@ public actor ClomniEngine {
     /// `handler` hears every change until `stopObserving` is called with the returned token. Any number of screens
     /// can listen at once (Home, a conversation, the unread badge).
     @discardableResult
-    public func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
+    package func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
         let token = UUID()
         observers[token] = handler
         return token
     }
 
-    public func stopObserving(_ token: UUID) {
+    package func stopObserving(_ token: UUID) {
         observers[token] = nil
     }
 
     // MARK: - Session
 
-    public var isLoggedIn: Bool {
+    package var isLoggedIn: Bool {
         get async { await api.session != nil }
     }
 
     /// An anonymous visitor; the same one again on this device until logout.
-    public func loginUnidentifiedUser() async throws {
+    package func loginUnidentifiedUser() async throws {
         try await login(.anonymous)
     }
 
     /// `userHash` = hex(HMAC-SHA256(identity_secret, user_id)), computed on the customer's server. An anonymous user's
     /// conversations move to this user.
-    public func loginUser(_ user: UserIdentity, userHash: String?) async throws {
+    package func loginUser(_ user: UserIdentity, userHash: String?) async throws {
         try await login(.user(user, hash: userHash))
     }
 
@@ -138,7 +138,7 @@ public actor ClomniEngine {
     }
 
     /// Ends the session and deletes everything kept on this device for the user.
-    public func logout() async {
+    package func logout() async {
         wantsSocket = false
         await realtime.stop()
         delivering?.cancel()
@@ -169,7 +169,7 @@ public actor ClomniEngine {
     // MARK: - Socket
 
     /// Opens the socket (and keeps it open, reconnecting) while the app is in the foreground.
-    public func connect() async {
+    package func connect() async {
         wantsSocket = true
         #if canImport(UIKit) && !os(watchOS)
         observeApplicationState()
@@ -180,17 +180,17 @@ public actor ClomniEngine {
         Task { await self.registerPush() }
     }
 
-    public func disconnect() async {
+    package func disconnect() async {
         wantsSocket = false
         await realtime.stop()
     }
 
     /// In the background the socket is closed and replies arrive as push notifications.
-    public func applicationDidEnterBackground() async {
+    package func applicationDidEnterBackground() async {
         await realtime.stop()
     }
 
-    public func applicationWillEnterForeground() async {
+    package func applicationWillEnterForeground() async {
         if wantsSocket { await realtime.start() }
         deliver()
         Task { await self.registerPush() }
@@ -241,34 +241,34 @@ public actor ClomniEngine {
 
     // MARK: - Reading
 
-    public var unreadTotal: Int { store.unreadTotal }
+    package var unreadTotal: Int { store.unreadTotal }
 
-    public func conversations() -> [Conversation] {
+    package func conversations() -> [Conversation] {
         store.sortedConversations
     }
 
-    public func messages(in conversationId: String) -> [Message] {
+    package func messages(in conversationId: String) -> [Message] {
         store.messages(in: conversationId)
     }
 
     /// The user's messages not yet confirmed by the server, oldest first; shown after `messages(in:)`.
-    public func pending(in conversationId: String) -> [PendingMessage] {
+    package func pending(in conversationId: String) -> [PendingMessage] {
         outbox.entries(in: conversationId)
     }
 
     /// Whether a message's buttons (or form) are live.
-    public func canAnswer(_ message: Message) -> Bool {
+    package func canAnswer(_ message: Message) -> Bool {
         store.canAnswer(message)
     }
 
     /// The highest seq the operator has read ("Oxundu").
-    public func readByOperator(in conversationId: String) -> Int? {
+    package func readByOperator(in conversationId: String) -> Int? {
         store.readUpTo[conversationId]
     }
 
     /// The config kept from last time, checked with its ETag.
     @discardableResult
-    public func refreshConfig(language: String? = nil) async -> MessengerConfig? {
+    package func refreshConfig(language: String? = nil) async -> MessengerConfig? {
         do {
             if case .changed(let config, let body, let etag) = try await api.config(language: language, etag: configETag) {
                 self.config = config
@@ -284,7 +284,7 @@ public actor ClomniEngine {
         return config
     }
 
-    public func refreshConversations() async throws {
+    package func refreshConversations() async throws {
         let page = try await api.conversations()
         page.conversations.forEach { store.upsert($0) }
         save()
@@ -292,14 +292,14 @@ public actor ClomniEngine {
     }
 
     /// Starts the inbox's new-conversation flow; its first messages come with it.
-    public func startConversation(openedFrom: String?) async throws -> Conversation {
+    package func startConversation(openedFrom: String?) async throws -> Conversation {
         let created = try await api.createConversation(openedFrom: openedFrom)
         apply(created)
         return created.conversation
     }
 
     /// Brings a conversation up to date: the latest page the first time, what is newer than the cache after that.
-    public func loadMessages(in conversationId: String) async throws {
+    package func loadMessages(in conversationId: String) async throws {
         if let newest = store.lastSeq(in: conversationId) {
             try await fetch(conversationId, after: newest)
         } else {
@@ -309,7 +309,7 @@ public actor ClomniEngine {
     }
 
     /// One page further back; false when the beginning is reached.
-    public func loadOlder(in conversationId: String) async throws -> Bool {
+    package func loadOlder(in conversationId: String) async throws -> Bool {
         guard let oldest = store.messages(in: conversationId).first?.seq else {
             try await loadMessages(in: conversationId)
             return true
@@ -321,7 +321,7 @@ public actor ClomniEngine {
     }
 
     /// Up to the newest message; sent once per new seq.
-    public func markRead(in conversationId: String) async {
+    package func markRead(in conversationId: String) async {
         guard let newest = store.lastSeq(in: conversationId), newest > readSent[conversationId] ?? 0 else { return }
         readSent[conversationId] = newest
         store.markSeen(conversationId)
@@ -335,7 +335,7 @@ public actor ClomniEngine {
     }
 
     /// `on` at most every 3 seconds while typing, `off` once when the user stops.
-    public func setTyping(_ isTyping: Bool, in conversationId: String) async {
+    package func setTyping(_ isTyping: Bool, in conversationId: String) async {
         if isTyping {
             if let last = typingSentAt[conversationId], time.now().timeIntervalSince(last) < 3 { return }
             typingSentAt[conversationId] = time.now()
@@ -348,7 +348,7 @@ public actor ClomniEngine {
     // MARK: - Sending
 
     @discardableResult
-    public func sendText(_ text: String, in conversationId: String) throws -> PendingMessage {
+    package func sendText(_ text: String, in conversationId: String) throws -> PendingMessage {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw ClomniError.rejected("empty text") }
         guard text.count <= config?.limits.textChars ?? 4000 else { throw ClomniError.rejected("text over the limit") }
@@ -357,7 +357,7 @@ public actor ClomniEngine {
 
     /// A flow button. The message's buttons go dead at once, so a second tap sends nothing.
     @discardableResult
-    public func reply(to message: Message, with button: MessageContent.Button) throws -> PendingMessage {
+    package func reply(to message: Message, with button: MessageContent.Button) throws -> PendingMessage {
         try answer(message)
         return enqueue(.buttonReply(replyTo: message.id, buttonId: button.id, payload: button.payload),
                        in: message.conversationId, preview: button.title)
@@ -365,7 +365,7 @@ public actor ClomniEngine {
 
     /// "← Geri" under quick replies with `allowBack`.
     @discardableResult
-    public func goBack(from message: Message) throws -> PendingMessage {
+    package func goBack(from message: Message) throws -> PendingMessage {
         guard case .quickReplies(let replies) = message.content, replies.allowBack else {
             throw ClomniError.rejected("no back button")
         }
@@ -374,7 +374,7 @@ public actor ClomniEngine {
     }
 
     @discardableResult
-    public func submitForm(_ message: Message, values: [String: JSONValue]) throws -> PendingMessage {
+    package func submitForm(_ message: Message, values: [String: JSONValue]) throws -> PendingMessage {
         guard case .form(let form) = message.content else { throw ClomniError.rejected("not a form") }
         try answer(message)
         return enqueue(.formSubmit(replyTo: message.id, formId: form.formId, values: values),
@@ -382,7 +382,7 @@ public actor ClomniEngine {
     }
 
     @discardableResult
-    public func submitRating(_ message: Message, score: Int, comment: String?) throws -> PendingMessage {
+    package func submitRating(_ message: Message, score: Int, comment: String?) throws -> PendingMessage {
         guard case .rating(let rating) = message.content, rating.submitted == nil, !store.answered.contains(message.id),
               (1...5).contains(score) else { throw ClomniError.rejected("rating not open") }
         store.markAnswered(message.id)
@@ -392,14 +392,14 @@ public actor ClomniEngine {
 
     /// `uploadId` from `upload`.
     @discardableResult
-    public func sendAttachment(uploadId: String, caption: String?, in conversationId: String) -> PendingMessage {
+    package func sendAttachment(uploadId: String, caption: String?, in conversationId: String) -> PendingMessage {
         enqueue(.attachment(uploadId: uploadId, caption: caption), in: conversationId, preview: caption)
     }
 
     /// An image or file (images already scaled to at most 2048 px). It is kept on this device until the server has
     /// the message, so a lost connection or a restart does not lose it: the outbox uploads it, then sends it.
     @discardableResult
-    public func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
+    package func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                          in conversationId: String) throws -> PendingMessage {
         let megabytes = mime.hasPrefix("image/") ? config?.limits.imageMb ?? 10 : config?.limits.fileMb ?? 25
         guard data.count <= megabytes * 1_048_576 else { throw ClomniError.rejected("file over \(megabytes) MB") }
@@ -417,28 +417,28 @@ public actor ClomniEngine {
     }
 
     /// The file of a pending attachment, to show it before the server has it.
-    public func localFile(of pending: PendingMessage) -> URL? {
+    package func localFile(of pending: PendingMessage) -> URL? {
         pending.upload.map { cache.directory.appendingPathComponent($0.storedAs) }
     }
 
     /// One conversation as the store knows it.
-    public func conversation(_ id: String) -> Conversation? {
+    package func conversation(_ id: String) -> Conversation? {
         store.conversations[id]
     }
 
     /// The conversation from the server, e.g. one opened from a push before the list knew it.
-    public func refreshConversation(_ id: String) async throws {
+    package func refreshConversation(_ id: String) async throws {
         store.upsert(try await api.conversation(id))
         save()
         notify(.conversations)
     }
 
-    public func upload(_ data: Data, fileName: String, mime: String) async throws -> UploadedFile {
+    package func upload(_ data: Data, fileName: String, mime: String) async throws -> UploadedFile {
         try await api.upload(data, fileName: fileName, mime: mime)
     }
 
     /// Sends a failed message again, with its original client id.
-    public func retry(_ clientId: String) throws {
+    package func retry(_ clientId: String) throws {
         guard outbox.entry(clientId)?.state == .failed else { throw ClomniError.rejected("nothing to retry") }
         outbox.update(clientId) {
             $0.state = .sending
@@ -450,7 +450,7 @@ public actor ClomniEngine {
         deliver()
     }
 
-    public func discard(_ clientId: String) {
+    package func discard(_ clientId: String) {
         changed(removePending(clientId)?.conversationId)
     }
 
@@ -598,7 +598,7 @@ public actor ClomniEngine {
     // MARK: - User, push, flows
 
     /// Only the fields given change; `custom_attributes` are merged on the server.
-    public func updateUser(_ fields: [String: JSONValue]) async throws -> MobileUser {
+    package func updateUser(_ fields: [String: JSONValue]) async throws -> MobileUser {
         try await api.updateUser(fields)
     }
 
@@ -606,7 +606,7 @@ public actor ClomniEngine {
     /// on this device and registered for whoever is logged in: now, at the next login, and again when another user
     /// logs in. A new token replaces the old one. A registration that fails is repeated at the next connect or return
     /// to the foreground.
-    public func setDeviceToken(_ token: String, sandbox: Bool) async {
+    package func setDeviceToken(_ token: String, sandbox: Bool) async {
         let kept = vault.value(PushRegistration.self, for: Files.push)
         if kept?.token != token || kept?.sandbox != sandbox {
             vault.setValue(PushRegistration(token: token, sandbox: sandbox), for: Files.push)
@@ -648,7 +648,7 @@ public actor ClomniEngine {
     }
 
     /// `Clomni.startFlow`: the flow bound to an app event, in a new conversation; nil when none is bound.
-    public func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
+    package func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                           openedFrom: String? = nil) async throws -> Conversation? {
         let result = try await api.triggerFlow(event: event, data: data, openMessenger: openMessenger,
                                                openedFrom: openedFrom)
@@ -657,7 +657,7 @@ public actor ClomniEngine {
         return created.conversation
     }
 
-    public func track(_ event: String, data: [String: JSONValue]) async throws {
+    package func track(_ event: String, data: [String: JSONValue]) async throws {
         try await api.track(event: event, data: data)
     }
 

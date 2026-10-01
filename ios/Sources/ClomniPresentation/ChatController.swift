@@ -5,7 +5,7 @@ import ClomniCore
 #endif
 
 /// What the conversation screen reads and does; `ClomniEngine` is one, tests use a fake.
-public protocol ChatDataSource: Sendable {
+package protocol ChatDataSource: Sendable {
     var config: MessengerConfig? { get async }
     func conversation(_ id: String) async -> Conversation?
     func refreshConversation(_ id: String) async throws
@@ -35,19 +35,19 @@ extension ClomniEngine: ChatDataSource {}
 /// Keeps one conversation's screen current and turns taps into engine calls. The SwiftUI view observes it through
 /// `onChange`.
 @MainActor
-public final class ChatController {
-    public private(set) var screen: ChatScreen
+package final class ChatController {
+    package private(set) var screen: ChatScreen
     /// Called after `screen` changed.
-    public var onChange: (() -> Void)?
+    package var onChange: (() -> Void)?
     /// Changes when "Yeni söhbət başlat" opens a new conversation in place of a closed one.
-    public private(set) var conversationId: String
+    package private(set) var conversationId: String
 
-    public var isOffline = false {
+    package var isOffline = false {
         didSet { render() }
     }
 
     /// For the theme: the brand's colours and appearance.
-    public var config: MessengerConfig? { snapshot.config }
+    package var config: MessengerConfig? { snapshot.config }
 
     private let source: ChatDataSource
     private let language: String?
@@ -60,7 +60,7 @@ public final class ChatController {
 
     /// `known`: the user's name, email and phone, filled into forms. The typing indicator hides itself after
     /// `typingTimeout` (8 s) without news.
-    public init(source: ChatDataSource, conversationId: String, language: String?, known: [String: String] = [:],
+    package init(source: ChatDataSource, conversationId: String, language: String?, known: [String: String] = [:],
                 timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() },
                 typingTimeout: TimeInterval = 8) {
         self.source = source
@@ -80,7 +80,7 @@ public final class ChatController {
     }
 
     /// The cache at once, then the server; marks the conversation read.
-    public func load() async {
+    package func load() async {
         await read()
         render()
         if observation == nil {
@@ -103,14 +103,14 @@ public final class ChatController {
     }
 
     /// "Yenidən cəhd et" after a failed first load.
-    public func retry() async {
+    package func retry() async {
         snapshot.load = .loading
         render()
         await load()
     }
 
     /// When the screen goes away.
-    public func stop() async {
+    package func stop() async {
         typingHide?.cancel()
         if let observation {
             self.observation = nil
@@ -120,7 +120,7 @@ public final class ChatController {
     }
 
     /// One page further back; false at the beginning.
-    public func loadOlder() async -> Bool {
+    package func loadOlder() async -> Bool {
         let more = (try? await source.loadOlder(in: conversationId)) ?? false
         await read()
         render()
@@ -131,7 +131,7 @@ public final class ChatController {
 
     /// false when the text cannot go (blank or over the limit); the composer keeps it then.
     @discardableResult
-    public func send(_ text: String) async -> Bool {
+    package func send(_ text: String) async -> Bool {
         guard ChatPresenter.canSend(text, limit: screen.composer.limit),
               (try? await source.sendText(text, in: conversationId)) != nil else { return false }
         await source.setTyping(false, in: conversationId)
@@ -139,12 +139,12 @@ public final class ChatController {
     }
 
     /// The composer's text changed: typing is on while there is some.
-    public func textChanged(_ text: String) async {
+    package func textChanged(_ text: String) async {
         await source.setTyping(!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, in: conversationId)
     }
 
     /// A flow button, or "back" for "← Geri". A second tap finds the buttons gone and does nothing.
-    public func tap(_ buttonId: String, in messageId: String) async {
+    package func tap(_ buttonId: String, in messageId: String) async {
         guard let message = snapshot.messages.first(where: { $0.id == messageId }),
               case .quickReplies(let replies) = message.content else { return }
         if buttonId == "back" {
@@ -157,7 +157,7 @@ public final class ChatController {
     }
 
     /// Sends a form; returns the errors to show by field, empty when it went.
-    public func submit(_ messageId: String, values: [String: String]) async -> [String: String] {
+    package func submit(_ messageId: String, values: [String: String]) async -> [String: String] {
         guard let message = snapshot.messages.first(where: { $0.id == messageId }),
               case .form(let form) = message.content else { return [:] }
         let errors = FormInput.errors(form, values: values, strings: strings)
@@ -169,12 +169,12 @@ public final class ChatController {
     }
 
     /// "Göndərilmədi · Yenidən cəhd et".
-    public func retrySending(_ clientId: String) async {
+    package func retrySending(_ clientId: String) async {
         try? await source.retry(clientId)
     }
 
     /// An image (already scaled, see `Media.uploadSize`) or a file; returns the text to show when it is refused.
-    public func sendFile(_ data: Data, fileName: String, mime: String, caption: String? = nil) async -> String? {
+    package func sendFile(_ data: Data, fileName: String, mime: String, caption: String? = nil) async -> String? {
         do {
             _ = try await source.sendFile(data, fileName: fileName, mime: mime, caption: caption, in: conversationId)
             return nil
@@ -187,7 +187,7 @@ public final class ChatController {
     }
 
     /// "Yeni söhbət başlat": this screen moves to a new conversation; its id, or nil when it could not start.
-    public func startNewConversation() async -> String? {
+    package func startNewConversation() async -> String? {
         guard let conversation = try? await source.startConversation(openedFrom: nil) else { return nil }
         typingHide?.cancel()
         await source.setTyping(false, in: conversationId)

@@ -5,7 +5,7 @@ import ClomniCore
 #endif
 
 /// What the Home and Messages tabs read; `ClomniEngine` is one, tests use a fake.
-public protocol MessengerDataSource: Sendable {
+package protocol MessengerDataSource: Sendable {
     var config: MessengerConfig? { get async }
     func refreshConfig(language: String?) async -> MessengerConfig?
     func conversations() async -> [Conversation]
@@ -21,21 +21,21 @@ extension ClomniEngine: MessengerDataSource {}
 /// Keeps the Home and Messages screens current: what is cached at once, then the server's answer, then every change
 /// the engine reports. The SwiftUI views observe it through `onChange`.
 @MainActor
-public final class HomeController {
-    public private(set) var home: HomeScreen
-    public private(set) var messages: MessagesScreen
+package final class HomeController {
+    package private(set) var home: HomeScreen
+    package private(set) var messages: MessagesScreen
     /// Called after `home` or `messages` changed.
-    public var onChange: (() -> Void)?
+    package var onChange: (() -> Void)?
 
     /// For the theme: the brand's colours and appearance.
-    public var config: MessengerConfig? { snapshot.config }
+    package var config: MessengerConfig? { snapshot.config }
 
-    public var userName: String? {
+    package var userName: String? {
         didSet { render() }
     }
 
     /// The thin yellow strip; set from the app's reachability.
-    public var isOffline = false {
+    package var isOffline = false {
         didSet { render() }
     }
 
@@ -47,7 +47,7 @@ public final class HomeController {
     private var starting = false
     private var observation: UUID?
 
-    public init(source: MessengerDataSource, language: String?, userName: String?, timeZone: TimeZone = .current,
+    package init(source: MessengerDataSource, language: String?, userName: String?, timeZone: TimeZone = .current,
                 now: @escaping @Sendable () -> Date = { Date() }) {
         self.source = source
         self.language = language
@@ -61,7 +61,7 @@ public final class HomeController {
     }
 
     /// Shows the cache at once, then asks the server for the config and the conversations.
-    public func load() async {
+    package func load() async {
         await read()
         render()
         if observation == nil {
@@ -82,14 +82,14 @@ public final class HomeController {
     }
 
     /// Stops following the engine's changes, when the messenger closes.
-    public func stop() async {
+    package func stop() async {
         guard let observation else { return }
         self.observation = nil
         await source.stopObserving(observation)
     }
 
     /// "Yenidən cəhd et".
-    public func retry() async {
+    package func retry() async {
         snapshot.configLoad = .loading
         snapshot.conversationsLoad = .loading
         render()
@@ -97,7 +97,7 @@ public final class HomeController {
     }
 
     /// "Bizə mesaj göndərin": the new conversation's id, or nil when it failed or one is already starting.
-    public func startConversation(openedFrom: String?) async -> String? {
+    package func startConversation(openedFrom: String?) async -> String? {
         guard !starting else { return nil }
         starting = true
         defer { starting = false }

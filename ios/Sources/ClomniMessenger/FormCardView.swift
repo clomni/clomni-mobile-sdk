@@ -1,6 +1,10 @@
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
 import UIKit
+#if canImport(ClomniCore)
+import ClomniProtocol
+import ClomniCore
+#endif
 #if canImport(ClomniPresentation)
 import ClomniPresentation
 #endif

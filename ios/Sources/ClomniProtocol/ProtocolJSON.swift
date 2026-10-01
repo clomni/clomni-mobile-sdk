@@ -2,56 +2,56 @@ import Foundation
 
 /// The protocol's entry points. None of them throws or traps: input they cannot use gives nil (or, inside a message,
 /// `.unknown` content), and a line goes to `logHandler`.
-public enum ProtocolJSON {
+package enum ProtocolJSON {
     /// Receives one line for everything that was dropped or downgraded. The SDK sets it from its log level; nil (the
     /// default) discards the lines.
-    public static var logHandler: (@Sendable (String) -> Void)? {
+    package static var logHandler: (@Sendable (String) -> Void)? {
         get { ProtocolLog.shared.handler }
         set { ProtocolLog.shared.handler = newValue }
     }
 
     /// A message as REST or the socket sends it; nil when its envelope is unusable (no id, seq, sender …).
-    public static func parseMessage(_ data: Data) -> Message? {
+    package static func parseMessage(_ data: Data) -> Message? {
         decode(data, "message") { try Message($0) }
     }
 
     /// The same, for a message inside a larger response that was already decoded.
-    public static func parseMessage(_ json: JSONValue) -> Message? {
+    package static func parseMessage(_ json: JSONValue) -> Message? {
         read(json, "message") { try Message($0) }
     }
 
-    public static func parseEvent(_ data: Data) -> RealtimeEvent? {
+    package static func parseEvent(_ data: Data) -> RealtimeEvent? {
         decode(data, "event") { try RealtimeEvent($0) }
     }
 
     /// A text WebSocket frame.
-    public static func parseEvent(_ text: String) -> RealtimeEvent? {
+    package static func parseEvent(_ text: String) -> RealtimeEvent? {
         parseEvent(Data(text.utf8))
     }
 
     /// A frame that was already decoded (to look at its `event` first, say).
-    public static func parseEvent(_ json: JSONValue) -> RealtimeEvent? {
+    package static func parseEvent(_ json: JSONValue) -> RealtimeEvent? {
         read(json, "event") { try RealtimeEvent($0) }
     }
 
     /// nil only when the body is not a JSON object; every missing field takes its default.
-    public static func parseConfig(_ data: Data) -> MessengerConfig? {
+    package static func parseConfig(_ data: Data) -> MessengerConfig? {
         decode(data, "config") { MessengerConfig($0) }
     }
 
     /// nil when the payload is not a Clomni push.
-    public static func parsePush(_ data: Data) -> PushPayload? {
+    package static func parsePush(_ data: Data) -> PushPayload? {
         decode(data, "push") { try PushPayload($0) }
     }
 
     /// Whether a push is Clomni's (`"clomni": "1"` next to `aps`), without reading the rest: the app's own pushes are
     /// none of the SDK's business.
-    public static func isClomniPush(_ userInfo: [AnyHashable: Any]) -> Bool {
+    package static func isClomniPush(_ userInfo: [AnyHashable: Any]) -> Bool {
         userInfo["clomni"] as? String == "1"
     }
 
     /// An APNs `userInfo`. Only the top-level scalars are read: the Clomni keys sit next to `aps`.
-    public static func parsePush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
+    package static func parsePush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
         var fields: [String: Any] = [:]
         for (key, value) in userInfo {
             guard let key = key.base as? String,
@@ -64,17 +64,17 @@ public enum ProtocolJSON {
         return parsePush(data)
     }
 
-    public static func parseClientMessage(_ data: Data) -> ClientMessage? {
+    package static func parseClientMessage(_ data: Data) -> ClientMessage? {
         decode(data, "client message") { try ClientMessage($0) }
     }
 
     /// The request body for POST /v1/conversations/{id}/messages.
-    public static func encode(_ message: ClientMessage) -> Data {
+    package static func encode(_ message: ClientMessage) -> Data {
         encode(message.json)
     }
 
     /// Any request body.
-    public static func encode(_ json: JSONValue) -> Data {
+    package static func encode(_ json: JSONValue) -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         // JSONValue always encodes (non-finite numbers become null), so the fallback is never taken.
@@ -82,7 +82,7 @@ public enum ProtocolJSON {
     }
 
     /// Any JSON, for the parts of a response the protocol has no type for.
-    public static func decode(_ data: Data) -> JSONValue? {
+    package static func decode(_ data: Data) -> JSONValue? {
         try? JSONDecoder().decode(JSONValue.self, from: data)
     }
 

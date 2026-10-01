@@ -1,37 +1,37 @@
 import Foundation
 
 /// An sRGB colour, with the arithmetic the theme derives its tokens with.
-public struct RGBColor: Sendable, Hashable, CustomStringConvertible {
+package struct RGBColor: Sendable, Hashable, CustomStringConvertible {
     /// 0…1.
-    public let red: Double
-    public let green: Double
-    public let blue: Double
+    package let red: Double
+    package let green: Double
+    package let blue: Double
 
-    public init(red: Double, green: Double, blue: Double) {
+    package init(red: Double, green: Double, blue: Double) {
         self.red = min(1, max(0, red))
         self.green = min(1, max(0, green))
         self.blue = min(1, max(0, blue))
     }
 
     /// "#RRGGBB".
-    public init?(hex: String) {
+    package init?(hex: String) {
         guard hex.count == 7, hex.first == "#", let value = Int(hex.dropFirst(), radix: 16) else { return nil }
         self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255,
                   blue: Double(value & 0xFF) / 255)
     }
 
-    public static let white = RGBColor(red: 1, green: 1, blue: 1)
-    public static let black = RGBColor(red: 0, green: 0, blue: 0)
+    package static let white = RGBColor(red: 1, green: 1, blue: 1)
+    package static let black = RGBColor(red: 0, green: 0, blue: 0)
 
-    public var hex: String {
+    package var hex: String {
         let channels = [red, green, blue].map { Int(($0 * 255).rounded()) }
         return String(format: "#%02X%02X%02X", channels[0], channels[1], channels[2])
     }
 
-    public var description: String { hex }
+    package var description: String { hex }
 
     /// WCAG 2 relative luminance.
-    public var luminance: Double {
+    package var luminance: Double {
         func linear(_ channel: Double) -> Double {
             channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
         }
@@ -39,27 +39,27 @@ public struct RGBColor: Sendable, Hashable, CustomStringConvertible {
     }
 
     /// WCAG 2 contrast ratio, 1…21.
-    public func contrast(with other: RGBColor) -> Double {
+    package func contrast(with other: RGBColor) -> Double {
         let (light, dark) = luminance > other.luminance ? (luminance, other.luminance) : (other.luminance, luminance)
         return (light + 0.05) / (dark + 0.05)
     }
 
     /// One step of the brand palette is 10 points of HSL lightness: `steps(-1)` is the darker tone of the header,
     /// `steps(1)` the lighter one dark mode uses.
-    public func steps(_ count: Int) -> RGBColor {
+    package func steps(_ count: Int) -> RGBColor {
         let (hue, saturation, lightness) = hsl
         return RGBColor(hue: hue, saturation: saturation, lightness: lightness + 0.1 * Double(count))
     }
 
     /// This colour at `opacity` over `background`.
-    public func over(_ background: RGBColor, opacity: Double) -> RGBColor {
+    package func over(_ background: RGBColor, opacity: Double) -> RGBColor {
         RGBColor(red: red * opacity + background.red * (1 - opacity),
                  green: green * opacity + background.green * (1 - opacity),
                  blue: blue * opacity + background.blue * (1 - opacity))
     }
 
     /// Hue 0…360, saturation and lightness 0…1.
-    public var hsl: (hue: Double, saturation: Double, lightness: Double) {
+    package var hsl: (hue: Double, saturation: Double, lightness: Double) {
         let high = max(red, green, blue)
         let low = min(red, green, blue)
         let lightness = (high + low) / 2
@@ -76,7 +76,7 @@ public struct RGBColor: Sendable, Hashable, CustomStringConvertible {
         return (hue, saturation, lightness)
     }
 
-    public init(hue: Double, saturation: Double, lightness: Double) {
+    package init(hue: Double, saturation: Double, lightness: Double) {
         let saturation = min(1, max(0, saturation))
         let lightness = min(1, max(0, lightness))
         let chroma = (1 - abs(2 * lightness - 1)) * saturation

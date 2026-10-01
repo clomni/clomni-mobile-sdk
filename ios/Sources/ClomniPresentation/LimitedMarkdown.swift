@@ -1,14 +1,14 @@
 import Foundation
 
 /// A piece of message text with one style.
-public struct TextRun: Sendable, Equatable {
-    public let text: String
-    public let bold: Bool
-    public let italic: Bool
+package struct TextRun: Sendable, Equatable {
+    package let text: String
+    package let bold: Bool
+    package let italic: Bool
     /// Only https:, tel: and mailto: links survive.
-    public let link: URL?
+    package let link: URL?
 
-    public init(_ text: String, bold: Bool = false, italic: Bool = false, link: URL? = nil) {
+    package init(_ text: String, bold: Bool = false, italic: Bool = false, link: URL? = nil) {
         self.text = text
         self.bold = bold
         self.italic = italic
@@ -19,17 +19,17 @@ public struct TextRun: Sendable, Equatable {
 /// The markdown messages may carry (brief 8 · 3): **bold**, *italic*, [text](url), line breaks and emoji. A link with
 /// any other scheme (javascript:, http:, data:…) keeps its text and loses the link. A marker without its pair, or
 /// with a space on its inner side ("2 * 3 * 4"), is plain text.
-public enum LimitedMarkdown {
-    public static let linkSchemes: Set<String> = ["https", "tel", "mailto"]
+package enum LimitedMarkdown {
+    package static let linkSchemes: Set<String> = ["https", "tel", "mailto"]
 
-    public static func parse(_ source: String) -> [TextRun] {
+    package static func parse(_ source: String) -> [TextRun] {
         var runs: [TextRun] = []
         parse(Array(source), bold: false, italic: false, into: &runs)
         return merged(runs)
     }
 
     /// The text as VoiceOver and previews read it.
-    public static func plainText(_ source: String) -> String {
+    package static func plainText(_ source: String) -> String {
         parse(source).map(\.text).joined()
     }
 

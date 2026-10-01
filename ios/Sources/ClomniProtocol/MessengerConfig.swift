@@ -2,95 +2,95 @@ import Foundation
 
 /// GET /v1/mobile/config (protocol/schema/config.json). Read leniently: a missing or invalid field takes its default,
 /// so a minimal config still opens the messenger. Optional fields are those whose fallback is the SDK's own text.
-public struct MessengerConfig: Sendable, Equatable {
-    public let brand: Brand
-    public let launcher: Launcher
-    public let home: Home
-    public let team: Team
-    public let bot: Bot
-    public let composer: Composer
+package struct MessengerConfig: Sendable, Equatable {
+    package let brand: Brand
+    package let launcher: Launcher
+    package let home: Home
+    package let team: Team
+    package let bot: Bot
+    package let composer: Composer
     /// Never empty; "az" when the server sends none.
-    public let languages: [String]
+    package let languages: [String]
     /// UI texts set in the panel; a missing key falls back to the SDK's own az/en/ru text.
-    public let strings: [String: String]
-    public let limits: Limits
+    package let strings: [String: String]
+    package let limits: Limits
 
-    public struct Brand: Sendable, Equatable {
-        public let name: String
-        public let logoUrl: URL?
+    package struct Brand: Sendable, Equatable {
+        package let name: String
+        package let logoUrl: URL?
         /// "#RRGGBB".
-        public let primaryColor: String
+        package let primaryColor: String
         /// "#RRGGBB"; nil means the UI picks white or black for contrast.
-        public let onPrimaryColor: String?
-        public let theme: Theme
+        package let onPrimaryColor: String?
+        package let theme: Theme
 
         /// Clomni's own colour, used when the config has none or an invalid one.
-        public static let defaultPrimaryColor = "#10A670"
+        package static let defaultPrimaryColor = "#10A670"
     }
 
-    public enum Theme: String, Sendable, Equatable {
+    package enum Theme: String, Sendable, Equatable {
         case system, light, dark
     }
 
     /// The floating button; off unless the customer turns it on.
-    public struct Launcher: Sendable, Equatable {
-        public let visible: Bool
-        public let position: LauncherPosition
-        public let bottomPadding: Int
-        public let icon: String
+    package struct Launcher: Sendable, Equatable {
+        package let visible: Bool
+        package let position: LauncherPosition
+        package let bottomPadding: Int
+        package let icon: String
     }
 
-    public enum LauncherPosition: String, Sendable, Equatable {
+    package enum LauncherPosition: String, Sendable, Equatable {
         case left, right
     }
 
-    public struct Home: Sendable, Equatable {
-        public let greetingTitle: String?
-        public let greetingSubtitle: String?
-        public let showTeamAvatars: Bool
-        public let channels: [Channel]
-        public let cards: [HomeCard]
+    package struct Home: Sendable, Equatable {
+        package let greetingTitle: String?
+        package let greetingSubtitle: String?
+        package let showTeamAvatars: Bool
+        package let channels: [Channel]
+        package let cards: [HomeCard]
     }
 
     /// A social channel icon on Home; `type` is open-ended (instagram, whatsapp, linkedin, email, …).
-    public struct Channel: Sendable, Equatable {
-        public let type: String
-        public let url: URL
+    package struct Channel: Sendable, Equatable {
+        package let type: String
+        package let url: URL
     }
 
-    public enum HomeCard: String, Sendable, Equatable {
+    package enum HomeCard: String, Sendable, Equatable {
         case recentConversation = "recent_conversation"
         case newConversation = "new_conversation"
     }
 
-    public struct Team: Sendable, Equatable {
-        public let avatars: [URL]
-        public let replyTime: String?
-        public let officeHours: OfficeHours?
+    package struct Team: Sendable, Equatable {
+        package let avatars: [URL]
+        package let replyTime: String?
+        package let officeHours: OfficeHours?
     }
 
-    public struct OfficeHours: Sendable, Equatable {
-        public let timeZone: String?
-        public let openNow: Bool
+    package struct OfficeHours: Sendable, Equatable {
+        package let timeZone: String?
+        package let openNow: Bool
         /// When the team is back, while `openNow` is false.
-        public let nextOpenAt: Date?
+        package let nextOpenAt: Date?
     }
 
-    public struct Bot: Sendable, Equatable {
-        public let name: String
-        public let avatarUrl: URL?
+    package struct Bot: Sendable, Equatable {
+        package let name: String
+        package let avatarUrl: URL?
     }
 
-    public struct Composer: Sendable, Equatable {
-        public let placeholder: String?
-        public let attachments: Bool
-        public let emoji: Bool
+    package struct Composer: Sendable, Equatable {
+        package let placeholder: String?
+        package let attachments: Bool
+        package let emoji: Bool
     }
 
-    public struct Limits: Sendable, Equatable {
-        public let imageMb: Int
-        public let fileMb: Int
-        public let textChars: Int
+    package struct Limits: Sendable, Equatable {
+        package let imageMb: Int
+        package let fileMb: Int
+        package let textChars: Int
     }
 }
 

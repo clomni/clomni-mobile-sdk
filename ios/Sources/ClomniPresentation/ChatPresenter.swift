@@ -4,29 +4,29 @@ import ClomniProtocol
 import ClomniCore
 #endif
 
-public struct ChatPresenter: Sendable {
+package struct ChatPresenter: Sendable {
     /// Messages of one sender less than this far apart share a run: one avatar, one meta line.
-    public static let groupWindow: TimeInterval = 60
+    package static let groupWindow: TimeInterval = 60
     /// A longer pause gets a new time separator.
-    public static let separatorPause: TimeInterval = 3_600
+    package static let separatorPause: TimeInterval = 3_600
 
-    public let strings: ClomniStrings
+    package let strings: ClomniStrings
     private let time: TimeText
     private let now: Date
 
-    public init(strings: ClomniStrings, timeZone: TimeZone = .current, now: Date) {
+    package init(strings: ClomniStrings, timeZone: TimeZone = .current, now: Date) {
         self.strings = strings
         time = TimeText(strings: strings, timeZone: timeZone)
         self.now = now
     }
 
     /// The send button shows for text that is not blank and within the limit.
-    public static func canSend(_ text: String, limit: Int) -> Bool {
+    package static func canSend(_ text: String, limit: Int) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return !trimmed.isEmpty && trimmed.count <= limit
     }
 
-    public func screen(_ snapshot: ChatSnapshot) -> ChatScreen {
+    package func screen(_ snapshot: ChatSnapshot) -> ChatScreen {
         let hasContent = !snapshot.messages.isEmpty || !snapshot.pending.isEmpty
         let phase: HomeScreen.Phase = hasContent || snapshot.load == .loaded ? .ready
             : snapshot.load == .failed ? .failed : .loading

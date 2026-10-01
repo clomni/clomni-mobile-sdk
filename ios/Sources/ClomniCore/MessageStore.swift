@@ -111,40 +111,40 @@ struct MessageStore: Codable, Equatable {
 }
 
 /// A message on its way to the server, shown as the user's bubble until the server's copy replaces it.
-public struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
-    public enum State: String, Sendable, Codable {
+package struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
+    package enum State: String, Sendable, Codable {
         case sending
         /// Three attempts failed, or the server refused it: "Göndərilmədi · Yenidən cəhd et".
         case failed
     }
 
-    public let conversationId: String
-    public internal(set) var message: ClientMessage
+    package let conversationId: String
+    package internal(set) var message: ClientMessage
     /// What the bubble shows: the text, the button's title, the caption. nil for the back button and a form, whose
     /// labels are the UI's own.
-    public let preview: String?
-    public let createdAt: Date
-    public internal(set) var state = State.sending
-    public internal(set) var attempts = 0
+    package let preview: String?
+    package let createdAt: Date
+    package internal(set) var state = State.sending
+    package internal(set) var attempts = 0
     /// The server's reason when it refused the message, e.g. `validation_failed` with `fields`.
-    public internal(set) var errorCode: String?
-    public internal(set) var fields: [String: String] = [:]
+    package internal(set) var errorCode: String?
+    package internal(set) var fields: [String: String] = [:]
     /// A file the user attached: kept on this device until the server has the message.
-    public internal(set) var upload: PendingUpload?
+    package internal(set) var upload: PendingUpload?
 
-    public var id: String { message.clientId }
+    package var id: String { message.clientId }
 }
 
 /// An attached file on its way: uploaded first (POST /uploads), then sent as an `attachment` message.
-public struct PendingUpload: Sendable, Equatable, Codable {
-    public let fileName: String
-    public let mime: String
+package struct PendingUpload: Sendable, Equatable, Codable {
+    package let fileName: String
+    package let mime: String
     /// Bytes.
-    public let size: Int
+    package let size: Int
     /// The file's name in the SDK's cache directory.
     let storedAs: String
     /// Set once the upload succeeded; a retry then only sends the message.
-    public internal(set) var uploadId: String?
+    package internal(set) var uploadId: String?
 }
 
 /// Pending messages in the order they were written; kept on disk until the server has each one.

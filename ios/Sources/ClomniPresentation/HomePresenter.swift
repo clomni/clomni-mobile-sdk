@@ -4,8 +4,8 @@ import ClomniProtocol
 #endif
 
 /// Everything the Home tab shows, decided here so the SwiftUI view only draws it (brief 8 · 7.3, 7.5).
-public struct HomeScreen: Sendable, Equatable {
-    public enum Phase: Sendable, Equatable {
+package struct HomeScreen: Sendable, Equatable {
+    package enum Phase: Sendable, Equatable {
         /// Nothing cached yet: grey skeleton blocks, no spinner.
         case loading
         case ready
@@ -13,130 +13,130 @@ public struct HomeScreen: Sendable, Equatable {
         case failed
     }
 
-    public struct Header: Sendable, Equatable {
-        public let brandName: String
-        public let logoUrl: URL?
+    package struct Header: Sendable, Equatable {
+        package let brandName: String
+        package let logoUrl: URL?
         /// Stands in the logo square while there is no logo.
-        public let brandInitial: String
+        package let brandInitial: String
         /// Up to three, overlapping.
-        public let teamAvatars: [URL]
+        package let teamAvatars: [URL]
         /// "Salam, Aysel 👋", drawn at 62% opacity.
-        public let greeting: String
+        package let greeting: String
         /// "Necə kömək edə bilərik?"
-        public let title: String
-        public let closeLabel: String
+        package let title: String
+        package let closeLabel: String
     }
 
     /// "Bizə mesaj göndərin" with the reply time under it.
-    public struct NewConversationCard: Sendable, Equatable {
-        public let title: String
-        public let subtitle: String?
-        public let accessibilityLabel: String
+    package struct NewConversationCard: Sendable, Equatable {
+        package let title: String
+        package let subtitle: String?
+        package let accessibilityLabel: String
     }
 
-    public struct RecentCard: Sendable, Equatable {
-        public let label: String
-        public let row: ConversationRow
+    package struct RecentCard: Sendable, Equatable {
+        package let label: String
+        package let row: ConversationRow
     }
 
-    public struct ChannelsCard: Sendable, Equatable {
+    package struct ChannelsCard: Sendable, Equatable {
         /// Seven 30 pt icons with their 8 pt gaps fit the card on the narrowest iPhone.
-        public static let iconsPerRow = 7
+        package static let iconsPerRow = 7
 
-        public let label: String
-        public let items: [ChannelItem]
+        package let label: String
+        package let items: [ChannelItem]
 
         /// The icons in rows that never run past the card (fixed rows where the layout cannot wrap by itself).
-        public func rows(of size: Int = iconsPerRow) -> [[ChannelItem]] {
+        package func rows(of size: Int = iconsPerRow) -> [[ChannelItem]] {
             let size = max(1, size)
             return stride(from: 0, to: items.count, by: size).map { Array(items[$0..<min($0 + size, items.count)]) }
         }
     }
 
-    public struct Tabs: Sendable, Equatable {
-        public let home: String
-        public let messages: String
+    package struct Tabs: Sendable, Equatable {
+        package let home: String
+        package let messages: String
         /// The red dot on "Mesajlar".
-        public let messagesUnread: Bool
-        public let messagesAccessibilityLabel: String
+        package let messagesUnread: Bool
+        package let messagesAccessibilityLabel: String
     }
 
-    public struct Failure: Sendable, Equatable {
-        public let message: String
-        public let retry: String
+    package struct Failure: Sendable, Equatable {
+        package let message: String
+        package let retry: String
     }
 
-    public let phase: Phase
-    public let header: Header
+    package let phase: Phase
+    package let header: Header
     /// nil hides a card.
-    public let newConversation: NewConversationCard?
-    public let recent: RecentCard?
-    public let channels: ChannelsCard?
-    public let tabs: Tabs
+    package let newConversation: NewConversationCard?
+    package let recent: RecentCard?
+    package let channels: ChannelsCard?
+    package let tabs: Tabs
     /// The thin yellow strip under the header.
-    public let offline: String?
-    public let failure: Failure?
+    package let offline: String?
+    package let failure: Failure?
 }
 
 /// A conversation in a list, and the "Son mesaj" card.
-public struct ConversationRow: Sendable, Equatable, Identifiable {
-    public let id: String
-    public let avatarUrl: URL?
+package struct ConversationRow: Sendable, Equatable, Identifiable {
+    package let id: String
+    package let avatarUrl: URL?
     /// Shown while the avatar loads, or when there is none.
-    public let initial: String
+    package let initial: String
     /// The last message, one line.
-    public let preview: String
+    package let preview: String
     /// "Leyla · 2 dəq"
-    public let detail: String
-    public let unread: Bool
-    public let accessibilityLabel: String
+    package let detail: String
+    package let unread: Bool
+    package let accessibilityLabel: String
 }
 
 /// The Messages tab.
-public struct MessagesScreen: Sendable, Equatable {
-    public let title: String
-    public let phase: HomeScreen.Phase
-    public let rows: [ConversationRow]
+package struct MessagesScreen: Sendable, Equatable {
+    package let title: String
+    package let phase: HomeScreen.Phase
+    package let rows: [ConversationRow]
     /// "Hələ söhbət yoxdur", when the list is loaded and empty.
-    public let empty: String?
-    public let newConversation: HomeScreen.NewConversationCard
-    public let offline: String?
-    public let failure: HomeScreen.Failure?
+    package let empty: String?
+    package let newConversation: HomeScreen.NewConversationCard
+    package let offline: String?
+    package let failure: HomeScreen.Failure?
 }
 
 /// What the screens are built from.
-public struct MessengerSnapshot: Sendable, Equatable {
-    public enum Load: Sendable, Equatable { case loading, loaded, failed }
+package struct MessengerSnapshot: Sendable, Equatable {
+    package enum Load: Sendable, Equatable { case loading, loaded, failed }
 
-    public var config: MessengerConfig?
-    public var configLoad = Load.loading
+    package var config: MessengerConfig?
+    package var configLoad = Load.loading
     /// Newest first.
-    public var conversations: [Conversation] = []
-    public var conversationsLoad = Load.loading
-    public var unreadTotal = 0
+    package var conversations: [Conversation] = []
+    package var conversationsLoad = Load.loading
+    package var unreadTotal = 0
     /// The logged-in user's name, for the greeting.
-    public var userName: String?
-    public var isOffline = false
+    package var userName: String?
+    package var isOffline = false
 
-    public init(config: MessengerConfig? = nil, conversations: [Conversation] = [], userName: String? = nil) {
+    package init(config: MessengerConfig? = nil, conversations: [Conversation] = [], userName: String? = nil) {
         self.config = config
         self.conversations = conversations
         self.userName = userName
     }
 }
 
-public struct HomePresenter: Sendable {
-    public let strings: ClomniStrings
+package struct HomePresenter: Sendable {
+    package let strings: ClomniStrings
     private let time: TimeText
     private let now: Date
 
-    public init(strings: ClomniStrings, timeZone: TimeZone = .current, now: Date) {
+    package init(strings: ClomniStrings, timeZone: TimeZone = .current, now: Date) {
         self.strings = strings
         time = TimeText(strings: strings, timeZone: timeZone)
         self.now = now
     }
 
-    public func home(_ snapshot: MessengerSnapshot) -> HomeScreen {
+    package func home(_ snapshot: MessengerSnapshot) -> HomeScreen {
         let config = snapshot.config
         let cards = config?.home.cards ?? [.recentConversation, .newConversation]
         let recent = cards.contains(.recentConversation) ? snapshot.conversations.lazy
@@ -154,7 +154,7 @@ public struct HomePresenter: Sendable {
             failure: failed ? failure : nil)
     }
 
-    public func messages(_ snapshot: MessengerSnapshot) -> MessagesScreen {
+    package func messages(_ snapshot: MessengerSnapshot) -> MessagesScreen {
         let rows = snapshot.conversations.compactMap { row($0, config: snapshot.config) }
         let failed = rows.isEmpty && snapshot.conversationsLoad == .failed
         let phase: HomeScreen.Phase = !rows.isEmpty || snapshot.conversationsLoad == .loaded ? .ready
@@ -168,7 +168,7 @@ public struct HomePresenter: Sendable {
     }
 
     /// A conversation with a last message; one without has nothing to show yet.
-    public func row(_ conversation: Conversation, config: MessengerConfig?) -> ConversationRow? {
+    package func row(_ conversation: Conversation, config: MessengerConfig?) -> ConversationRow? {
         guard let message = conversation.lastMessage else { return nil }
         let botName = config?.bot.name.isEmpty == false ? config?.bot.name : nil
         let name: String

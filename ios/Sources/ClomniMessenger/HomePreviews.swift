@@ -2,6 +2,7 @@
 import SwiftUI
 #if canImport(ClomniCore)
 import ClomniProtocol
+import ClomniCore
 #endif
 #if canImport(ClomniPresentation)
 import ClomniPresentation

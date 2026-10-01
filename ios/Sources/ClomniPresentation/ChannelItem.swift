@@ -2,18 +2,18 @@ import Foundation
 
 /// One icon of "Bizi izləyin": the platform's own mark, white on its colour, so it is recognised at a glance; email,
 /// phone and other links get an SF Symbol. Each has its name for VoiceOver.
-public struct ChannelItem: Sendable, Equatable, Identifiable {
-    public enum Glyph: Sendable, Equatable {
+package struct ChannelItem: Sendable, Equatable, Identifiable {
+    package enum Glyph: Sendable, Equatable {
         /// A brand mark in a 24×24 box (see `BrandMarks`), drawn white on `color`.
         case brand(SVGPath, color: RGBColor)
         /// An SF Symbol in the text colour on the theme's surface.
         case symbol(String)
     }
 
-    public let id: String
-    public let url: URL
-    public let glyph: Glyph
-    public let accessibilityLabel: String
+    package let id: String
+    package let url: URL
+    package let glyph: Glyph
+    package let accessibilityLabel: String
 
     init(type: String, url: URL, strings: ClomniStrings) {
         id = "\(type) \(url.absoluteString)"

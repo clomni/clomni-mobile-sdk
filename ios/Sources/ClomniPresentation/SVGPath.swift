@@ -4,35 +4,35 @@ import Foundation
 /// which any drawing API can replay (SwiftUI's `Path`, Compose's `Path`). Covers the whole path grammar: M L H V C S
 /// Q T A Z in both cases, implicit repeats, and the compact number and arc-flag forms icon sets use ("1.5.5",
 /// "a1 1 0 011 1").
-public struct SVGPath: Sendable, Equatable {
-    public struct Point: Sendable, Equatable {
-        public let x: Double
-        public let y: Double
+package struct SVGPath: Sendable, Equatable {
+    package struct Point: Sendable, Equatable {
+        package let x: Double
+        package let y: Double
 
-        public init(x: Double, y: Double) {
+        package init(x: Double, y: Double) {
             self.x = x
             self.y = y
         }
     }
 
-    public enum Segment: Sendable, Equatable {
+    package enum Segment: Sendable, Equatable {
         case move(Point)
         case line(Point)
         case cubic(Point, Point, Point)
         case close
     }
 
-    public let segments: [Segment]
+    package let segments: [Segment]
 
     /// nil when `data` is not a valid path.
-    public init?(_ data: String) {
+    package init?(_ data: String) {
         var parser = Parser(Array(data.utf8))
         guard let segments = parser.parse() else { return nil }
         self.segments = segments
     }
 
     /// The smallest box holding every end point and control point.
-    public var bounds: (minX: Double, minY: Double, maxX: Double, maxY: Double) {
+    package var bounds: (minX: Double, minY: Double, maxX: Double, maxY: Double) {
         var points: [Point] = []
         for segment in segments {
             switch segment {

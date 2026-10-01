@@ -14,7 +14,10 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '15.0'
   s.swift_versions = ['5.9']
 
-  # All four SwiftPM targets compile into this one module; system frameworks only.
+  # All four SwiftPM targets compile into this one module; system frameworks only. What is not the app's to use is
+  # declared `package` (SwiftPM shares it between its four modules); here the package is this module alone, so
+  # the app sees only the `public` facade.
   s.source_files = 'ios/Sources/**/*.swift'
+  s.pod_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => '$(inherited) -package-name ClomniMessenger' }
   s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers', 'UserNotifications'
 end

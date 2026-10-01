@@ -2,8 +2,8 @@ import Foundation
 
 /// The texts of the messenger. The config's `strings` (set in the panel, in the user's language) come first; the SDK
 /// carries az, en and ru for every key, so a minimal config still reads well.
-public struct ClomniStrings: Sendable, Equatable {
-    public enum Key: String, CaseIterable, Sendable {
+package struct ClomniStrings: Sendable, Equatable {
+    package enum Key: String, CaseIterable, Sendable {
         case today, yesterday, send
         case newConversation = "new_conversation"
         case greetingHello = "greeting_hello"
@@ -41,32 +41,32 @@ public struct ClomniStrings: Sendable, Equatable {
     }
 
     /// az, en or ru; anything else reads as az.
-    public let language: String
+    package let language: String
     private let overrides: [String: String]
 
-    public init(language: String?, overrides: [String: String] = [:]) {
+    package init(language: String?, overrides: [String: String] = [:]) {
         let code = (language ?? "az").lowercased().prefix(2)
         self.language = Self.fallbacks.keys.contains(String(code)) ? String(code) : "az"
         self.overrides = overrides
     }
 
-    public subscript(key: Key) -> String {
+    package subscript(key: Key) -> String {
         if let text = overrides[key.rawValue], !text.isEmpty { return text }
         return Self.fallbacks[language]?[key] ?? Self.fallbacks["az"]?[key] ?? key.rawValue
     }
 
     /// A text with one number in it ("%d dəq").
-    public func format(_ key: Key, _ number: Int) -> String {
+    package func format(_ key: Key, _ number: Int) -> String {
         self[key].replacingOccurrences(of: "%d", with: String(number))
     }
 
     /// A text with one word in it ("Növbəti iş saatı: %@").
-    public func format(_ key: Key, _ text: String) -> String {
+    package func format(_ key: Key, _ text: String) -> String {
         self[key].replacingOccurrences(of: "%@", with: text)
     }
 
     /// VoiceOver for a flow button: "Düymə, Azərbaycan dili, 1-ci, cəmi 3".
-    public func buttonPosition(title: String, index: Int, count: Int) -> String {
+    package func buttonPosition(title: String, index: Int, count: Int) -> String {
         switch language {
         case "en": return "\(self[.button]), \(title), \(index) of \(count)"
         case "ru": return "\(self[.button]), \(title), \(index) из \(count)"

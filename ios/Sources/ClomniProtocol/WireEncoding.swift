@@ -4,7 +4,7 @@ import Foundation
 // the next launch. Fields the parser skipped are not written; reading the result gives back an equal value.
 
 extension Message: Codable {
-    public init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         let json = try JSONValue(from: decoder)
         guard let message = ProtocolJSON.parseMessage(json) else {
             throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "not a message"))
@@ -12,7 +12,7 @@ extension Message: Codable {
         self = message
     }
 
-    public func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         try json.encode(to: encoder)
     }
 
@@ -27,12 +27,12 @@ extension Message: Codable {
 }
 
 extension ClientMessage: Codable {
-    public init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         let json = try JSONValue(from: decoder)
         self = try ClientMessage(JSONFields(json, path: "client message"))
     }
 
-    public func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         try json.encode(to: encoder)
     }
 }

@@ -3,7 +3,7 @@ import Foundation
 import ClomniProtocol
 #endif
 
-public enum ClomniError: Error, Equatable, Sendable {
+package enum ClomniError: Error, Equatable, Sendable {
     /// The server refused the request; `error` is its `Error` body when it sent one.
     case server(status: Int, error: ServerError?)
     /// No answer: offline, timeout, TLS.
@@ -16,20 +16,20 @@ public enum ClomniError: Error, Equatable, Sendable {
     case rejected(String)
 
     /// The server's error code, e.g. `already_answered`.
-    public var code: String? {
+    package var code: String? {
         if case .server(_, let error) = self { return error?.code }
         return nil
     }
 }
 
 /// Who the session is for. Kept with the session, so an expired refresh token can be replaced by a new login.
-public struct UserIdentity: Sendable, Equatable, Codable {
-    public var userId: String?
-    public var email: String?
-    public var phone: String?
-    public var name: String?
+package struct UserIdentity: Sendable, Equatable, Codable {
+    package var userId: String?
+    package var email: String?
+    package var phone: String?
+    package var name: String?
 
-    public init(userId: String? = nil, email: String? = nil, phone: String? = nil, name: String? = nil) {
+    package init(userId: String? = nil, email: String? = nil, phone: String? = nil, name: String? = nil) {
         self.userId = userId
         self.email = email
         self.phone = phone
@@ -318,7 +318,7 @@ actor ApiClient {
         var renewed = !renew
         while true {
             var request = HTTPRequest(method: method, url: url, headers: headers, body: body)
-            request.headers["X-Clomni-SDK"] = "ios/\(Clomni.version)"
+            request.headers["X-Clomni-SDK"] = "ios/\(SDKInfo.version)"
             request.headers["Accept"] = "application/json"
             if body != nil { request.headers["Content-Type"] = contentType }
             var token: String?
@@ -424,7 +424,7 @@ struct DeviceInfo: Equatable {
     var json: JSONValue {
         var fields: [String: JSONValue] = [
             "device_id": .string(deviceId), "platform": "ios", "os_version": .string(osVersion),
-            "app_version": .string(appVersion), "sdk_version": .string(Clomni.version), "locale": .string(locale),
+            "app_version": .string(appVersion), "sdk_version": .string(SDKInfo.version), "locale": .string(locale),
             "timezone": .string(timezone), "model": .string(model),
         ]
         fields["app_identifier"] = appIdentifier.map(JSONValue.string)

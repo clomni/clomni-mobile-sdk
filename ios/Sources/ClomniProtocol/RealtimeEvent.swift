@@ -1,13 +1,13 @@
 import Foundation
 
 /// A WebSocket frame `{event, data, ts}` (protocol/schema/event.json).
-public struct RealtimeEvent: Sendable, Equatable {
-    public let event: String
-    public let data: Payload
-    public let ts: Date?
+package struct RealtimeEvent: Sendable, Equatable {
+    package let event: String
+    package let data: Payload
+    package let ts: Date?
 
     /// An unknown event, or a known one whose data is broken, is `.unknown` and is ignored by the client.
-    public enum Payload: Sendable, Equatable {
+    package enum Payload: Sendable, Equatable {
         case ready(userId: String, heartbeatSec: Int)
         case messageCreated(Message)
         case messageUpdated(Message)
@@ -19,24 +19,24 @@ public struct RealtimeEvent: Sendable, Equatable {
         case unknown(name: String)
     }
 
-    public struct ConversationUpdate: Sendable, Equatable {
-        public let id: String
-        public let status: ConversationStatus
+    package struct ConversationUpdate: Sendable, Equatable {
+        package let id: String
+        package let status: ConversationStatus
         /// nil while no operator has the conversation.
-        public let assignee: Assignee?
-        public let unreadCount: Int?
+        package let assignee: Assignee?
+        package let unreadCount: Int?
     }
 }
 
 /// bot → queued → open → closed; a closed conversation goes back to bot when the user writes again.
-public enum ConversationStatus: String, Sendable, Equatable {
+package enum ConversationStatus: String, Sendable, Equatable {
     case bot, queued, open, closed, unknown
 }
 
-public struct Assignee: Sendable, Equatable {
-    public let name: String
-    public let avatarUrl: URL?
-    public let online: Bool?
+package struct Assignee: Sendable, Equatable {
+    package let name: String
+    package let avatarUrl: URL?
+    package let online: Bool?
 }
 
 extension RealtimeEvent {

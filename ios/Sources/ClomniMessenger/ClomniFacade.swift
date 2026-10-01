@@ -21,8 +21,8 @@ extension Clomni {
     }
 
     /// `userHash` = hex(HMAC-SHA256(identity_secret, user_id)), from the app's server.
-    public static func loginUser(_ user: UserIdentity, userHash: String?) {
-        MessengerRuntime.shared.login { try await $0.loginUser(user, userHash: userHash) }
+    public static func loginUser(_ user: ClomniUser, userHash: String?) {
+        MessengerRuntime.shared.login { try await $0.loginUser(user.identity, userHash: userHash) }
     }
 
     public static func loginUnidentifiedUser() {

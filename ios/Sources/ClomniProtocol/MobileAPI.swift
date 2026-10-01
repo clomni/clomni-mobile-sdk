@@ -4,83 +4,83 @@ import Foundation
 // rather than failing the whole page.
 
 /// POST /mobile/sessions and /mobile/sessions/refresh.
-public struct MobileSession: Sendable, Equatable {
-    public let sessionToken: String
-    public let expiresAt: Date
+package struct MobileSession: Sendable, Equatable {
+    package let sessionToken: String
+    package let expiresAt: Date
     /// Single-use: a refresh answers with the next one.
-    public let refreshToken: String
-    public let userId: String
-    public let anonymous: Bool
-    public let language: String?
-    public let wsUrl: URL
+    package let refreshToken: String
+    package let userId: String
+    package let anonymous: Bool
+    package let language: String?
+    package let wsUrl: URL
 }
 
-public struct Conversation: Sendable, Equatable, Identifiable {
-    public let id: String
-    public var status: ConversationStatus
-    public var assignee: Assignee?
-    public var unreadCount: Int
-    public var lastMessage: Message?
+package struct Conversation: Sendable, Equatable, Identifiable {
+    package let id: String
+    package var status: ConversationStatus
+    package var assignee: Assignee?
+    package var unreadCount: Int
+    package var lastMessage: Message?
     /// The flow step the conversation waits on.
-    public var flow: FlowStep?
-    public let openedFrom: String?
-    public let createdAt: Date
+    package var flow: FlowStep?
+    package let openedFrom: String?
+    package let createdAt: Date
 
-    public struct FlowStep: Sendable, Equatable {
-        public let flowId: String
-        public let nodeId: String
+    package struct FlowStep: Sendable, Equatable {
+        package let flowId: String
+        package let nodeId: String
     }
 }
 
-public struct ConversationPage: Sendable, Equatable {
-    public let conversations: [Conversation]
-    public let nextCursor: String?
+package struct ConversationPage: Sendable, Equatable {
+    package let conversations: [Conversation]
+    package let nextCursor: String?
 }
 
 /// A page of history, sorted by `seq`.
-public struct MessagePage: Sendable, Equatable {
-    public let messages: [Message]
-    public let hasMore: Bool
+package struct MessagePage: Sendable, Equatable {
+    package let messages: [Message]
+    package let hasMore: Bool
 }
 
 /// POST /conversations: the new conversation with its first bot messages.
-public struct ConversationWithMessages: Sendable, Equatable {
-    public let conversation: Conversation
-    public let messages: [Message]
+package struct ConversationWithMessages: Sendable, Equatable {
+    package let conversation: Conversation
+    package let messages: [Message]
 }
 
 /// POST /flows/trigger. `conversation` is nil when no flow is bound to the event.
-public struct FlowTriggerResult: Sendable, Equatable {
-    public let started: Bool
-    public let conversation: ConversationWithMessages?
+package struct FlowTriggerResult: Sendable, Equatable {
+    package let started: Bool
+    package let conversation: ConversationWithMessages?
 }
 
-public struct MobileUser: Sendable, Equatable {
-    public let id: String
-    public let anonymous: Bool
-    public let name: String?
-    public let email: String?
-    public let phone: String?
-    public let language: String?
-    public let customAttributes: [String: JSONValue]
+package struct MobileUser: Sendable, Equatable {
+    package let id: String
+    package let anonymous: Bool
+    package let name: String?
+    package let email: String?
+    package let phone: String?
+    package let language: String?
+    package let customAttributes: [String: JSONValue]
 }
 
 /// POST /uploads.
-public struct UploadedFile: Sendable, Equatable {
-    public let uploadId: String
-    public let url: URL
-    public let name: String
-    public let size: Int
-    public let mime: String
+package struct UploadedFile: Sendable, Equatable {
+    package let uploadId: String
+    package let url: URL
+    package let name: String
+    package let size: Int
+    package let mime: String
 }
 
 /// The `error` object every failed request carries. New codes may appear within v1; a client goes by the status then.
-public struct ServerError: Sendable, Equatable {
-    public let code: String
-    public let message: String
-    public let requestId: String?
+package struct ServerError: Sendable, Equatable {
+    package let code: String
+    package let message: String
+    package let requestId: String?
     /// `validation_failed`: field → reason.
-    public let fields: [String: String]
+    package let fields: [String: String]
 }
 
 // MARK: - Parsing
@@ -192,36 +192,36 @@ extension ServerError {
 // Kept on disk by the SDK (session in the Keychain, conversations in its cache) in the wire format.
 
 extension MobileSession: Codable {
-    public init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         self = try MobileSession(JSONFields(JSONValue(from: decoder), path: "session"))
     }
 
-    public func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         try json.encode(to: encoder)
     }
 }
 
 extension Conversation: Codable {
-    public init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         self = try Conversation(JSONFields(JSONValue(from: decoder), path: "conversation"))
     }
 
-    public func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         try json.encode(to: encoder)
     }
 }
 
 extension ProtocolJSON {
-    public static func parseSession(_ data: Data) -> MobileSession? {
+    package static func parseSession(_ data: Data) -> MobileSession? {
         decode(data, "session") { try MobileSession($0) }
     }
 
-    public static func parseConversation(_ data: Data) -> Conversation? {
+    package static func parseConversation(_ data: Data) -> Conversation? {
         decode(data, "conversation") { try Conversation($0) }
     }
 
     /// GET /conversations.
-    public static func parseConversationPage(_ data: Data) -> ConversationPage? {
+    package static func parseConversationPage(_ data: Data) -> ConversationPage? {
         decode(data, "conversations") {
             ConversationPage(conversations: try $0.items("conversations") { try Conversation($0) },
                              nextCursor: $0.optionalString("next_cursor"))
@@ -229,35 +229,35 @@ extension ProtocolJSON {
     }
 
     /// GET /conversations/{id}/messages.
-    public static func parseMessagePage(_ data: Data) -> MessagePage? {
+    package static func parseMessagePage(_ data: Data) -> MessagePage? {
         decode(data, "messages") {
             MessagePage(messages: try $0.items("messages") { try Message($0) }, hasMore: $0.optionalBool("has_more") ?? false)
         }
     }
 
     /// POST /conversations.
-    public static func parseConversationWithMessages(_ data: Data) -> ConversationWithMessages? {
+    package static func parseConversationWithMessages(_ data: Data) -> ConversationWithMessages? {
         decode(data, "conversation") { try ConversationWithMessages($0) }
     }
 
     /// POST /flows/trigger.
-    public static func parseFlowTrigger(_ data: Data) -> FlowTriggerResult? {
+    package static func parseFlowTrigger(_ data: Data) -> FlowTriggerResult? {
         decode(data, "flow trigger") {
             FlowTriggerResult(started: try $0.bool("started"),
                               conversation: try $0.optionalObject("conversation").map { try ConversationWithMessages($0) })
         }
     }
 
-    public static func parseUser(_ data: Data) -> MobileUser? {
+    package static func parseUser(_ data: Data) -> MobileUser? {
         decode(data, "user") { try MobileUser($0) }
     }
 
-    public static func parseUpload(_ data: Data) -> UploadedFile? {
+    package static func parseUpload(_ data: Data) -> UploadedFile? {
         decode(data, "upload") { try UploadedFile($0) }
     }
 
     /// nil for a body that is not an `Error` (a proxy's HTML page, say); the status then says what happened.
-    public static func parseServerError(_ data: Data) -> ServerError? {
+    package static func parseServerError(_ data: Data) -> ServerError? {
         guard let json = decode(data) else { return nil }
         return try? ServerError(JSONFields(json, path: "error"))
     }

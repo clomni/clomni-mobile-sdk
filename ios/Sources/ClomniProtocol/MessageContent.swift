@@ -2,7 +2,7 @@ import Foundation
 
 /// The content of a message, by its `type`. The payload types are nested here rather than top level, because
 /// `Button`, `Form` and `Image` would otherwise clash with SwiftUI's in every app that imports the SDK.
-public enum MessageContent: Sendable, Equatable {
+package enum MessageContent: Sendable, Equatable {
     case text(String)
     case quickReplies(QuickReplies)
     case image(Image)
@@ -17,39 +17,39 @@ public enum MessageContent: Sendable, Equatable {
 
 extension MessageContent {
     /// Flow buttons. Titles arrive whole, however long; the UI wraps a long one to two lines.
-    public struct QuickReplies: Sendable, Equatable {
-        public let text: String?
-        public let buttons: [Button]
-        public let layout: QuickRepliesLayout
+    package struct QuickReplies: Sendable, Equatable {
+        package let text: String?
+        package let buttons: [Button]
+        package let layout: QuickRepliesLayout
         /// The composer is hidden while this message waits for a button.
-        public let inputDisabled: Bool
+        package let inputDisabled: Bool
         /// A back button follows the others; it sends `ClientMessage.Content.back(replyTo:)`.
-        public let allowBack: Bool
+        package let allowBack: Bool
     }
 
-    public struct Button: Sendable, Equatable, Identifiable {
-        public let id: String
-        public let title: String
+    package struct Button: Sendable, Equatable, Identifiable {
+        package let id: String
+        package let title: String
         /// Shown before the title, e.g. a flag emoji.
-        public let icon: String?
+        package let icon: String?
         /// Opaque: sent back as is in the button reply.
-        public let payload: String
+        package let payload: String
     }
 
-    public enum QuickRepliesLayout: String, Sendable, Equatable {
+    package enum QuickRepliesLayout: String, Sendable, Equatable {
         case vertical
         case chips
     }
 
-    public struct Image: Sendable, Equatable {
-        public let url: URL
-        public let thumbUrl: URL?
+    package struct Image: Sendable, Equatable {
+        package let url: URL
+        package let thumbUrl: URL?
         /// Known dimensions reserve the bubble's space before the image loads.
-        public let width: Int?
-        public let height: Int?
-        public let caption: String?
+        package let width: Int?
+        package let height: Int?
+        package let caption: String?
 
-        public init(url: URL, thumbUrl: URL? = nil, width: Int? = nil, height: Int? = nil, caption: String? = nil) {
+        package init(url: URL, thumbUrl: URL? = nil, width: Int? = nil, height: Int? = nil, caption: String? = nil) {
             self.url = url
             self.thumbUrl = thumbUrl
             self.width = width
@@ -58,14 +58,14 @@ extension MessageContent {
         }
     }
 
-    public struct File: Sendable, Equatable {
-        public let url: URL
-        public let name: String
+    package struct File: Sendable, Equatable {
+        package let url: URL
+        package let name: String
         /// Bytes.
-        public let size: Int
-        public let mime: String
+        package let size: Int
+        package let mime: String
 
-        public init(url: URL, name: String, size: Int, mime: String) {
+        package init(url: URL, name: String, size: Int, mime: String) {
             self.url = url
             self.name = name
             self.size = size
@@ -73,48 +73,48 @@ extension MessageContent {
         }
     }
 
-    public struct Form: Sendable, Equatable {
-        public let text: String?
-        public let formId: String
-        public let fields: [FormField]
-        public let submitTitle: String
+    package struct Form: Sendable, Equatable {
+        package let text: String?
+        package let formId: String
+        package let fields: [FormField]
+        package let submitTitle: String
         /// The values once sent; the form is then read-only.
-        public let submitted: [String: JSONValue]?
+        package let submitted: [String: JSONValue]?
     }
 
-    public struct FormField: Sendable, Equatable {
-        public let key: String
-        public let type: FormFieldType
-        public let label: String
-        public let required: Bool
-        public let maxLength: Int?
+    package struct FormField: Sendable, Equatable {
+        package let key: String
+        package let type: FormFieldType
+        package let label: String
+        package let required: Bool
+        package let maxLength: Int?
         /// ISO 3166 code for a phone field, e.g. "AZ".
-        public let defaultCountry: String?
-        public let placeholder: String?
+        package let defaultCountry: String?
+        package let placeholder: String?
         /// The choices of a select field (at least one); empty for the other types.
-        public let options: [Option]
+        package let options: [Option]
 
-        public struct Option: Sendable, Equatable {
-            public let value: String
-            public let label: String
+        package struct Option: Sendable, Equatable {
+            package let value: String
+            package let label: String
         }
     }
 
     /// An unknown field type reads as `.text`.
-    public enum FormFieldType: String, Sendable, Equatable {
+    package enum FormFieldType: String, Sendable, Equatable {
         case text, textarea, phone, email, number, select, date
     }
 
     /// Centred grey text without a bubble.
-    public struct System: Sendable, Equatable {
-        public let event: SystemEvent
-        public let text: String
+    package struct System: Sendable, Equatable {
+        package let event: SystemEvent
+        package let text: String
         /// Queue position, for `.waitingInQueue`.
-        public let position: Int?
+        package let position: Int?
     }
 
     /// An unknown event is shown by its text alone.
-    public enum SystemEvent: Sendable, Equatable {
+    package enum SystemEvent: Sendable, Equatable {
         case operatorJoined
         case assignedToTeam
         case conversationClosed
@@ -134,36 +134,36 @@ extension MessageContent {
         }
     }
 
-    public struct CardItem: Sendable, Equatable {
-        public let imageUrl: URL?
-        public let title: String
-        public let subtitle: String?
-        public let buttons: [CardButton]
+    package struct CardItem: Sendable, Equatable {
+        package let imageUrl: URL?
+        package let title: String
+        package let subtitle: String?
+        package let buttons: [CardButton]
     }
 
     /// Either sends `payload` back as a button reply or opens `url`.
-    public struct CardButton: Sendable, Equatable, Identifiable {
-        public let id: String
-        public let title: String
-        public let payload: String?
-        public let url: URL?
+    package struct CardButton: Sendable, Equatable, Identifiable {
+        package let id: String
+        package let title: String
+        package let payload: String?
+        package let url: URL?
     }
 
-    public struct Rating: Sendable, Equatable {
-        public let text: String
-        public let scale: RatingScale
-        public let comment: RatingComment
-        public let submitted: [String: JSONValue]?
+    package struct Rating: Sendable, Equatable {
+        package let text: String
+        package let scale: RatingScale
+        package let comment: RatingComment
+        package let submitted: [String: JSONValue]?
     }
 
     /// An unknown scale cannot be drawn, so it turns the whole message into `.unknown`.
-    public enum RatingScale: String, Sendable, Equatable {
+    package enum RatingScale: String, Sendable, Equatable {
         case emoji5 = "emoji_5"
         case star5 = "star_5"
     }
 
     /// Whether the rating asks for a comment. An unknown value reads as `.optional`.
-    public enum RatingComment: String, Sendable, Equatable {
+    package enum RatingComment: String, Sendable, Equatable {
         case hidden = "none"
         case optional
         case required
@@ -175,7 +175,7 @@ extension MessageContent {
 extension MessageContent {
     /// Reads `json` as the content of a message of `type`. Never fails: an unknown type or broken content gives
     /// `.unknown`, with a line to `ProtocolJSON.logHandler`.
-    public init(type: String, json: JSONValue) {
+    package init(type: String, json: JSONValue) {
         self.init(type: type, json: json, messageId: nil)
     }
 

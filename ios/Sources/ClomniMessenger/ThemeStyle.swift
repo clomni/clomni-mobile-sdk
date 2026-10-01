@@ -1,6 +1,10 @@
 // The UI is iOS only; Linux has neither SwiftUI nor UIKit, and the macOS test run skips these files.
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
+#if canImport(ClomniCore)
+import ClomniProtocol
+import ClomniCore
+#endif
 #if canImport(ClomniPresentation)
 import ClomniPresentation
 #endif
