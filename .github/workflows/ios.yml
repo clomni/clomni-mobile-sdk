@@ -73,6 +73,10 @@ jobs:
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO
 
+      # DoD 11: the SDK as a Release arm64 framework is at most 3 MB; the step prints the sizes.
+      - name: Framework size
+        run: scripts/ios-framework-size.sh
+
       # CocoaPods builds every target as one module; the podspec's -package-name keeps it building.
       - name: pod lib lint
         run: pod lib lint ClomniMessenger.podspec --platforms=ios
