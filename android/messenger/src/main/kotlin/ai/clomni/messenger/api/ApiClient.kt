@@ -352,7 +352,12 @@ internal class ApiClient(
         private const val RENEW_BEFORE_MS = 60_000L
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
+        /**
+         * OkHttp's own repeat after a dropped connection is off: the SDK's rules above (and the outbox's
+         * `client_id`) are the only repeats, so a `POST /conversations` or `/flows/trigger` is never made twice.
+         */
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
+            .retryOnConnectionFailure(false)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)

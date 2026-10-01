@@ -18,7 +18,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -53,8 +52,8 @@ class ClomniEngineTest {
     ) {
         val protocol = ProtocolJson()
         val credentials = Credentials(vault, protocol)
-        // OkHttp would otherwise repeat a request once by itself on a dropped connection, hiding the outbox's work.
-        private val http = OkHttpClient.Builder().retryOnConnectionFailure(false).build()
+        // The SDK's own client: OkHttp does not repeat a request by itself, so every attempt is the outbox's.
+        private val http = ApiClient.defaultClient()
         private val api = ApiClient(
             ApiConfiguration(FakeMobileServer.APP_ID, FakeMobileServer.API_KEY, fake.baseUrl, "1.0.0"),
             credentials,
