@@ -81,7 +81,8 @@ internal class HomeController(
             publish(state()) {
                 snapshot = snapshot.copy(
                     configLoad = if (config != null) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
-                    conversationsLoad = if (conversations) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
+                    conversationsLoad =
+                        if (conversations) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
                 )
             }
         }
@@ -131,7 +132,11 @@ internal class HomeController(
     /** Hands [state] to the UI thread, applies [update] there, redraws, then runs [after]. */
     private fun publish(state: State, after: () -> Unit = {}, update: () -> Unit = {}) {
         main.execute {
-            snapshot = snapshot.copy(config = state.config, conversations = state.conversations, unreadTotal = state.unreadTotal)
+            snapshot = snapshot.copy(
+                config = state.config,
+                conversations = state.conversations,
+                unreadTotal = state.unreadTotal,
+            )
             update()
             render()
             after()

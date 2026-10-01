@@ -37,7 +37,8 @@ internal class TimeText(private val strings: ClomniStrings, private val timeZone
     /** 24-hour "10:30". */
     fun clock(date: Long): String {
         val calendar = calendar(date)
-        return String.format(Locale.ROOT, "%02d:%02d", calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE))
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        return String.format(Locale.ROOT, "%02d:%02d", hour, calendar.get(Calendar.MINUTE))
     }
 
     private fun dayAndMonth(date: Long, withYear: Boolean): String {

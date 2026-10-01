@@ -14,7 +14,9 @@ internal data class ChannelItem(
     val tint: Tint,
     val accessibilityLabel: String,
 ) {
-    enum class Icon { INSTAGRAM, WHATSAPP, TELEGRAM, FACEBOOK, MESSENGER, LINKEDIN, YOUTUBE, TIKTOK, X, EMAIL, PHONE, LINK }
+    enum class Icon {
+        INSTAGRAM, WHATSAPP, TELEGRAM, FACEBOOK, MESSENGER, LINKEDIN, YOUTUBE, TIKTOK, X, EMAIL, PHONE, LINK
+    }
 
     sealed interface Tint {
         /** The platform's colour behind a white mark. */

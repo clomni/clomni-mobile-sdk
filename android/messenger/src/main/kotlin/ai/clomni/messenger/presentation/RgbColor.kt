@@ -28,7 +28,8 @@ internal class RgbColor(red: Double, green: Double, blue: Double) {
     /** WCAG 2 relative luminance. */
     val luminance: Double
         get() {
-            fun linear(channel: Double) = if (channel <= 0.04045) channel / 12.92 else ((channel + 0.055) / 1.055).pow(2.4)
+            fun linear(channel: Double) =
+                if (channel <= 0.04045) channel / 12.92 else ((channel + 0.055) / 1.055).pow(2.4)
             return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
         }
 
@@ -86,7 +87,8 @@ internal class RgbColor(red: Double, green: Double, blue: Double) {
         fun parse(hex: String): RgbColor? {
             if (hex.length != 7 || hex[0] != '#' || !hex.substring(1).all { it in HEX_DIGITS }) return null
             val value = hex.substring(1).toInt(16)
-            return RgbColor(((value shr 16) and 0xFF) / 255.0, ((value shr 8) and 0xFF) / 255.0, (value and 0xFF) / 255.0)
+            fun channel(shift: Int) = ((value shr shift) and 0xFF) / 255.0
+            return RgbColor(channel(16), channel(8), channel(0))
         }
 
         fun fromHsl(hue: Double, saturation: Double, lightness: Double): RgbColor {

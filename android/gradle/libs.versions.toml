@@ -9,6 +9,12 @@ kotlinStdlib = "1.9.25"
 kotlinxSerialization = "1.6.3"
 # OkHttp 5 is built with Kotlin 2; 4.12 (Kotlin 1.8, Okio 3.6) keeps the Kotlin 1.8+ promise.
 okhttp = "4.12.0"
+# Compose 1.8 (BOM 2025.07.00) depends on kotlin-stdlib 1.9.24; Compose 1.9 needs 2.0.
+composeBom = "2025.07.00"
+# Coil 2.7 depends on kotlin-stdlib 2.0; 2.6.0 on 1.9.22 (and the same OkHttp 4.12).
+coil = "2.6.0"
+# 2.0.0-alpha02: the last line on Java 17 that renders API 36 (layoutlib 15.2) with Compose 1.8.3; test-only.
+paparazzi = "2.0.0-alpha02"
 kover = "0.9.9"
 junit = "4.13.2"
 
@@ -16,10 +22,16 @@ junit = "4.13.2"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

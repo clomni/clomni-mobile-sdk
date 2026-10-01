@@ -5,7 +5,9 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kover)
+    alias(libs.plugins.paparazzi)
 }
 
 group = "ai.clomni"
@@ -26,7 +28,11 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
+
+    // Library resources merge into the app's: ours all start with clomni_.
+    resourcePrefix = "clomni_"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -55,6 +61,10 @@ kotlin {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

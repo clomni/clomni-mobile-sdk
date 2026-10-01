@@ -104,7 +104,11 @@ internal data class MessengerSnapshot(
     enum class Load { LOADING, LOADED, FAILED }
 }
 
-internal class HomePresenter(val strings: ClomniStrings, timeZone: TimeZone = TimeZone.getDefault(), private val now: Long) {
+internal class HomePresenter(
+    val strings: ClomniStrings,
+    timeZone: TimeZone = TimeZone.getDefault(),
+    private val now: Long,
+) {
     private val time = TimeText(strings, timeZone)
 
     fun home(snapshot: MessengerSnapshot): HomeScreen {
@@ -194,7 +198,11 @@ internal class HomePresenter(val strings: ClomniStrings, timeZone: TimeZone = Ti
             brandName = brand,
             logoUrl = config?.brand?.logoUrl,
             brandInitial = brand.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
-            teamAvatars = if (config?.home?.showTeamAvatars == false) emptyList() else config?.team?.avatars.orEmpty().take(3),
+            teamAvatars = if (config?.home?.showTeamAvatars == false) {
+                emptyList()
+            } else {
+                config?.team?.avatars.orEmpty().take(3)
+            },
             greeting = if (firstName != null) "$hello, $firstName 👋" else "$hello 👋",
             title = config?.home?.greetingTitle ?: strings[Key.GREETING_TITLE],
             closeLabel = strings[Key.CLOSE],
