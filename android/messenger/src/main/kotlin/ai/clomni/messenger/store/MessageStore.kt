@@ -223,8 +223,8 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         File(dir, MESSAGES_DIR).listFiles().orEmpty().forEach { file ->
             val page = JsonFile(file).read() as? JsonObject ?: return@forEach
             val conversationId = (page["conversation_id"] as? JsonPrimitive)?.contentOrNull ?: return@forEach
-            (page["messages"] as? JsonArray).orEmpty().forEach { element ->
-                val message = protocol.parseMessage(element) ?: return@forEach
+            (page["messages"] as? JsonArray).orEmpty().forEach messages@{ element ->
+                val message = protocol.parseMessage(element) ?: return@messages
                 messages.getOrPut(conversationId) { LinkedHashMap() }[message.id] = message
             }
             (page["synced_seq"] as? JsonPrimitive)?.longOrNull?.let { synced[conversationId] = it }

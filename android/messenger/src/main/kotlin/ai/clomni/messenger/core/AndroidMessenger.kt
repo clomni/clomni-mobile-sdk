@@ -6,6 +6,7 @@ import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.KeystoreSecureStore
+import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.store.MessageStore
 import android.app.Activity
@@ -13,10 +14,13 @@ import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.Executors
 
 /** Builds the engine inside an app: Keystore-backed credentials, files in `noBackupFilesDir`, socket by foreground. */
 internal object AndroidMessenger {
@@ -41,6 +45,16 @@ internal object AndroidMessenger {
             if (foreground) engine.applicationWillEnterForeground() else engine.applicationDidEnterBackground()
         }
         return engine
+    }
+
+    /**
+     * What `ClomniMessenger` (the Compose screen) is built on: the engine's state on the UI thread, waits on a worker
+     * of their own. [language] null follows the config; [userName] is for the greeting.
+     */
+    fun homeController(engine: ClomniEngine, language: String?, userName: String?): HomeController {
+        val ui = Handler(Looper.getMainLooper())
+        val worker = Executors.newSingleThreadExecutor { Thread(it, "clomni-home").apply { isDaemon = true } }
+        return HomeController(engine, language, userName, worker, main = { ui.post(it) })
     }
 
     fun deviceInfo(context: Context, deviceId: String): DeviceInfo = DeviceInfo(
