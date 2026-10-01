@@ -53,7 +53,8 @@ class ClomniEngineTest {
     ) {
         val protocol = ProtocolJson()
         val credentials = Credentials(vault, protocol)
-        private val http = OkHttpClient()
+        // OkHttp would otherwise repeat a request once by itself on a dropped connection, hiding the outbox's work.
+        private val http = OkHttpClient.Builder().retryOnConnectionFailure(false).build()
         private val api = ApiClient(
             ApiConfiguration(FakeMobileServer.APP_ID, FakeMobileServer.API_KEY, fake.baseUrl, "1.0.0"),
             credentials,
@@ -212,8 +213,7 @@ class ClomniEngineTest {
         val sent = phone.engine.sendText("Salam", conversation).await()
         eventually("the message fails") { phone.engine.pending(conversation).singleOrNull()?.state == PendingMessage.State.FAILED }
         assertEquals(3, phone.engine.pending(conversation).single().attempts)
-        // OkHttp may repeat a request once by itself on a pooled connection that turned out dead: hence at least.
-        assertTrue(sends(conversation) >= 3)
+        assertEquals(3, sends(conversation))
         fake.offline = false
         // A failed message does not go by itself, not even after the connection is back.
         phone.engine.applicationWillEnterForeground().await()
