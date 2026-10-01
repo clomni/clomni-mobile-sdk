@@ -6,6 +6,7 @@ import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.samePerson
+import ai.clomni.messenger.presentation.MessengerDataSource
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
@@ -55,7 +56,7 @@ internal class ClomniEngine(
     timing: Timing = Timing(),
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
-) : RealtimeClient.Listener {
+) : RealtimeClient.Listener, MessengerDataSource {
 
     data class Timing(
         val realtime: RealtimeClient.Timing = RealtimeClient.Timing(),
@@ -87,7 +88,7 @@ internal class ClomniEngine(
         }
     }
 
-    fun setChangeHandler(handler: (ClomniChange) -> Unit) {
+    override fun setChangeHandler(handler: (ClomniChange) -> Unit) {
         executor.execute { onChange = handler }
     }
 
@@ -170,11 +171,11 @@ internal class ClomniEngine(
 
     // Reading (from the store, at once)
 
-    val config: MessengerConfig? get() = store.config
+    override val config: MessengerConfig? get() = store.config
 
-    val unreadTotal: Int get() = store.unreadTotal
+    override val unreadTotal: Int get() = store.unreadTotal
 
-    fun conversations(): List<Conversation> = store.conversations()
+    override fun conversations(): List<Conversation> = store.conversations()
 
     fun messages(conversationId: String): List<Message> = store.messages(conversationId)
 
@@ -190,15 +191,15 @@ internal class ClomniEngine(
     // Loading
 
     /** The config kept from last time, checked with its ETag. */
-    fun refreshConfig(language: String? = null): Future<MessengerConfig?> = submit {
+    override fun refreshConfig(language: String?): Future<MessengerConfig?> = submit {
         loadConfig(language)
         store.config
     }
 
-    fun refreshConversations(): Future<Unit> = submit { loadConversations() }
+    override fun refreshConversations(): Future<Unit> = submit { loadConversations() }
 
     /** Starts the inbox's new-conversation flow; its first messages come with it. */
-    fun startConversation(openedFrom: String?): Future<Conversation> = submit {
+    override fun startConversation(openedFrom: String?): Future<Conversation> = submit {
         val created = authed { api.createConversation(openedFrom) }
         apply(created)
         created.conversation
