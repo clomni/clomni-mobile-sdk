@@ -288,9 +288,13 @@ actor ApiClient {
         _ = try await request("DELETE", "/devices/\(escape(token))")
     }
 
-    func triggerFlow(event: String, data: [String: JSONValue], openMessenger: Bool) async throws -> FlowTriggerResult {
-        let body: JSONValue = ["event": .string(event), "data": .object(data), "open_messenger": .bool(openMessenger)]
-        return try read(try await request("POST", "/flows/trigger", json: body), ProtocolJSON.parseFlowTrigger)
+    /// `openedFrom` (additive, like POST /conversations): where in the app the flow was started.
+    func triggerFlow(event: String, data: [String: JSONValue], openMessenger: Bool,
+                     openedFrom: String? = nil) async throws -> FlowTriggerResult {
+        var body: [String: JSONValue] = ["event": .string(event), "data": .object(data),
+                                         "open_messenger": .bool(openMessenger)]
+        body["opened_from"] = openedFrom.map(JSONValue.string)
+        return try read(try await request("POST", "/flows/trigger", json: .object(body)), ProtocolJSON.parseFlowTrigger)
     }
 
     func track(event: String, data: [String: JSONValue]) async throws {

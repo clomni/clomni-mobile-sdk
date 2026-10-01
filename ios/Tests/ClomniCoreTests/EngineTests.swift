@@ -128,7 +128,9 @@ final class EngineTests: EngineTestCase {
     func testAFlowStartedByTheApp() async throws {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()
-        let started = try await phone.engine.startFlow("payment_failed", data: ["order_id": "A-1042"], openMessenger: true)
+        let started = try await phone.engine.startFlow("payment_failed", data: ["order_id": "A-1042"], openMessenger: true,
+                                                       openedFrom: "checkout")
+        XCTAssertEqual(body(server.requests("POST", "/flows/trigger").last)?["opened_from"], "checkout")
         let id = try XCTUnwrap(started?.id)
         let messages = await phone.messages(id)
         XCTAssertEqual(messages.count, 1)

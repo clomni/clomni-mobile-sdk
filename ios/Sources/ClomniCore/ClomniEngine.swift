@@ -597,8 +597,10 @@ public actor ClomniEngine {
     }
 
     /// `Clomni.startFlow`: the flow bound to an app event, in a new conversation; nil when none is bound.
-    public func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool) async throws -> Conversation? {
-        let result = try await api.triggerFlow(event: event, data: data, openMessenger: openMessenger)
+    public func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
+                          openedFrom: String? = nil) async throws -> Conversation? {
+        let result = try await api.triggerFlow(event: event, data: data, openMessenger: openMessenger,
+                                               openedFrom: openedFrom)
         guard let created = result.conversation else { return nil }
         apply(created)
         return created.conversation

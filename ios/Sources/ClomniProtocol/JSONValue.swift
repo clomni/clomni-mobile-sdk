@@ -47,6 +47,39 @@ public enum JSONValue: Sendable, Equatable {
     }
 }
 
+extension JSONValue {
+    /// An app's own values as JSON (`Clomni.startFlow(event, data: ["ride_id": ride.id])`): strings, numbers,
+    /// booleans, arrays, string-keyed dictionaries and nil. nil for anything else, such as a Date.
+    public init?(any value: Any?) {
+        guard let value else { self = .null; return }
+        switch value {
+        case let json as JSONValue: self = json
+        case let string as String: self = .string(string)
+        case let flag as Bool: self = .bool(flag)
+        case let number as Int: self = .number(Double(number))
+        case let number as Double: self = .number(number)
+        case let number as Float: self = .number(Double(number))
+        case is NSNull: self = .null
+        case let array as [Any?]:
+            var items: [JSONValue] = []
+            for item in array {
+                guard let json = JSONValue(any: item) else { return nil }
+                items.append(json)
+            }
+            self = .array(items)
+        case let dictionary as [String: Any?]:
+            var fields: [String: JSONValue] = [:]
+            for (key, item) in dictionary {
+                guard let json = JSONValue(any: item) else { return nil }
+                fields[key] = json
+            }
+            self = .object(fields)
+        default:
+            return nil
+        }
+    }
+}
+
 extension JSONValue: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()

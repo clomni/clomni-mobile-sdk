@@ -151,6 +151,19 @@ final class JSONValueTests: XCTestCase {
         XCTAssertEqual(String(decoding: try encoder.encode(value), as: UTF8.self), #"{"a":5,"b":2.5,"c":null,"d":null}"#)
     }
 
+    func testAppValues() {
+        let nothing: String? = nil
+        let value = JSONValue(any: ["ride_id": "R-1923", "minutes": 18, "amount": 12.5, "late": true, "none": nothing,
+                                    "tags": ["a", 1] as [Any], "nested": ["ok": false], "null": NSNull(),
+                                    "float": Float(0.5)] as [String: Any?])
+        XCTAssertEqual(value, ["ride_id": "R-1923", "minutes": 18, "amount": 12.5, "late": true, "none": nil,
+                               "tags": ["a", 1], "nested": ["ok": false], "null": nil, "float": 0.5])
+        XCTAssertNil(JSONValue(any: ["when": Date()] as [String: Any]))
+        XCTAssertNil(JSONValue(any: [Date()] as [Any]))
+        XCTAssertEqual(JSONValue(any: JSONValue.string("x")), "x")
+        XCTAssertEqual(JSONValue(any: nil), .null)
+    }
+
     func testDecodeRejectsWhatIsNotJSON() {
         XCTAssertNil(ProtocolJSON.decode(Data()))
         XCTAssertNil(ProtocolJSON.decode(Data("{\"a\":}".utf8)))
