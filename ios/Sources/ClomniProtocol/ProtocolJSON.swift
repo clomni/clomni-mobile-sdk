@@ -44,6 +44,12 @@ package enum ProtocolJSON {
         userInfo["clomni"] as? String == "1"
     }
 
+    /// A Clomni push this version can read. nil for the app's own pushes (quietly) and for a Clomni push it cannot
+    /// read (with a log line).
+    package static func clomniPush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
+        isClomniPush(userInfo) ? parsePush(userInfo) : nil
+    }
+
     /// An APNs `userInfo`. Only the top-level scalars are read: the Clomni keys sit next to `aps`.
     package static func parsePush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
         var fields: [String: Any] = [:]

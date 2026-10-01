@@ -358,7 +358,7 @@ final class MessengerCoordinatorTests: XCTestCase {
     // MARK: - Push
 
     /// What APNs hands the app: the alert in `aps`, the Clomni keys next to it (brief 6.5).
-    private func push(_ conversation: String = "conv_5521", unread: Int? = 2) -> [AnyHashable: Any] {
+    private func push(_ conversation: String = "conv_5521", unread: Int? = 2) -> PushPayload {
         var userInfo: [AnyHashable: Any] = [
             "aps": ["alert": ["title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı."], "sound": "default",
                     "badge": 2, "mutable-content": 1] as [String: Any],
@@ -366,7 +366,7 @@ final class MessengerCoordinatorTests: XCTestCase {
             "title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı.", "avatar_url": "https://app.clomni.ai/a/l.png",
         ]
         if let unread { userInfo["unread_total"] = unread }
-        return userInfo
+        return ProtocolJSON.clomniPush(userInfo)!
     }
 
     func testATapOnAPushOpensItsConversation() async {
@@ -391,43 +391,25 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(counts, [0, 2], "no count in the push, no change")
     }
 
-    func testTheAppsOwnPushesAreLeftAlone() async {
-        await session.set(loggedIn: true)
-        let messenger = coordinator()
-        await messenger.start()
-        let order: [AnyHashable: Any] = ["aps": ["alert": "Sifarişiniz yoldadır"] as [String: Any], "order_id": 7]
-        XCTAssertFalse(messenger.handlePush(order))
-        XCTAssertTrue(messenger.shouldShowForeground(order))
-        XCTAssertNil(messenger.route)
-        XCTAssertTrue(log.isEmpty, "not even a log line")
-
-        // A Clomni push this version cannot read opens nothing, shows as it came, and is logged.
-        let later: [AnyHashable: Any] = ["aps": ["alert": "Sorğu"] as [String: Any], "clomni": "1", "type": "survey"]
-        XCTAssertFalse(messenger.handlePush(later))
-        XCTAssertTrue(messenger.shouldShowForeground(later))
-        XCTAssertNil(messenger.route)
-        XCTAssertFalse(log.isEmpty)
-        XCTAssertEqual(heard.opened, [])
-        XCTAssertEqual(heard.unread, [])
-    }
-
     /// Brief 4.4 and 8 · 5.5: while the messenger is open, on any screen, a Clomni push is not shown.
     func testForegroundSuppression() async {
         await session.set(loggedIn: true)
         let messenger = coordinator()
         await messenger.start()
-        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 3)), "messenger closed")
-        XCTAssertEqual(heard.unread, [3], "the count still reaches the app")
+        XCTAssertTrue(messenger.showsForegroundPushes, "messenger closed")
+        messenger.pushArrived(push(unread: 3))
+        XCTAssertEqual(heard.unread, [3], "the count reaches the app")
         messenger.present()
-        XCTAssertFalse(messenger.shouldShowForeground(push(unread: 3)), "Home")
+        XCTAssertFalse(messenger.showsForegroundPushes, "Home")
         messenger.navigate(to: .conversation("conv_5521"))
-        XCTAssertFalse(messenger.shouldShowForeground(push(unread: 3)))
-        XCTAssertFalse(messenger.shouldShowForeground(push("conv_7", unread: 4)), "another conversation")
+        XCTAssertFalse(messenger.showsForegroundPushes)
         messenger.navigate(to: .startingConversation)
-        XCTAssertFalse(messenger.shouldShowForeground(push(unread: 4)))
+        XCTAssertFalse(messenger.showsForegroundPushes)
+        messenger.pushArrived(push(unread: 3))
+        messenger.pushArrived(push(unread: nil))
+        messenger.pushArrived(push(unread: 4))
         messenger.dismiss()
-        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 4)))
-        XCTAssertTrue(messenger.shouldShowForeground(["aps": ["alert": "Sifariş"] as [String: Any]]), "the app's own")
+        XCTAssertTrue(messenger.showsForegroundPushes)
         XCTAssertEqual(heard.unread, [3, 4])
     }
 

@@ -258,33 +258,26 @@ package final class MessengerCoordinator {
 
     // MARK: - Push
 
-    /// `Clomni.handlePush`, for a tap on a notification: a Clomni push opens its conversation (`opened_from` "push")
-    /// and its unread count reaches the listeners. false for the app's own pushes, and when nothing opens.
+    /// `Clomni.handlePush`, for a tap on a Clomni notification: its conversation opens (`opened_from` "push") and its
+    /// unread count reaches the listeners. false when nothing opens.
     @discardableResult
-    package func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool {
-        guard let push = clomniPush(userInfo) else { return false }
-        takeUnread(from: push)
+    package func handlePush(_ push: PushPayload) -> Bool {
+        pushArrived(push)
         return presentConversation(push.conversationId, source: "push")
     }
 
-    /// `Clomni.shouldShowForeground`, for a push that arrives while the app is open: not while the messenger is open,
-    /// on any screen, since it updates itself (foreground suppression). The app's own pushes are always shown.
-    package func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool {
-        guard let push = clomniPush(userInfo) else { return true }
-        takeUnread(from: push)
-        return route == nil
-    }
-
-    private func clomniPush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {
-        guard ProtocolJSON.isClomniPush(userInfo) else { return nil }
-        return ProtocolJSON.parsePush(userInfo)
-    }
-
-    /// The server's count when it sent the push; the socket's next count replaces it.
-    private func takeUnread(from push: PushPayload) {
+    /// A Clomni push reached the app: the count it carries is the server's when it was sent; the socket's next count
+    /// replaces it.
+    package func pushArrived(_ push: PushPayload) {
         guard let total = push.unreadTotal, total != unreadTotal else { return }
         updateUnread(total)
         changed()
+    }
+
+    /// `Clomni.shouldShowForeground`: not while the messenger is open, on any screen, since it updates itself
+    /// (foreground suppression).
+    package var showsForegroundPushes: Bool {
+        route == nil
     }
 
     // MARK: - Launcher
