@@ -86,6 +86,8 @@ internal class MessengerCoordinator(
     private val worker: Executor,
     private val main: Executor,
     private val log: (String) -> Unit = {},
+    /** The app's callbacks; the runtime keeps them, so callbacks set before `initialize` are not lost. */
+    val events: MessengerEvents = MessengerEvents(),
 ) {
     enum class Readiness {
         NOT_READY,
@@ -115,8 +117,6 @@ internal class MessengerCoordinator(
 
     var config: MessengerConfig? = null
         private set
-
-    val events = MessengerEvents()
 
     /** Called on [main] after the route, readiness, unread count or launcher changed. */
     var onChange: (() -> Unit)? = null

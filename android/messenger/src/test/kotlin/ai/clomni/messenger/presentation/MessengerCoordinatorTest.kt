@@ -97,7 +97,7 @@ class MessengerCoordinatorTest {
     private val flows = mutableListOf<String>()
 
     private fun coordinator(worker: Executor = direct, main: Executor = direct) =
-        MessengerCoordinator(session, "az", worker, main) { log += it }.also { messenger ->
+        MessengerCoordinator(session, "az", worker, main, log = { log += it }).also { messenger ->
             messenger.events.messengerOpened = { opened += it }
             messenger.events.messengerClosed = { closed++ }
             messenger.events.conversationStarted = { started += it }

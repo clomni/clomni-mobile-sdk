@@ -75,7 +75,10 @@ internal object Attachments {
         return ChatController.PickedFile(data, name, mime)
     }
 
-    /** Degrees to turn a photo upright; ExifInterface reads a stream from API 24. */
+    /**
+     * Degrees to turn a photo upright; the platform's ExifInterface reads a stream from API 24 (lint prefers
+     * androidx.exifinterface, which the SDK's dependency rule leaves out).
+     */
     private fun rotation(resolver: ContentResolver, uri: Uri): Int {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return 0
         val orientation = runCatching {

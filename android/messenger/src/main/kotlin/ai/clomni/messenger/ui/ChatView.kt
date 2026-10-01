@@ -76,7 +76,12 @@ import java.util.UUID
  * composer. Back and close come out as callbacks; presenting the screen is CM-074.
  */
 @Composable
-internal fun ClomniChat(controller: ChatController, back: () -> Unit, close: () -> Unit) {
+internal fun ClomniChat(
+    controller: ChatController,
+    back: () -> Unit,
+    close: () -> Unit,
+    conversationStarted: (String) -> Unit = {},
+) {
     var screen by remember { mutableStateOf(controller.screen) }
     var config by remember { mutableStateOf(controller.config) }
     DisposableEffect(controller) {
@@ -116,7 +121,7 @@ internal fun ClomniChat(controller: ChatController, back: () -> Unit, close: () 
         pickFile = { document?.launch(arrayOf("*/*")) },
         startNew = {
             writeAnyway = false
-            controller.startNewConversation()
+            controller.startNewConversation { id -> id?.let(conversationStarted) }
         },
         tap = controller::tap,
         submit = controller::submit,

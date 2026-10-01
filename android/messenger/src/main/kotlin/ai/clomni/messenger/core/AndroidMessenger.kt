@@ -22,6 +22,7 @@ import android.util.Log
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 /** Builds the engine inside an app: Keystore-backed credentials, files in `noBackupFilesDir`, socket by foreground. */
@@ -55,9 +56,11 @@ internal object AndroidMessenger {
      */
     fun homeController(engine: ClomniEngine, language: String?, userName: String?): HomeController {
         val ui = Handler(Looper.getMainLooper())
-        val worker = Executors.newSingleThreadExecutor { Thread(it, "clomni-home").apply { isDaemon = true } }
-        return HomeController(engine, language, userName, worker, main = { ui.post(it) })
+        return HomeController(engine, language, userName, SerialExecutor(pool), main = { ui.post(it) })
     }
+
+    /** Threads for the screens' waits; idle ones end after a minute, so opening the messenger again leaks none. */
+    private val pool = Executors.newCachedThreadPool { Thread(it, "clomni-ui").apply { isDaemon = true } }
 
     /**
      * What `ClomniChat` (the conversation screen) is built on, like [homeController]. [known] is the user's name, email
@@ -70,7 +73,7 @@ internal object AndroidMessenger {
         known: Map<String, String> = emptyMap(),
     ): ChatController {
         val ui = Handler(Looper.getMainLooper())
-        val worker = Executors.newSingleThreadExecutor { Thread(it, "clomni-chat").apply { isDaemon = true } }
+        val worker = SerialExecutor(pool)
         val scheduler = Scheduler { delayMs, action ->
             val runnable = Runnable(action)
             ui.postDelayed(runnable, delayMs)
@@ -91,6 +94,32 @@ internal object AndroidMessenger {
         timezone = TimeZone.getDefault().id,
         model = Build.MODEL,
     )
+}
+
+/** Runs its tasks one at a time, in order, on [pool]'s threads (the Executor documentation's SerialExecutor). */
+internal class SerialExecutor(private val pool: Executor) : Executor {
+    private val tasks = ArrayDeque<Runnable>()
+    private var active: Runnable? = null
+
+    @Synchronized
+    override fun execute(command: Runnable) {
+        tasks.addLast(
+            Runnable {
+                try {
+                    command.run()
+                } finally {
+                    next()
+                }
+            },
+        )
+        if (active == null) next()
+    }
+
+    @Synchronized
+    private fun next() {
+        active = tasks.removeFirstOrNull()
+        active?.let(pool::execute)
+    }
 }
 
 /**
