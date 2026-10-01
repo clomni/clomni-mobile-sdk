@@ -46,10 +46,11 @@ internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel
                 NewConversationCardView(screen.newConversation, theme, actions.newConversation)
                 val empty = screen.empty
                 if (empty != null) {
+                    // textPrimary: the secondary grey on the canvas is 4.32:1, under WCAG AA.
                     BasicText(
                         empty,
                         Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.xxl.dp),
-                        style = clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary, FontWeight.SemiBold)
+                        style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary, FontWeight.SemiBold)
                             .copy(textAlign = TextAlign.Center),
                     )
                 } else {

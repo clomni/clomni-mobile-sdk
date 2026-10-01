@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.activity)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

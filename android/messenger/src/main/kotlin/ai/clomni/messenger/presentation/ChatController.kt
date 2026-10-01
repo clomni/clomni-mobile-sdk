@@ -176,28 +176,43 @@ internal class ChatController(
         worker.execute { runCatching { source.retry(clientId).get() } }
     }
 
+    /** A file to send: its bytes, its name and type, and the caption. */
+    class PickedFile(val data: ByteArray, val fileName: String, val mime: String, val caption: String? = null)
+
     /**
      * An image (already scaled, see [Media.uploadSize]) or a file; [done] hears the text to show when it is refused,
      * or null.
      */
-    fun sendFile(data: ByteArray, fileName: String, mime: String, caption: String? = null, done: (String?) -> Unit = {}) {
+    fun sendFile(data: ByteArray, fileName: String, mime: String, caption: String? = null, done: (String?) -> Unit = {}) =
+        attach(done) { PickedFile(data, fileName, mime, caption) }
+
+    /**
+     * What the user picked, read by [read] on the worker (decoding and scaling a photo is too slow for the UI thread);
+     * null from it means the file could not be read.
+     */
+    fun attach(done: (String?) -> Unit = {}, read: () -> PickedFile?) {
         val id = conversationId
         worker.execute {
-            val failure = try {
-                source.sendFile(data, fileName, mime, caption, id).get()
-                null
-            } catch (e: ExecutionException) {
-                e.cause
-            } catch (e: InterruptedException) {
-                e
+            val file = runCatching(read).getOrNull()
+            val failure = when {
+                file == null -> IllegalStateException("unreadable")
+                else -> try {
+                    source.sendFile(file.data, file.fileName, file.mime, file.caption, id).get()
+                    null
+                } catch (e: ExecutionException) {
+                    e.cause
+                } catch (e: InterruptedException) {
+                    e
+                }
             }
             main.execute {
                 val limits = snapshot.config?.limits
+                val image = file != null && Media.isImage(file.mime)
                 done(
                     when {
                         failure == null -> null
                         failure is ClomniError.Rejected && failure.message.orEmpty().startsWith("file over") ->
-                            strings.format(Key.FILE_TOO_LARGE, if (Media.isImage(mime)) limits?.imageMb ?: 10 else limits?.fileMb ?: 25)
+                            strings.format(Key.FILE_TOO_LARGE, if (image) limits?.imageMb ?: 10 else limits?.fileMb ?: 25)
                         else -> strings[Key.ERROR]
                     },
                 )

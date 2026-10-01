@@ -69,6 +69,23 @@ internal fun Avatar(url: String?, initial: String, size: Float, theme: ClomniThe
     }
 }
 
+/** Up to three 24 dp avatars overlapping by 7, each in a 2 dp [ring] of the colour behind them. */
+@Composable
+internal fun TeamAvatars(urls: List<String>, ring: RgbColor, theme: ClomniTheme) {
+    if (urls.isEmpty()) return
+    val width = 2.dp
+    Row(
+        Modifier.clearAndSetSemantics {},
+        horizontalArrangement = Arrangement.spacedBy(-ClomniTheme.Size.headerAvatarOverlap.dp - width * 2),
+    ) {
+        for (url in urls) {
+            Box(Modifier.clip(CircleShape).background(ring.color).padding(width)) {
+                Avatar(url, "", ClomniTheme.Size.headerAvatar, theme)
+            }
+        }
+    }
+}
+
 /** A grey block standing in for content while the first load runs (brief 8·7.5: no spinner). */
 @Composable
 internal fun SkeletonBlock(height: Float, theme: ClomniTheme) {

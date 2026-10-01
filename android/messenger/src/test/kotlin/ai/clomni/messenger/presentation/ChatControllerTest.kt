@@ -268,6 +268,9 @@ class ChatControllerTest {
             listOf("Fayl çox böyükdür (maks. 10 MB)", "Fayl çox böyükdür (maks. 25 MB)", "Nəsə səhv getdi", null),
             refusals,
         )
+        chat.attach({ refusals += it }) { null }
+        chat.attach({ refusals += it }) { error("the picker's file is gone") }
+        assertEquals("a file that cannot be read", listOf("Nəsə səhv getdi", "Nəsə səhv getdi"), refusals.takeLast(2))
         source.push(ClomniChange.Messages("conv_5521"))
         val images = chat.screen.items.mapNotNull { ((it as? ChatItem.BubbleItem)?.bubble?.body as? Bubble.ImageBody)?.localFile }
         assertEquals(listOf(File("/tmp/upload-1")), images)

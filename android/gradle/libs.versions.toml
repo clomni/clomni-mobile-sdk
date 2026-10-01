@@ -13,6 +13,9 @@ okhttp = "4.12.0"
 composeBom = "2025.07.00"
 # Coil 2.7 depends on kotlin-stdlib 2.0; 2.6.0 on 1.9.22 (and the same OkHttp 4.12).
 coil = "2.6.0"
+# The Photo Picker and file picker contracts. Compose UI already brings activity 1.7.0 at runtime; declaring the
+# same version adds nothing to an app's dependencies, it only puts the API on the compile classpath.
+activity = "1.7.0"
 # 2.0.0-alpha02: the last line on Java 17 that renders API 36 (layoutlib 15.2) with Compose 1.8.3; test-only.
 paparazzi = "2.0.0-alpha02"
 kover = "0.9.9"
@@ -26,6 +29,7 @@ compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeB
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]

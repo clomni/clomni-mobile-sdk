@@ -72,7 +72,7 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             BrandMark(header, theme)
             Spacer(Modifier.weight(1f))
-            TeamAvatars(header.teamAvatars, theme)
+            TeamAvatars(header.teamAvatars, theme.colors.primaryDark, theme)
             if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
             CloseButton(header.closeLabel, text, close)
         }
@@ -125,23 +125,6 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
             ),
             maxLines = 1,
         )
-    }
-}
-
-/** Up to three 24 dp avatars overlapping by 7, each ringed in the header's colour. */
-@Composable
-private fun TeamAvatars(urls: List<String>, theme: ClomniTheme) {
-    if (urls.isEmpty()) return
-    val ring = 2.dp
-    Row(
-        Modifier.clearAndSetSemantics {},
-        horizontalArrangement = Arrangement.spacedBy(-ClomniTheme.Size.headerAvatarOverlap.dp - ring * 2),
-    ) {
-        for (url in urls) {
-            Box(Modifier.clip(CircleShape).background(theme.colors.primaryDark.color).padding(ring)) {
-                Avatar(url, "", ClomniTheme.Size.headerAvatar, theme)
-            }
-        }
     }
 }
 

@@ -6,7 +6,9 @@ import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.KeystoreSecureStore
+import ai.clomni.messenger.presentation.ChatController
 import ai.clomni.messenger.presentation.HomeController
+import ai.clomni.messenger.presentation.Scheduler
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.store.MessageStore
 import android.app.Activity
@@ -55,6 +57,26 @@ internal object AndroidMessenger {
         val ui = Handler(Looper.getMainLooper())
         val worker = Executors.newSingleThreadExecutor { Thread(it, "clomni-home").apply { isDaemon = true } }
         return HomeController(engine, language, userName, worker, main = { ui.post(it) })
+    }
+
+    /**
+     * What `ClomniChat` (the conversation screen) is built on, like [homeController]. [known] is the user's name, email
+     * and phone for prefilling forms.
+     */
+    fun chatController(
+        engine: ClomniEngine,
+        conversationId: String,
+        language: String?,
+        known: Map<String, String> = emptyMap(),
+    ): ChatController {
+        val ui = Handler(Looper.getMainLooper())
+        val worker = Executors.newSingleThreadExecutor { Thread(it, "clomni-chat").apply { isDaemon = true } }
+        val scheduler = Scheduler { delayMs, action ->
+            val runnable = Runnable(action)
+            ui.postDelayed(runnable, delayMs)
+            return@Scheduler { ui.removeCallbacks(runnable) }
+        }
+        return ChatController(engine, conversationId, language, worker, main = { ui.post(it) }, scheduler, known)
     }
 
     fun deviceInfo(context: Context, deviceId: String): DeviceInfo = DeviceInfo(
