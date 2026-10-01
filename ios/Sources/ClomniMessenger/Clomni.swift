@@ -106,6 +106,13 @@ public enum Clomni {
         MainThread.run { ClomniRuntime.shared.setLauncherVisible(visible) }
     }
 
+    /// The app's own font family (for example "Montserrat") for every text of the messenger; it must be in the app
+    /// (UIAppFonts). Text keeps following Dynamic Type. A weight the family lacks takes its nearest face. nil, or a
+    /// family the app does not have, is the system font.
+    public static func setTypeface(_ familyName: String?) {
+        MainThread.run { ClomniRuntime.shared.setTypeface(familyName) }
+    }
+
     /// Lifts the launcher above the app's tab bar, in points.
     public static func setBottomPadding(_ padding: Double) {
         MainThread.run { ClomniRuntime.shared.setBottomPadding(padding) }

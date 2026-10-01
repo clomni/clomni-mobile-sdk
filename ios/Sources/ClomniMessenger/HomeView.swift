@@ -98,7 +98,7 @@ struct BrandMark: View {
                     }
                 } else {
                     Text(header.brandInitial)
-                        .font(.system(size: 13, weight: .bold))
+                        .clomniFixedFont(13, .bold)
                         .foregroundStyle(theme.colors.primary.color)
                 }
             }

@@ -32,6 +32,7 @@ struct MessengerRootView: View {
 
     var body: some View {
         content
+            .environment(\.clomniTypeface, model.typeface)
             .task { await coordinator.prepare() }
     }
 

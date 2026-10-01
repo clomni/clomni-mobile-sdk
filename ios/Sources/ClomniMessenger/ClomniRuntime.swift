@@ -21,6 +21,8 @@ extension ClomniEngine: ClomniBackend {}
 @MainActor
 protocol MessengerRenderer: AnyObject {
     func render()
+    /// The app's font family, or nil for the system font.
+    func setTypeface(_ family: String?)
 }
 
 /// The app's callbacks, run on the main thread.
@@ -75,6 +77,7 @@ final class ClomniRuntime {
     private var launcherVisible: Bool?
     private var bottomPadding: Double?
     private var deviceToken: String?
+    private var typeface: String?
     private var listeners: [UUID: @MainActor @Sendable (Int) -> Void] = [:]
     private var unreadTotal = 0
 
@@ -128,6 +131,7 @@ final class ClomniRuntime {
         self.backend = backend
         self.coordinator = coordinator
         renderer = makeRenderer(backend, coordinator)
+        if let typeface { renderer?.setTypeface(typeface) }
         coordinator.onChange = { [weak self] in self?.changed() }
         ClomniShared.state.write { $0.initialized = true }
         if let deviceToken { setDeviceToken(deviceToken) }
@@ -193,6 +197,11 @@ final class ClomniRuntime {
     func setBottomPadding(_ padding: Double) {
         bottomPadding = padding
         coordinator?.setBottomPadding(padding)
+    }
+
+    func setTypeface(_ family: String?) {
+        typeface = family
+        renderer?.setTypeface(family)
     }
 
     func setDeviceToken(_ token: String) {

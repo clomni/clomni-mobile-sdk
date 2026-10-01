@@ -14,6 +14,7 @@ Clomni: static func setBottomPadding(_ padding: Double)
 Clomni: static func setDeviceToken(_ token: Data)
 Clomni: static func setLauncherVisible(_ visible: Bool)
 Clomni: static func setLogLevel(_ level: ClomniLogLevel)
+Clomni: static func setTypeface(_ familyName: String?)
 Clomni: static func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool
 Clomni: static func startFlow(_ event: String, data: [String: Any] = [:], openMessenger: Bool = false, source: String? = nil)
 Clomni: static func updateUser(name: String? = nil, language: String? = nil, customAttributes: [String: Any]? = nil)

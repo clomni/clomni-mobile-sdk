@@ -19,10 +19,20 @@ final class UIKitMessenger: MessengerRenderer {
     private let rootModel = MessengerRootModel()
     private let launcher = LauncherController()
     private var presented: UIViewController?
+    private var typeface: Typeface?
 
     init(engine: ClomniEngine, coordinator: MessengerCoordinator) {
         self.engine = engine
         self.coordinator = coordinator
+    }
+
+    func setTypeface(_ family: String?) {
+        typeface = family.flatMap(Typeface.installed)
+        if let family, typeface == nil {
+            ClomniLog.warning("font family \"\(family)\" is not in the app; the system font stays")
+        }
+        rootModel.typeface = typeface
+        render()
     }
 
     func render() {
@@ -37,7 +47,7 @@ final class UIKitMessenger: MessengerRenderer {
             presented.dismiss(animated: true)
         }
         if let state = coordinator.launcher {
-            launcher.show(state, config: coordinator.config) { [weak coordinator] in
+            launcher.show(state, config: coordinator.config, typeface: typeface) { [weak coordinator] in
                 coordinator?.present(source: "launcher")
             }
         } else {
@@ -72,6 +82,7 @@ final class MessengerRootModel: ObservableObject {
     @Published private(set) var ready = false
     @Published private(set) var config: MessengerConfig?
     @Published private(set) var source: String?
+    @Published var typeface: Typeface?
 
     func update(from coordinator: MessengerCoordinator) {
         if route != coordinator.route { route = coordinator.route }

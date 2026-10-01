@@ -446,7 +446,7 @@ struct ChatAvatarView: View {
             Circle()
                 .fill(theme.colors.primary.color)
                 .overlay(Text(avatar.initial)
-                    .font(.system(size: CGFloat(size * 0.45), weight: .bold))
+                    .clomniFixedFont(size * 0.45, .bold)
                     .foregroundStyle(theme.colors.onPrimary.color))
                 .frame(width: CGFloat(size), height: CGFloat(size))
                 .accessibilityHidden(true)

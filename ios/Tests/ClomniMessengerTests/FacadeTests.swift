@@ -95,7 +95,9 @@ actor FakeBackend: ClomniBackend {
 @MainActor
 final class Renders: MessengerRenderer {
     var count = 0
+    var typefaces: [String?] = []
     func render() { count += 1 }
+    func setTypeface(_ family: String?) { typefaces.append(family) }
 }
 
 final class Lines: @unchecked Sendable {
@@ -287,6 +289,15 @@ final class FacadeTests: XCTestCase {
         XCTAssertEqual(told.lines, ["opened profile_support", "closed", "opened help_button", "started conv_new",
                                     "closed", "started conv_flow", "opened ride"])
         XCTAssertEqual(told.offMain, 0)
+    }
+
+    func testTypefaceReachesTheScreensBeforeAndAfterInitialize() async {
+        Clomni.setTypeface("Montserrat")
+        XCTAssertEqual(renders.typefaces, [], "no screens yet")
+        Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
+        XCTAssertEqual(renders.typefaces, ["Montserrat"])
+        Clomni.setTypeface(nil)
+        XCTAssertEqual(renders.typefaces, ["Montserrat", nil])
     }
 
     func testLauncher() async {

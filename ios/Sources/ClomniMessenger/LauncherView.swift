@@ -16,11 +16,11 @@ import ClomniPresentation
 final class LauncherController {
     private var window: LauncherWindow?
 
-    func show(_ state: LauncherState, config: MessengerConfig?, tap: @escaping () -> Void) {
+    func show(_ state: LauncherState, config: MessengerConfig?, typeface: Typeface?, tap: @escaping () -> Void) {
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
             .first(where: { $0.activationState == .foregroundActive }) else { return }
         let window = self.window ?? LauncherWindow(windowScene: scene)
-        let button = LauncherButton(state: state, config: config, tap: tap)
+        let button = LauncherButton(state: state, config: config, typeface: typeface, tap: tap)
         if let host = window.rootViewController as? UIHostingController<LauncherButton> {
             host.rootView = button
         } else {
@@ -65,6 +65,7 @@ final class LauncherWindow: UIWindow {
 struct LauncherButton: View {
     let state: LauncherState
     let config: MessengerConfig?
+    let typeface: Typeface?
     let tap: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
@@ -85,7 +86,7 @@ struct LauncherButton: View {
                 .overlay(alignment: .topTrailing) {
                     if let badge = state.badge {
                         Text(badge)
-                            .font(.system(size: 11, weight: .bold))
+                            .clomniFixedFont(11, .bold)
                             .foregroundStyle(Color.white)
                             .padding(.horizontal, 5)
                             .frame(minWidth: 18, minHeight: 18)
@@ -98,6 +99,7 @@ struct LauncherButton: View {
         .buttonStyle(PlainButtonStyle())
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(Text(state.accessibilityLabel))
+        .environment(\.clomniTypeface, typeface)
     }
 }
 #endif

@@ -1,6 +1,7 @@
 // The UI is iOS only; Linux has neither SwiftUI nor UIKit, and the macOS test run skips these files.
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
+import UIKit
 #if canImport(ClomniCore)
 import ClomniProtocol
 import ClomniCore
@@ -15,18 +16,79 @@ extension RGBColor {
     }
 }
 
-/// A system font of a fixed size that still follows Dynamic Type, scaled like `style`.
+/// The app's font family (`Clomni.setTypeface`); nil is the system font.
+private struct TypefaceKey: EnvironmentKey {
+    static let defaultValue: Typeface? = nil
+}
+
+extension EnvironmentValues {
+    var clomniTypeface: Typeface? {
+        get { self[TypefaceKey.self] }
+        set { self[TypefaceKey.self] = newValue }
+    }
+}
+
+extension Typeface {
+    /// The family's faces as installed in the app; nil when it has none.
+    static func installed(_ family: String) -> Typeface? {
+        let faces = UIFont.fontNames(forFamilyName: family).compactMap { name -> Face? in
+            guard let font = UIFont(name: name, size: 17),
+                  !font.fontDescriptor.symbolicTraits.contains(.traitItalic) else { return nil }
+            let traits = font.fontDescriptor.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any]
+            let trait = (traits?[.weight] as? NSNumber)?.doubleValue
+            return Face(name: name, weight: Typeface.weight(name: name, trait: trait))
+        }
+        return Typeface(family: family, faces: faces)
+    }
+}
+
+extension Font.Weight {
+    /// 100 … 900, to find the family's face.
+    var css: Int {
+        if self == .ultraLight { return 100 }
+        if self == .thin { return 200 }
+        if self == .light { return 300 }
+        if self == .medium { return 500 }
+        if self == .semibold { return 600 }
+        if self == .bold { return 700 }
+        if self == .heavy { return 800 }
+        if self == .black { return 900 }
+        return 400
+    }
+}
+
+/// A font of a fixed size that still follows Dynamic Type, scaled like `style`: the app's family when it set one,
+/// else the system font.
 struct ScaledFont: ViewModifier {
     @ScaledMetric private var size: CGFloat
+    private let base: CGFloat
     private let weight: Font.Weight
+    private let style: Font.TextStyle
+    @Environment(\.clomniTypeface) private var typeface
 
     init(size: Double, weight: Font.Weight, relativeTo style: Font.TextStyle) {
         _size = ScaledMetric(wrappedValue: CGFloat(size), relativeTo: style)
+        base = CGFloat(size)
         self.weight = weight
+        self.style = style
     }
 
     func body(content: Content) -> some View {
-        content.font(.system(size: size, weight: weight))
+        // Font.custom(relativeTo:) scales with Dynamic Type by itself, from the unscaled size.
+        content.font(typeface.map { Font.custom($0.face(for: weight.css), size: base, relativeTo: style) }
+            ?? .system(size: size, weight: weight))
+    }
+}
+
+/// Text inside a shape of a fixed size (an avatar's initial, the launcher's count): the family, not scaled.
+struct FixedFont: ViewModifier {
+    let size: Double
+    let weight: Font.Weight
+    @Environment(\.clomniTypeface) private var typeface
+
+    func body(content: Content) -> some View {
+        content.font(typeface.map { Font.custom($0.face(for: weight.css), fixedSize: CGFloat(size)) }
+            ?? .system(size: CGFloat(size), weight: weight))
     }
 }
 
@@ -34,6 +96,10 @@ extension View {
     func clomniFont(_ size: Double, _ weight: Font.Weight = .regular,
                     relativeTo style: Font.TextStyle = .body) -> some View {
         modifier(ScaledFont(size: size, weight: weight, relativeTo: style))
+    }
+
+    func clomniFixedFont(_ size: Double, _ weight: Font.Weight) -> some View {
+        modifier(FixedFont(size: size, weight: weight))
     }
 
     /// A Home card: background, radius 12, padding 12×14, soft shadow (a 1 pt border in dark mode).
@@ -76,7 +142,7 @@ struct AvatarView: View {
         ZStack {
             Circle().fill(theme.colors.textSecondary.color)
             Text(initial)
-                .font(.system(size: CGFloat(size * 0.41), weight: .semibold))
+                .clomniFixedFont(size * 0.41, .semibold)
                 .foregroundStyle(Color.white)
             if let url = url, loadsImages {
                 AsyncImage(url: url) { phase in
