@@ -1,19 +1,22 @@
 package ai.clomni.messenger.protocol
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ClientMessageTest {
 
-    private val protocol = ProtocolJson()
+    private val protocol = RecordingProtocol()
 
-    private fun encoded(message: ClientMessage) = Json.parseToJsonElement(protocol.encode(message)).jsonObject
+    private fun encoded(message: ClientMessage) = Json.parseToJsonElement(protocol.json.encode(message)).jsonObject
 
     @Test
     fun newMessagesGetAFreshUuidV4() {
@@ -22,17 +25,38 @@ class ClientMessageTest {
         val uuidV4 = Regex("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
         assertTrue(first.clientId, uuidV4.matches(first.clientId))
         assertNotEquals(first.clientId, second.clientId)
-        assertTrue(first.isValid)
     }
 
     @Test
-    fun nullOptionalsAreLeftOut() {
+    fun backButton() {
         assertEquals(
-            Json.parseToJsonElement("""{"client_id":"c1","type":"attachment","content":{"upload_id":"upl_1"}}"""),
+            ClientMessage.ButtonReply("msg_f10", "back", "nav:back", "c1"),
+            ClientMessage.back("msg_f10", clientId = "c1"),
+        )
+    }
+
+    @Test
+    fun wireTypes() {
+        assertEquals(
+            listOf("text", "button_reply", "form_submit", "attachment", "rating_submit"),
+            listOf(
+                ClientMessage.Text("a"),
+                ClientMessage.ButtonReply("msg_1", "b", "p"),
+                ClientMessage.FormSubmit("msg_1", "frm_1", emptyMap()),
+                ClientMessage.Attachment("upl_1"),
+                ClientMessage.RatingSubmit("msg_1", 5),
+            ).map { it.type },
+        )
+    }
+
+    @Test
+    fun missingOptionalsGoOutAsNull() {
+        assertEquals(
+            Json.parseToJsonElement("""{"client_id":"c1","type":"attachment","content":{"upload_id":"upl_1","caption":null}}"""),
             encoded(ClientMessage.Attachment("upl_1", clientId = "c1")),
         )
         assertEquals(
-            Json.parseToJsonElement("""{"client_id":"c2","type":"rating_submit","content":{"reply_to":"msg_1","score":3}}"""),
+            Json.parseToJsonElement("""{"client_id":"c2","type":"rating_submit","content":{"reply_to":"msg_1","score":3,"comment":null}}"""),
             encoded(ClientMessage.RatingSubmit("msg_1", 3, clientId = "c2")),
         )
     }
@@ -44,27 +68,46 @@ class ClientMessageTest {
     }
 
     @Test
-    fun validityFollowsTheSchema() {
-        val emoji = "👍".repeat(ClientMessage.MAX_TEXT_LENGTH)
-        assertTrue("4000 emoji are 4000 characters", ClientMessage.Text(emoji).isValid)
-        assertTrue(ClientMessage.Text("a".repeat(4000)).isValid)
-        assertTrue(ClientMessage.Attachment("upl_1").isValid)
-        assertTrue(ClientMessage.FormSubmit("msg_1", "frm_1", emptyMap()).isValid)
-
-        val invalid = listOf(
-            ClientMessage.Text(""),
-            ClientMessage.Text("a".repeat(4001)),
-            ClientMessage.Text("a", clientId = ""),
-            ClientMessage.Text("a", clientId = "c".repeat(65)),
-            ClientMessage.ButtonReply("msg_1", "btn_1", ""),
-            ClientMessage.ButtonReply("", "btn_1", "node:A"),
-            ClientMessage.FormSubmit("msg_1", "", emptyMap()),
-            ClientMessage.Attachment(""),
-            ClientMessage.Attachment("upl_1", "a".repeat(4001)),
-            ClientMessage.RatingSubmit("msg_1", 0),
-            ClientMessage.RatingSubmit("msg_1", 6),
-            ClientMessage.RatingSubmit("msg_1", 5, "a".repeat(4001)),
+    fun everyMessageReadsBackFromItsEncoding() {
+        val messages = listOf(
+            ClientMessage.Text("Salam"),
+            ClientMessage.back("msg_1"),
+            ClientMessage.FormSubmit(
+                replyTo = "msg_1",
+                formId = "frm_1",
+                values = mapOf("count" to JsonPrimitive(3), "city" to JsonPrimitive("baku"), "note" to JsonNull),
+            ),
+            ClientMessage.Attachment("upl_1"),
+            ClientMessage.Attachment("upl_1", "Şəkil"),
+            ClientMessage.RatingSubmit("msg_1", 4),
+            ClientMessage.RatingSubmit("msg_1", 5, "Əla"),
         )
-        for (message in invalid) assertFalse(message.toString().take(80), message.isValid)
+        for (message in messages) assertEquals(message, protocol.json.parseClientMessage(protocol.json.encode(message)))
+        assertEquals(emptyList<String>(), protocol.warnings)
+    }
+
+    @Test
+    fun brokenStoredMessages() {
+        val broken = listOf(
+            "[]",
+            """{"client_id":"c1","type":"sticker","content":{}}""",
+            """{"client_id":"c1","type":"text"}""",
+            """{"type":"text","content":{"text":"a"}}""",
+            """{"client_id":"c1","type":"rating_submit","content":{"reply_to":"msg_1","score":"5"}}""",
+            """{"client_id":"c1","type":"form_submit","content":{"reply_to":"msg_1","form_id":"frm_1"}}""",
+        )
+        for (json in broken) assertNull(json, protocol.json.parseClientMessage(json))
+        assertEquals(broken.size, protocol.warnings.size)
+        assertTrue(protocol.warnings.toString(), "type: unknown client message type \"sticker\"; client message dropped" in protocol.warnings)
+    }
+
+    @Test
+    fun formValuesKeepTheirJsonTypes() {
+        val values = buildJsonObject {
+            put("count", JsonPrimitive(3))
+            put("agree", JsonPrimitive(true))
+        }
+        val content = encoded(ClientMessage.FormSubmit("msg_1", "frm_1", values, "c1"))["content"]!!.jsonObject
+        assertEquals(values, content["values"])
     }
 }

@@ -1,5 +1,7 @@
 package ai.clomni.messenger.protocol
 
+import kotlinx.serialization.json.JsonPrimitive
+
 /** The client-message fixtures, built the way the SDK builds them; each must encode to its file. */
 object ClientMessageFixtures {
     val all: Map<String, ClientMessage> = mapOf(
@@ -13,16 +15,15 @@ object ClientMessageFixtures {
             payload = "node:S",
             clientId = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
         ),
-        "fixtures/47-client-back.json" to ClientMessage.ButtonReply(
-            replyTo = "msg_f10",
-            buttonId = "back",
-            payload = "nav:back",
-            clientId = "1f2e3d4c-5b6a-4978-8a6b-5c4d3e2f1a0b",
-        ),
+        "fixtures/47-client-back.json" to ClientMessage.back("msg_f10", clientId = "1f2e3d4c-5b6a-4978-8a6b-5c4d3e2f1a0b"),
         "fixtures/48-client-form-submit.json" to ClientMessage.FormSubmit(
             replyTo = "msg_f19",
             formId = "frm_contact",
-            values = mapOf("name" to "Aysel Məmmədova", "phone" to "+994501234567", "email" to ""),
+            values = mapOf(
+                "name" to JsonPrimitive("Aysel Məmmədova"),
+                "phone" to JsonPrimitive("+994501234567"),
+                "email" to JsonPrimitive(""),
+            ),
             clientId = "2a3b4c5d-6e7f-4801-9a2b-3c4d5e6f7a8b",
         ),
         "fixtures/49-client-attachment.json" to ClientMessage.Attachment(

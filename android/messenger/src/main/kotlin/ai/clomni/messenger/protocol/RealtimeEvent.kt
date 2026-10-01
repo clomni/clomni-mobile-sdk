@@ -1,42 +1,49 @@
 package ai.clomni.messenger.protocol
 
-/**
- * A WebSocket frame `{event, data, ts}` (`protocol/schema/event.json`), by its event.
- * An event this SDK does not know, or a known one with broken data, is [Unknown] and is ignored.
- */
-public sealed interface RealtimeEvent {
+/** A WebSocket frame `{event, data, ts}` (`protocol/schema/event.json`). */
+public data class RealtimeEvent(
+    val event: String,
+    val data: Payload,
+    /** Epoch milliseconds, UTC; null when missing or not a date-time. */
+    val ts: Long?,
+) {
+    /** An unknown event, or a known one whose data is broken, is [Unknown] and is ignored by the client. */
+    public sealed interface Payload {
+        /** Fill the gaps since the last `seq` (GET messages?after_seq=…). */
+        public data class Ready(val userId: String, val heartbeatSec: Int) : Payload
 
-    /** Fill the gaps since the last `seq` (GET messages?after_seq=…). */
-    public data class Ready(val userId: String, val heartbeatSec: Int) : RealtimeEvent
+        /** Replaces the optimistic bubble when [Message.clientId] matches, otherwise is appended. */
+        public data class MessageCreated(val message: Message) : Payload
 
-    /** Replaces the optimistic bubble when [Message.clientId] matches, otherwise is appended. */
-    public data class MessageCreated(val message: Message) : RealtimeEvent
+        /** Replaces the message with the same id. */
+        public data class MessageUpdated(val message: Message) : Payload
 
-    /** Replaces the message with the same id. */
-    public data class MessageUpdated(val message: Message) : RealtimeEvent
+        /** The indicator hides by itself 8 s after the last `isTyping = true`. */
+        public data class Typing(val conversationId: String, val sender: Sender, val isTyping: Boolean) : Payload
 
-    /** The indicator hides by itself 8 s after the last `isTyping = true`. */
-    public data class Typing(val conversationId: String, val sender: Sender, val isTyping: Boolean) : RealtimeEvent
+        public data class Read(val conversationId: String, val upToSeq: Long, val by: SenderType) : Payload
 
-    /** [by] is [SenderType.USER] or [SenderType.OPERATOR]. */
-    public data class Read(val conversationId: String, val upToSeq: Long, val by: SenderType) : RealtimeEvent
+        public data class ConversationUpdated(val update: ConversationUpdate) : Payload
 
-    public data class ConversationUpdated(
+        /** Total unread messages of the user: the badge on the customer's own button. */
+        public data class UnreadChanged(val total: Int) : Payload
+
+        /** Reload the config (GET /mobile/config with If-None-Match). */
+        public data class ConfigChanged(val etag: String) : Payload
+
+        public data class Unknown(val name: String) : Payload
+    }
+
+    public data class ConversationUpdate(
         val id: String,
         val status: ConversationStatus,
+        /** Null while no operator has the conversation. */
         val assignee: Assignee?,
         val unreadCount: Int?,
-    ) : RealtimeEvent
-
-    /** Total unread messages of the user: the badge on the customer's own button. */
-    public data class UnreadChanged(val total: Int) : RealtimeEvent
-
-    /** Reload the config (GET /mobile/config with If-None-Match). */
-    public data class ConfigChanged(val etag: String) : RealtimeEvent
-
-    public data class Unknown(val name: String) : RealtimeEvent
+    )
 }
 
+/** bot → queued → open → closed; a closed conversation goes back to bot when the user writes again. */
 public enum class ConversationStatus(internal val wire: String) {
     BOT("bot"),
     QUEUED("queued"),
@@ -54,4 +61,4 @@ public enum class ConversationStatus(internal val wire: String) {
 }
 
 /** The operator a conversation is assigned to. */
-public data class Assignee(val name: String, val avatarUrl: String?, val online: Boolean)
+public data class Assignee(val name: String, val avatarUrl: String?, val online: Boolean?)

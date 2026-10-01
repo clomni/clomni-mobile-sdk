@@ -8,332 +8,348 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import kotlin.math.abs
 
 /**
  * Entry point of the protocol layer (`protocol/schema`): parses what the server sends, encodes what the client sends.
  *
- * Parsing never throws. Fields this SDK does not know are skipped. Broken JSON, or a message that cannot be placed
- * in a conversation, gives null; an unknown type, or a known one with broken content, gives
- * [MessageContent.Unknown] (shown with `fallback_text`); an unknown or broken realtime event gives
- * [RealtimeEvent.Unknown]. Each of these is reported to [logger], meant for the debug log.
+ * Parsing never throws, and follows the same rules as the iOS SDK:
+ * - unknown fields are skipped; JSON `null` reads as absent;
+ * - a message whose envelope is unusable (a required field missing or of the wrong JSON type) is null;
+ * - an unknown type, broken content of a known type, or an empty buttons/fields/cards list (it would leave the user
+ *   stuck) gives [MessageContent.Unknown], shown with `fallback_text`;
+ * - an unknown event, or a known one with broken data, gives [RealtimeEvent.Payload.Unknown];
+ * - lengths and patterns are not checked (`lang: "de"`, a 181-character push body): the value is kept.
+ *
+ * Whatever is dropped or downgraded is reported to [logger], meant for the debug log.
  */
 public class ProtocolJson(private val logger: (String) -> Unit = {}) {
 
-    /** Null when the message has no id, conversation, `seq` or `created_at`: it cannot be ordered or deduplicated. */
-    public fun parseMessage(json: String): Message? = guard("Message") { message(json.toJsonObject()) }
+    /** A message as REST or the socket sends it; null when its envelope is unusable. */
+    public fun parseMessage(json: String): Message? = guard("message") { message(json.toJsonObject()) }
 
-    /** The same, for a message already parsed as part of a larger body (a page of messages). */
-    public fun parseMessage(element: JsonElement): Message? = guard("Message") { message(element.asObject("message")) }
+    /** The same, for a message inside a larger body that was already parsed (a page of messages). */
+    public fun parseMessage(element: JsonElement): Message? = guard("message") { message(element.asObject("message")) }
 
-    /** Null only when the frame is not JSON or has no event name. */
-    public fun parseEvent(json: String): RealtimeEvent? = guard("Realtime frame") {
-        val frame = json.toJsonObject()
-        event(frame.requireNonEmpty("event"), frame["data"])
-    }
+    /** A text WebSocket frame; null only when it is not JSON or has no event name. */
+    public fun parseEvent(json: String): RealtimeEvent? = guard("event") { event(json.toJsonObject()) }
 
-    /** Null only when the body is not a JSON object; anything missing or broken inside gets its default. */
-    public fun parseConfig(json: String): MessengerConfig? = guard("Config") { config(json.toJsonObject()) }
+    /** Null only when the body is not a JSON object; every missing or broken field takes its default. */
+    public fun parseConfig(json: String): MessengerConfig? = guard("config") { config(json.toJsonObject()) }
 
-    /** Null when the payload is not a Clomni push (no `"clomni": "1"`) or lacks a required key. */
-    public fun parsePush(json: String): PushPayload? = guard("Push") { push(json.toJsonObject()) }
+    /** Null when the payload is not a Clomni push (`"clomni": "1"`) or lacks a required key. */
+    public fun parsePush(json: String): PushPayload? = guard("push") { push(json.toJsonObject()) }
 
+    /** An FCM data message (`RemoteMessage.data`), where every value is a string. */
+    public fun parsePush(data: Map<String, String>): PushPayload? =
+        guard("push") { push(JsonObject(data.mapValues { JsonPrimitive(it.value) })) }
+
+    /** A client message read back, e.g. one the outbox kept on disk. */
+    public fun parseClientMessage(json: String): ClientMessage? =
+        guard("client message") { clientMessage(json.toJsonObject()) }
+
+    /** The request body for POST /v1/conversations/{id}/messages. */
     public fun encode(message: ClientMessage): String = buildJsonObject {
         put("client_id", message.clientId)
-        when (message) {
-            is ClientMessage.Text -> {
-                put("type", "text")
-                putJsonObject("content") { put("text", message.text) }
-            }
-            is ClientMessage.ButtonReply -> {
-                put("type", "button_reply")
-                putJsonObject("content") {
+        put("type", message.type)
+        putJsonObject("content") {
+            when (message) {
+                is ClientMessage.Text -> put("text", message.text)
+                is ClientMessage.ButtonReply -> {
                     put("reply_to", message.replyTo)
                     put("button_id", message.buttonId)
                     put("payload", message.payload)
                 }
-            }
-            is ClientMessage.FormSubmit -> {
-                put("type", "form_submit")
-                putJsonObject("content") {
+                is ClientMessage.FormSubmit -> {
                     put("reply_to", message.replyTo)
                     put("form_id", message.formId)
-                    putJsonObject("values") { message.values.forEach { (key, value) -> put(key, value) } }
+                    put("values", JsonObject(message.values))
                 }
-            }
-            is ClientMessage.Attachment -> {
-                put("type", "attachment")
-                putJsonObject("content") {
+                is ClientMessage.Attachment -> {
                     put("upload_id", message.uploadId)
-                    message.caption?.let { put("caption", it) }
+                    put("caption", message.caption)
                 }
-            }
-            is ClientMessage.RatingSubmit -> {
-                put("type", "rating_submit")
-                putJsonObject("content") {
+                is ClientMessage.RatingSubmit -> {
                     put("reply_to", message.replyTo)
                     put("score", message.score)
-                    message.comment?.let { put("comment", it) }
+                    put("comment", message.comment)
                 }
             }
         }
     }.toString()
 
-    /** The `content` of a message of [type]: a known content, or [MessageContent.Unknown]. */
-    internal fun parseContent(type: String, content: JsonElement?): MessageContent {
-        val parse: ((JsonObject) -> MessageContent)? = when (type) {
-            "text" -> ::text
-            "quick_replies" -> ::quickReplies
-            "image" -> ::image
-            "file" -> ::file
-            "form" -> ::form
-            "system" -> ::system
-            "card" -> ::card
-            "rating" -> ::rating
-            else -> null
-        }
-        if (parse == null) {
-            logger("Unknown message type '$type', shown with fallback_text")
-            return MessageContent.Unknown(type, content)
-        }
-        return try {
-            parse(content.asObject("content"))
-        } catch (e: ProtocolException) {
-            logger("Broken '$type' content, shown with fallback_text: ${e.message}")
-            MessageContent.Unknown(type, content)
-        }
-    }
+    /** [content] read as the content of a message of [type]: a known content, or [MessageContent.Unknown]. */
+    public fun parseContent(type: String, content: JsonElement): MessageContent = content(type, content, null)
 
     private inline fun <T : Any> guard(what: String, parse: () -> T?): T? = try {
         parse()
     } catch (e: Exception) {
-        logger("$what ignored: ${e.message}")
+        logger("${e.message}; $what dropped")
         null
     }
 
     // Messages
 
     private fun message(o: JsonObject): Message {
-        val id = o.requireNonEmpty("id")
-        val conversationId = o.requireNonEmpty("conversation_id")
-        val seq = o.long("seq") ?: throw ProtocolException("'seq' is missing or not an integer")
+        val id = o.requireString("id")
+        val type = o.requireString("type")
+        val content = o["content"] as? JsonObject ?: throw ProtocolException("content: expected an object")
+        val conversationId = o.requireString("conversation_id")
+        val sender = sender(o.requireObject("sender"))
         val createdAt = o.requireString("created_at")
-            .let { Iso8601.parseMillis(it) ?: throw ProtocolException("'created_at' is not a date-time: $it") }
-        val type = o.string("type") ?: ""
+            .let { Iso8601.parseMillis(it) ?: throw ProtocolException("created_at: expected an ISO 8601 time") }
+        val seq = o.long("seq") ?: throw ProtocolException("seq: expected an integer")
+        val lang = o.requireString("lang")
+        val fallbackText = o.requireString("fallback_text")
+        val flow = o.present("flow")?.let {
+            try {
+                flow(it.asObject("flow"))
+            } catch (e: ProtocolException) {
+                logger("$id: ${e.message}; shown without its flow")
+                null
+            }
+        }
+        // Content last, so a message dropped for its envelope does not also log about its content.
         return Message(
             id = id,
             clientId = o.string("client_id"),
             conversationId = conversationId,
             type = type,
-            sender = (o["sender"] as? JsonObject)?.let(::sender) ?: Sender(SenderType.UNKNOWN),
+            sender = sender,
             createdAt = createdAt,
             seq = seq,
-            lang = o.string("lang") ?: "",
-            flow = flow(id, o["flow"]),
-            content = parseContent(type, o["content"]),
-            fallbackText = o.string("fallback_text") ?: "",
+            lang = lang,
+            flow = flow,
+            content = content(type, content, id),
+            fallbackText = fallbackText,
         )
     }
 
     private fun sender(o: JsonObject) =
-        Sender(SenderType.from(o.string("type")), o.string("id"), o.string("name"), o.string("avatar_url"))
+        Sender(SenderType.from(o.requireString("type")), o.string("id"), o.string("name"), o.string("avatar_url"))
 
-    private fun flow(messageId: String, element: JsonElement?): FlowRef? {
-        if (element == null || element is JsonNull) return null
+    private fun flow(o: JsonObject) = FlowRef(
+        flowId = o.requireString("flow_id"),
+        nodeId = o.requireString("node_id"),
+        version = o.int("version"),
+        interactive = o.boolean("interactive") ?: throw ProtocolException("interactive: expected a boolean"),
+    )
+
+    private fun content(type: String, content: JsonElement, messageId: String?): MessageContent {
+        val prefix = messageId?.let { "$it: " }.orEmpty()
+        val parse: ((JsonObject) -> MessageContent)? = when (type) {
+            "text" -> { o -> MessageContent.Text(o.requireString("text")) }
+            "quick_replies" -> ::quickReplies
+            "image" -> ::image
+            "file" -> ::file
+            "form" -> ::form
+            "system" -> ::system
+            "card" -> { o -> MessageContent.Card(o.nonEmptyArray("cards").map { cardItem(it.asObject("card")) }) }
+            "rating" -> ::rating
+            else -> null
+        }
+        if (parse == null) {
+            logger("${prefix}unknown type \"$type\", shown as fallback_text")
+            return MessageContent.Unknown(type, content)
+        }
+        if (content !is JsonObject) {
+            logger("$prefix$type: expected an object; shown as fallback_text")
+            return MessageContent.Unknown(type, content)
+        }
         return try {
-            val o = element.asObject("flow")
-            FlowRef(
-                flowId = o.requireNonEmpty("flow_id"),
-                nodeId = o.requireNonEmpty("node_id"),
-                version = o.int("version"),
-                interactive = o.boolean("interactive") ?: throw ProtocolException("'interactive' is missing"),
-            )
+            parse(content)
         } catch (e: ProtocolException) {
-            logger("Broken flow of $messageId ignored: ${e.message}")
-            null
+            logger("$prefix$type.${e.message}; shown as fallback_text")
+            MessageContent.Unknown(type, content)
         }
     }
 
-    private fun text(o: JsonObject) = MessageContent.Text(o.requireString("text"))
-
-    private fun quickReplies(o: JsonObject): MessageContent.QuickReplies {
-        val buttons = o.requireArray("buttons").map { button(it.asObject("button")) }
-        if (buttons.isEmpty()) throw ProtocolException("no buttons")
-        return MessageContent.QuickReplies(
-            text = o.string("text"),
-            buttons = buttons,
-            layout = if (o.string("layout") == "chips") QuickRepliesLayout.CHIPS else QuickRepliesLayout.VERTICAL,
-            inputDisabled = o.boolean("input_disabled") ?: false,
-            allowBack = o.boolean("allow_back") ?: false,
-        )
-    }
-
-    private fun button(o: JsonObject) =
-        Button(o.requireNonEmpty("id"), o.requireNonEmpty("title"), o.string("icon"), o.requireNonEmpty("payload"))
+    private fun quickReplies(o: JsonObject) = MessageContent.QuickReplies(
+        text = o.string("text"),
+        buttons = o.nonEmptyArray("buttons").map {
+            val button = it.asObject("button")
+            MessageContent.Button(
+                id = button.requireString("id"),
+                title = button.requireString("title"),
+                icon = button.string("icon"),
+                payload = button.requireString("payload"),
+            )
+        },
+        layout = if (o.string("layout") == "chips") {
+            MessageContent.QuickRepliesLayout.CHIPS
+        } else {
+            MessageContent.QuickRepliesLayout.VERTICAL
+        },
+        inputDisabled = o.boolean("input_disabled") ?: false,
+        allowBack = o.boolean("allow_back") ?: false,
+    )
 
     private fun image(o: JsonObject) = MessageContent.Image(
-        url = o.requireNonEmpty("url"),
+        url = o.requireString("url"),
         thumbUrl = o.string("thumb_url"),
+        // A zero size would divide by zero when the UI reserves the aspect ratio.
         width = o.int("width")?.takeIf { it > 0 },
         height = o.int("height")?.takeIf { it > 0 },
         caption = o.string("caption"),
     )
 
     private fun file(o: JsonObject) = MessageContent.File(
-        url = o.requireNonEmpty("url"),
-        name = o.requireNonEmpty("name"),
-        size = o.long("size")?.takeIf { it >= 0 } ?: throw ProtocolException("'size' is missing or negative"),
-        mime = o.requireNonEmpty("mime"),
+        url = o.requireString("url"),
+        name = o.requireString("name"),
+        size = o.long("size") ?: throw ProtocolException("size: expected an integer"),
+        mime = o.requireString("mime"),
     )
 
-    private fun form(o: JsonObject): MessageContent.Form {
-        val fields = o.requireArray("fields").map { formField(it.asObject("field")) }
-        if (fields.isEmpty()) throw ProtocolException("no fields")
-        return MessageContent.Form(
-            text = o.string("text"),
-            formId = o.requireNonEmpty("form_id"),
-            fields = fields,
-            submitTitle = o.requireNonEmpty("submit_title"),
-            submitted = (o["submitted"] as? JsonObject)?.toStringMap(),
-        )
-    }
+    private fun form(o: JsonObject) = MessageContent.Form(
+        text = o.string("text"),
+        formId = o.requireString("form_id"),
+        fields = o.nonEmptyArray("fields").map { formField(it.asObject("field")) },
+        submitTitle = o.requireString("submit_title"),
+        submitted = o["submitted"] as? JsonObject,
+    )
 
-    private fun formField(o: JsonObject): FormField {
-        val key = o.requireNonEmpty("key")
-        val type = o.requireString("type")
-        val options = (o["options"] as? JsonArray)?.map {
-            val option = it.asObject("option")
-            FormField.Option(option.requireString("value"), option.requireString("label"))
-        }
-        if (type == "select" && options == null) throw ProtocolException("select field '$key' has no options")
-        return FormField(
-            key = key,
-            type = FormFieldType.from(type),
+    private fun formField(o: JsonObject): MessageContent.FormField {
+        val type = MessageContent.FormFieldType.from(o.requireString("type"))
+        return MessageContent.FormField(
+            key = o.requireString("key"),
+            type = type,
             label = o.requireString("label"),
             required = o.boolean("required") ?: false,
-            maxLength = o.int("max_length")?.takeIf { it > 0 },
+            maxLength = o.int("max_length"),
             defaultCountry = o.string("default_country"),
             placeholder = o.string("placeholder"),
-            options = options.orEmpty(),
+            options = if (type == MessageContent.FormFieldType.SELECT) {
+                o.requireArray("options").map {
+                    val option = it.asObject("option")
+                    MessageContent.FormField.Option(option.requireString("value"), option.requireString("label"))
+                }
+            } else {
+                emptyList()
+            },
         )
     }
 
-    private fun system(o: JsonObject) =
-        MessageContent.System(o.requireString("event"), o.requireString("text"), o.int("position")?.takeIf { it > 0 })
+    private fun system(o: JsonObject) = MessageContent.System(
+        event = when (val event = o.requireString("event")) {
+            "operator_joined" -> MessageContent.SystemEvent.OperatorJoined
+            "assigned_to_team" -> MessageContent.SystemEvent.AssignedToTeam
+            "conversation_closed" -> MessageContent.SystemEvent.ConversationClosed
+            "conversation_reopened" -> MessageContent.SystemEvent.ConversationReopened
+            "waiting_in_queue" -> MessageContent.SystemEvent.WaitingInQueue
+            else -> MessageContent.SystemEvent.Unknown(event)
+        },
+        text = o.requireString("text"),
+        position = o.int("position"),
+    )
 
-    private fun card(o: JsonObject): MessageContent.Card {
-        val cards = o.requireArray("cards").map { cardItem(it.asObject("card")) }
-        if (cards.isEmpty()) throw ProtocolException("no cards")
-        return MessageContent.Card(cards)
-    }
-
-    private fun cardItem(o: JsonObject) = CardItem(
+    private fun cardItem(o: JsonObject) = MessageContent.CardItem(
         imageUrl = o.string("image_url"),
         title = o.requireString("title"),
         subtitle = o.string("subtitle"),
-        buttons = (o["buttons"] as? JsonArray)?.map { cardButton(it.asObject("card button")) }.orEmpty(),
+        buttons = if (o.present("buttons") != null) {
+            o.requireArray("buttons").map { cardButton(it.asObject("card button")) }
+        } else {
+            emptyList()
+        },
     )
 
-    private fun cardButton(o: JsonObject): CardButton {
+    private fun cardButton(o: JsonObject): MessageContent.CardButton {
         val payload = o.string("payload")
         val url = o.string("url")
-        if ((payload == null) == (url == null)) throw ProtocolException("a card button needs either payload or url")
-        return CardButton(o.requireString("id"), o.requireString("title"), payload, url)
+        if (payload == null && url == null) throw ProtocolException("card button: expected a payload or a url")
+        return MessageContent.CardButton(o.requireString("id"), o.requireString("title"), payload, url)
     }
 
     private fun rating(o: JsonObject): MessageContent.Rating {
+        val text = o.requireString("text")
         val scale = o.requireString("scale")
         return MessageContent.Rating(
-            text = o.requireString("text"),
-            scale = RatingScale.from(scale) ?: throw ProtocolException("unknown scale '$scale'"),
-            comment = RatingComment.from(o.string("comment")),
-            submitted = (o["submitted"] as? JsonObject)?.toStringMap(),
+            text = text,
+            scale = MessageContent.RatingScale.from(scale)
+                ?: throw ProtocolException("scale: unknown scale \"$scale\""),
+            comment = MessageContent.RatingComment.from(o.string("comment")),
+            submitted = o["submitted"] as? JsonObject,
         )
     }
 
     // Realtime events
 
-    private fun event(name: String, data: JsonElement?): RealtimeEvent {
-        val parse: ((JsonObject) -> RealtimeEvent)? = when (name) {
-            "ready" -> ::ready
-            "message.created" -> { d -> RealtimeEvent.MessageCreated(message(d)) }
-            "message.updated" -> { d -> RealtimeEvent.MessageUpdated(message(d)) }
-            "typing" -> ::typing
-            "read" -> ::read
-            "conversation.updated" -> ::conversationUpdated
-            "unread.changed" -> { d ->
-                RealtimeEvent.UnreadChanged(d.int("total")?.takeIf { it >= 0 } ?: throw ProtocolException("no total"))
-            }
-            "config.changed" -> { d -> RealtimeEvent.ConfigChanged(d.requireNonEmpty("etag")) }
-            else -> null
-        }
-        if (parse == null) {
-            logger("Unknown realtime event '$name' ignored")
-            return RealtimeEvent.Unknown(name)
-        }
-        return try {
-            parse(data.asObject("data"))
+    private fun event(o: JsonObject): RealtimeEvent {
+        val name = o.requireString("event")
+        val payload = try {
+            payload(name, o["data"])
         } catch (e: ProtocolException) {
-            logger("Broken realtime event '$name' ignored: ${e.message}")
-            RealtimeEvent.Unknown(name)
+            logger("$name: ${e.message}; event ignored")
+            RealtimeEvent.Payload.Unknown(name)
+        }
+        return RealtimeEvent(name, payload, o.string("ts")?.let(Iso8601::parseMillis))
+    }
+
+    private fun payload(name: String, data: JsonElement?): RealtimeEvent.Payload {
+        val d by lazy { data.asObject("data") }
+        return when (name) {
+            "ready" -> RealtimeEvent.Payload.Ready(
+                userId = d.requireString("user_id"),
+                heartbeatSec = d.int("heartbeat_sec") ?: throw ProtocolException("heartbeat_sec: expected an integer"),
+            )
+            "message.created" -> RealtimeEvent.Payload.MessageCreated(message(d))
+            "message.updated" -> RealtimeEvent.Payload.MessageUpdated(message(d))
+            "typing" -> {
+                val state = d.requireString("state")
+                if (state != "on" && state != "off") throw ProtocolException("state: expected on or off")
+                RealtimeEvent.Payload.Typing(
+                    conversationId = d.requireString("conversation_id"),
+                    sender = sender(d.requireObject("sender")),
+                    isTyping = state == "on",
+                )
+            }
+            "read" -> RealtimeEvent.Payload.Read(
+                conversationId = d.requireString("conversation_id"),
+                upToSeq = d.long("up_to_seq") ?: throw ProtocolException("up_to_seq: expected an integer"),
+                by = SenderType.from(d.requireString("by")),
+            )
+            "conversation.updated" -> RealtimeEvent.Payload.ConversationUpdated(
+                RealtimeEvent.ConversationUpdate(
+                    id = d.requireString("id"),
+                    status = ConversationStatus.from(d.requireString("status")),
+                    assignee = (d["assignee"] as? JsonObject)?.let {
+                        Assignee(it.requireString("name"), it.string("avatar_url"), it.boolean("online"))
+                    },
+                    unreadCount = d.int("unread_count"),
+                ),
+            )
+            "unread.changed" -> RealtimeEvent.Payload.UnreadChanged(
+                d.int("total") ?: throw ProtocolException("total: expected an integer"),
+            )
+            "config.changed" -> RealtimeEvent.Payload.ConfigChanged(d.requireString("etag"))
+            else -> {
+                logger("unknown event \"$name\" ignored")
+                RealtimeEvent.Payload.Unknown(name)
+            }
         }
     }
 
-    private fun ready(d: JsonObject) = RealtimeEvent.Ready(
-        userId = d.requireNonEmpty("user_id"),
-        heartbeatSec = d.int("heartbeat_sec")?.takeIf { it > 0 } ?: throw ProtocolException("no heartbeat_sec"),
-    )
-
-    private fun typing(d: JsonObject): RealtimeEvent.Typing {
-        val state = d.requireString("state")
-        return RealtimeEvent.Typing(
-            conversationId = d.requireNonEmpty("conversation_id"),
-            sender = sender(d["sender"].asObject("sender")),
-            isTyping = when (state) {
-                "on" -> true
-                "off" -> false
-                else -> throw ProtocolException("unknown typing state '$state'")
-            },
-        )
-    }
-
-    private fun read(d: JsonObject) = RealtimeEvent.Read(
-        conversationId = d.requireNonEmpty("conversation_id"),
-        upToSeq = d.long("up_to_seq") ?: throw ProtocolException("no up_to_seq"),
-        by = SenderType.from(d.requireString("by")),
-    )
-
-    private fun conversationUpdated(d: JsonObject) = RealtimeEvent.ConversationUpdated(
-        id = d.requireNonEmpty("id"),
-        status = ConversationStatus.from(d.requireString("status")),
-        assignee = (d["assignee"] as? JsonObject)?.let {
-            Assignee(it.requireString("name"), it.string("avatar_url"), it.boolean("online") ?: false)
-        },
-        unreadCount = d.int("unread_count"),
-    )
-
-    // Config and push
+    // Config, push and client messages
 
     private fun config(o: JsonObject): MessengerConfig {
-        val brand = o.objectOrEmpty("brand")
-        val launcher = o.objectOrEmpty("launcher")
-        val home = o.objectOrEmpty("home")
-        val team = o.objectOrEmpty("team")
-        val composer = o.objectOrEmpty("composer")
-        val limits = o.objectOrEmpty("limits")
+        val brand = o.section("brand")
+        val launcher = o.section("launcher")
+        val home = o.section("home")
+        val team = o.section("team")
+        val bot = o.section("bot")
+        val composer = o.section("composer")
+        val limits = o.section("limits")
+        val primaryColor = brand.string("primary_color")
         return MessengerConfig(
             brand = MessengerConfig.Brand(
                 name = brand.string("name") ?: "",
                 logoUrl = brand.string("logo_url"),
-                primaryColor = brand.string("primary_color").let {
-                    if (it != null && hexColor.matches(it)) {
-                        it
-                    } else {
-                        logger("brand.primary_color '$it' is not #RRGGBB, using ${MessengerConfig.DEFAULT_PRIMARY_COLOR}")
-                        MessengerConfig.DEFAULT_PRIMARY_COLOR
-                    }
+                primaryColor = primaryColor?.takeIf { hexColor.matches(it) } ?: run {
+                    logger("brand.primary_color \"$primaryColor\" is not #RRGGBB; default colour used")
+                    MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR
                 },
                 onPrimaryColor = brand.string("on_primary_color")?.takeIf { hexColor.matches(it) },
                 theme = when (brand.string("theme")) {
@@ -349,18 +365,18 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 } else {
                     MessengerConfig.LauncherPosition.RIGHT
                 },
-                bottomPadding = launcher.int("bottom_padding")?.takeIf { it >= 0 } ?: 0,
+                bottomPadding = launcher.int("bottom_padding")?.takeIf { it >= 0 } ?: 20,
                 icon = launcher.string("icon") ?: "default",
             ),
             home = MessengerConfig.Home(
                 greetingTitle = home.string("greeting_title"),
                 greetingSubtitle = home.string("greeting_subtitle"),
-                showTeamAvatars = home.boolean("show_team_avatars") ?: false,
-                channels = (home["channels"] as? JsonArray)?.mapNotNull { element ->
+                showTeamAvatars = home.boolean("show_team_avatars") ?: true,
+                channels = (home["channels"] as? JsonArray).orEmpty().mapNotNull { element ->
                     val channel = element as? JsonObject ?: return@mapNotNull null
                     val type = channel.string("type") ?: return@mapNotNull null
-                    channel.string("url")?.let { MessengerConfig.HomeChannel(type, it) }
-                }.orEmpty(),
+                    channel.string("url")?.let { MessengerConfig.Channel(type, it) }
+                },
                 cards = (home["cards"] as? JsonArray)?.strings()?.mapNotNull {
                     when (it) {
                         "recent_conversation" -> MessengerConfig.HomeCard.RECENT_CONVERSATION
@@ -373,45 +389,72 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 avatars = (team["avatars"] as? JsonArray)?.strings().orEmpty(),
                 replyTime = team.string("reply_time"),
                 officeHours = (team["office_hours"] as? JsonObject)?.let {
-                    MessengerConfig.OfficeHours(it.string("tz"), it.boolean("open_now"))
+                    MessengerConfig.OfficeHours(it.string("tz"), it.boolean("open_now") ?: true)
                 },
             ),
-            bot = o.objectOrEmpty("bot").let { MessengerConfig.Bot(it.string("name") ?: "", it.string("avatar_url")) },
+            bot = MessengerConfig.Bot(bot.string("name") ?: "", bot.string("avatar_url")),
             composer = MessengerConfig.Composer(
                 placeholder = composer.string("placeholder"),
                 attachments = composer.boolean("attachments") ?: true,
                 emoji = composer.boolean("emoji") ?: true,
             ),
-            languages = (o["languages"] as? JsonArray)?.strings().orEmpty()
-                .filter { it in supportedLanguages }.distinct().ifEmpty { listOf("az") },
-            strings = (o["strings"] as? JsonObject)?.let { strings ->
+            languages = (o["languages"] as? JsonArray)?.strings().orEmpty().ifEmpty { listOf("az") },
+            strings = o.section("strings").let { strings ->
                 strings.keys.mapNotNull { key -> strings.string(key)?.let { key to it } }.toMap()
-            }.orEmpty(),
+            },
             limits = MessengerConfig.Limits(
                 imageMb = limits.int("image_mb")?.takeIf { it > 0 } ?: 10,
                 fileMb = limits.int("file_mb")?.takeIf { it > 0 } ?: 25,
-                textChars = limits.int("text_chars")?.takeIf { it > 0 } ?: ClientMessage.MAX_TEXT_LENGTH,
+                textChars = limits.int("text_chars")?.takeIf { it > 0 } ?: 4000,
             ),
         )
     }
 
-    private fun push(o: JsonObject): PushPayload? {
-        if (o.string("clomni") != "1") return null
+    private fun push(o: JsonObject): PushPayload {
+        if (o.string("clomni") != "1") throw ProtocolException("not a Clomni push")
         return PushPayload(
-            type = o.requireNonEmpty("type"),
-            conversationId = o.requireNonEmpty("conversation_id"),
+            type = o.requireString("type"),
+            conversationId = o.requireString("conversation_id"),
             messageId = o.string("message_id"),
             title = o.requireString("title"),
             body = o.requireString("body"),
             avatarUrl = o.string("avatar_url"),
-            // FCM data values are always strings.
+            // A relay that only carries strings (FCM data) delivers the count as "3".
             unreadTotal = o.int("unread_total") ?: o.string("unread_total")?.toIntOrNull(),
         )
     }
 
+    private fun clientMessage(o: JsonObject): ClientMessage {
+        val type = o.requireString("type")
+        val c = o.requireObject("content")
+        val clientId = o.requireString("client_id")
+        return when (type) {
+            "text" -> ClientMessage.Text(c.requireString("text"), clientId)
+            "button_reply" -> ClientMessage.ButtonReply(
+                replyTo = c.requireString("reply_to"),
+                buttonId = c.requireString("button_id"),
+                payload = c.requireString("payload"),
+                clientId = clientId,
+            )
+            "form_submit" -> ClientMessage.FormSubmit(
+                replyTo = c.requireString("reply_to"),
+                formId = c.requireString("form_id"),
+                values = c.requireObject("values").toMap(),
+                clientId = clientId,
+            )
+            "attachment" -> ClientMessage.Attachment(c.requireString("upload_id"), c.string("caption"), clientId)
+            "rating_submit" -> ClientMessage.RatingSubmit(
+                replyTo = c.requireString("reply_to"),
+                score = c.int("score") ?: throw ProtocolException("score: expected an integer"),
+                comment = c.string("comment"),
+                clientId = clientId,
+            )
+            else -> throw ProtocolException("type: unknown client message type \"$type\"")
+        }
+    }
+
     private companion object {
         val hexColor = Regex("#[0-9A-Fa-f]{6}")
-        val supportedLanguages = setOf("az", "en", "ru")
     }
 }
 
@@ -421,35 +464,37 @@ internal class ProtocolException(message: String) : Exception(message)
 private fun String.toJsonObject(): JsonObject = Json.parseToJsonElement(this).asObject("JSON")
 
 private fun JsonElement?.asObject(what: String): JsonObject =
-    this as? JsonObject ?: throw ProtocolException("$what is not an object")
+    this as? JsonObject ?: throw ProtocolException("$what: expected an object")
+
+/** The value of [key], or null when it is missing or JSON null. */
+private fun JsonObject.present(key: String): JsonElement? = this[key]?.takeUnless { it is JsonNull }
 
 private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 
 private fun JsonObject.requireString(key: String): String =
-    string(key) ?: throw ProtocolException("'$key' is missing or not a string")
+    string(key) ?: throw ProtocolException("$key: expected a string")
 
-private fun JsonObject.requireNonEmpty(key: String): String =
-    requireString(key).ifEmpty { throw ProtocolException("'$key' is empty") }
-
-private fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull
+/** A whole number, written as 5 or 5.0, within ±9·10^15 (where a double still holds every integer). */
+private fun JsonObject.long(key: String): Long? {
+    val number = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: return null
+    return if (number % 1.0 == 0.0 && abs(number) <= 9.0e15) number.toLong() else null
+}
 
 private fun JsonObject.int(key: String): Int? = long(key)?.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
 
 private fun JsonObject.boolean(key: String): Boolean? =
     (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull
 
+private fun JsonObject.requireObject(key: String): JsonObject = this[key].asObject(key)
+
 private fun JsonObject.requireArray(key: String): JsonArray =
-    this[key] as? JsonArray ?: throw ProtocolException("'$key' is missing or not an array")
+    this[key] as? JsonArray ?: throw ProtocolException("$key: expected an array")
 
-private fun JsonObject.objectOrEmpty(key: String): JsonObject = this[key] as? JsonObject ?: JsonObject(emptyMap())
+/** A required array with at least one element: an empty one would leave the user with nothing to press. */
+private fun JsonObject.nonEmptyArray(key: String): JsonArray =
+    requireArray(key).ifEmpty { throw ProtocolException("$key: expected at least one item") }
 
-private fun JsonArray.strings(): List<String> = mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
+private fun JsonObject.section(key: String): JsonObject = this[key] as? JsonObject ?: JsonObject(emptyMap())
 
-/** Submitted form or rating values, for display: numbers and booleans as their text, null values left out. */
-private fun JsonObject.toStringMap(): Map<String, String> = entries.mapNotNull { (key, value) ->
-    when (value) {
-        is JsonNull -> null
-        is JsonPrimitive -> key to value.content
-        else -> key to value.toString()
-    }
-}.toMap()
+private fun JsonArray.strings(): List<String> =
+    mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }

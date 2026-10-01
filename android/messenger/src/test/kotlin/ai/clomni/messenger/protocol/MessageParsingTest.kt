@@ -1,5 +1,14 @@
 package ai.clomni.messenger.protocol
 
+import ai.clomni.messenger.protocol.MessageContent.Button
+import ai.clomni.messenger.protocol.MessageContent.CardButton
+import ai.clomni.messenger.protocol.MessageContent.CardItem
+import ai.clomni.messenger.protocol.MessageContent.FormField
+import ai.clomni.messenger.protocol.MessageContent.FormFieldType
+import ai.clomni.messenger.protocol.MessageContent.QuickRepliesLayout
+import ai.clomni.messenger.protocol.MessageContent.RatingComment
+import ai.clomni.messenger.protocol.MessageContent.RatingScale
+import ai.clomni.messenger.protocol.MessageContent.SystemEvent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -31,8 +40,11 @@ class MessageParsingTest {
     private fun contentOf(type: String, content: String): MessageContent =
         protocol.json.parseContent(type, Json.parseToJsonElement(content))
 
+    private fun assertUnknown(type: String, content: String) =
+        assertEquals(content, MessageContent.Unknown::class, contentOf(type, content)::class)
+
     private fun assertLogged(fragment: String) =
-        assertTrue("expected a warning with '$fragment', got ${protocol.warnings}", protocol.warnings.any { fragment in it })
+        assertTrue("expected a log line with '$fragment', got ${protocol.warnings}", protocol.warnings.any { fragment in it })
 
     @Test
     fun envelopeOfABotMessage() {
@@ -80,14 +92,13 @@ class MessageParsingTest {
     @Test
     fun languageSelectionBeforeAndAfterTheChoice() {
         val before = fixture("07-language-select.json")
-        val buttons = (before.content as MessageContent.QuickReplies).buttons
         assertEquals(
             listOf(
                 Button("az", "Azərbaycan dili", "🇦🇿", "set_lang:az"),
                 Button("en", "English", "🇬🇧", "set_lang:en"),
                 Button("ru", "Русский", "🇷🇺", "set_lang:ru"),
             ),
-            buttons,
+            (before.content as MessageContent.QuickReplies).buttons,
         )
         assertEquals(true, before.flow?.interactive)
         val after = fixture("08-language-select-answered.json")
@@ -122,7 +133,8 @@ class MessageParsingTest {
     fun buttonTitleOver80IsKeptWhole() {
         val title = content<MessageContent.QuickReplies>("13-button-title-over-80.json").buttons[0].title
         assertEquals(
-            "Gedişimi bitirdim, amma tətbiq hələ də gedişin davam etdiyini göstərir və balansımdan pul çıxılır, nə etməliyəm?",
+            "Gedişimi bitirdim, amma tətbiq hələ də gedişin davam etdiyini göstərir və balansımdan pul çıxılır, " +
+                "nə etməliyəm?",
             title,
         )
         assertTrue(title.length > 80)
@@ -171,14 +183,8 @@ class MessageParsingTest {
         assertEquals("frm_contact", form.formId)
         assertEquals("Göndər", form.submitTitle)
         assertNull(form.submitted)
-        assertEquals(
-            FormField("name", FormFieldType.TEXT, "Ad, soyad", true, 80, null, null, emptyList()),
-            form.fields[0],
-        )
-        assertEquals(
-            FormField("phone", FormFieldType.PHONE, "Telefon", true, null, "AZ", null, emptyList()),
-            form.fields[1],
-        )
+        assertEquals(FormField("name", FormFieldType.TEXT, "Ad, soyad", true, 80, null, null, emptyList()), form.fields[0])
+        assertEquals(FormField("phone", FormFieldType.PHONE, "Telefon", true, null, "AZ", null, emptyList()), form.fields[1])
         assertEquals(false, form.fields[2].required)
     }
 
@@ -210,7 +216,11 @@ class MessageParsingTest {
         assertEquals(open.seq, sent.seq)
         assertEquals(false, sent.flow?.interactive)
         assertEquals(
-            mapOf("name" to "Aysel Məmmədova", "phone" to "+994501234567", "email" to "aysel@example.com"),
+            mapOf(
+                "name" to JsonPrimitive("Aysel Məmmədova"),
+                "phone" to JsonPrimitive("+994501234567"),
+                "email" to JsonPrimitive("aysel@example.com"),
+            ),
             (sent.content as MessageContent.Form).submitted,
         )
     }
@@ -219,15 +229,22 @@ class MessageParsingTest {
     fun systemMessages() {
         val queue = fixture("22-system-waiting-in-queue.json")
         assertEquals(Sender(SenderType.SYSTEM), queue.sender)
-        assertEquals(MessageContent.System("waiting_in_queue", "Sizi operatora yönləndiririk", 3), queue.content)
+        assertEquals(MessageContent.System(SystemEvent.WaitingInQueue, "Sizi operatora yönləndiririk", 3), queue.content)
         assertEquals(
-            MessageContent.System("operator_joined", "Leyla söhbətə qoşuldu", null),
+            MessageContent.System(SystemEvent.OperatorJoined, "Leyla söhbətə qoşuldu", null),
             content<MessageContent.System>("23-system-operator-joined.json"),
         )
+        assertEquals(SystemEvent.ConversationClosed, content<MessageContent.System>("24-system-conversation-closed.json").event)
         // An event the SDK does not know is still a system message, shown by its text.
         assertEquals(
-            MessageContent.System("survey_scheduled", "Sizə qısa sorğu göndəriləcək", null),
+            MessageContent.System(SystemEvent.Unknown("survey_scheduled"), "Sizə qısa sorğu göndəriləcək", null),
             content<MessageContent.System>("25-system-unknown-event.json"),
+        )
+        assertEquals(
+            listOf(SystemEvent.AssignedToTeam, SystemEvent.ConversationReopened),
+            listOf("assigned_to_team", "conversation_reopened").map {
+                (contentOf("system", """{"event":"$it","text":"T"}""") as MessageContent.System).event
+            },
         )
         assertEquals(emptyList<String>(), protocol.warnings)
     }
@@ -264,12 +281,12 @@ class MessageParsingTest {
         val message = fixture("29-unknown-type.json")
         assertEquals("poll", message.type)
         assertEquals(
-            MessageContent.Unknown("poll", ProtocolFiles.json("fixtures/29-unknown-type.json").jsonObject["content"]),
+            MessageContent.Unknown("poll", ProtocolFiles.json("fixtures/29-unknown-type.json").jsonObject.getValue("content")),
             message.content,
         )
         assertEquals("Hansı saat uyğundur? 10:00 / 14:00", message.fallbackText)
         assertEquals(28L, message.seq)
-        assertLogged("'poll'")
+        assertLogged("msg_f29: unknown type \"poll\"")
     }
 
     @Test
@@ -289,24 +306,26 @@ class MessageParsingTest {
         val emptyButtons = fixture("90-invalid-quick-replies-empty.json")
         assertEquals(MessageContent.Unknown::class, emptyButtons.content::class)
         assertEquals("Seçin", emptyButtons.fallbackText)
-        assertLogged("no buttons")
+        assertLogged("msg_x90: quick_replies.buttons: expected at least one item")
 
         assertNull(protocol.json.parseMessage(ProtocolFiles.read("fixtures/91-invalid-missing-seq.json")))
-        assertLogged("'seq'")
+        assertLogged("seq: expected an integer; message dropped")
 
+        // Patterns are not checked: an unsupported language is kept as sent.
         assertEquals("de", fixture("95-invalid-lang.json").lang)
 
         assertEquals(
             MessageContent.Unknown::class,
             protocol.json.parseContent("form", ProtocolFiles.json("fixtures/94-invalid-select-without-options.json"))::class,
         )
-        assertLogged("select field 'city' has no options")
+        assertLogged("form.options: expected an array")
 
+        // Two targets on a card button: both are kept, as on iOS.
+        val both = protocol.json.parseContent("card", ProtocolFiles.json("fixtures/98-invalid-card-button-both.json"))
         assertEquals(
-            MessageContent.Unknown::class,
-            protocol.json.parseContent("card", ProtocolFiles.json("fixtures/98-invalid-card-button-both.json"))::class,
+            CardButton("b", "Seç", "node:T", "https://apar.az"),
+            (both as MessageContent.Card).cards.single().buttons.single(),
         )
-        assertLogged("either payload or url")
     }
 
     @Test
@@ -324,47 +343,40 @@ class MessageParsingTest {
     }
 
     @Test
-    fun messageThatCannotBePlacedIsDropped() {
-        val broken = listOf(
-            envelope("id" to null),
-            envelope("id" to JsonPrimitive("")),
-            envelope("conversation_id" to null),
+    fun messageWithAnUnusableEnvelopeIsDropped() {
+        val required = listOf("id", "type", "content", "conversation_id", "sender", "created_at", "seq", "lang", "fallback_text")
+        val broken = required.map { envelope(it to null) } + listOf(
+            envelope("content" to JsonPrimitive("Salam")),
+            envelope("sender" to Json.parseToJsonElement("""{"name":"Clomni"}""")),
             envelope("seq" to JsonPrimitive("1")),
             envelope("seq" to JsonPrimitive(1.5)),
-            envelope("created_at" to null),
             envelope("created_at" to JsonPrimitive("yesterday")),
+            envelope("lang" to JsonNull),
         )
         for (json in broken) assertNull(json, protocol.json.parseMessage(json))
         assertEquals(broken.size, protocol.warnings.size)
+        assertTrue(protocol.warnings.toString(), protocol.warnings.all { it.endsWith("; message dropped") })
     }
 
     @Test
-    fun optionalEnvelopeFieldsHaveDefaults() {
+    fun lenientEnvelopeValues() {
         val message = protocol.json.parseMessage(
             envelope(
-                "type" to null,
-                "sender" to null,
-                "lang" to null,
-                "fallback_text" to null,
+                "id" to JsonPrimitive(""),
                 "client_id" to JsonPrimitive(7),
                 "flow" to JsonNull,
+                "seq" to JsonPrimitive(3.0),
                 "created_at" to JsonPrimitive("2026-10-01T14:30:00.250+04:00"),
+                "sender" to Json.parseToJsonElement("""{"type":"ai_agent"}"""),
             ),
         )!!
-        assertEquals("", message.type)
-        assertEquals(MessageContent.Unknown::class, message.content::class)
-        assertEquals(Sender(SenderType.UNKNOWN), message.sender)
-        assertEquals("", message.lang)
-        assertEquals("", message.fallbackText)
+        assertEquals("", message.id)
         assertNull(message.clientId)
         assertNull(message.flow)
+        assertEquals(3L, message.seq)
         assertEquals(Instant.parse("2026-10-01T10:30:00.250Z").toEpochMilli(), message.createdAt)
-    }
-
-    @Test
-    fun unknownSenderType() {
-        val sender = protocol.json.parseMessage(envelope("sender" to Json.parseToJsonElement("""{"type":"ai_agent"}""")))!!.sender
-        assertEquals(SenderType.UNKNOWN, sender.type)
+        assertEquals(Sender(SenderType.UNKNOWN), message.sender)
+        assertEquals(emptyList<String>(), protocol.warnings)
     }
 
     @Test
@@ -375,82 +387,67 @@ class MessageParsingTest {
             assertEquals(MessageContent.Text::class, message.content::class)
         }
         assertEquals(3, protocol.warnings.size)
-        assertLogged("Broken flow of msg_f01")
+        assertLogged("msg_f01: interactive: expected a boolean; shown without its flow")
     }
 
     @Test
-    fun knownTypeWithMissingOrWrongContent() {
-        assertEquals(MessageContent.Unknown("text", null), protocol.json.parseMessage(envelope("content" to null))!!.content)
-        assertEquals(
-            MessageContent.Unknown("text", JsonPrimitive("Salam")),
-            protocol.json.parseMessage(envelope("content" to JsonPrimitive("Salam")))!!.content,
-        )
-        assertEquals(MessageContent.Unknown::class, contentOf("text", """{"text":5}""")::class)
+    fun brokenContentOfAKnownType() {
+        assertUnknown("text", """{"text":5}""")
+        assertUnknown("quick_replies", """{"buttons":"none"}""")
+        assertUnknown("quick_replies", """{"buttons":["btn"]}""")
+        assertUnknown("quick_replies", """{"buttons":[{"id":"a","title":"A"}]}""")
+        assertUnknown("image", """{"thumb_url":"https://x/a.png"}""")
+        assertUnknown("file", """{"url":"u","name":"n","mime":"m"}""")
+        assertUnknown("form", """{"form_id":"frm_a","submit_title":"OK","fields":[]}""")
+        assertUnknown("form", """{"form_id":"frm_a","submit_title":"OK","fields":[{"key":"a","label":"A"}]}""")
+        assertUnknown("form", """{"form_id":"frm_a","submit_title":"OK","fields":[{"key":"c","type":"select","label":"C","options":[{"value":"x"}]}]}""")
+        assertUnknown("system", """{"event":"operator_joined"}""")
+        assertUnknown("card", """{"cards":[]}""")
+        assertUnknown("card", """{"cards":[{"title":"T","buttons":[{"id":"b","title":"B"}]}]}""")
+        assertUnknown("card", """{"cards":[{"title":"T","buttons":{}}]}""")
+        assertUnknown("rating", """{"text":"R","scale":"nps_10"}""")
+        assertUnknown("text", "\"Salam\"")
+        assertLogged("rating.scale: unknown scale \"nps_10\"")
+        assertLogged("text: expected an object; shown as fallback_text")
     }
 
     @Test
-    fun brokenQuickReplies() {
-        val broken = listOf(
-            """{"buttons":"none"}""",
-            """{"buttons":["btn"]}""",
-            """{"buttons":[{"id":"a","title":"A"}]}""",
-            """{"buttons":[{"id":"a","title":"","payload":"p"}]}""",
-        )
-        for (json in broken) assertEquals(json, MessageContent.Unknown::class, contentOf("quick_replies", json)::class)
-        val grid = contentOf("quick_replies", """{"buttons":[{"id":"a","title":"A","payload":"p"}],"layout":"grid"}""")
-        assertEquals(QuickRepliesLayout.VERTICAL, (grid as MessageContent.QuickReplies).layout)
-    }
+    fun lenientContentValues() {
+        val buttons = contentOf("quick_replies", """{"buttons":[{"id":"a","title":"","payload":"p"}],"layout":"grid"}""")
+        assertEquals(MessageContent.QuickReplies(null, listOf(Button("a", "", null, "p")), QuickRepliesLayout.VERTICAL, false, false), buttons)
 
-    @Test
-    fun imageAndFileEdges() {
         val image = contentOf("image", """{"url":"https://x/a.png","width":0,"height":3000000000}""") as MessageContent.Image
         assertNull(image.width)
         assertNull(image.height)
-        assertEquals(MessageContent.Unknown::class, contentOf("image", """{"thumb_url":"https://x/a.png"}""")::class)
-        assertEquals(MessageContent.Unknown::class, contentOf("file", """{"url":"u","name":"n","size":-1,"mime":"m"}""")::class)
-        assertEquals(MessageContent.Unknown::class, contentOf("file", """{"url":"u","name":"n","mime":"m"}""")::class)
-    }
+        assertEquals(-1L, (contentOf("file", """{"url":"u","name":"n","size":-1,"mime":"m"}""") as MessageContent.File).size)
 
-    @Test
-    fun formEdges() {
-        val base = """"form_id":"frm_a","submit_title":"OK""""
-        assertEquals(MessageContent.Unknown::class, contentOf("form", """{$base,"fields":[]}""")::class)
-        assertEquals(MessageContent.Unknown::class, contentOf("form", """{$base,"fields":[{"key":"a","label":"A"}]}""")::class)
-        assertEquals(
-            MessageContent.Unknown::class,
-            contentOf("form", """{$base,"fields":[{"key":"c","type":"select","label":"C","options":[{"value":"x"}]}]}""")::class,
-        )
         val form = contentOf(
             "form",
-            """{$base,"fields":[{"key":"s","type":"signature","label":"S","max_length":0,"placeholder":"…"}],
-               "submitted":{"n":3,"b":true,"x":null,"o":{"a":1}}}""",
+            """{"form_id":"frm_a","submit_title":"OK",
+               "fields":[{"key":"s","type":"signature","label":"S","max_length":0,"placeholder":"…","options":[1]}],
+               "submitted":{"n":3,"x":null}}""",
         ) as MessageContent.Form
-        // A field type added later is shown as a text field.
-        assertEquals(FormField("s", FormFieldType.TEXT, "S", false, null, null, "…", emptyList()), form.fields.single())
-        assertEquals(mapOf("n" to "3", "b" to "true", "o" to """{"a":1}"""), form.submitted)
+        // A field type added later is shown as a text field; options only belong to a select.
+        assertEquals(FormField("s", FormFieldType.TEXT, "S", false, 0, null, "…", emptyList()), form.fields.single())
+        assertEquals(mapOf("n" to JsonPrimitive(3), "x" to JsonNull), form.submitted)
+
+        assertEquals(
+            MessageContent.Card(listOf(CardItem(null, "T", null, emptyList()))),
+            contentOf("card", """{"cards":[{"title":"T","buttons":null}]}"""),
+        )
+        assertEquals(0, (contentOf("system", """{"event":"waiting_in_queue","text":"T","position":0}""") as MessageContent.System).position)
     }
 
     @Test
-    fun cardAndRatingEdges() {
-        assertEquals(MessageContent.Unknown::class, contentOf("card", """{"cards":[]}""")::class)
+    fun ratingComment() {
+        fun comment(json: String) = (contentOf("rating", """{"text":"R","scale":"star_5"$json}""") as MessageContent.Rating).comment
+        assertEquals(RatingComment.HIDDEN, comment(""))
+        assertEquals(RatingComment.HIDDEN, comment(""","comment":"none""""))
+        assertEquals(RatingComment.REQUIRED, comment(""","comment":"required""""))
+        assertEquals(RatingComment.OPTIONAL, comment(""","comment":"later""""))
         assertEquals(
-            MessageContent.Unknown::class,
-            contentOf("card", """{"cards":[{"title":"T","buttons":[{"id":"b","title":"B"}]}]}""")::class,
+            mapOf("score" to JsonPrimitive(4)),
+            (contentOf("rating", """{"text":"R","scale":"star_5","submitted":{"score":4}}""") as MessageContent.Rating).submitted,
         )
-        assertEquals(
-            MessageContent.Card(listOf(CardItem(null, "T", null, emptyList()))),
-            contentOf("card", """{"cards":[{"title":"T"}]}"""),
-        )
-        assertEquals(MessageContent.Unknown::class, contentOf("rating", """{"text":"R","scale":"nps_10"}""")::class)
-        assertLogged("unknown scale 'nps_10'")
-        assertEquals(
-            MessageContent.Rating("R", RatingScale.STAR_5, RatingComment.NONE, mapOf("score" to "4")),
-            contentOf("rating", """{"text":"R","scale":"star_5","comment":"later","submitted":{"score":4}}"""),
-        )
-        assertEquals(
-            RatingComment.REQUIRED,
-            (contentOf("rating", """{"text":"R","scale":"emoji_5","comment":"required"}""") as MessageContent.Rating).comment,
-        )
-        assertNull((contentOf("system", """{"event":"waiting_in_queue","text":"T","position":0}""") as MessageContent.System).position)
     }
 }

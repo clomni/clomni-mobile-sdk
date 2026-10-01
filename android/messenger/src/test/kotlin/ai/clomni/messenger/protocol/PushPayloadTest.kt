@@ -33,22 +33,30 @@ class PushPayloadTest {
     }
 
     @Test
-    fun fcmDataValuesAreStrings() {
-        val push = protocol.json.parsePush(
-            """{"clomni":"1","type":"message","conversation_id":"conv_1","title":"T","body":"B","unread_total":"3"}""",
+    fun fcmDataMessage() {
+        val data = mapOf(
+            "clomni" to "1",
+            "type" to "message",
+            "conversation_id" to "conv_1",
+            "message_id" to "msg_1",
+            "title" to "Leyla · Apar",
+            "body" to "Salam",
+            "unread_total" to "3",
         )
-        assertEquals(3, push?.unreadTotal)
+        assertEquals(PushPayload("message", "conv_1", "msg_1", "Leyla · Apar", "Salam", null, 3), protocol.json.parsePush(data))
+        assertNull(protocol.json.parsePush(data - "clomni"))
     }
 
     @Test
     fun notAClomniPush() {
         assertNull(protocol.json.parsePush("""{"type":"message","conversation_id":"conv_1","title":"T","body":"B"}"""))
         assertNull(protocol.json.parsePush("""{"clomni":1,"type":"message","conversation_id":"conv_1","title":"T","body":"B"}"""))
-        // Another SDK's push is normal traffic, not worth a log line.
-        assertEquals(emptyList<String>(), protocol.warnings)
-
         assertNull(protocol.json.parsePush("""{"clomni":"1","type":"message","title":"T","body":"B"}"""))
         assertNull(protocol.json.parsePush("not json"))
-        assertEquals(2, protocol.warnings.size)
+        assertEquals(
+            listOf("not a Clomni push; push dropped", "not a Clomni push; push dropped", "conversation_id: expected a string; push dropped"),
+            protocol.warnings.take(3),
+        )
+        assertEquals(4, protocol.warnings.size)
     }
 }

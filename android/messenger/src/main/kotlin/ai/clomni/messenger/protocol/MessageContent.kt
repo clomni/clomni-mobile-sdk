@@ -2,20 +2,23 @@ package ai.clomni.messenger.protocol
 
 import kotlinx.serialization.json.JsonElement
 
-/** The `content` of a [Message], by its type (brief 8·5.2). */
+/**
+ * The `content` of a [Message], by its type (brief 8·5.2). The payload types are nested here, as on iOS, so that
+ * `Button`, `Image` and the like do not clash with Compose's in an app that uses the SDK.
+ */
 public sealed interface MessageContent {
 
     /** Limited markdown: **bold**, *italic*, [text](https://…), line breaks, emoji. */
     public data class Text(val text: String) : MessageContent
 
-    /** Flow buttons. Titles are kept whole; the UI shortens a title over 80 characters. */
+    /** Flow buttons. Titles are kept whole, however long; the UI wraps a long one to two lines. */
     public data class QuickReplies(
         val text: String?,
         val buttons: List<Button>,
         val layout: QuickRepliesLayout,
-        /** The composer is replaced by "choose one of the options above". */
+        /** The composer is hidden while this message waits for a button. */
         val inputDisabled: Boolean,
-        /** A "← Back" button follows, sending `nav:back`. */
+        /** A back button follows the others; it sends [ClientMessage.back]. */
         val allowBack: Boolean,
     ) : MessageContent
 
@@ -42,16 +45,14 @@ public sealed interface MessageContent {
         val formId: String,
         val fields: List<FormField>,
         val submitTitle: String,
-        val submitted: Map<String, String>?,
+        val submitted: Map<String, JsonElement>?,
     ) : MessageContent
 
-    /**
-     * Small centred text without a bubble. Known [event]s: operator_joined, assigned_to_team, conversation_closed,
-     * conversation_reopened, waiting_in_queue (with [position]); any other is shown by its [text].
-     */
+    /** Centred grey text without a bubble. */
     public data class System(
-        val event: String,
+        val event: SystemEvent,
         val text: String,
+        /** Queue position, for [SystemEvent.WaitingInQueue]. */
         val position: Int?,
     ) : MessageContent
 
@@ -62,96 +63,109 @@ public sealed interface MessageContent {
         val text: String,
         val scale: RatingScale,
         val comment: RatingComment,
-        val submitted: Map<String, String>?,
+        val submitted: Map<String, JsonElement>?,
     ) : MessageContent
 
     /**
-     * A type this SDK does not know, or a known type whose content is broken. Shown with [Message.fallbackText].
-     * [raw] is the `content` as received (null when it was missing).
+     * A type this SDK does not know, or a known type whose content is broken. Shown with [Message.fallbackText];
+     * [raw] is the `content` as received.
      */
-    public data class Unknown(val type: String, val raw: JsonElement?) : MessageContent
-}
+    public data class Unknown(val type: String, val raw: JsonElement) : MessageContent
 
-public data class Button(
-    val id: String,
-    val title: String,
-    /** Shown before the title, e.g. a flag emoji. */
-    val icon: String?,
-    /** Opaque to the client: sent back as is in a button reply. */
-    val payload: String,
-)
+    public data class Button(
+        val id: String,
+        val title: String,
+        /** Shown before the title, e.g. a flag emoji. */
+        val icon: String?,
+        /** Opaque: sent back as is in the button reply. */
+        val payload: String,
+    )
 
-public enum class QuickRepliesLayout {
-    /** Full-width buttons, one per row (the default). */
-    VERTICAL,
+    public enum class QuickRepliesLayout {
+        /** Full-width buttons, one per row (the default). */
+        VERTICAL,
 
-    /** Short buttons side by side. */
-    CHIPS,
-}
-
-public data class FormField(
-    val key: String,
-    val type: FormFieldType,
-    val label: String,
-    val required: Boolean,
-    val maxLength: Int?,
-    /** ISO 3166 alpha-2, for [FormFieldType.PHONE]. */
-    val defaultCountry: String?,
-    val placeholder: String?,
-    /** The choices of a [FormFieldType.SELECT]; empty for other types. */
-    val options: List<Option>,
-) {
-    public data class Option(val value: String, val label: String)
-}
-
-public enum class FormFieldType(internal val wire: String) {
-    TEXT("text"),
-    TEXTAREA("textarea"),
-    PHONE("phone"),
-    EMAIL("email"),
-    NUMBER("number"),
-    SELECT("select"),
-    DATE("date"),
-    ;
-
-    internal companion object {
-        /** A field type added after this SDK was built is shown as a text field. */
-        fun from(wire: String): FormFieldType = entries.firstOrNull { it.wire == wire } ?: TEXT
+        /** Short buttons side by side. */
+        CHIPS,
     }
-}
 
-public data class CardItem(
-    val imageUrl: String?,
-    val title: String,
-    val subtitle: String?,
-    val buttons: List<CardButton>,
-)
-
-/** Exactly one of [payload] (a flow button) and [url] (a link) is set. */
-public data class CardButton(
-    val id: String,
-    val title: String,
-    val payload: String?,
-    val url: String?,
-)
-
-public enum class RatingScale(internal val wire: String) {
-    EMOJI_5("emoji_5"),
-    STAR_5("star_5"),
-    ;
-
-    internal companion object {
-        fun from(wire: String): RatingScale? = entries.firstOrNull { it.wire == wire }
+    public data class FormField(
+        val key: String,
+        val type: FormFieldType,
+        val label: String,
+        val required: Boolean,
+        val maxLength: Int?,
+        /** ISO 3166 code for a phone field, e.g. "AZ". */
+        val defaultCountry: String?,
+        val placeholder: String?,
+        /** The choices of a select field; empty for the other types. */
+        val options: List<Option>,
+    ) {
+        public data class Option(val value: String, val label: String)
     }
-}
 
-public enum class RatingComment(internal val wire: String) {
-    NONE("none"),
-    OPTIONAL("optional"),
-    REQUIRED("required"),
-    ;
+    /** A field type added after this SDK was built reads as [TEXT]. */
+    public enum class FormFieldType(internal val wire: String) {
+        TEXT("text"),
+        TEXTAREA("textarea"),
+        PHONE("phone"),
+        EMAIL("email"),
+        NUMBER("number"),
+        SELECT("select"),
+        DATE("date"),
+        ;
 
-    internal companion object {
-        fun from(wire: String?): RatingComment = entries.firstOrNull { it.wire == wire } ?: NONE
+        internal companion object {
+            fun from(wire: String): FormFieldType = entries.firstOrNull { it.wire == wire } ?: TEXT
+        }
+    }
+
+    /** An event this SDK does not know is [Unknown] and is shown by its text alone. */
+    public sealed interface SystemEvent {
+        public data object OperatorJoined : SystemEvent
+        public data object AssignedToTeam : SystemEvent
+        public data object ConversationClosed : SystemEvent
+        public data object ConversationReopened : SystemEvent
+        public data object WaitingInQueue : SystemEvent
+        public data class Unknown(val raw: String) : SystemEvent
+    }
+
+    public data class CardItem(
+        val imageUrl: String?,
+        val title: String,
+        val subtitle: String?,
+        val buttons: List<CardButton>,
+    )
+
+    /** Sends [payload] back as a button reply, or opens [url]; at least one is set. */
+    public data class CardButton(
+        val id: String,
+        val title: String,
+        val payload: String?,
+        val url: String?,
+    )
+
+    /** An unknown scale cannot be drawn, so it turns the whole content into [Unknown]. */
+    public enum class RatingScale(internal val wire: String) {
+        EMOJI_5("emoji_5"),
+        STAR_5("star_5"),
+        ;
+
+        internal companion object {
+            fun from(wire: String): RatingScale? = entries.firstOrNull { it.wire == wire }
+        }
+    }
+
+    /** Whether the rating asks for a comment: absent reads as [HIDDEN], an unknown value as [OPTIONAL]. */
+    public enum class RatingComment(internal val wire: String) {
+        HIDDEN("none"),
+        OPTIONAL("optional"),
+        REQUIRED("required"),
+        ;
+
+        internal companion object {
+            fun from(wire: String?): RatingComment =
+                if (wire == null) HIDDEN else entries.firstOrNull { it.wire == wire } ?: OPTIONAL
+        }
     }
 }

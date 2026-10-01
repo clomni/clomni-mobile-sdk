@@ -11,7 +11,7 @@ public data class MessengerConfig(
     val team: Team,
     val bot: Bot,
     val composer: Composer,
-    /** `az`, `en`, `ru`; never empty. */
+    /** As sent; never empty (`az` when the server sends none). */
     val languages: List<String>,
     /** UI texts by key; a missing key falls back to the SDK's own az/en/ru texts. */
     val strings: Map<String, String>,
@@ -25,7 +25,12 @@ public data class MessengerConfig(
         /** `#RRGGBB`, or null to pick white or dark text by contrast. */
         val onPrimaryColor: String?,
         val theme: Theme,
-    )
+    ) {
+        public companion object {
+            /** Clomni green, used when the config has no valid brand colour. */
+            public const val DEFAULT_PRIMARY_COLOR: String = "#10A670"
+        }
+    }
 
     public enum class Theme { SYSTEM, LIGHT, DARK }
 
@@ -43,12 +48,12 @@ public data class MessengerConfig(
         val greetingTitle: String?,
         val greetingSubtitle: String?,
         val showTeamAvatars: Boolean,
-        val channels: List<HomeChannel>,
+        val channels: List<Channel>,
         val cards: List<HomeCard>,
     )
 
-    /** A link to another channel of the business; [type] is open-ended (instagram, whatsapp, email, …). */
-    public data class HomeChannel(val type: String, val url: String)
+    /** A social channel icon on Home; [type] is open-ended (instagram, whatsapp, linkedin, email, …). */
+    public data class Channel(val type: String, val url: String)
 
     public enum class HomeCard { RECENT_CONVERSATION, NEW_CONVERSATION }
 
@@ -58,7 +63,7 @@ public data class MessengerConfig(
         val officeHours: OfficeHours?,
     )
 
-    public data class OfficeHours(val tz: String?, val openNow: Boolean?)
+    public data class OfficeHours(val timeZone: String?, val openNow: Boolean)
 
     public data class Bot(val name: String, val avatarUrl: String?)
 
@@ -69,9 +74,4 @@ public data class MessengerConfig(
     )
 
     public data class Limits(val imageMb: Int, val fileMb: Int, val textChars: Int)
-
-    public companion object {
-        /** Clomni green, used when the config has no valid brand colour. */
-        public const val DEFAULT_PRIMARY_COLOR: String = "#10A670"
-    }
 }
