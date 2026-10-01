@@ -108,8 +108,8 @@ extension Clomni {
         return coordinator.handlePush(userInfo)
     }
 
-    /// From `userNotificationCenter(_:willPresent:withCompletionHandler:)`: false while the messenger shows the push's
-    /// conversation, true otherwise and for the app's own pushes.
+    /// From `userNotificationCenter(_:willPresent:withCompletionHandler:)`: false for a Clomni push while the
+    /// messenger is open, true otherwise and for the app's own pushes.
     public static func shouldShowForeground(_ notification: UNNotification) -> Bool {
         shouldShowForeground(notification.request.content.userInfo)
     }

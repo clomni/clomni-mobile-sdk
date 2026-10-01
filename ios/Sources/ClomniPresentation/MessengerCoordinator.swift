@@ -267,12 +267,12 @@ public final class MessengerCoordinator {
         return presentConversation(push.conversationId, source: "push")
     }
 
-    /// `Clomni.shouldShowForeground`, for a push that arrives while the app is open: not while the messenger shows
-    /// its conversation (foreground suppression). The app's own pushes are always shown.
+    /// `Clomni.shouldShowForeground`, for a push that arrives while the app is open: not while the messenger is open,
+    /// on any screen, since it updates itself (foreground suppression). The app's own pushes are always shown.
     public func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool {
         guard let push = clomniPush(userInfo) else { return true }
         takeUnread(from: push)
-        return route != .conversation(push.conversationId)
+        return route == nil
     }
 
     private func clomniPush(_ userInfo: [AnyHashable: Any]) -> PushPayload? {

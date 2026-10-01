@@ -410,7 +410,7 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(heard.unread, [])
     }
 
-    /// Brief 8 · 5.5: a push for the conversation on screen is not shown.
+    /// Brief 4.4 and 8 · 5.5: while the messenger is open, on any screen, a Clomni push is not shown.
     func testForegroundSuppression() async {
         await session.set(loggedIn: true)
         let messenger = coordinator()
@@ -418,14 +418,15 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertTrue(messenger.shouldShowForeground(push(unread: 3)), "messenger closed")
         XCTAssertEqual(heard.unread, [3], "the count still reaches the app")
         messenger.present()
-        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 3)), "Home is not the conversation")
+        XCTAssertFalse(messenger.shouldShowForeground(push(unread: 3)), "Home")
         messenger.navigate(to: .conversation("conv_5521"))
         XCTAssertFalse(messenger.shouldShowForeground(push(unread: 3)))
-        XCTAssertTrue(messenger.shouldShowForeground(push("conv_7", unread: 4)), "another conversation")
+        XCTAssertFalse(messenger.shouldShowForeground(push("conv_7", unread: 4)), "another conversation")
         messenger.navigate(to: .startingConversation)
-        XCTAssertTrue(messenger.shouldShowForeground(push(unread: 4)))
+        XCTAssertFalse(messenger.shouldShowForeground(push(unread: 4)))
         messenger.dismiss()
         XCTAssertTrue(messenger.shouldShowForeground(push(unread: 4)))
+        XCTAssertTrue(messenger.shouldShowForeground(["aps": ["alert": "Sifariş"] as [String: Any]]), "the app's own")
         XCTAssertEqual(heard.unread, [3, 4])
     }
 

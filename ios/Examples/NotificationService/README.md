@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         Clomni.setDeviceToken(token)
     }
 
-    // A push while the app is open: not shown while the user is reading that conversation.
+    // A push while the app is open: not shown while the messenger is open.
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler(Clomni.shouldShowForeground(notification) ? [.banner, .sound, .list] : [])
