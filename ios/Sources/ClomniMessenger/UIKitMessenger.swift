@@ -83,6 +83,7 @@ final class MessengerRootModel: ObservableObject {
     @Published private(set) var ready = false
     @Published private(set) var config: MessengerConfig?
     @Published private(set) var source: String?
+    @Published private(set) var preparationFailed = false
     @Published var typeface: Typeface?
 
     func update(from coordinator: MessengerCoordinator) {
@@ -90,6 +91,7 @@ final class MessengerRootModel: ObservableObject {
         if ready != (coordinator.readiness == .ready) { ready = coordinator.readiness == .ready }
         if config != coordinator.config { config = coordinator.config }
         if source != coordinator.source { source = coordinator.source }
+        if preparationFailed != coordinator.preparationFailed { preparationFailed = coordinator.preparationFailed }
     }
 }
 #endif

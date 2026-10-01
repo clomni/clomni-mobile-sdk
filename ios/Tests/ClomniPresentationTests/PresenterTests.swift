@@ -175,6 +175,11 @@ final class PresenterTests: XCTestCase {
         var nothing = MessengerSnapshot()
         XCTAssertEqual(presenter(config: nil).home(nothing).phase, .loading)
         XCTAssertEqual(presenter(config: nil).messages(nothing).phase, .loading)
+        // The open messenger while the SDK gets ready, and when that failed.
+        XCTAssertEqual(presenter(config: nil).preparing(failed: false).phase, .loading)
+        let notReached = presenter(config: nil).preparing(failed: true)
+        XCTAssertEqual(notReached.phase, .failed)
+        XCTAssertEqual(notReached.failure, HomeScreen.Failure(message: "Nəsə səhv getdi", retry: "Yenidən cəhd et"))
         // VoiceOver hears this over the skeleton blocks.
         XCTAssertEqual(presenter(config: nil).home(nothing).loadingLabel, "Yüklənir")
         XCTAssertEqual(presenter("en", config: nil).messages(nothing).loadingLabel, "Loading")

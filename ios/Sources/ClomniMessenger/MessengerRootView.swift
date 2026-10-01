@@ -51,9 +51,12 @@ struct MessengerRootView: View {
                              conversationStarted: { coordinator.conversationStarted($0) })
         default:
             // Not ready yet, or a conversation being started: grey blocks in the brand's colour, ✕ still working.
+            // When getting ready failed, "Yenidən cəhd et" instead.
             HomeView(screen: HomePresenter(strings: ClomniStrings(language: model.config?.languages.first),
-                                           now: Date()).home(MessengerSnapshot()),
-                     theme: theme, actions: MessengerActions(close: { coordinator.dismiss() }))
+                                           now: Date()).preparing(failed: model.preparationFailed),
+                     theme: theme,
+                     actions: MessengerActions(close: { coordinator.dismiss() },
+                                               retry: { Task { await coordinator.prepare() } }))
         }
     }
 }

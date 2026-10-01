@@ -70,6 +70,9 @@ package final class MessengerCoordinator {
     }
 
     package private(set) var readiness = Readiness.notReady
+    /// The last `prepare` reached nothing (no network at a first launch, say): the open messenger shows "Nəsə səhv
+    /// getdi" with "Yenidən cəhd et" instead of skeletons that would never end. Trying again clears it.
+    package private(set) var preparationFailed = false
     /// nil while the messenger is closed.
     package private(set) var route: MessengerRoute?
     /// The `source` of the open messenger, written to a new conversation's `opened_from`.
@@ -139,6 +142,11 @@ package final class MessengerCoordinator {
     @discardableResult
     package func prepare() async -> Bool {
         guard readiness != .disabled else { return false }
+        if preparationFailed {
+            // Skeletons again while it tries.
+            preparationFailed = false
+            changed()
+        }
         await listen()
         if !(await session.isLoggedIn) {
             do {
@@ -163,6 +171,7 @@ package final class MessengerCoordinator {
             route = nil
             ClomniLog.error("this App SDK inbox is switched off in Clomni: the messenger does not open")
         } else {
+            preparationFailed = true
             ClomniLog.error(reason)
         }
         changed()

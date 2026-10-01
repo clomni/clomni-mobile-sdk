@@ -158,6 +158,14 @@ package struct HomePresenter: Sendable {
             loadingLabel: strings[.loading])
     }
 
+    /// The open messenger before the SDK is ready: skeletons, or "Nəsə səhv getdi" with "Yenidən cəhd et" when
+    /// getting ready failed.
+    package func preparing(failed: Bool) -> HomeScreen {
+        var snapshot = MessengerSnapshot()
+        snapshot.configLoad = failed ? .failed : .loading
+        return home(snapshot)
+    }
+
     package func messages(_ snapshot: MessengerSnapshot) -> MessagesScreen {
         let rows = snapshot.conversations.compactMap { row($0, config: snapshot.config) }
         let failed = rows.isEmpty && snapshot.conversationsLoad == .failed

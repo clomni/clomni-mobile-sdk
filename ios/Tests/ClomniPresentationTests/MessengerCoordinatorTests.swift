@@ -9,6 +9,7 @@ actor FakeSession: MessengerSession {
     var loggedIn = false
     var disabled = false
     var disableOnLogin = false
+    var offline = false
     var unread = 0
     var cachedConfig: MessengerConfig?
     var freshConfig: MessengerConfig? = Fixture.aparConfig
@@ -38,6 +39,7 @@ actor FakeSession: MessengerSession {
 
     func loginUnidentifiedUser() async throws {
         calls.append("login")
+        if offline { throw ClomniError.network("offline") }
         if disableOnLogin {
             disabled = true
             throw ClomniError.server(status: 403, error: nil)
@@ -49,6 +51,10 @@ actor FakeSession: MessengerSession {
         calls.append("config")
         if freshConfig != nil { cachedConfig = freshConfig }
         return cachedConfig
+    }
+
+    func goOffline(_ offline: Bool) {
+        self.offline = offline
     }
 
     func connect() async { calls.append("connect") }
@@ -295,6 +301,29 @@ final class MessengerCoordinatorTests: XCTestCase {
         await session.set(loggedIn: true, flowBound: false)
         let unbound = await messenger.startFlow("nothing_bound", data: [:], openMessenger: true)
         XCTAssertNil(unbound)
+    }
+
+    /// Brief 7.2 says no empty screen; with no network at a first launch it is not endless skeletons either.
+    func testAFailedPreparationOffersARetry() async {
+        await session.goOffline(true)
+        let messenger = coordinator()
+        var states: [Bool] = []
+        messenger.onChange = { states.append(messenger.preparationFailed) }
+        XCTAssertTrue(messenger.present())
+        let ready = await messenger.prepare()
+        XCTAssertFalse(ready)
+        XCTAssertTrue(messenger.preparationFailed)
+        XCTAssertEqual(messenger.readiness, .notReady)
+        XCTAssertEqual(messenger.route, .home, "the messenger stays open, offering Yenidən cəhd et")
+        XCTAssertTrue(log.contains("messenger cannot open"))
+
+        await session.goOffline(false)
+        let again = await messenger.prepare()
+        XCTAssertTrue(again)
+        XCTAssertFalse(messenger.preparationFailed)
+        XCTAssertEqual(messenger.readiness, .ready)
+        // Opened, failed, skeletons again while it tries, ready.
+        XCTAssertEqual(states, [false, true, false, false])
     }
 
     func testUnreadCount() async throws {
