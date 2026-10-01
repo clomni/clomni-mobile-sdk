@@ -71,7 +71,10 @@ internal fun ClomniMessenger(
     DisposableEffect(controller) {
         controller.onChange = { screens = Screens(controller.home, controller.messages, controller.config) }
         controller.load()
-        onDispose { controller.onChange = null }
+        onDispose {
+            controller.onChange = null
+            controller.stop()
+        }
     }
     val brand = screens.config?.brand
     val dark = ClomniTheme.isDark(brand?.theme, isSystemInDarkTheme())

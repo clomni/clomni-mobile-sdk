@@ -24,13 +24,14 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * An in-memory Clomni server that keeps to protocol/openapi.yaml where the SDK can tell: sessions with single-use
  * refresh tokens, anonymous users resumed per device and merged on login, one `seq` counter per conversation, a
  * `client_id` handled once, 409 for an answered or stale button, `after_seq` paging, and the socket.
  *
- * Knobs make the network misbehave: [offline], [dropAnswers], [acceptSockets], [deliver].
+ * Knobs make the network misbehave: [offline], [drops], [dropAnswers], [acceptSockets], [deliver].
  */
 internal class FakeMobileServer : Dispatcher() {
     val http = MockWebServer().also { it.dispatcher = this }
@@ -47,6 +48,12 @@ internal class FakeMobileServer : Dispatcher() {
 
     /** No request is answered: the connection drops once it is read (the device's network is down). */
     @Volatile var offline = false
+
+    /** "METHOD /path" → how many more of those requests the network loses (the connection drops once read). */
+    val drops = ConcurrentHashMap<String, Int>()
+
+    /** The body of every message sent, in order. */
+    val sentBodies: MutableList<JsonObject> = Collections.synchronizedList(mutableListOf())
 
     /** The next N sends are stored, but their answer never reaches the device. */
     @Volatile var dropAnswers = 0
@@ -146,8 +153,19 @@ internal class FakeMobileServer : Dispatcher() {
     override fun dispatch(request: RecordedRequest): MockResponse {
         log += "${request.method} ${request.path}"
         calls += request.getHeader("Authorization")?.removePrefix("Bearer ") to "${request.method} ${request.path}"
-        if (offline) return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+        if (offline || drop("${request.method} ${request.requestUrl?.encodedPath}")) {
+            return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+        }
         return synchronized(this) { route(request) }
+    }
+
+    private fun drop(request: String): Boolean {
+        var lost = false
+        drops.computeIfPresent(request) { _, left ->
+            lost = true
+            (left - 1).takeIf { it > 0 }
+        }
+        return lost
     }
 
     private fun route(request: RecordedRequest): MockResponse {
@@ -331,6 +349,7 @@ internal class FakeMobileServer : Dispatcher() {
 
     private fun send(session: Session, conv: Conv, request: RecordedRequest): MockResponse {
         val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+        sentBodies += body
         val clientId = body.getValue("client_id").jsonPrimitive.content
         val content = body.getValue("content").jsonObject
         val key = "${session.userId}/$clientId"

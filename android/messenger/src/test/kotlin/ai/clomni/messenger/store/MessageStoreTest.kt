@@ -389,4 +389,65 @@ class OutboxTest {
         empty.load()
         assertTrue(empty.all().isEmpty())
     }
+
+    /** An attachment's bytes wait in the outbox's folder; its upload id, once known, survives the process. */
+    @Test
+    fun attachmentsAreStagedAndRemembered() {
+        val dir = folder.newFolder()
+        val file = JsonFile(File(dir, "outbox.json"))
+        val files = File(dir, "uploads")
+        val outbox = Outbox(file, protocol, files)
+        val message = ClientMessage.Attachment("", "Velosiped", "c1")
+        val stored = outbox.stage("c1", byteArrayOf(1, 2, 3))!!
+        val upload = PendingUpload("velo.jpg", "image/jpeg", 3, stored)
+        outbox.add(PendingMessage("conv_1", message, "Velosiped", 5, upload = upload))
+        assertTrue(outbox.stagedFile(upload)!!.readBytes().contentEquals(byteArrayOf(1, 2, 3)))
+
+        val sent = outbox.uploaded("c1", "upl_9")!!
+        assertEquals(ClientMessage.Attachment("upl_9", "Velosiped", "c1"), sent.message)
+        assertEquals("upl_9", sent.upload?.uploadId)
+        assertNull(outbox.uploaded("missing", "upl_1"))
+        outbox.add(pending("c2"))
+        assertEquals("only an attachment takes an upload id", pending("c2"), outbox.uploaded("c2", "upl_2"))
+
+        // A file the previous run staged but never wrote down is cleaned away.
+        File(files, "upload-orphan").writeText("x")
+        val again = Outbox(file, protocol, files)
+        again.load()
+        assertEquals(outbox.all(), again.all())
+        assertFalse(File(files, "upload-orphan").exists())
+        assertTrue(File(files, stored).exists())
+
+        assertEquals("file_missing", again.fail("c1", "file_missing")?.errorCode)
+        assertEquals(PendingMessage.State.FAILED, again.entry("c1")?.state)
+        again.remove("c1")
+        assertFalse("removing an attachment deletes its file", File(files, stored).exists())
+        again.stage("c3", byteArrayOf(4))
+        again.clear()
+        assertFalse(files.exists())
+
+        // Without a folder nothing can be staged.
+        assertNull(Outbox(null, protocol).stage("c4", byteArrayOf(1)))
+        assertNull(Outbox(null, protocol).stagedFile(upload))
+    }
+
+    @Test
+    fun aBrokenUploadRecordDropsItsEntry() {
+        val dir = folder.newFolder()
+        val file = JsonFile(File(dir, "outbox.json"))
+        file.write(
+            kotlinx.serialization.json.Json.parseToJsonElement(
+                """{"entries":[
+                  {"conversation_id":"conv_1","message":{"client_id":"c1","type":"attachment","content":{"upload_id":""}},
+                   "created_at":1,"upload":{"mime":"image/jpeg","stored_as":"upload-c1"}},
+                  {"conversation_id":"conv_1","message":{"client_id":"c2","type":"attachment","content":{"upload_id":""}},
+                   "created_at":2,"upload":{"file_name":"a.pdf","mime":"application/pdf","size":"big","stored_as":"upload-c2"}}
+                ]}""",
+            ),
+        )
+        val outbox = Outbox(file, protocol, File(dir, "uploads"))
+        outbox.load()
+        assertEquals(listOf("c2"), outbox.all().map { it.id })
+        assertEquals(PendingUpload("a.pdf", "application/pdf", 0, "upload-c2"), outbox.entry("c2")?.upload)
+    }
 }

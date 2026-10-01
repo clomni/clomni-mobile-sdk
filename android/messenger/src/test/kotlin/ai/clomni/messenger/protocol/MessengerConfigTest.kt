@@ -134,6 +134,16 @@ class MessengerConfigTest {
         assertEquals(listOf("az"), config("""{"languages":[]}""").languages)
     }
 
+    /** CM-052, additive: after hours the config says when the team is back. */
+    @Test
+    fun nextOpeningTime() {
+        val closed = config("""{"team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}""")
+        assertEquals(MessengerConfig.OfficeHours(null, openNow = false, nextOpenAt = 1_790_917_200_000L), closed.team.officeHours)
+        val broken = config("""{"team":{"office_hours":{"open_now":false,"next_open_at":"sabah"}}}""")
+        assertNull(broken.team.officeHours?.nextOpenAt)
+        assertNull(config("""{"team":{"office_hours":{"open_now":true,"next_open_at":null}}}""").team.officeHours?.nextOpenAt)
+    }
+
     @Test
     fun briefExample() {
         val config = protocol.json.parseConfig(ProtocolFiles.read("examples/brief/s6.3-config.json"))!!

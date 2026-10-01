@@ -502,7 +502,11 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 avatars = (team["avatars"] as? JsonArray)?.strings().orEmpty(),
                 replyTime = team.string("reply_time"),
                 officeHours = (team["office_hours"] as? JsonObject)?.let {
-                    MessengerConfig.OfficeHours(it.string("tz"), it.boolean("open_now") ?: true)
+                    MessengerConfig.OfficeHours(
+                        it.string("tz"),
+                        it.boolean("open_now") ?: true,
+                        it.string("next_open_at")?.let(Iso8601::parseMillis),
+                    )
                 },
             ),
             bot = MessengerConfig.Bot(bot.string("name") ?: "", bot.string("avatar_url")),

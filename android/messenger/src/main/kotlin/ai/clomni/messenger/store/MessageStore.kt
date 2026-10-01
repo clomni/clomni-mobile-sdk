@@ -29,7 +29,7 @@ import java.io.File
  * - Mutations are collected and written by [commit], which answers what changed for the screens.
  */
 internal class MessageStore(private val dir: File?, private val protocol: ProtocolJson) {
-    val outbox = Outbox(dir?.let { JsonFile(File(it, "outbox.json")) }, protocol)
+    val outbox = Outbox(dir?.let { JsonFile(File(it, "outbox.json")) }, protocol, dir?.let { File(it, "uploads") })
     private val conversationsFile = dir?.let { JsonFile(File(it, "conversations.json")) }
     private val configFile = dir?.let { JsonFile(File(it, "config.json")) }
 

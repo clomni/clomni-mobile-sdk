@@ -6,6 +6,7 @@ import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.samePerson
+import ai.clomni.messenger.presentation.ChatDataSource
 import ai.clomni.messenger.presentation.MessengerDataSource
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.protocol.ClientMessage
@@ -22,11 +23,14 @@ import ai.clomni.messenger.protocol.UploadedFile
 import ai.clomni.messenger.realtime.RealtimeClient
 import ai.clomni.messenger.store.MessageStore
 import ai.clomni.messenger.store.PendingMessage
+import ai.clomni.messenger.store.PendingUpload
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import okhttp3.OkHttpClient
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -39,12 +43,14 @@ import java.util.concurrent.TimeUnit
  * the same names and rules as the iOS SDK's engine.
  *
  * Everything runs on one worker thread; each action answers a [Future] (its failure a [ClomniError]), the reads answer
- * at once from the store, and [setChangeHandler] hears what changed (on the worker thread).
+ * at once from the store, and every [observe]r hears what changed (on the worker thread).
  *
  * Messages are sent through the outbox: each one is on disk until the server has it, and is repeated with the same
  * `client_id` until then (after 1 s, then 2 s), so a message written offline or lost with the connection arrives
  * once. Three failed attempts mark it failed; [retry] sends it again. A message the server refuses (4xx) fails at once
- * with its reason; a 409 drops it and reloads the message it answered.
+ * with its reason; a 409 drops it and reloads the message it answered. An attached file goes the same way: it is kept on
+ * the device, uploaded (repeated like a message), and then sent with its `upload_id`, which is kept too, so a restart
+ * after the upload does not upload it again.
  */
 internal class ClomniEngine(
     private val api: ApiClient,
@@ -56,7 +62,7 @@ internal class ClomniEngine(
     timing: Timing = Timing(),
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
-) : RealtimeClient.Listener, MessengerDataSource {
+) : RealtimeClient.Listener, MessengerDataSource, ChatDataSource {
 
     data class Timing(
         val realtime: RealtimeClient.Timing = RealtimeClient.Timing(),
@@ -68,7 +74,7 @@ internal class ClomniEngine(
     private val outboxRetryMs = timing.outboxRetryMs
     private val uploads: ExecutorService =
         Executors.newCachedThreadPool { Thread(it, "clomni-upload").apply { isDaemon = true } }
-    private var onChange: ((ClomniChange) -> Unit)? = null
+    private val observers = ConcurrentHashMap<UUID, (ClomniChange) -> Unit>()
     private var wantsSocket = false
     private var inForeground = true
     private var nextAttempt: ScheduledFuture<*>? = null
@@ -88,8 +94,14 @@ internal class ClomniEngine(
         }
     }
 
-    override fun setChangeHandler(handler: (ClomniChange) -> Unit) {
-        executor.execute { onChange = handler }
+    /**
+     * [handler] hears every change, on the worker thread, until [stopObserving] is called with the returned token. Any
+     * number of screens can listen at once (Home, a conversation, the unread badge).
+     */
+    override fun observe(handler: (ClomniChange) -> Unit): UUID = UUID.randomUUID().also { observers[it] = handler }
+
+    override fun stopObserving(token: UUID) {
+        observers.remove(token)
     }
 
     val isLoggedIn: Boolean get() = credentials.session != null
@@ -177,16 +189,22 @@ internal class ClomniEngine(
 
     override fun conversations(): List<Conversation> = store.conversations()
 
-    fun messages(conversationId: String): List<Message> = store.messages(conversationId)
+    /** One conversation as the store knows it. */
+    override fun conversation(id: String): Conversation? = store.conversation(id)
+
+    override fun messages(conversationId: String): List<Message> = store.messages(conversationId)
 
     /** The user's messages not yet confirmed by the server, oldest first; shown after [messages]. */
-    fun pending(conversationId: String): List<PendingMessage> = store.pending(conversationId)
+    override fun pending(conversationId: String): List<PendingMessage> = store.pending(conversationId)
 
     /** Whether a message's buttons (or form) are live: the latest interactive one, until answered. */
-    fun canAnswer(message: Message): Boolean = store.canAnswer(message)
+    override fun canAnswer(message: Message): Boolean = store.canAnswer(message)
 
     /** The highest `seq` the operator has read ("Oxundu"). */
-    fun readByOperator(conversationId: String): Long? = store.readByOperator(conversationId)
+    override fun readByOperator(conversationId: String): Long? = store.readByOperator(conversationId)
+
+    /** The file of a pending attachment, to show it before the server has it. */
+    override fun localFile(pending: PendingMessage): File? = pending.upload?.let(store.outbox::stagedFile)
 
     // Loading
 
@@ -198,6 +216,11 @@ internal class ClomniEngine(
 
     override fun refreshConversations(): Future<Unit> = submit { loadConversations() }
 
+    /** The conversation from the server, e.g. one opened from a push before the list knew it. */
+    override fun refreshConversation(id: String): Future<Unit> = submit {
+        store.putConversation(authed { api.getConversation(id) })
+    }
+
     /** Starts the inbox's new-conversation flow; its first messages come with it. */
     override fun startConversation(openedFrom: String?): Future<Conversation> = submit {
         val created = authed { api.createConversation(openedFrom) }
@@ -206,10 +229,10 @@ internal class ClomniEngine(
     }
 
     /** Brings a conversation up to date: the latest page the first time, what is newer than the cache after that. */
-    fun loadMessages(conversationId: String): Future<Unit> = submit { update(conversationId) }
+    override fun loadMessages(conversationId: String): Future<Unit> = submit { update(conversationId) }
 
     /** One page further back; false when the beginning is reached. */
-    fun loadOlder(conversationId: String): Future<Boolean> = submit {
+    override fun loadOlder(conversationId: String): Future<Boolean> = submit {
         val oldest = store.messages(conversationId).firstOrNull()?.seq
         when {
             oldest == null -> {
@@ -226,7 +249,7 @@ internal class ClomniEngine(
     }
 
     /** Up to the newest message; sent once per new `seq`. */
-    fun markRead(conversationId: String): Future<Unit> = submit {
+    override fun markRead(conversationId: String): Future<Unit> = submit {
         val newest = store.messages(conversationId).lastOrNull()?.seq ?: return@submit
         if (newest <= (readSent[conversationId] ?: 0)) return@submit
         readSent[conversationId] = newest
@@ -240,7 +263,7 @@ internal class ClomniEngine(
     }
 
     /** `on` at most every 3 seconds while typing, `off` once when the user stops. */
-    fun setTyping(isTyping: Boolean, conversationId: String): Future<Unit> = submit {
+    override fun setTyping(isTyping: Boolean, conversationId: String): Future<Unit> = submit {
         if (isTyping) {
             val last = typingSentAt[conversationId]
             if (last != null && clock() - last < TYPING_INTERVAL_MS) return@submit
@@ -258,7 +281,7 @@ internal class ClomniEngine(
     // Sending
 
     /** Trimmed; an empty text, or one over the config's limit, is refused. */
-    fun sendText(text: String, conversationId: String): Future<PendingMessage> = submit {
+    override fun sendText(text: String, conversationId: String): Future<PendingMessage> = submit {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) throw ClomniError.Rejected("empty text")
         if (trimmed.codePointCount(0, trimmed.length) > (store.config?.limits?.textChars ?: 4_000)) {
@@ -268,20 +291,20 @@ internal class ClomniEngine(
     }
 
     /** A flow button. The message's buttons go dead at once, so a second tap sends nothing. */
-    fun reply(message: Message, button: MessageContent.Button): Future<PendingMessage> = submit {
+    override fun reply(message: Message, button: MessageContent.Button): Future<PendingMessage> = submit {
         answer(message)
         enqueue(ClientMessage.ButtonReply(message.id, button.id, button.payload), message.conversationId, button.title)
     }
 
     /** "← Geri" under quick replies with `allowBack`. */
-    fun goBack(message: Message): Future<PendingMessage> = submit {
+    override fun goBack(message: Message): Future<PendingMessage> = submit {
         val replies = message.content as? MessageContent.QuickReplies
         if (replies?.allowBack != true) throw ClomniError.Rejected("no back button")
         answer(message)
         enqueue(ClientMessage.back(message.id), message.conversationId, null)
     }
 
-    fun submitForm(message: Message, values: Map<String, JsonElement>): Future<PendingMessage> = submit {
+    override fun submitForm(message: Message, values: Map<String, JsonElement>): Future<PendingMessage> = submit {
         val form = message.content as? MessageContent.Form ?: throw ClomniError.Rejected("not a form")
         answer(message)
         enqueue(ClientMessage.FormSubmit(message.id, form.formId, values), message.conversationId, null)
@@ -296,7 +319,32 @@ internal class ClomniEngine(
         enqueue(ClientMessage.RatingSubmit(message.id, score, comment), message.conversationId, null)
     }
 
-    /** [uploadId] from [upload]: an attachment joins the outbox only once its file is uploaded. */
+    /**
+     * An image (already scaled to at most 2048 px) or a file, up to the config's limits (10 MB and 25 MB unless it
+     * says otherwise). It is kept on this device until the server has the message, so neither a lost connection nor a
+     * restart loses it: the outbox uploads it, then sends it.
+     */
+    override fun sendFile(
+        data: ByteArray,
+        fileName: String,
+        mime: String,
+        caption: String?,
+        conversationId: String,
+    ): Future<PendingMessage> = submit {
+        val limits = store.config?.limits
+        val megabytes = if (mime.startsWith("image/")) limits?.imageMb ?: 10 else limits?.fileMb ?: 25
+        if (data.size > megabytes * 1_048_576L) throw ClomniError.Rejected("file over $megabytes MB")
+        val message = ClientMessage.Attachment(uploadId = "", caption = caption)
+        val stored = store.outbox.stage(message.clientId, data) ?: throw ClomniError.Rejected("file not stored")
+        val upload = PendingUpload(fileName, mime, data.size.toLong(), stored)
+        val entry = PendingMessage(conversationId, message, caption, clock(), upload = upload)
+        store.outbox.add(entry)
+        store.changed(ClomniChange.Messages(conversationId))
+        executor.execute(::deliver)
+        entry
+    }
+
+    /** [uploadId] from [upload], for an app that uploads by itself; [sendFile] does both through the outbox. */
     fun sendAttachment(uploadId: String, caption: String?, conversationId: String): Future<PendingMessage> = submit {
         enqueue(ClientMessage.Attachment(uploadId, caption), conversationId, caption)
     }
@@ -306,7 +354,7 @@ internal class ClomniEngine(
         uploads.submit(Callable { authed { api.upload(file, fileName, mime) } })
 
     /** Sends a failed message again, with its original client id. */
-    fun retry(clientId: String): Future<Unit> = submit {
+    override fun retry(clientId: String): Future<Unit> = submit {
         if (!store.outbox.retry(clientId)) throw ClomniError.Rejected("nothing to retry")
         store.outbox.entry(clientId)?.let { store.changed(ClomniChange.Messages(it.conversationId)) }
         publish()
@@ -405,10 +453,12 @@ internal class ClomniEngine(
     }
 
     private fun notify(change: ClomniChange) {
-        try {
-            onChange?.invoke(change)
-        } catch (e: Exception) {
-            log("change handler: ${e.message}")
+        for (observer in observers.values) {
+            try {
+                observer(change)
+            } catch (e: Exception) {
+                log("observer: ${e.message}")
+            }
         }
     }
 
@@ -552,7 +602,8 @@ internal class ClomniEngine(
     private fun attempt(entry: PendingMessage): Boolean {
         store.changed(ClomniChange.Messages(entry.conversationId))
         val status = try {
-            val message = authed { api.sendMessage(entry.conversationId, entry.message) }
+            val ready = uploaded(entry) ?: return true
+            val message = authed { api.sendMessage(ready.conversationId, ready.message) }
             store.outbox.remove(entry.id)
             receive(message)
             return true
@@ -581,6 +632,22 @@ internal class ClomniEngine(
         log("send ${entry.id}: attempt ${failed.attempts} failed${status?.let { " ($it)" }.orEmpty()}")
         nextAttempt = executor.schedule(::deliver, outboxRetryMs(failed.attempts), TimeUnit.MILLISECONDS)
         return false
+    }
+
+    /**
+     * The entry with its file uploaded: as it is when there is none or it already went, otherwise after POST /uploads.
+     * Null when it cannot be sent at all (its staged file is gone) or was discarded meanwhile.
+     */
+    private fun uploaded(entry: PendingMessage): PendingMessage? {
+        val upload = entry.upload?.takeIf { it.uploadId == null } ?: return entry
+        val file = store.outbox.stagedFile(upload)?.takeIf { it.isFile }
+        if (file == null) {
+            store.outbox.fail(entry.id, "file_missing")
+            log("${entry.id}: its file is gone")
+            return null
+        }
+        val uploadId = authed { api.upload(file, upload.fileName, upload.mime) }.uploadId
+        return store.outbox.uploaded(entry.id, uploadId)
     }
 
     private fun reloadAnswered(messageId: String) {

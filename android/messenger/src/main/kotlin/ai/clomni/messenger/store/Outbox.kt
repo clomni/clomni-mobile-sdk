@@ -12,6 +12,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import java.io.File
 
 /** A message on its way to the server, shown as the user's bubble until the server's copy replaces it. */
 internal data class PendingMessage(
@@ -25,6 +26,8 @@ internal data class PendingMessage(
     /** The server's reason when it refused the message, e.g. `validation_failed` with [fields]. */
     val errorCode: String? = null,
     val fields: Map<String, String> = emptyMap(),
+    /** A file the user attached: kept on this device until the server has the message. */
+    val upload: PendingUpload? = null,
 ) {
     val id: String get() = message.clientId
 
@@ -36,12 +39,29 @@ internal data class PendingMessage(
     }
 }
 
+/** An attached file on its way: uploaded first (POST /uploads), then sent as an `attachment` message. */
+internal data class PendingUpload(
+    val fileName: String,
+    val mime: String,
+    /** Bytes. */
+    val size: Long,
+    /** The file's name in the outbox's directory. */
+    val storedAs: String,
+    /** Set once the upload succeeded; a retry, or the next run, then only sends the message. */
+    val uploadId: String? = null,
+)
+
 /**
  * Every message the user sends is written here before the first attempt and stays until the server confirms it, so
  * neither a lost connection nor a killed process loses it. A retry repeats its `client_id`, which the server handles
  * only once. After [MAX_ATTEMPTS] failed attempts a message is [PendingMessage.State.FAILED] until [retry].
  */
-internal class Outbox(private val file: JsonFile?, private val protocol: ProtocolJson) {
+internal class Outbox(
+    private val file: JsonFile?,
+    private val protocol: ProtocolJson,
+    /** Where attached files wait for their upload; null keeps none (a store without a directory). */
+    private val filesDir: File? = null,
+) {
     private val entries = mutableListOf<PendingMessage>()
 
     @Synchronized
@@ -64,13 +84,50 @@ internal class Outbox(private val file: JsonFile?, private val protocol: Protoco
         save()
     }
 
-    /** Confirmed by the server, or given up on. */
+    /** Confirmed by the server, or given up on; its staged file goes with it. */
     @Synchronized
     fun remove(clientId: String): PendingMessage? {
         val index = entries.indexOfFirst { it.id == clientId }
         if (index < 0) return null
-        return entries.removeAt(index).also { save() }
+        return entries.removeAt(index).also { removed ->
+            save()
+            removed.upload?.let { stagedFile(it)?.delete() }
+        }
     }
+
+    /** Keeps an attachment's bytes until it is sent; the name it is stored under, or null when it could not be. */
+    fun stage(clientId: String, data: ByteArray): String? {
+        val dir = filesDir ?: return null
+        val name = "upload-$clientId"
+        return try {
+            dir.mkdirs()
+            val temp = File(dir, "$name.tmp")
+            temp.writeBytes(data)
+            val target = File(dir, name)
+            if (!temp.renameTo(target)) {
+                target.delete()
+                temp.renameTo(target)
+            }
+            name.takeIf { target.isFile && target.length() == data.size.toLong() }
+        } catch (e: java.io.IOException) {
+            null
+        }
+    }
+
+    /** Where a pending attachment's bytes are. */
+    fun stagedFile(upload: PendingUpload): File? = filesDir?.let { File(it, upload.storedAs) }
+
+    /** The file is on the server: the message now carries its id, kept on disk so a restart does not upload again. */
+    @Synchronized
+    fun uploaded(clientId: String, uploadId: String): PendingMessage? = update(clientId) { entry ->
+        val attachment = entry.message as? ClientMessage.Attachment ?: return@update entry
+        entry.copy(message = attachment.copy(uploadId = uploadId), upload = entry.upload?.copy(uploadId = uploadId))
+    }
+
+    /** Failed for a reason of this device (its staged file is gone): no attempt can help. */
+    @Synchronized
+    fun fail(clientId: String, code: String): PendingMessage? =
+        update(clientId) { it.copy(state = PendingMessage.State.FAILED, errorCode = code) }
 
     /** One attempt got no answer; the third makes the message failed. */
     @Synchronized
@@ -98,14 +155,18 @@ internal class Outbox(private val file: JsonFile?, private val protocol: Protoco
     @Synchronized
     fun load() {
         entries.clear()
-        val saved = file?.read() as? JsonObject ?: return
-        (saved["entries"] as? JsonArray).orEmpty().mapNotNullTo(entries) { decode(it as? JsonObject) }
+        val saved = file?.read() as? JsonObject
+        (saved?.get("entries") as? JsonArray).orEmpty().mapNotNullTo(entries) { decode(it as? JsonObject) }
+        // A file staged by a run that ended before its message was written down belongs to nothing.
+        val kept = entries.mapNotNullTo(HashSet()) { it.upload?.storedAs }
+        filesDir?.listFiles()?.filter { it.name !in kept }?.forEach { it.delete() }
     }
 
     @Synchronized
     fun clear() {
         entries.clear()
         file?.delete()
+        filesDir?.deleteRecursively()
     }
 
     private fun update(clientId: String, change: (PendingMessage) -> PendingMessage): PendingMessage? {
@@ -129,6 +190,18 @@ internal class Outbox(private val file: JsonFile?, private val protocol: Protoco
         put("attempts", entry.attempts)
         put("error_code", entry.errorCode)
         put("fields", JsonObject(entry.fields.mapValues { JsonPrimitive(it.value) }))
+        entry.upload?.let { upload ->
+            put(
+                "upload",
+                buildJsonObject {
+                    put("file_name", upload.fileName)
+                    put("mime", upload.mime)
+                    put("size", upload.size)
+                    put("stored_as", upload.storedAs)
+                    put("upload_id", upload.uploadId)
+                },
+            )
+        }
     }
 
     private fun decode(o: JsonObject?): PendingMessage? {
@@ -145,6 +218,15 @@ internal class Outbox(private val file: JsonFile?, private val protocol: Protoco
             fields = (o["fields"] as? JsonObject).orEmpty().mapNotNull { (key, value) ->
                 (value as? JsonPrimitive)?.takeIf { it.isString }?.let { key to it.content }
             }.toMap(),
+            upload = (o["upload"] as? JsonObject)?.let { u ->
+                PendingUpload(
+                    fileName = u.text("file_name") ?: return null,
+                    mime = u.text("mime") ?: return null,
+                    size = (u["size"] as? JsonPrimitive)?.longOrNull ?: 0,
+                    storedAs = u.text("stored_as") ?: return null,
+                    uploadId = u.text("upload_id"),
+                )
+            },
         )
     }
 

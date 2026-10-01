@@ -63,7 +63,12 @@ public data class MessengerConfig(
         val officeHours: OfficeHours?,
     )
 
-    public data class OfficeHours(val timeZone: String?, val openNow: Boolean)
+    public data class OfficeHours(
+        val timeZone: String?,
+        val openNow: Boolean,
+        /** Epoch milliseconds, UTC: when the team is back, while [openNow] is false; null when the server has none. */
+        val nextOpenAt: Long? = null,
+    )
 
     public data class Bot(val name: String, val avatarUrl: String?)
 

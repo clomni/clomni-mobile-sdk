@@ -9,6 +9,7 @@ import ai.clomni.messenger.api.MemorySecureStore
 import ai.clomni.messenger.api.SecureStore
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.UserIdentity
+import ai.clomni.messenger.protocol.ConversationStatus
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.ProtocolJson
@@ -71,7 +72,7 @@ class ClomniEngineTest {
             protocol,
             http,
             timing = ClomniEngine.Timing(RealtimeClient.Timing(reconnectDelayMs = { 50L }), outboxRetryMs = { retryMs }),
-        ).also { it.setChangeHandler { change -> changes += change } }
+        ).also { it.observe { change -> changes += change } }
 
         init {
             phones += this
@@ -509,6 +510,121 @@ class ClomniEngineTest {
         assertEquals(1, fake.count("POST /v1/conversations/$conversation/read"))
         assertEquals(2, fake.count("POST /v1/conversations/$conversation/typing"))
         phone.engine.markRead("conv_unknown").await()
+    }
+
+    @Test
+    fun severalScreensHearEveryChange() {
+        val (phone, conversation) = ready()
+        val badge = CopyOnWriteArrayList<ClomniChange>()
+        val token = phone.engine.observe { badge += it }
+        phone.engine.sendText("Salam", conversation).await()
+        eventually("both hear the message") {
+            ClomniChange.Messages(conversation) in badge && ClomniChange.Messages(conversation) in phone.changes
+        }
+        phone.engine.stopObserving(token)
+        phone.engine.awaitIdle()
+        badge.clear()
+        phone.changes.clear()
+        phone.engine.sendText("Yenə", conversation).await()
+        eventually("the first still hears") { ClomniChange.Messages(conversation) in phone.changes }
+        phone.engine.awaitIdle()
+        assertTrue("stopped listening", badge.isEmpty())
+    }
+
+    /** A file is kept on the device, uploaded, then sent as an attachment; the staged copy goes once the server has it. */
+    @Test
+    fun aFileIsUploadedThenSent() {
+        val (phone, conversation) = ready()
+        fake.drops["POST /v1/uploads"] = 1
+        val data = ByteArray(2_000) { 7 }
+        val pending = phone.engine.sendFile(data, "velo.jpg", "image/jpeg", "Velosiped", conversation).await()
+        assertEquals("velo.jpg", pending.upload?.fileName)
+        assertEquals(2_000L, pending.upload?.size)
+        val local = phone.engine.localFile(pending)!!
+        assertTrue(local.readBytes().contentEquals(data))
+
+        eventually("sent") { phone.engine.pending(conversation).isEmpty() }
+        assertEquals("the upload is repeated like a message", 2, fake.count("POST /v1/uploads"))
+        val body = fake.sentBodies.last()
+        assertEquals(pending.id, body.getValue("client_id").jsonPrimitive.content)
+        assertEquals("attachment", body.getValue("type").jsonPrimitive.content)
+        val content = body.getValue("content").jsonObject
+        assertTrue(content.getValue("upload_id").jsonPrimitive.content.startsWith("upl_"))
+        assertEquals("Velosiped", content.getValue("caption").jsonPrimitive.content)
+        assertFalse("the staged copy is gone", local.exists())
+        assertEquals(1, fake.userMessages(conversation).size)
+    }
+
+    /** Uploaded but not yet sent when the app closed: the next run sends the message without uploading again. */
+    @Test
+    fun anUploadedFileIsNotUploadedAgainAfterARestart() {
+        val vault = MemorySecureStore()
+        val dir = folder.newFolder()
+        val (before, conversation) = ready(Phone(vault, dir, retryMs = 60_000))
+        fake.drops["POST /v1/conversations/$conversation/messages"] = 1
+        val pending = before.engine.sendFile("pdf".toByteArray(), "qaime.pdf", "application/pdf", null, conversation).await()
+        eventually("the send fails once") { before.engine.pending(conversation).singleOrNull()?.attempts == 1 }
+        val uploaded = before.engine.pending(conversation).single().upload?.uploadId
+        assertTrue(uploaded.orEmpty().startsWith("upl_"))
+        before.engine.shutdown()
+
+        val after = Phone(vault, dir)
+        after.engine.awaitIdle()
+        assertEquals(listOf(pending.id), after.engine.pending(conversation).map { it.id })
+        assertEquals(uploaded, after.engine.pending(conversation).single().upload?.uploadId)
+        after.engine.loginUnidentifiedUser().await()
+        eventually("the next run sends it") { after.engine.pending(conversation).isEmpty() }
+        assertEquals(1, fake.count("POST /v1/uploads"))
+        assertEquals(uploaded, fake.sentBodies.last().getValue("content").jsonObject.getValue("upload_id").jsonPrimitive.content)
+        assertEquals(1, fake.userMessages(conversation).size)
+    }
+
+    @Test
+    fun filesOverTheLimitAreRefused() {
+        val (phone, conversation) = ready()
+        try {
+            phone.engine.sendFile(ByteArray(10 * 1_048_576 + 1), "big.jpg", "image/jpeg", null, conversation).await()
+            fail("over the 10 MB image limit")
+        } catch (e: ExecutionException) {
+            assertEquals("file over 10 MB", (e.cause as ClomniError.Rejected).message)
+        }
+        fake.offline = true
+        val pdf = phone.engine.sendFile(ByteArray(12 * 1_048_576), "big.pdf", "application/pdf", null, conversation).await()
+        assertEquals("other files may be up to 25 MB", "application/pdf", pdf.upload?.mime)
+        val staged = phone.engine.localFile(pdf)!!
+        assertTrue(staged.exists())
+        phone.engine.discard(pdf.id).await()
+        assertFalse("discarding deletes it", staged.exists())
+        assertTrue(phone.engine.pending(conversation).isEmpty())
+    }
+
+    /** The staged file disappeared (storage cleared): the message fails for good instead of retrying forever. */
+    @Test
+    fun aFileThatIsGoneFails() {
+        val (phone, conversation) = ready(Phone(retryMs = 60_000))
+        fake.offline = true
+        val pending = phone.engine.sendFile("x".toByteArray(), "a.txt", "text/plain", null, conversation).await()
+        eventually("first attempt") { phone.engine.pending(conversation).singleOrNull()?.attempts == 1 }
+        phone.engine.localFile(pending)!!.delete()
+        fake.offline = false
+        // The next attempt, without waiting for the pause.
+        phone.engine.applicationWillEnterForeground().await()
+        eventually("failed") { phone.engine.pending(conversation).singleOrNull()?.state == PendingMessage.State.FAILED }
+        assertEquals("file_missing", phone.engine.pending(conversation).single().errorCode)
+        assertEquals("only the offline attempt reached for the server", 1, fake.count("POST /v1/uploads"))
+    }
+
+    @Test
+    fun aConversationOpenedFromAPush() {
+        val other = Phone()
+        other.engine.loginUser(aysel, "hash").await()
+        val conversation = other.engine.startConversation(null).await().id
+        val phone = Phone()
+        phone.engine.loginUser(aysel, "hash").await()
+        assertNull(phone.engine.conversation(conversation))
+        phone.engine.refreshConversation(conversation).await()
+        assertEquals(ConversationStatus.BOT, phone.engine.conversation(conversation)?.status)
+        assertTrue(ClomniChange.Conversations in phone.changes)
     }
 
     @Test

@@ -4,6 +4,7 @@ import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.MessengerConfig
 import java.util.TimeZone
+import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.Future
 
@@ -20,7 +21,10 @@ internal interface MessengerDataSource {
 
     fun startConversation(openedFrom: String?): Future<Conversation>
 
-    fun setChangeHandler(handler: (ClomniChange) -> Unit)
+    /** [handler] hears every change until [stopObserving] is called with the returned token. */
+    fun observe(handler: (ClomniChange) -> Unit): UUID
+
+    fun stopObserving(token: UUID)
 }
 
 /**
@@ -40,6 +44,9 @@ internal class HomeController(
 ) {
     private var snapshot = MessengerSnapshot(userName = userName)
     private var starting = false
+
+    /** Touched on [worker] only. */
+    private var observation: UUID? = null
 
     var home: HomeScreen
         private set
@@ -75,7 +82,7 @@ internal class HomeController(
     fun load() {
         worker.execute {
             publish(state())
-            source.setChangeHandler { change -> changed(change) }
+            if (observation == null) observation = source.observe(::changed)
             val config = runCatching { source.refreshConfig(language).get() }.getOrNull()
             val conversations = runCatching { source.refreshConversations().get() }.isSuccess
             publish(state()) {
@@ -85,6 +92,14 @@ internal class HomeController(
                         if (conversations) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
                 )
             }
+        }
+    }
+
+    /** Stops following the engine's changes, when the messenger closes. */
+    fun stop() {
+        worker.execute {
+            observation?.let(source::stopObserving)
+            observation = null
         }
     }
 

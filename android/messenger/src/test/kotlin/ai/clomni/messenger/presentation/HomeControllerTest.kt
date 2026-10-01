@@ -12,6 +12,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.TimeZone
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 import java.util.concurrent.Future
@@ -25,7 +26,7 @@ private class FakeSource : MessengerDataSource {
     var conversationsFail = false
     var startFails = false
     var starts = 0
-    var handler: ((ClomniChange) -> Unit)? = null
+    val observers = LinkedHashMap<UUID, (ClomniChange) -> Unit>()
 
     override val config: MessengerConfig? get() = cached
     override val unreadTotal: Int get() = unread
@@ -49,14 +50,16 @@ private class FakeSource : MessengerDataSource {
         return CompletableFuture.completedFuture(conversation)
     }
 
-    override fun setChangeHandler(handler: (ClomniChange) -> Unit) {
-        this.handler = handler
+    override fun observe(handler: (ClomniChange) -> Unit): UUID = UUID.randomUUID().also { observers[it] = handler }
+
+    override fun stopObserving(token: UUID) {
+        observers.remove(token)
     }
 
     /** What the engine does when a socket event arrives. */
     fun push(unread: Int, change: ClomniChange) {
         this.unread = unread
-        handler?.invoke(change)
+        observers.values.toList().forEach { it(change) }
     }
 }
 
@@ -135,6 +138,11 @@ class HomeControllerTest {
         source.push(2, ClomniChange.Unread(2))
         assertTrue(home.home.tabs.messagesUnread)
         assertEquals(before + 1, renders)
+
+        home.retry()
+        assertEquals("loading again does not listen twice", 1, source.observers.size)
+        home.stop()
+        assertTrue(source.observers.isEmpty())
     }
 
     @Test
