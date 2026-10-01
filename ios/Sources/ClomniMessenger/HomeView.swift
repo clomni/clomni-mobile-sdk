@@ -269,7 +269,7 @@ struct ConversationRowView: View {
     }
 }
 
-/// "Bizi izləyin": 30 pt squares (radius 8) in each platform's colour, 44 pt targets.
+/// "Bizi izləyin": 30 pt squares (radius 8) with each platform's mark in its colour, 44 pt targets.
 struct ChannelsCardView: View {
     let card: HomeScreen.ChannelsCard
     let theme: ClomniTheme
@@ -299,10 +299,10 @@ struct ChannelButton: View {
     let theme: ClomniTheme
     let action: () -> Void
 
-    private var colors: (background: Color, symbol: Color) {
-        switch item.tint {
-        case .brand(let color): return (color.color, Color.white)
-        case .neutral: return (theme.colors.surface.color, theme.colors.textPrimary.color)
+    private var background: Color {
+        switch item.glyph {
+        case .brand(_, let color): return color.color
+        case .symbol: return theme.colors.surface.color
         }
     }
 
@@ -310,10 +310,8 @@ struct ChannelButton: View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.channel), style: .continuous)
-                    .fill(colors.background)
-                Image(systemName: item.symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(colors.symbol)
+                    .fill(background)
+                glyph
             }
             .frame(width: CGFloat(ClomniTheme.Size.channel), height: CGFloat(ClomniTheme.Size.channel))
             .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
@@ -321,6 +319,46 @@ struct ChannelButton: View {
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel(Text(item.accessibilityLabel))
+    }
+
+    @ViewBuilder
+    private var glyph: some View {
+        switch item.glyph {
+        case .brand(let path, _):
+            SVGShape(svg: path)
+                .fill(Color.white)
+                .frame(width: 16, height: 16)
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(theme.colors.textPrimary.color)
+        }
+    }
+}
+
+/// An `SVGPath` drawn into the frame it is given, its 24×24 box scaled to fit and centred.
+struct SVGShape: Shape {
+    let svg: SVGPath
+    var box: Double = 24
+
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / CGFloat(box)
+        let dx = rect.minX + (rect.width - CGFloat(box) * scale) / 2
+        let dy = rect.minY + (rect.height - CGFloat(box) * scale) / 2
+        func point(_ p: SVGPath.Point) -> CGPoint {
+            CGPoint(x: dx + CGFloat(p.x) * scale, y: dy + CGFloat(p.y) * scale)
+        }
+        var result = Path()
+        for segment in svg.segments {
+            switch segment {
+            case .move(let to): result.move(to: point(to))
+            case .line(let to): result.addLine(to: point(to))
+            case .cubic(let first, let second, let to):
+                result.addCurve(to: point(to), control1: point(first), control2: point(second))
+            case .close: result.closeSubpath()
+            }
+        }
+        return result
     }
 }
 #endif

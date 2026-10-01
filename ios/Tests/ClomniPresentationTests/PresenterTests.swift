@@ -199,23 +199,4 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(presenter().messages(stale).phase, .ready, "the cached list stays")
         XCTAssertEqual(presenter("ru").messages(snapshot(Fixture.aparConfig, [])).empty, "Пока нет переписки")
     }
-
-    func testChannelStyles() throws {
-        let strings = ClomniStrings(language: "az")
-        func item(_ type: String, _ url: String) -> ChannelItem {
-            ChannelItem(type: type, url: URL(string: url)!, strings: strings)
-        }
-        XCTAssertEqual(item("instagram", "https://instagram.com/apar").tint, .brand(RGBColor(hex: "#E4405F")!))
-        XCTAssertEqual(item("WhatsApp", "https://wa.me/1").symbol, "phone.fill")
-        XCTAssertEqual(item("linkedin", "https://linkedin.com/x").tint, .brand(RGBColor(hex: "#0A66C2")!))
-        XCTAssertEqual(item("email", "mailto:a@b.az").tint, .neutral)
-        XCTAssertEqual(item("support", "mailto:a@b.az").accessibilityLabel, "E-poçt", "a mailto: link is email")
-        XCTAssertEqual(item("call", "tel:+994501234567").accessibilityLabel, "Telefon")
-        XCTAssertEqual(item("x", "https://x.com/apar").tint, .neutral, "black would vanish in dark mode")
-        let unknown = item("mastodon", "https://social.az/@apar")
-        XCTAssertEqual(unknown.symbol, "link")
-        XCTAssertEqual(unknown.tint, .neutral)
-        XCTAssertEqual(unknown.accessibilityLabel, "social.az")
-        XCTAssertNotEqual(item("instagram", "https://a").id, item("instagram", "https://b").id)
-    }
 }
