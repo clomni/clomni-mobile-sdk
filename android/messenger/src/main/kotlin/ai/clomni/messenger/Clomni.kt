@@ -59,6 +59,21 @@ public object Clomni {
         onMain { MessengerRuntime.login(null) { it.loginUnidentifiedUser() } }
     }
 
+    /**
+     * The FCM token, from FirebaseMessagingService.onNewToken (and FirebaseMessaging.getToken at start). It is kept
+     * and registered for whoever is logged in, again after a login as someone else; before [initialize] it waits.
+     */
+    @JvmStatic
+    public fun setDeviceToken(token: String) {
+        onMain { MessengerRuntime.setDeviceToken(token) }
+    }
+
+    /** The small icon of Clomni's notifications (a white silhouette, as Android asks); without it, the app's icon. */
+    @JvmStatic
+    public fun setNotificationIcon(icon: Int) {
+        MessengerRuntime.notificationIcon = icon
+    }
+
     /** Ends the session and deletes the messenger's data on this device. */
     @JvmStatic
     public fun logout() {

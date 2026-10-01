@@ -6,10 +6,14 @@ import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.core.AndroidMessenger
 import ai.clomni.messenger.core.ClomniEngine
 import ai.clomni.messenger.core.NetworkMonitor
+import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.MessengerCoordinator
 import ai.clomni.messenger.presentation.MessengerEvents
 import ai.clomni.messenger.presentation.MessengerRoute
+import ai.clomni.messenger.presentation.PushNotification
+import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.ProtocolJson
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -23,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.lang.ref.WeakReference
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -63,6 +68,14 @@ internal object MessengerRuntime {
     var identity: UserIdentity? = null
         private set
 
+    /** `Clomni.setNotificationIcon`; 0 is the app's own icon. */
+    @Volatile
+    var notificationIcon: Int = 0
+
+    /** A token the app gave before `initialize`. */
+    private var pendingToken: String? = null
+    private val protocol = ProtocolJson(::log)
+
     private var launcherVisible: Boolean? = null
     private var bottomPadding: Int? = null
     private val pendingListeners = LinkedHashSet<UnreadCountListener>()
@@ -94,6 +107,8 @@ internal object MessengerRuntime {
         this.engine = engine
         this.coordinator = coordinator
         this.network = network
+        pendingToken?.let(engine::setDeviceToken)
+        pendingToken = null
         coordinator.start()
     }
 
@@ -112,6 +127,31 @@ internal object MessengerRuntime {
         identity = null
         coordinator?.loggedOut()
         engine.logout()
+    }
+
+    fun setDeviceToken(token: String) {
+        engine?.setDeviceToken(token) ?: run { pendingToken = token }
+    }
+
+    /**
+     * A Clomni push (on FCM's thread): its count to the listeners, and a notification unless the messenger is open.
+     * One this SDK cannot read is logged and still shown.
+     */
+    fun pushReceived(context: Context, data: Map<String, String>) {
+        val push = protocol.parsePush(data)
+        if (coordinator?.received(push) == false) return
+        val config = coordinator?.config
+        val strings = ClomniStrings(config?.languages?.firstOrNull() ?: Locale.getDefault().language, config?.strings.orEmpty())
+        val label = context.applicationInfo.loadLabel(context.packageManager).toString()
+        val notification = PushNotification.of(push, data, strings, label)
+        val color = config?.brand?.primaryColor?.let(RgbColor::parse)?.argb
+        val post = { PushNotifier.post(context, notification, notificationIcon, color) }
+        if (Looper.myLooper() == Looper.getMainLooper()) waits.execute(post) else post()
+    }
+
+    /** A tap on a Clomni notification, in the messenger's activity. */
+    fun openFromPush(conversationId: String?) {
+        coordinator?.openFromPush(conversationId) ?: log("call Clomni.initialize first")
     }
 
     fun setLauncherVisible(visible: Boolean) {
@@ -150,6 +190,11 @@ internal object MessengerRuntime {
     // The messenger's activity
 
     fun attach(activity: ClomniMessengerActivity) {
+        // A notification tapped while the messenger was open behind the app: the new one takes over.
+        messenger?.get()?.takeIf { it !== activity && !it.isFinishing }?.let {
+            it.replaced = true
+            it.finish()
+        }
         messenger = WeakReference(activity)
         opening = false
     }
@@ -157,7 +202,7 @@ internal object MessengerRuntime {
     /** It is gone; when the user closed it (system back, swipe), the messenger is closed. */
     fun detach(activity: ClomniMessengerActivity, closedByUser: Boolean) {
         if (messenger?.get() === activity) messenger = null
-        if (closedByUser) coordinator?.dismiss()
+        if (closedByUser && !activity.replaced) coordinator?.dismiss()
     }
 
     /** Back: from a conversation to Home, from Home out. */
@@ -174,6 +219,7 @@ internal object MessengerRuntime {
         root.failed = coordinator.prepareFailed
         root.config = coordinator.config
         root.source = coordinator.source
+        (coordinator.route as? MessengerRoute.Conversation)?.let { open -> app?.let { PushNotifier.cancel(it, open.id) } }
         val shown = messenger?.get()
         if (coordinator.route != null && shown == null && !opening) {
             open()
