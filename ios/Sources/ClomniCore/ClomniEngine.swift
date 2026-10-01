@@ -339,6 +339,9 @@ public actor ClomniEngine {
     /// "← Geri" under quick replies with `allowBack`.
     @discardableResult
     public func goBack(from message: Message) throws -> PendingMessage {
+        guard case .quickReplies(let replies) = message.content, replies.allowBack else {
+            throw ClomniError.rejected("no back button")
+        }
         try answer(message)
         return enqueue(.back(replyTo: message.id), in: message.conversationId, preview: nil)
     }

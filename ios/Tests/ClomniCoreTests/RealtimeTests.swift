@@ -124,10 +124,10 @@ final class RealtimeTests: XCTestCase {
     func testFramesKeepTheConnectionAlive() async throws {
         await realtime.start()
         await waitForConnection(1)
-        for _ in 0..<4 {
+        for round in 1...4 {
             await expect { self.time.sleeping == 1 }
             socket.push(FakeServer.frame("unread.changed", ["total": 1]))
-            await expect { self.received.names.count > 0 }
+            await expect { self.received.names.count == round }
             time.advance(by: 25)
         }
         XCTAssertFalse(socket.connections[0].isClosed)
