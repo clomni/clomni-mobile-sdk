@@ -92,6 +92,7 @@ final class ChatPresenterTests: XCTestCase {
         // A bot message after it: no status under the user's.
         let answer = Fixture.message("01-text-bot.json", ["seq": 4, "created_at": "2026-10-01T10:36:00Z"])
         XCTAssertNil(bubbles(screen([mine, answer])).first?.status)
+        XCTAssertNil(bubbles(screen([mine, answer])).last?.status, "nor under the bot's")
         XCTAssertEqual(bubbles(screen([mine])).last?.side, .outgoing)
         XCTAssertNil(bubbles(screen([mine])).last?.avatar)
         XCTAssertNil(bubbles(screen([mine])).last?.meta)
