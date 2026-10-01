@@ -237,7 +237,7 @@ class ChatPresenterTest {
         val block = (open.items.last() as ChatItem.RepliesItem).block
         assertEquals(listOf("🇦🇿 Azərbaycan dili", "🇬🇧 English", "🇷🇺 Русский"), block.buttons.map { it.title })
         assertEquals(listOf("az", "en", "ru"), block.buttons.map { it.id })
-        assertEquals("Düymə, Azərbaycan dili, 1-ci, cəmi 3", block.buttons[0].accessibilityLabel)
+        assertEquals("the role says \"button\" itself", "Azərbaycan dili, 1-ci, cəmi 3", block.buttons[0].accessibilityLabel)
         assertEquals(MessageContent.QuickRepliesLayout.VERTICAL, block.layout)
         assertNull(block.back)
         assertEquals(ChatComposer.Mode.Open, open.composer.mode)
@@ -254,7 +254,7 @@ class ChatPresenterTest {
         val chips = screen(listOf(step)) { it.copy(answerable = setOf(step.id)) }
         val chipsBlock = (chips.items.last() as ChatItem.RepliesItem).block
         assertEquals(MessageContent.QuickRepliesLayout.CHIPS, chipsBlock.layout)
-        assertEquals(ReplyButton("back", "← Geri", "Düymə, Geri"), chipsBlock.back)
+        assertEquals(ReplyButton("back", "← Geri", "Geri"), chipsBlock.back)
         assertEquals(ChatComposer.Mode.Locked("Yuxarıdakı variantlardan birini seçin"), chips.composer.mode)
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
@@ -264,7 +264,7 @@ class ChatPresenterTest {
         val ten = ChatFixture.message("14-ten-buttons.json")
         val tenBlock = (screen(listOf(ten)) { it.copy(answerable = setOf(ten.id)) }.items.last() as ChatItem.RepliesItem).block
         assertEquals(10, tenBlock.buttons.size)
-        assertEquals("Düymə, Variant 10, 10-cu, cəmi 10", tenBlock.buttons[9].accessibilityLabel)
+        assertEquals("Variant 10, 10-cu, cəmi 10", tenBlock.buttons[9].accessibilityLabel)
         val bare = ChatFixture.message("15-quick-replies-no-text.json")
         val bareScreen = screen(listOf(bare)) { it.copy(answerable = setOf(bare.id)) }
         assertTrue("no text, no bubble", bubbles(bareScreen).isEmpty())

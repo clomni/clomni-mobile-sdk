@@ -226,9 +226,9 @@ class MediaTest {
             ),
             suffixes,
         )
-        assertEquals("Düymə, Azərbaycan dili, 1-ci, cəmi 3", ClomniStrings("az").buttonPosition("Azərbaycan dili", 1, 3))
-        assertEquals("Button, English, 2 of 3", ClomniStrings("en").buttonPosition("English", 2, 3))
-        assertEquals("Кнопка, Русский, 3 из 3", ClomniStrings("ru").buttonPosition("Русский", 3, 3))
+        assertEquals("Azərbaycan dili, 1-ci, cəmi 3", ClomniStrings("az").buttonPosition("Azərbaycan dili", 1, 3))
+        assertEquals("English, 2 of 3", ClomniStrings("en").buttonPosition("English", 2, 3))
+        assertEquals("Русский, 3 из 3", ClomniStrings("ru").buttonPosition("Русский", 3, 3))
     }
 
     @Test

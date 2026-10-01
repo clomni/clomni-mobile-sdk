@@ -348,7 +348,7 @@ internal class ChatPresenter(
             ReplyButton(button.id, title, strings.buttonPosition(button.title, index + 1, replies.buttons.size))
         }
         val back = if (replies.allowBack) {
-            ReplyButton("back", strings[Key.BACK], "${strings[Key.BUTTON]}, ${strings[Key.GO_BACK]}")
+            ReplyButton("back", strings[Key.BACK], strings[Key.GO_BACK])
         } else {
             null
         }

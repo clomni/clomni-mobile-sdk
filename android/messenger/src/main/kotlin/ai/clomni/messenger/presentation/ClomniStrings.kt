@@ -78,11 +78,14 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
     /** A text with one word in it ("Növbəti iş saatı: %@"; protocol/strings.json's placeholder). */
     fun format(key: Key, text: String): String = get(key).replace("%@", text)
 
-    /** TalkBack for a flow button: "Düymə, Azərbaycan dili, 1-ci, cəmi 3". */
+    /**
+     * TalkBack for a flow button: "Azərbaycan dili, 1-ci, cəmi 3". The button role is read by the system itself, in
+     * the system's language, so the text does not say "Düymə" again.
+     */
     fun buttonPosition(title: String, index: Int, count: Int): String = when (language) {
-        "en" -> "${get(Key.BUTTON)}, $title, $index of $count"
-        "ru" -> "${get(Key.BUTTON)}, $title, $index из $count"
-        else -> "${get(Key.BUTTON)}, $title, $index-${azerbaijaniOrdinalSuffix(index)}, cəmi $count"
+        "en" -> "$title, $index of $count"
+        "ru" -> "$title, $index из $count"
+        else -> "$title, $index-${azerbaijaniOrdinalSuffix(index)}, cəmi $count"
     }
 
     /** Month names as they stand before or after a day ("1 oktyabr", "1 октября", "October 1"). */
