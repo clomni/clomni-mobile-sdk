@@ -211,6 +211,38 @@ final class PushRegistrationTests: EngineTestCase {
         XCTAssertEqual(server.pushTarget("usr_5"), "tok_c production")
     }
 
+    func testATokenGivenDuringTheRequestFollowsIt() async throws {
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "5"), userHash: "hash_5")
+        server.hold("POST", "/devices")
+        async let first: Void = phone.engine.setDeviceToken("tok_a", sandbox: false)
+        await expect { self.server.heldCount == 1 }
+        async let second: Void = phone.engine.setDeviceToken("tok_b", sandbox: false)
+        await expect { phone.vault.value(PushRegistration.self, for: "push_registration")?.token == "tok_b" }
+        server.release()
+        _ = await (first, second)
+        XCTAssertEqual(server.pushTarget("usr_5"), "tok_b production")
+        XCTAssertEqual(phone.vault.value(PushRegistration.self, for: "push_registration")?.registeredFor, "usr_5")
+        XCTAssertEqual(registrations(), 2)
+    }
+
+    /// The server has the token, but the user logged out before the answer came: it is not registered any more.
+    func testALogoutDuringTheRequestIsNotOverwritten() async throws {
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "5"), userHash: "hash_5")
+        server.hold("POST", "/devices")
+        async let registering: Void = phone.engine.setDeviceToken("tok_a", sandbox: false)
+        await expect { self.server.heldCount == 1 }
+        await phone.engine.logout()
+        server.release()
+        await registering
+        XCTAssertNil(server.pushTarget("usr_5"))
+
+        try await phone.engine.loginUser(UserIdentity(userId: "5"), userHash: "hash_5")
+        await phone.engine.registerPush()
+        XCTAssertEqual(server.pushTarget("usr_5"), "tok_a production")
+    }
+
     /// Whichever arrives last, the server ends with the token the device keeps.
     func testTokensGivenTogetherEndWithTheKeptOne() async throws {
         let phone = await device()

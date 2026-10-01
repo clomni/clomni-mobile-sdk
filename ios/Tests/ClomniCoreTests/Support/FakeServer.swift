@@ -33,6 +33,8 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     private let lock = NSLock()
     private let time: TimeSource
     private var faults: [(method: String, path: String, fault: Fault)] = []
+    private var holding: [(method: String, path: String)] = []
+    private var held: [CheckedContinuation<Void, Never>] = []
     private var log: [HTTPRequest] = []
     private var sessions: [String: (user: String, expires: Date)] = [:]
     private var refreshTokens: [String: String] = [:]
@@ -61,6 +63,23 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     func inject(_ fault: Fault, _ method: String, _ path: String) {
         locked { faults.append((method, path, fault)) }
     }
+
+    /// Requests to `path` are handled, but their answers wait until `release`: changes made meanwhile happen while
+    /// the request is out.
+    func hold(_ method: String, _ path: String) {
+        locked { holding.append((method, path)) }
+    }
+
+    func release() {
+        let waiting = locked { () -> [CheckedContinuation<Void, Never>] in
+            holding = []
+            defer { held = [] }
+            return held
+        }
+        waiting.forEach { $0.resume() }
+    }
+
+    var heldCount: Int { locked { held.count } }
 
     /// Where the server's socket frames go (each test wires this to its fake sockets).
     func onFrame(_ sink: @escaping @Sendable (String) -> Void) {
@@ -146,6 +165,16 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
             }
         }
         if case .offline? = fault { throw URLError(.notConnectedToInternet) }
+        await withCheckedContinuation { (answer: CheckedContinuation<Void, Never>) in
+            let waits = locked { () -> Bool in
+                guard holding.contains(where: { $0.method == request.method && request.url.path.hasSuffix($0.path) }) else {
+                    return false
+                }
+                held.append(answer)
+                return true
+            }
+            if !waits { answer.resume() }
+        }
         let sink = locked { frameSink }
         frames.forEach { sink?($0) }
         if case .lostResponse? = fault { throw URLError(.networkConnectionLost) }
