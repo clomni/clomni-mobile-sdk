@@ -310,7 +310,7 @@ package struct ChatPresenter: Sendable {
                                                                           count: replies.buttons.count))
         }
         let back = replies.allowBack
-            ? ReplyButton(id: "back", title: strings[.back], accessibilityLabel: "\(strings[.button]), \(strings[.goBack])")
+            ? ReplyButton(id: "back", title: strings[.back], accessibilityLabel: strings[.goBack])
             : nil
         return QuickReplyBlock(messageId: messageId, layout: replies.layout, buttons: buttons, back: back)
     }

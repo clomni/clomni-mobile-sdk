@@ -26,7 +26,7 @@ package struct ClomniStrings: Sendable, Equatable {
         case startNewConversation = "start_new_conversation"
         case back
         case goBack = "go_back"
-        case bot, button, typing, attach, emoji, image, file
+        case bot, typing, attach, emoji, image, file
         case fieldRequired = "field_required"
         case invalidEmail = "invalid_email"
         case invalidPhone = "invalid_phone"
@@ -70,12 +70,13 @@ package struct ClomniStrings: Sendable, Equatable {
         self[key].replacingOccurrences(of: "%@", with: text)
     }
 
-    /// VoiceOver for a flow button: "Düymə, Azərbaycan dili, 1-ci, cəmi 3".
+    /// VoiceOver for a flow button: "Azərbaycan dili, 1-ci, cəmi 3". VoiceOver adds "Button" itself, in the system's
+    /// language (iOS has no Azerbaijani).
     package func buttonPosition(title: String, index: Int, count: Int) -> String {
         switch language {
-        case "en": return "\(self[.button]), \(title), \(index) of \(count)"
-        case "ru": return "\(self[.button]), \(title), \(index) из \(count)"
-        default: return "\(self[.button]), \(title), \(index)-\(Self.azerbaijaniOrdinalSuffix(index)), cəmi \(count)"
+        case "en": return "\(title), \(index) of \(count)"
+        case "ru": return "\(title), \(index) из \(count)"
+        default: return "\(title), \(index)-\(Self.azerbaijaniOrdinalSuffix(index)), cəmi \(count)"
         }
     }
 
@@ -117,7 +118,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .messagePlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdakı variantlardan birini seçin",
             .sending: "Göndərilir", .sent: "Göndərildi", .read: "Oxundu", .failed: "Göndərilmədi",
             .conversationClosed: "Söhbət bağlanıb", .startNewConversation: "Yeni söhbət başlat", .back: "← Geri",
-            .goBack: "Geri", .bot: "Bot", .button: "Düymə", .typing: "yazır", .attach: "Fayl əlavə et",
+            .goBack: "Geri", .bot: "Bot", .typing: "yazır", .attach: "Fayl əlavə et",
             .emoji: "Emoji", .image: "Şəkil", .file: "Fayl", .fieldRequired: "Bu sahəni doldurun",
             .invalidEmail: "Email düzgün deyil", .invalidPhone: "Telefon nömrəsi düzgün deyil",
             .invalidNumber: "Rəqəm yazın", .tooLong: "Ən çox %d simvol", .chooseOption: "Variantlardan birini seçin",
@@ -137,7 +138,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .messagePlaceholder: "Write a message…", .chooseAbove: "Choose one of the options above",
             .sending: "Sending", .sent: "Sent", .read: "Read", .failed: "Not sent",
             .conversationClosed: "Conversation closed", .startNewConversation: "Start a new conversation",
-            .back: "← Back", .goBack: "Back", .bot: "Bot", .button: "Button", .typing: "is typing",
+            .back: "← Back", .goBack: "Back", .bot: "Bot", .typing: "is typing",
             .attach: "Attach a file", .emoji: "Emoji", .image: "Image", .file: "File",
             .fieldRequired: "Fill in this field", .invalidEmail: "Enter a valid email",
             .invalidPhone: "Enter a valid phone number", .invalidNumber: "Enter a number",
@@ -158,7 +159,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .messagePlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите один из вариантов выше",
             .sending: "Отправляется", .sent: "Отправлено", .read: "Прочитано", .failed: "Не отправлено",
             .conversationClosed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад",
-            .goBack: "Назад", .bot: "Бот", .button: "Кнопка", .typing: "печатает", .attach: "Прикрепить файл",
+            .goBack: "Назад", .bot: "Бот", .typing: "печатает", .attach: "Прикрепить файл",
             .emoji: "Эмодзи", .image: "Изображение", .file: "Файл", .fieldRequired: "Заполните это поле",
             .invalidEmail: "Неверный email", .invalidPhone: "Неверный номер телефона",
             .invalidNumber: "Введите число", .tooLong: "Не больше %d символов", .chooseOption: "Выберите вариант",

@@ -199,7 +199,8 @@ final class ChatPresenterTests: XCTestCase {
         guard case .replies(let block)? = open.items.last else { return XCTFail("\(open.items)") }
         XCTAssertEqual(block.buttons.map(\.title), ["🇦🇿 Azərbaycan dili", "🇬🇧 English", "🇷🇺 Русский"])
         XCTAssertEqual(block.buttons.map(\.id), ["az", "en", "ru"])
-        XCTAssertEqual(block.buttons[0].accessibilityLabel, "Düymə, Azərbaycan dili, 1-ci, cəmi 3")
+        // VoiceOver says "Button" itself, in the system's language (iOS has no Azerbaijani).
+        XCTAssertEqual(block.buttons[0].accessibilityLabel, "Azərbaycan dili, 1-ci, cəmi 3")
         XCTAssertEqual(block.layout, .vertical)
         XCTAssertNil(block.back)
         XCTAssertEqual(open.composer.mode, .open)
@@ -215,7 +216,7 @@ final class ChatPresenterTests: XCTestCase {
         let chips = screen([step]) { $0.answerable = [step.id] }
         guard case .replies(let chipsBlock)? = chips.items.last else { return XCTFail() }
         XCTAssertEqual(chipsBlock.layout, .chips)
-        XCTAssertEqual(chipsBlock.back, ReplyButton(id: "back", title: "← Geri", accessibilityLabel: "Düymə, Geri"))
+        XCTAssertEqual(chipsBlock.back, ReplyButton(id: "back", title: "← Geri", accessibilityLabel: "Geri"))
         XCTAssertEqual(chips.composer.mode, .locked("Yuxarıdakı variantlardan birini seçin"))
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
@@ -227,7 +228,7 @@ final class ChatPresenterTests: XCTestCase {
         let tenScreen = screen([ten]) { $0.answerable = [ten.id] }
         guard case .replies(let tenBlock)? = tenScreen.items.last else { return XCTFail() }
         XCTAssertEqual(tenBlock.buttons.count, 10)
-        XCTAssertEqual(tenBlock.buttons[9].accessibilityLabel, "Düymə, Variant 10, 10-cu, cəmi 10")
+        XCTAssertEqual(tenBlock.buttons[9].accessibilityLabel, "Variant 10, 10-cu, cəmi 10")
         let bare = Fixture.message("15-quick-replies-no-text.json")
         let bareScreen = screen([bare]) { $0.answerable = [bare.id] }
         XCTAssertTrue(bubbles(bareScreen).isEmpty, "no text, no bubble")

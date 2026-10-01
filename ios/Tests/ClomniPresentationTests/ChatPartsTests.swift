@@ -148,10 +148,10 @@ final class MediaTests: XCTestCase {
                                   "20-ci", "30-cu", "40-cı", "50-ci", "60-cı", "70-ci", "80-ci", "90-cı", "100-cü",
                                   "1000-ci", "21-ci", "36-cı"])
         XCTAssertEqual(ClomniStrings(language: "az").buttonPosition(title: "Azərbaycan dili", index: 1, count: 3),
-                       "Düymə, Azərbaycan dili, 1-ci, cəmi 3")
+                       "Azərbaycan dili, 1-ci, cəmi 3")
         XCTAssertEqual(ClomniStrings(language: "en").buttonPosition(title: "English", index: 2, count: 3),
-                       "Button, English, 2 of 3")
+                       "English, 2 of 3")
         XCTAssertEqual(ClomniStrings(language: "ru").buttonPosition(title: "Русский", index: 3, count: 3),
-                       "Кнопка, Русский, 3 из 3")
+                       "Русский, 3 из 3")
     }
 }
