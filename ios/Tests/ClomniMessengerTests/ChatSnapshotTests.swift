@@ -8,8 +8,9 @@ import ClomniProtocol
 import ClomniPresentation
 @testable import ClomniMessenger
 
-/// Every message fixture of protocol/fixtures/index.json in the conversation screen, light and dark, compared with its
-/// reference picture in `__Snapshots__` next to this file.
+/// Every message fixture of protocol/fixtures/index.json in the conversation screen, and Home, light and dark, at the
+/// default text size and at accessibility3, compared with their reference pictures in `__Snapshots__` next to this
+/// file.
 ///
 /// How the references come about: a run that finds no reference for a picture writes it there and passes, saying
 /// "recorded" in the log. CI uploads the folder as the `snapshots` artifact after every run; download it once, look
@@ -42,21 +43,55 @@ final class ChatSnapshotTests: XCTestCase {
             snapshot.load = .loaded
             let screen = ChatPresenter(strings: ClomniStrings(language: "az", overrides: config.strings),
                                        timeZone: TimeZone(identifier: "UTC")!, now: now).screen(snapshot)
-            for dark in [false, true] {
-                let theme = ClomniTheme.make(brand: config.brand, dark: dark)
-                let image = Snapshot.render(SnapshotScene(screen: screen, theme: theme), width: 390, dark: dark)
-                try Snapshot.assert(image, named: (file as NSString).deletingPathExtension + (dark ? "-dark" : "-light"))
+            for variant in Variant.all {
+                let theme = ClomniTheme.make(brand: config.brand, dark: variant.dark)
+                let image = Snapshot.render(SnapshotScene(screen: screen, theme: theme, size: variant.size), width: 390,
+                                            dark: variant.dark)
+                try Snapshot.assert(image, named: (file as NSString).deletingPathExtension + variant.suffix)
             }
             rendered += 1
         }
         XCTAssertGreaterThanOrEqual(rendered, 35)
     }
+
+    /// Home as the brief draws it, while it loads, and when getting ready failed ("Yenidən cəhd et").
+    func testHome() throws {
+        let screens: [(String, HomeScreen)] = [
+            ("home", PreviewData.presenter.home(PreviewData.snapshot())),
+            ("home-loading", PreviewData.presenter.preparing(failed: false)),
+            ("home-failed", PreviewData.presenter.preparing(failed: true)),
+        ]
+        for (name, screen) in screens {
+            for variant in Variant.all {
+                let view = HomeView(screen: screen, theme: PreviewData.theme(dark: variant.dark), actions: MessengerActions())
+                    .environment(\.clomniLoadsRemoteImages, false)
+                    .environment(\.colorScheme, variant.dark ? .dark : .light)
+                    .dynamicTypeSize(variant.size)
+                let image = Snapshot.render(view, width: 390, height: 844, dark: variant.dark)
+                try Snapshot.assert(image, named: name + variant.suffix)
+            }
+        }
+    }
+}
+
+/// Light and dark, at the default text size and at accessibility3 (Dynamic Type past 200%, DoD 11).
+private struct Variant {
+    let dark: Bool
+    let size: DynamicTypeSize
+
+    var suffix: String {
+        (dark ? "-dark" : "-light") + (size == .large ? "" : "-ax3")
+    }
+
+    static let all = [Variant(dark: false, size: .large), Variant(dark: true, size: .large),
+                      Variant(dark: false, size: .accessibility3), Variant(dark: true, size: .accessibility3)]
 }
 
 /// Header, transcript and composer without scrolling, so the picture holds the whole conversation.
 private struct SnapshotScene: View {
     let screen: ChatScreen
     let theme: ClomniTheme
+    let size: DynamicTypeSize
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,7 +103,7 @@ private struct SnapshotScene: View {
         .background(theme.colors.background.color)
         .environment(\.clomniLoadsRemoteImages, false)
         .environment(\.colorScheme, theme.isDark ? .dark : .light)
-        .dynamicTypeSize(.large)
+        .dynamicTypeSize(size)
     }
 }
 
@@ -77,12 +112,13 @@ enum Snapshot {
     static let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         .appendingPathComponent("__Snapshots__")
 
+    /// `height`: a screen's (a view that scrolls has no height of its own); nil fits the content.
     @MainActor
-    static func render<Content: View>(_ view: Content, width: CGFloat, dark: Bool) -> UIImage {
+    static func render<Content: View>(_ view: Content, width: CGFloat, height: CGFloat? = nil, dark: Bool) -> UIImage {
         let controller = UIHostingController(rootView: view)
         controller.overrideUserInterfaceStyle = dark ? .dark : .light
         let fitting = controller.sizeThatFits(in: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
-        let size = CGSize(width: width, height: max(1, fitting.height.rounded(.up)))
+        let size = CGSize(width: width, height: height ?? max(1, fitting.height.rounded(.up)))
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.overrideUserInterfaceStyle = dark ? .dark : .light
         window.rootViewController = controller
