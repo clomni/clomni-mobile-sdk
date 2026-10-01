@@ -1,5 +1,6 @@
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     alias(libs.plugins.android.library)
@@ -36,8 +37,12 @@ android {
 
 kotlin {
     explicitApi()
+    // Readable by apps on Kotlin 1.8+ (see libs.versions.toml): Kotlin 1.9 metadata and a 1.9 stdlib dependency.
+    coreLibrariesVersion = libs.versions.kotlinStdlib.get()
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+        languageVersion.set(KotlinVersion.KOTLIN_1_9)
+        apiVersion.set(KotlinVersion.KOTLIN_1_9)
     }
 }
 

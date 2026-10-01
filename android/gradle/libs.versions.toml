@@ -1,9 +1,12 @@
 [versions]
 # AGP 8.13 is the last line that runs on Gradle 8.x (AGP 9 needs Gradle 9).
 agp = "8.13.2"
-# Kotlin 2.2 output (and kotlinx.serialization 1.9, built with it) can be read by apps on Kotlin 2.1 and newer.
+# The compiler can be new, but the SDK is compiled as Kotlin 1.9 (messenger/build.gradle.kts) and every runtime
+# dependency must be built with Kotlin 1.9 or older, so that apps on Kotlin 1.8+ can read it: the brief's minimums
+# are React Native 0.72+ and Flutter 3.16+, whose projects are often on Kotlin 1.8-1.9.
 kotlin = "2.2.21"
-kotlinxSerialization = "1.9.0"
+kotlinStdlib = "1.9.25"
+kotlinxSerialization = "1.6.3"
 kover = "0.9.9"
 junit = "4.13.2"
 
