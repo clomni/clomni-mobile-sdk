@@ -641,7 +641,7 @@ class ClomniEngineTest {
         assertEquals("Velosiped", attachment.preview)
         eventually("the attachment") { phone.engine.pending(conversation).isEmpty() }
 
-        assertNull(phone.engine.startFlow("payment_failed", null, openMessenger = true).await())
+        assertNull(phone.engine.startFlow("payment_failed", null, openMessenger = true, openedFrom = null).await())
         phone.engine.track("ride_finished", JsonObject(mapOf("minutes" to JsonPrimitive(18)))).await()
         assertEquals("Aysel", phone.engine.updateUser(JsonObject(mapOf("name" to JsonPrimitive("Aysel")))).await().name)
         phone.engine.registerPushToken("fcm-token").await()

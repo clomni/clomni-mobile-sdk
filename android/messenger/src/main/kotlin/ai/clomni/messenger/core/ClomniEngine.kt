@@ -8,6 +8,7 @@ import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.samePerson
 import ai.clomni.messenger.presentation.ChatDataSource
 import ai.clomni.messenger.presentation.MessengerDataSource
+import ai.clomni.messenger.presentation.MessengerSession
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
@@ -62,7 +63,7 @@ internal class ClomniEngine(
     timing: Timing = Timing(),
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
-) : RealtimeClient.Listener, MessengerDataSource, ChatDataSource {
+) : RealtimeClient.Listener, MessengerDataSource, ChatDataSource, MessengerSession {
 
     data class Timing(
         val realtime: RealtimeClient.Timing = RealtimeClient.Timing(),
@@ -83,7 +84,7 @@ internal class ClomniEngine(
 
     /** The inbox is switched off in Clomni: the messenger must not open. */
     @Volatile
-    var isAppDisabled: Boolean = false
+    override var isAppDisabled: Boolean = false
         private set
 
     init {
@@ -104,12 +105,12 @@ internal class ClomniEngine(
         observers.remove(token)
     }
 
-    val isLoggedIn: Boolean get() = credentials.session != null
+    override val isLoggedIn: Boolean get() = credentials.session != null
 
     // Session
 
     /** An anonymous visitor; the same one again on this device until logout. */
-    fun loginUnidentifiedUser(): Future<Unit> = login(SessionIdentity.Anonymous)
+    override fun loginUnidentifiedUser(): Future<Unit> = login(SessionIdentity.Anonymous)
 
     /**
      * [userHash] = hex(HMAC-SHA256(identity_secret, user_id)), computed on the customer's server. An anonymous user's
@@ -158,7 +159,7 @@ internal class ClomniEngine(
     // Socket
 
     /** Opens the socket (and keeps it open, reconnecting) while the app is in the foreground. */
-    fun connect(): Future<Unit> = submit {
+    override fun connect(): Future<Unit> = submit {
         wantsSocket = true
         if (inForeground) realtime.start(::endpoint)
         deliver()
@@ -375,8 +376,8 @@ internal class ClomniEngine(
     fun unregisterPushToken(token: String): Future<Unit> = submit { authed { api.deleteDevice(token) } }
 
     /** `Clomni.startFlow`: the flow bound to an app event, in a new conversation; null when none is bound. */
-    fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean): Future<Conversation?> = submit {
-        val created = authed { api.triggerFlow(event, data, openMessenger) }.conversation ?: return@submit null
+    override fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String?): Future<Conversation?> = submit {
+        val created = authed { api.triggerFlow(event, data, openMessenger, openedFrom) }.conversation ?: return@submit null
         apply(created)
         created.conversation
     }

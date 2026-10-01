@@ -353,7 +353,7 @@ class ApiClientTest {
         assertEquals("Aysel", api.updateUser(Json.parseToJsonElement("""{"name":"Aysel"}""").jsonObject).name)
         api.registerDevice("tok")
         api.deleteDevice("tok/1")
-        assertEquals(false, api.triggerFlow("payment_failed", null, openMessenger = true).started)
+        assertEquals(false, api.triggerFlow("payment_failed", null, openMessenger = true, openedFrom = "checkout").started)
         api.trackEvent("ride_finished", null)
         val file = File.createTempFile("upload", ".jpg").apply { writeText("abc") }
         assertEquals("upl_1", api.upload(file, "a.jpg", "image/jpeg").uploadId)
@@ -381,7 +381,7 @@ class ApiClientTest {
         assertEquals("""{"up_to_seq":12}""", requests[3].body.readUtf8())
         assertEquals("""{"state":"on"}""", requests[4].body.readUtf8())
         assertEquals("""{"token":"tok","provider":"fcm","environment":"production"}""", requests[6].body.readUtf8())
-        assertEquals("""{"event":"payment_failed","open_messenger":true}""", requests[8].body.readUtf8())
+        assertEquals("""{"event":"payment_failed","open_messenger":true,"opened_from":"checkout"}""", requests[8].body.readUtf8())
         assertTrue(requests[10].getHeader("Content-Type")!!.startsWith("multipart/form-data"))
         assertNull(credentials.session)
     }

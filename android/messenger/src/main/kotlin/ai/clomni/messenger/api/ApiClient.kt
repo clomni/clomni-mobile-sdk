@@ -218,7 +218,8 @@ internal class ApiClient(
         call("DELETE", "devices", segments = listOf(token))
     }
 
-    fun triggerFlow(event: String, data: JsonObject?, openMessenger: Boolean): FlowTriggerResult = read(
+    /** [openedFrom] (additive, as for POST /conversations): where in the app the flow was started. */
+    fun triggerFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String? = null): FlowTriggerResult = read(
         call(
             "POST",
             "flows/trigger",
@@ -226,6 +227,7 @@ internal class ApiClient(
                 put("event", event)
                 data?.let { put("data", it) }
                 put("open_messenger", openMessenger)
+                openedFrom?.let { put("opened_from", it) }
             },
         ),
         protocol::parseFlowTrigger,
