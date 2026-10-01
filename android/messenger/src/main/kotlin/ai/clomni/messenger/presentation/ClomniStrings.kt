@@ -64,6 +64,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         TOO_LONG("too_long"),
         CHOOSE_OPTION("choose_option"),
         FILE_TOO_LARGE("file_too_large"),
+
+        // Push (CM-075): the Android notification channel's name.
+        SUPPORT_MESSAGES("support_messages"),
     }
 
     /** az, en or ru; anything else reads as az. */
@@ -141,7 +144,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FIELD_REQUIRED to "Bu sahəni doldurun", Key.INVALID_EMAIL to "Email düzgün deyil",
                 Key.INVALID_PHONE to "Telefon nömrəsi düzgün deyil", Key.INVALID_NUMBER to "Rəqəm yazın",
                 Key.TOO_LONG to "Ən çox %d simvol", Key.CHOOSE_OPTION to "Variantlardan birini seçin",
-                Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)",
+                Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)", Key.SUPPORT_MESSAGES to "Dəstək mesajları",
             ),
             "en" to mapOf(
                 Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
@@ -164,7 +167,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FILE to "File", Key.FIELD_REQUIRED to "Fill in this field", Key.INVALID_EMAIL to "Enter a valid email",
                 Key.INVALID_PHONE to "Enter a valid phone number", Key.INVALID_NUMBER to "Enter a number",
                 Key.TOO_LONG to "At most %d characters", Key.CHOOSE_OPTION to "Choose one of the options",
-                Key.FILE_TOO_LARGE to "The file is too large (max %d MB)",
+                Key.FILE_TOO_LARGE to "The file is too large (max %d MB)", Key.SUPPORT_MESSAGES to "Support messages",
             ),
             "ru" to mapOf(
                 Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
@@ -187,7 +190,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FIELD_REQUIRED to "Заполните это поле", Key.INVALID_EMAIL to "Неверный email",
                 Key.INVALID_PHONE to "Неверный номер телефона", Key.INVALID_NUMBER to "Введите число",
                 Key.TOO_LONG to "Не больше %d символов", Key.CHOOSE_OPTION to "Выберите вариант",
-                Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)",
+                Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)", Key.SUPPORT_MESSAGES to "Сообщения поддержки",
             ),
         )
     }
