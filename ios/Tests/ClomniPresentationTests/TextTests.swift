@@ -24,6 +24,9 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(strings[.yesterday], "Dün")
         XCTAssertEqual(strings[.send], "Göndər")
         XCTAssertEqual(strings.format(.minutesShort, 2), "2 dəq")
+        XCTAssertEqual(strings.format(.awayUntil, "09:00"), "Növbəti iş saatı: 09:00")
+        XCTAssertEqual(ClomniStrings(language: "en").format(.awayUntil, "09:00"), "Next working hours: 09:00")
+        XCTAssertEqual(ClomniStrings(language: "ru").format(.awayUntil, "09:00"), "Следующее рабочее время: 09:00")
         XCTAssertEqual(ClomniStrings(language: "az")[.offline], "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
     }
 }

@@ -175,8 +175,15 @@ final class ChatPresenterTests: XCTestCase {
             $0.config = closedHours
             $0.conversation = Fixture.conversation(status: "queued")
         }.header
-        XCTAssertEqual(afterHours.subtitle, "Hazırda iş saatı deyil")
+        XCTAssertEqual(afterHours.subtitle, "Hazırda iş saatı deyil", "no next_open_at: just that it is closed")
         XCTAssertEqual(afterHours.lead, .team([]))
+
+        let nextOpen = ProtocolJSON.parseConfig(Data(##"""
+            {"brand":{"name":"Apar","primary_color":"#1F9D63"},
+             "team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}
+            """##.utf8))
+        let untilMorning = screen([]) { $0.config = nextOpen }.header
+        XCTAssertEqual(untilMorning.subtitle, "Növbəti iş saatı: 05:00", "local time; these tests run in UTC")
     }
 
     func testQuickReplies() throws {

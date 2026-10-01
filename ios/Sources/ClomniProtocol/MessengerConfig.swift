@@ -72,6 +72,8 @@ public struct MessengerConfig: Sendable, Equatable {
     public struct OfficeHours: Sendable, Equatable {
         public let timeZone: String?
         public let openNow: Bool
+        /// When the team is back, while `openNow` is false.
+        public let nextOpenAt: Date?
     }
 
     public struct Bot: Sendable, Equatable {
@@ -129,7 +131,8 @@ extension MessengerConfig {
             avatars: (team["avatars"]?.arrayValue ?? []).compactMap { $0.stringValue.flatMap(URL.init(string:)) },
             replyTime: team.optionalString("reply_time"),
             officeHours: team.optionalObject("office_hours").map {
-                OfficeHours(timeZone: $0.optionalString("tz"), openNow: $0.optionalBool("open_now") ?? true)
+                OfficeHours(timeZone: $0.optionalString("tz"), openNow: $0.optionalBool("open_now") ?? true,
+                            nextOpenAt: $0.optionalString("next_open_at").flatMap(ISOTime.parse))
             })
 
         let bot = section("bot")

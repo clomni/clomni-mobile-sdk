@@ -18,6 +18,7 @@ public struct ClomniStrings: Sendable, Equatable {
         case teamCanHelp = "team_can_help"
         case online
         case away
+        case awayUntil = "away_until"
         case messagePlaceholder = "message_placeholder"
         case chooseAbove = "choose_above"
         case sending, sent, read, failed
@@ -57,6 +58,11 @@ public struct ClomniStrings: Sendable, Equatable {
     /// A text with one number in it ("%d dəq").
     public func format(_ key: Key, _ number: Int) -> String {
         self[key].replacingOccurrences(of: "%d", with: String(number))
+    }
+
+    /// A text with one word in it ("Növbəti iş saatı: %@").
+    public func format(_ key: Key, _ text: String) -> String {
+        self[key].replacingOccurrences(of: "%@", with: text)
     }
 
     /// VoiceOver for a flow button: "Düymə, Azərbaycan dili, 1-ci, cəmi 3".
@@ -102,6 +108,7 @@ public struct ClomniStrings: Sendable, Equatable {
             .close: "Bağla", .unread: "Oxunmamış", .unreadMessages: "Oxunmamış mesaj var", .minutesShort: "%d dəq",
             .hoursShort: "%d saat", .daysShort: "%d gün", .email: "E-poçt", .phone: "Telefon",
             .teamCanHelp: "Komanda da kömək edə bilər", .online: "onlayn", .away: "Hazırda iş saatı deyil",
+            .awayUntil: "Növbəti iş saatı: %@",
             .messagePlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdakı variantlardan birini seçin",
             .sending: "Göndərilir", .sent: "Göndərildi", .read: "Oxundu", .failed: "Göndərilmədi",
             .conversationClosed: "Söhbət bağlanıb", .startNewConversation: "Yeni söhbət başlat", .back: "← Geri",
@@ -120,6 +127,7 @@ public struct ClomniStrings: Sendable, Equatable {
             .close: "Close", .unread: "Unread", .unreadMessages: "Unread messages", .minutesShort: "%d min",
             .hoursShort: "%d h", .daysShort: "%d d", .email: "Email", .phone: "Phone",
             .teamCanHelp: "The team can help too", .online: "online", .away: "Outside working hours",
+            .awayUntil: "Next working hours: %@",
             .messagePlaceholder: "Write a message…", .chooseAbove: "Choose one of the options above",
             .sending: "Sending", .sent: "Sent", .read: "Read", .failed: "Not sent",
             .conversationClosed: "Conversation closed", .startNewConversation: "Start a new conversation",
@@ -139,6 +147,7 @@ public struct ClomniStrings: Sendable, Equatable {
             .close: "Закрыть", .unread: "Не прочитано", .unreadMessages: "Есть непрочитанные сообщения",
             .minutesShort: "%d мин", .hoursShort: "%d ч", .daysShort: "%d дн", .email: "Почта", .phone: "Телефон",
             .teamCanHelp: "Команда тоже может помочь", .online: "в сети", .away: "Сейчас нерабочее время",
+            .awayUntil: "Следующее рабочее время: %@",
             .messagePlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите один из вариантов выше",
             .sending: "Отправляется", .sent: "Отправлено", .read: "Прочитано", .failed: "Не отправлено",
             .conversationClosed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад",

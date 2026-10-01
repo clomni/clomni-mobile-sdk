@@ -55,8 +55,10 @@ public struct ChatPresenter: Sendable {
                 title: assignee.name, subtitle: online ? "\(brand) · \(strings[.online])" : brand,
                 backLabel: strings[.goBack], closeLabel: strings[.close])
         }
-        let away = config?.team.officeHours?.openNow == false
-        let subtitle = away ? strings[.away]
+        let hours = config?.team.officeHours
+        let away = hours?.openNow == false
+        let back = hours?.nextOpenAt.map { strings.format(.awayUntil, time.clock($0)) } ?? strings[.away]
+        let subtitle = away ? back
             : conversation?.status == .queued ? config?.team.replyTime ?? strings[.teamCanHelp] : strings[.teamCanHelp]
         return ChatHeader(lead: .team(teamAvatars(config)), title: brand, subtitle: subtitle,
                           backLabel: strings[.goBack], closeLabel: strings[.close])

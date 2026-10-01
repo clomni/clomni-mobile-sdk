@@ -99,7 +99,8 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(config.home.cards, [.recentConversation, .newConversation])
         XCTAssertEqual(config.team.avatars.count, 3)
         XCTAssertEqual(config.team.replyTime, "Adətən bir neçə dəqiqəyə cavab veririk")
-        XCTAssertEqual(config.team.officeHours, MessengerConfig.OfficeHours(timeZone: "Asia/Baku", openNow: true))
+        XCTAssertEqual(config.team.officeHours, MessengerConfig.OfficeHours(timeZone: "Asia/Baku", openNow: true,
+                                                                            nextOpenAt: nil))
         XCTAssertEqual(config.bot.name, "Clomni")
         XCTAssertEqual(config.bot.avatarUrl?.absoluteString, "https://app.clomni.ai/a/bot.png")
         XCTAssertEqual(config.composer.placeholder, "Mesaj yazın…")
@@ -153,6 +154,10 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(odd.home.cards, [.newConversation])
         XCTAssertEqual(odd.team.avatars.count, 1)
         XCTAssertEqual(odd.team.officeHours?.openNow, true)
+        let closed = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
+            #"{"team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}"#.utf8)))
+        XCTAssertEqual(closed.team.officeHours?.nextOpenAt, Date(timeIntervalSince1970: 1_790_917_200))
+        XCTAssertFalse(closed.team.officeHours?.openNow ?? true)
         XCTAssertEqual(odd.strings, ["send": "Göndər"])
         XCTAssertEqual(odd.languages, ["az"])
         XCTAssertEqual(odd.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 5, textChars: 4000))
