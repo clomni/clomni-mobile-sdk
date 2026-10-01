@@ -56,5 +56,18 @@ jobs:
           path: ios/Tests/ClomniMessengerTests/__Snapshots__
           if-no-files-found: ignore
 
+      # The Example app and the Notification Service Extension: the integration code the customer docs show.
+      - name: Build the Example app
+        run: |
+          brew install xcodegen
+          xcodegen generate --spec ios/Example/project.yml
+          xcodebuild build \
+            -project ios/Example/ClomniExample.xcodeproj \
+            -scheme ClomniExample \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO
+
+      # CocoaPods builds every target as one module; the podspec's -package-name keeps it building.
       - name: pod lib lint
         run: pod lib lint ClomniMessenger.podspec --platforms=ios

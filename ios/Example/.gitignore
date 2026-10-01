@@ -1,0 +1,4 @@
+# Written by `xcodegen generate` from project.yml.
+ClomniExample.xcodeproj/
+*-Info.plist
+*.entitlements

@@ -5,8 +5,9 @@ import UserNotifications
 /// `avatar_url`, which lets this extension download the photo before iOS shows the notification. Other pushes pass
 /// through unchanged, and so does a Clomni push whose photo does not arrive in time: the text never waits for it.
 ///
-/// Uses Foundation and UserNotifications only; the extension does not link the Clomni SDK.
-final class NotificationService: UNNotificationServiceExtension {
+/// Uses Foundation and UserNotifications only; the extension does not link the Clomni SDK. Its state is behind a
+/// lock: the download finishes on URLSession's queue, the deadline on another.
+final class NotificationService: UNNotificationServiceExtension, @unchecked Sendable {
     private let lock = NSLock()
     private var contentHandler: ((UNNotificationContent) -> Void)?
     private var content: UNMutableNotificationContent?
@@ -20,19 +21,24 @@ final class NotificationService: UNNotificationServiceExtension {
               avatar.scheme == "https" else {
             return contentHandler(request.content)
         }
-        self.contentHandler = contentHandler
-        self.content = content
         let download = URLSession.shared.downloadTask(with: avatar) { [weak self] location, response, _ in
             // The downloaded file is deleted when this closure returns, so it is moved first.
-            let attachment = location.flatMap { Self.attachment(from: $0, response: response) }
+            let attachment = location.flatMap { NotificationService.attachment(from: $0, response: response) }
             self?.finish(with: attachment)
         }
+        lock.lock()
+        self.contentHandler = contentHandler
+        self.content = content
         self.download = download
+        lock.unlock()
         download.resume()
     }
 
     /// The system's deadline (about 30 seconds) is near: the notification goes out without the photo.
     override func serviceExtensionTimeWillExpire() {
+        lock.lock()
+        let download = self.download
+        lock.unlock()
         download?.cancel()
         finish(with: nil)
     }
@@ -41,6 +47,7 @@ final class NotificationService: UNNotificationServiceExtension {
     private func finish(with attachment: UNNotificationAttachment?) {
         lock.lock()
         let handler = contentHandler
+        let content = self.content
         contentHandler = nil
         lock.unlock()
         guard let handler, let content else { return }

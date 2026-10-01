@@ -1,0 +1,62 @@
+# The Example app, as XcodeGen generates it: `xcodegen generate` here, then open ClomniExample.xcodeproj.
+# The project and the plists it writes are not committed; this file is.
+name: ClomniExample
+options:
+  bundleIdPrefix: ai.clomni.example
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+packages:
+  ClomniMessenger:
+    path: ../..
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # The SDK's API is made for Swift 6; its concurrency warnings show here.
+    SWIFT_STRICT_CONCURRENCY: complete
+
+targets:
+  ClomniExample:
+    type: application
+    platform: iOS
+    sources:
+      - ClomniExample
+    dependencies:
+      - package: ClomniMessenger
+      - target: NotificationService
+    info:
+      path: ClomniExample-Info.plist
+      properties:
+        CFBundleDisplayName: Clomni Example
+        UILaunchScreen: {}
+        UIBackgroundModes: [remote-notification]
+        NSPhotoLibraryUsageDescription: Söhbətə şəkil göndərmək üçün.
+        NSCameraUsageDescription: Söhbətə şəkil çəkib göndərmək üçün.
+    entitlements:
+      path: ClomniExample.entitlements
+      properties:
+        aps-environment: development
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.example
+    scheme: {}
+
+  # The operator's photo on notifications: ios/Examples/NotificationService, unchanged.
+  NotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ../Examples/NotificationService
+        includes: ["*.swift"]
+    info:
+      path: NotificationService-Info.plist
+      properties:
+        CFBundleDisplayName: NotificationService
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.example.NotificationService
