@@ -91,7 +91,7 @@ extension MessageContent {
         /// ISO 3166 code for a phone field, e.g. "AZ".
         public let defaultCountry: String?
         public let placeholder: String?
-        /// The choices of a select field; empty for the other types.
+        /// The choices of a select field (at least one); empty for the other types.
         public let options: [Option]
 
         public struct Option: Sendable, Equatable {
@@ -257,7 +257,7 @@ extension MessageContent.FormField {
         maxLength = f.optionalInt("max_length")
         defaultCountry = f.optionalString("default_country")
         placeholder = f.optionalString("placeholder")
-        options = try type == .select ? f.array("options") { try Option($0) } : []
+        options = try type == .select ? f.nonEmptyArray("options") { try Option($0) } : []
     }
 }
 

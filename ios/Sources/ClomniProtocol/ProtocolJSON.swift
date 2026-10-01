@@ -29,6 +29,11 @@ public enum ProtocolJSON {
         parseEvent(Data(text.utf8))
     }
 
+    /// A frame that was already decoded (to look at its `event` first, say).
+    public static func parseEvent(_ json: JSONValue) -> RealtimeEvent? {
+        read(json, "event") { try RealtimeEvent($0) }
+    }
+
     /// nil only when the body is not a JSON object; every missing field takes its default.
     public static func parseConfig(_ data: Data) -> MessengerConfig? {
         decode(data, "config") { MessengerConfig($0) }
@@ -59,10 +64,15 @@ public enum ProtocolJSON {
 
     /// The request body for POST /v1/conversations/{id}/messages.
     public static func encode(_ message: ClientMessage) -> Data {
+        encode(message.json)
+    }
+
+    /// Any request body.
+    public static func encode(_ json: JSONValue) -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         // JSONValue always encodes (non-finite numbers become null), so the fallback is never taken.
-        return (try? encoder.encode(message.json)) ?? Data()
+        return (try? encoder.encode(json)) ?? Data()
     }
 
     /// Any JSON, for the parts of a response the protocol has no type for.
@@ -70,7 +80,7 @@ public enum ProtocolJSON {
         try? JSONDecoder().decode(JSONValue.self, from: data)
     }
 
-    private static func decode<T>(_ data: Data, _ what: String, _ build: (JSONFields) throws -> T) -> T? {
+    static func decode<T>(_ data: Data, _ what: String, _ build: (JSONFields) throws -> T) -> T? {
         guard let json = decode(data) else {
             ProtocolLog.write("\(what): not JSON, dropped")
             return nil
@@ -78,7 +88,7 @@ public enum ProtocolJSON {
         return read(json, what, build)
     }
 
-    private static func read<T>(_ json: JSONValue, _ what: String, _ build: (JSONFields) throws -> T) -> T? {
+    static func read<T>(_ json: JSONValue, _ what: String, _ build: (JSONFields) throws -> T) -> T? {
         do {
             return try build(JSONFields(json, path: what))
         } catch {

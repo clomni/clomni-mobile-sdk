@@ -72,4 +72,8 @@ enum ISOTime {
     static func parse(_ string: String) -> Date? {
         (try? withFraction.parse(string)) ?? (try? whole.parse(string))
     }
+
+    static func format(_ date: Date) -> String {
+        withFraction.format(date)
+    }
 }
