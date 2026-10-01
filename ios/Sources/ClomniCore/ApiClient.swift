@@ -284,10 +284,6 @@ actor ApiClient {
                                                          "environment": .string(sandbox ? "sandbox" : "production")])
     }
 
-    func deleteDevice(token: String) async throws {
-        _ = try await request("DELETE", "/devices/\(escape(token))")
-    }
-
     /// `openedFrom` (additive, like POST /conversations): where in the app the flow was started.
     func triggerFlow(event: String, data: [String: JSONValue], openMessenger: Bool,
                      openedFrom: String? = nil) async throws -> FlowTriggerResult {

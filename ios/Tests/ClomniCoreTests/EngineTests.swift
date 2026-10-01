@@ -277,15 +277,11 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(known?.status, .bot)
     }
 
-    func testUserPushAndUploadPassThrough() async throws {
+    func testUserAndUploadPassThrough() async throws {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()
         let user = try await phone.engine.updateUser(["name": "Aysel"])
         XCTAssertEqual(user.name, "Aysel")
-        try await phone.engine.registerPushToken("abc", sandbox: false)
-        XCTAssertEqual(body(server.requests.last)?["environment"], "production")
-        try await phone.engine.unregisterPushToken("abc")
-        XCTAssertEqual(server.requests.last?.method, "DELETE")
         let upload = try await phone.engine.upload(Data([1, 2, 3]), fileName: "a.jpg", mime: "image/jpeg")
         XCTAssertEqual(upload.size, Int(server.requests.last?.body?.count ?? 0))
     }

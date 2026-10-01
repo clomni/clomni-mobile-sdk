@@ -27,6 +27,7 @@ public actor ClomniEngine {
     private let api: ApiClient
     private let realtime: RealtimeClient
     private let cache: DiskCache
+    private let vault: SecureStore
     private let time: TimeSource
     private var store: MessageStore
     private var outbox: Outbox
@@ -45,6 +46,8 @@ public actor ClomniEngine {
     private var refill: Set<String> = []
     private var readSent: [String: Int] = [:]
     private var typingSentAt: [String: Date] = [:]
+    private var pushRegistration: Task<Void, Never>?
+    private var registerPushAgain = false
 
     public init(appId: String, apiKey: String, baseURL: URL? = nil) {
         #if canImport(Security)
@@ -62,6 +65,7 @@ public actor ClomniEngine {
         let api = ApiClient(configuration: configuration, transport: transport, vault: vault, time: time)
         self.api = api
         self.cache = cache
+        self.vault = vault
         self.time = time
         realtime = RealtimeClient(transport: socket, time: time, address: { try await api.socketURL() })
         store = cache.load(MessageStore.self, Files.store) ?? MessageStore()
@@ -75,6 +79,8 @@ public actor ClomniEngine {
         static let outbox = "outbox.json"
         static let config = "config.json"
         static let configETag = "config.etag"
+        /// Kept in the vault, next to the session it was registered for (the system may purge the cache).
+        static let push = "push_registration"
     }
 
     /// `handler` hears every change until `stopObserving` is called with the returned token. Any number of screens
@@ -117,6 +123,7 @@ public actor ClomniEngine {
             throw error
         }
         isAppDisabled = false
+        Task { await self.registerPush() }
         guard session.sessionToken != previous?.sessionToken else { return deliver() }
         // Another identified user's conversations are not this one's.
         if let previous, !previous.anonymous, previous.userId != session.userId {
@@ -138,6 +145,11 @@ public actor ClomniEngine {
         delivering = nil
         deliveryRun += 1
         await api.logout()
+        // The server dropped this device's token with the session; the next login registers it again.
+        if var registration = vault.value(PushRegistration.self, for: Files.push) {
+            registration.registeredFor = nil
+            vault.setValue(registration, for: Files.push)
+        }
         clearLocalData()
         config = nil
         configETag = nil
@@ -165,6 +177,7 @@ public actor ClomniEngine {
         await realtime.setHandler { [weak self] event in await self?.handle(event) }
         await realtime.start()
         deliver()
+        Task { await self.registerPush() }
     }
 
     public func disconnect() async {
@@ -180,6 +193,7 @@ public actor ClomniEngine {
     public func applicationWillEnterForeground() async {
         if wantsSocket { await realtime.start() }
         deliver()
+        Task { await self.registerPush() }
     }
 
     func handle(_ event: RealtimeEvent) async {
@@ -588,12 +602,49 @@ public actor ClomniEngine {
         try await api.updateUser(fields)
     }
 
-    public func registerPushToken(_ token: String, sandbox: Bool) async throws {
-        try await api.registerDevice(token: token, sandbox: sandbox)
+    /// `Clomni.setDeviceToken`: the APNs token as hex, and whether the app is signed for the APNs sandbox. It is kept
+    /// on this device and registered for whoever is logged in: now, at the next login, and again when another user
+    /// logs in. A new token replaces the old one. A registration that fails is repeated at the next connect or return
+    /// to the foreground.
+    public func setDeviceToken(_ token: String, sandbox: Bool) async {
+        let kept = vault.value(PushRegistration.self, for: Files.push)
+        if kept?.token != token || kept?.sandbox != sandbox {
+            vault.setValue(PushRegistration(token: token, sandbox: sandbox), for: Files.push)
+        }
+        await registerPush()
     }
 
-    public func unregisterPushToken(_ token: String) async throws {
-        try await api.deleteDevice(token: token)
+    /// Sends the kept token unless the server already has it for the logged-in user. One run at a time: a call that
+    /// arrives meanwhile makes the running one look again, and waits for it.
+    func registerPush() async {
+        if let running = pushRegistration {
+            registerPushAgain = true
+            return await running.value
+        }
+        let run = Task { await self.sendPushToken() }
+        pushRegistration = run
+        await run.value
+    }
+
+    private func sendPushToken() async {
+        defer { pushRegistration = nil }
+        repeat {
+            registerPushAgain = false
+            guard var registration = vault.value(PushRegistration.self, for: Files.push),
+                  let user = await api.session?.userId, registration.registeredFor != user else { continue }
+            // A failure waits for the next connect or foreground, unless a call came in meanwhile.
+            guard (try? await api.registerDevice(token: registration.token, sandbox: registration.sandbox)) != nil else {
+                continue
+            }
+            // The token, or the user, may have changed while the request was out.
+            guard vault.value(PushRegistration.self, for: Files.push) == registration,
+                  await api.session?.userId == user else {
+                registerPushAgain = true
+                continue
+            }
+            registration.registeredFor = user
+            vault.setValue(registration, for: Files.push)
+        } while registerPushAgain
     }
 
     /// `Clomni.startFlow`: the flow bound to an app event, in a new conversation; nil when none is bound.

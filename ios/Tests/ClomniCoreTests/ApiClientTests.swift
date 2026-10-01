@@ -279,8 +279,8 @@ final class ApiClientTests: XCTestCase {
 
         try await api.registerDevice(token: "abc123", sandbox: true)
         XCTAssertEqual(body(server.requests.last), ["token": "abc123", "provider": "apns", "environment": "sandbox"])
-        try await api.deleteDevice(token: "abc/123")
-        XCTAssertEqual(server.requests.last?.url.absoluteString, "https://app.clomni.ai/v1/devices/abc%2F123")
+        _ = try? await api.conversation("conv/1")
+        XCTAssertEqual(server.requests.last?.url.absoluteString, "https://app.clomni.ai/v1/conversations/conv%2F1")
 
         let started = try await api.triggerFlow(event: "payment_failed", data: ["order_id": "A-1042"], openMessenger: true)
         XCTAssertTrue(started.started)

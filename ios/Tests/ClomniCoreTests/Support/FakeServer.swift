@@ -39,6 +39,8 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     private var anonymousDevice: [String: String] = [:]
     private var conversations: [String: Conversation] = [:]
     private var byClientId: [String: JSONValue] = [:]
+    /// The APNs token pushes go to, per user: "token environment".
+    private var pushTargets: [String: String] = [:]
     private var counter = 0
     private var frameSink: (@Sendable (String) -> Void)?
     var enforceHash = false
@@ -71,6 +73,11 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
 
     func revokeRefreshTokens() {
         locked { refreshTokens = [:] }
+    }
+
+    /// Where this user's pushes go ("token environment"), nil when nowhere.
+    func pushTarget(_ user: String) -> String? {
+        locked { pushTargets[user] }
     }
 
     func conversation(_ id: String) -> Conversation? {
@@ -169,7 +176,10 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
             case ("POST", 2): return openSession(body)
             case ("POST", 3): return refresh(body)
             case ("DELETE", 2):
-                if let token = bearer(request) { sessions[token] = nil }
+                // Logout also stops pushes to the device.
+                if let token = bearer(request), let user = sessions.removeValue(forKey: token)?.user {
+                    pushTargets[user] = nil
+                }
                 return HTTPResponse(status: 204)
             default: return Self.error(404, "not_found")
             }
@@ -217,8 +227,11 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
             body.objectValue?.forEach { fields[$0.key] = $0.value }
             return Self.json(200, .object(fields))
         case ("POST", ["devices"]):
-            return HTTPResponse(status: 204)
-        case ("DELETE", let path) where path.count == 2 && path[0] == "devices":
+            guard let token = body["token"]?.stringValue, body["provider"] == "apns",
+                  let environment = body["environment"]?.stringValue else { return Self.error(400, "validation_failed") }
+            // A token that moves to another user leaves the previous one.
+            pushTargets = pushTargets.filter { !$0.value.hasPrefix(token + " ") }
+            pushTargets[user] = token + " " + environment
             return HTTPResponse(status: 204)
         case ("POST", ["flows", "trigger"]):
             guard body["event"]?.stringValue == "payment_failed" else {
