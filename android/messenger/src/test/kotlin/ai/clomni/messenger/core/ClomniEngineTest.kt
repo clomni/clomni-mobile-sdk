@@ -7,6 +7,7 @@ import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.MemorySecureStore
 import ai.clomni.messenger.api.SecureStore
+import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
@@ -296,8 +297,10 @@ class ClomniEngineTest {
         second.engine.awaitIdle()
         assertEquals(listOf(conversation), second.engine.conversations().map { it.id })
         assertEquals(first.texts(conversation), second.texts(conversation))
+        // The stored session needs no network to log in; the first call that does fails and the cache stays.
+        second.engine.loginUnidentifiedUser().await()
         try {
-            second.engine.loginUnidentifiedUser().await()
+            second.engine.refreshConversations().await()
             fail()
         } catch (e: ExecutionException) {
             assertTrue(e.cause is ClomniError.Network)
@@ -368,9 +371,14 @@ class ClomniEngineTest {
         val anonymous = phone.credentials.session!!.userId
         assertEquals(anonymous, phone.credentials.anonymousId)
 
-        // Next launch on the same device: the same visitor.
+        // Next launch on the same device: the stored session, no new one.
+        phone.engine.loginUnidentifiedUser().await()
+        assertEquals(1, fake.log.count { it == "POST /v1/mobile/sessions" })
+        // Its session lost, the same device resumes the same visitor.
+        phone.credentials.session = null
         phone.engine.loginUnidentifiedUser().await()
         assertEquals(anonymous, phone.credentials.session!!.userId)
+        assertEquals(2, fake.log.count { it == "POST /v1/mobile/sessions" })
 
         // Logging in: the visitor's conversation moves to the user and stays on screen.
         phone.engine.loginUser(aysel, "hash").await()
@@ -415,6 +423,29 @@ class ClomniEngineTest {
         fake.expireSessions()
         fake.closeSockets()
         eventually("the socket with a fresh token") { fake.count(refresh) == 2 && fake.hasSocket(phone.token) }
+    }
+
+    @Test
+    fun theStoredSessionIsReusedForTheSamePerson() {
+        val phone = Phone()
+        val sessions = { fake.log.count { it == "POST /v1/mobile/sessions" } }
+        phone.engine.loginUser(aysel, "hash").await()
+        phone.engine.loginUser(aysel.copy(name = "Aysel"), "new-hash").await()
+        assertEquals(1, sessions())
+        assertEquals(
+            SessionIdentity.User(aysel.copy(name = "Aysel"), "new-hash"),
+            phone.credentials.identity,
+        )
+        // Expired: reused all the same, and refreshed on its first call.
+        fake.expireSessions()
+        phone.engine.loginUser(aysel, "new-hash").await()
+        phone.engine.refreshConversations().await()
+        assertEquals(1, sessions())
+        assertEquals(1, fake.count("POST /v1/mobile/sessions/refresh"))
+        // Another person, or an anonymous visitor: a new session.
+        phone.engine.loginUser(UserIdentity(email = "leyla@example.com"), null).await()
+        phone.engine.loginUnidentifiedUser().await()
+        assertEquals(3, sessions())
     }
 
     @Test

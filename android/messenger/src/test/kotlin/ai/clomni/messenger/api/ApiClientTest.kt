@@ -475,6 +475,20 @@ class CredentialsTest {
     }
 
     @Test
+    fun samePerson() {
+        val aysel = SessionIdentity.User(UserIdentity("12345", "aysel@example.com"), "a")
+        assertTrue(aysel.samePerson(SessionIdentity.User(UserIdentity("12345", phone = "+99450"), "b")))
+        assertTrue(!aysel.samePerson(SessionIdentity.User(UserIdentity("67890", "aysel@example.com"), "a")))
+        val byEmail = SessionIdentity.User(UserIdentity(email = "a@x.az"), null)
+        assertTrue(byEmail.samePerson(SessionIdentity.User(UserIdentity(email = "a@x.az", name = "A"), "h")))
+        assertTrue(!byEmail.samePerson(SessionIdentity.User(UserIdentity(email = "b@x.az"), null)))
+        assertTrue(SessionIdentity.Anonymous.samePerson(SessionIdentity.Anonymous))
+        assertTrue(!SessionIdentity.Anonymous.samePerson(aysel))
+        assertTrue(!aysel.samePerson(SessionIdentity.Anonymous))
+        assertTrue(!aysel.samePerson(null))
+    }
+
+    @Test
     fun errorsSayWhatHappened() {
         val refused = ClomniError.Server(409, ai.clomni.messenger.protocol.ServerError("already_answered", "answered", "req_1", emptyMap()))
         assertEquals("already_answered", refused.code)

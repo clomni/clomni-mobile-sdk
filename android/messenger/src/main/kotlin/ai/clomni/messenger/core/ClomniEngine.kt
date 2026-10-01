@@ -5,6 +5,7 @@ import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.SessionIdentity
+import ai.clomni.messenger.api.samePerson
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
@@ -103,17 +104,26 @@ internal class ClomniEngine(
      */
     fun loginUser(user: UserIdentity, userHash: String?): Future<Unit> = login(SessionIdentity.User(user, userHash))
 
+    /**
+     * The stored session is reused for the same person: an expired one is refreshed on its first call, and a refused
+     * refresh opens a new one then. Only another identity (or none stored) opens a new session here.
+     */
     private fun login(identity: SessionIdentity): Future<Unit> = submit {
         val previous = credentials.session
-        val session = try {
-            api.open(identity)
-        } catch (e: ClomniError) {
-            noteDisabled(e)
-            throw e
+        if (previous != null && identity.samePerson(credentials.identity)) {
+            // A new hash, name or phone for the same person is kept for the next login.
+            credentials.identity = identity
+        } else {
+            val session = try {
+                api.open(identity)
+            } catch (e: ClomniError) {
+                noteDisabled(e)
+                throw e
+            }
+            isAppDisabled = false
+            // Another identified user's conversations are not this one's.
+            if (previous != null && !previous.anonymous && previous.userId != session.userId) clearLocalData()
         }
-        isAppDisabled = false
-        // Another identified user's conversations are not this one's.
-        if (previous != null && !previous.anonymous && previous.userId != session.userId) clearLocalData()
         notify(ClomniChange.Session)
         if (wantsSocket && inForeground) {
             realtime.stop()

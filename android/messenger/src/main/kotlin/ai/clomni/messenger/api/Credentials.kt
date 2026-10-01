@@ -29,6 +29,13 @@ internal sealed interface SessionIdentity {
     data class User(val user: UserIdentity, val hash: String?) : SessionIdentity
 }
 
+/** The same person as [other]: a user is known by [UserIdentity.userId], or by email when there is none. */
+internal fun SessionIdentity.samePerson(other: SessionIdentity?): Boolean = when (this) {
+    SessionIdentity.Anonymous -> other == SessionIdentity.Anonymous
+    is SessionIdentity.User -> other is SessionIdentity.User &&
+        user.userId == other.user.userId && (user.userId != null || user.email == other.user.email)
+}
+
 /** Why a call or an action did not succeed. */
 internal sealed class ClomniError(message: String) : Exception(message) {
     /** The server refused the request; [error] is its `Error` body when it sent one. */
