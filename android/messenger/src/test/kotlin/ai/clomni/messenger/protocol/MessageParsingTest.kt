@@ -403,7 +403,7 @@ class MessageParsingTest {
 
     @Test
     fun imageAndFileEdges() {
-        val image = contentOf("image", """{"url":"https://x/a.png","width":0,"height":-3}""") as MessageContent.Image
+        val image = contentOf("image", """{"url":"https://x/a.png","width":0,"height":3000000000}""") as MessageContent.Image
         assertNull(image.width)
         assertNull(image.height)
         assertEquals(MessageContent.Unknown::class, contentOf("image", """{"thumb_url":"https://x/a.png"}""")::class)

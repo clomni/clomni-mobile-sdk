@@ -1,3 +1,4 @@
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -54,9 +55,13 @@ kover {
             }
         }
         variant("debug") {
+            // Brief 11: protocol test coverage of at least 80%.
             verify {
                 rule("Protocol line coverage") {
-                    minBound(80)
+                    minBound(80, CoverageUnit.LINE)
+                }
+                rule("Protocol branch coverage") {
+                    minBound(80, CoverageUnit.BRANCH)
                 }
             }
         }

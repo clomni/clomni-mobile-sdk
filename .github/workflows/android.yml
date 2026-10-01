@@ -1,0 +1,43 @@
+name: Android
+
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'protocol/**'
+      - '.github/workflows/android.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'protocol/**'
+      - '.github/workflows/android.yml'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      # Unit tests against protocol/fixtures, protocol coverage of at least 80% (lines and branches), and the sample.
+      - run: ./gradlew --no-daemon :messenger:testDebugUnitTest :messenger:koverVerifyDebug :messenger:koverXmlReportDebug :sample:assembleDebug
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: |
+            android/messenger/build/reports/tests/
+            android/messenger/build/reports/kover/
+          if-no-files-found: ignore
