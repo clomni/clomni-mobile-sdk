@@ -6,6 +6,7 @@ on:
       - 'ios/**'
       - 'protocol/**'
       - 'ClomniMessenger.podspec'
+      - 'Package.swift'
       - '.github/workflows/ios.yml'
   push:
     branches: [main]
@@ -13,6 +14,7 @@ on:
       - 'ios/**'
       - 'protocol/**'
       - 'ClomniMessenger.podspec'
+      - 'Package.swift'
       - '.github/workflows/ios.yml'
 
 jobs:
@@ -24,12 +26,10 @@ jobs:
 
       # The tests read protocol/fixtures from the checkout, so a fixture change runs them too.
       - name: swift test
-        working-directory: ios
         run: swift test --enable-code-coverage
 
       # Linux has no UIKit or SwiftUI; this is where the UI code gets compiled.
       - name: Build for the iOS Simulator
-        working-directory: ios
         run: >
           xcodebuild build
           -scheme ClomniMessenger
