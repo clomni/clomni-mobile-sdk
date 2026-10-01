@@ -18,7 +18,7 @@ final class Device {
         engine = ClomniEngine(configuration: ApiConfiguration(appId: FakeServer.appId, apiKey: FakeServer.apiKey),
                               transport: server, socket: socket, vault: self.vault, cache: self.cache, time: time)
         let changes = changes
-        await engine.setChangeHandler { changes.append($0) }
+        await engine.observe { changes.append($0) }
     }
 
     /// Opens the socket and lets the server say `ready`.

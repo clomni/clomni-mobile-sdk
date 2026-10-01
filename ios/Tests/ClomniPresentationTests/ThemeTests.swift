@@ -61,20 +61,19 @@ final class ThemeTests: XCTestCase {
         XCTAssertFalse(light.isDark)
         XCTAssertEqual([light.colors.background, light.colors.canvas, light.colors.surface, light.colors.textPrimary,
                         light.colors.textSecondary, light.colors.border, light.colors.unread].map(\.hex),
-                       ["#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#737780", "#E7E8EB", "#E5484D"])
+                       ["#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#707480", "#E7E8EB", "#E5484D"])
         let dark = ClomniTheme.make(brand: nil, dark: true)
         XCTAssertTrue(dark.isDark)
         XCTAssertEqual([dark.colors.background, dark.colors.canvas, dark.colors.surface, dark.colors.textPrimary,
                         dark.colors.textSecondary, dark.colors.border, dark.colors.unread].map(\.hex),
                        ["#121316", "#0B0C0E", "#22242A", "#F2F3F5", "#9A9DA6", "#2A2C32", "#E5484D"])
         XCTAssertEqual(light.colors.primary.hex, "#10A670", "Clomni's colour without a config")
+        // Text reaches WCAG AA (4.5:1) on the background in both themes.
         for theme in [light, dark] {
             XCTAssertGreaterThanOrEqual(theme.colors.warning.contrast(with: theme.colors.onWarning), 4.5)
             XCTAssertGreaterThanOrEqual(theme.colors.background.contrast(with: theme.colors.textPrimary), 4.5)
+            XCTAssertGreaterThanOrEqual(theme.colors.background.contrast(with: theme.colors.textSecondary), 4.5)
         }
-        XCTAssertGreaterThanOrEqual(dark.colors.background.contrast(with: dark.colors.textSecondary), 4.5)
-        // The brief's text.secondary on white is just short of 4.5:1 (an open question in the CM-082 report).
-        XCTAssertEqual(light.colors.background.contrast(with: light.colors.textSecondary), 4.49, accuracy: 0.01)
         XCTAssertEqual(ClomniTheme.Radius.card, 12)
         XCTAssertEqual(ClomniTheme.Size.cardOverlap, 40)
         XCTAssertEqual(ClomniTheme.Shadow.card.map(\.radius), [2, 10])

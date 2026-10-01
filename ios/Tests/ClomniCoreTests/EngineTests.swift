@@ -138,6 +138,20 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(server.requests.last?.url.path, "/v1/events")
     }
 
+    func testSeveralScreensHearEveryChange() async throws {
+        let phone = await device()
+        let badge = Changes()
+        let token = await phone.engine.observe { badge.append($0) }
+        _ = try await conversation(on: phone)
+        await phone.online()
+        phone.socket.push(FakeServer.frame("unread.changed", ["total": 4]))
+        await expect { badge.all.contains(.unread(total: 4)) && phone.changes.all.contains(.unread(total: 4)) }
+        await phone.engine.stopObserving(token)
+        phone.socket.push(FakeServer.frame("unread.changed", ["total": 5]))
+        await expect { phone.changes.all.contains(.unread(total: 5)) }
+        XCTAssertFalse(badge.all.contains(.unread(total: 5)), "stopped listening")
+    }
+
     func testUserPushAndUploadPassThrough() async throws {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()

@@ -12,7 +12,8 @@ public protocol MessengerDataSource: Sendable {
     func refreshConversations() async throws
     var unreadTotal: Int { get async }
     func startConversation(openedFrom: String?) async throws -> Conversation
-    func setChangeHandler(_ handler: @escaping @Sendable (ClomniChange) -> Void) async
+    func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
+    func stopObserving(_ token: UUID) async
 }
 
 extension ClomniEngine: MessengerDataSource {}
@@ -44,6 +45,7 @@ public final class HomeController {
     private let now: @Sendable () -> Date
     private var snapshot: MessengerSnapshot
     private var starting = false
+    private var observation: UUID?
 
     public init(source: MessengerDataSource, language: String?, userName: String?, timeZone: TimeZone = .current,
                 now: @escaping @Sendable () -> Date = { Date() }) {
@@ -62,8 +64,10 @@ public final class HomeController {
     public func load() async {
         await read()
         render()
-        await source.setChangeHandler { [weak self] change in
-            Task { @MainActor in await self?.changed(change) }
+        if observation == nil {
+            observation = await source.observe { [weak self] change in
+                Task { @MainActor in await self?.changed(change) }
+            }
         }
         let config = await source.refreshConfig(language: language)
         snapshot.configLoad = config == nil ? .failed : .loaded
@@ -75,6 +79,13 @@ public final class HomeController {
         }
         await read()
         render()
+    }
+
+    /// Stops following the engine's changes, when the messenger closes.
+    public func stop() async {
+        guard let observation else { return }
+        self.observation = nil
+        await source.stopObserving(observation)
     }
 
     /// "Yenidən cəhd et".

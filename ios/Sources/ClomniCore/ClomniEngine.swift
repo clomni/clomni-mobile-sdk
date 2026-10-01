@@ -34,7 +34,7 @@ public actor ClomniEngine {
     private var configETag: String?
     /// The inbox is switched off in Clomni: the messenger must not open.
     public private(set) var isAppDisabled = false
-    private var onChange: (@Sendable (ClomniChange) -> Void)?
+    private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
     private var wantsSocket = false
     private var delivering: Task<Void, Never>?
     /// Tells a cancelled delivery loop apart from the one that replaced it.
@@ -77,8 +77,17 @@ public actor ClomniEngine {
         static let configETag = "config.etag"
     }
 
-    public func setChangeHandler(_ handler: @escaping @Sendable (ClomniChange) -> Void) {
-        onChange = handler
+    /// `handler` hears every change until `stopObserving` is called with the returned token. Any number of screens
+    /// can listen at once (Home, a conversation, the unread badge).
+    @discardableResult
+    public func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
+        let token = UUID()
+        observers[token] = handler
+        return token
+    }
+
+    public func stopObserving(_ token: UUID) {
+        observers[token] = nil
     }
 
     // MARK: - Session
@@ -549,7 +558,7 @@ public actor ClomniEngine {
     }
 
     private func notify(_ change: ClomniChange) {
-        onChange?(change)
+        for observer in observers.values { observer(change) }
     }
 }
 

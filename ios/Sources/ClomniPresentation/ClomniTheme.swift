@@ -109,7 +109,8 @@ public struct ClomniTheme: Sendable, Equatable {
             canvas: hex(dark ? "#0B0C0E" : "#F5F6F8"),
             surface: hex(dark ? "#22242A" : "#F1F2F4"),
             textPrimary: hex(dark ? "#F2F3F5" : "#1B1D21"),
-            textSecondary: hex(dark ? "#9A9DA6" : "#737780"),
+            // #707480 rather than the brief's #737780, which is 4.49:1 on white (decided in CM-082).
+            textSecondary: hex(dark ? "#9A9DA6" : "#707480"),
             border: hex(dark ? "#2A2C32" : "#E7E8EB"),
             unread: hex("#E5484D"),
             warning: hex(dark ? "#3D3415" : "#FFF4CC"),

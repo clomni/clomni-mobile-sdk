@@ -13,7 +13,8 @@ actor FakeSource: MessengerDataSource {
     var conversationsFail = false
     var startFails = false
     var starts = 0
-    private var handler: (@Sendable (ClomniChange) -> Void)?
+    private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
+    var observerCount: Int { observers.count }
 
     var config: MessengerConfig? { cached }
     var unreadTotal: Int { unread }
@@ -39,8 +40,14 @@ actor FakeSource: MessengerDataSource {
         return conversation
     }
 
-    func setChangeHandler(_ handler: @escaping @Sendable (ClomniChange) -> Void) {
-        self.handler = handler
+    func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
+        let token = UUID()
+        observers[token] = handler
+        return token
+    }
+
+    func stopObserving(_ token: UUID) {
+        observers[token] = nil
     }
 
     func set(cached: MessengerConfig? = nil, fresh: MessengerConfig? = nil, list: [Conversation]? = nil,
@@ -55,7 +62,7 @@ actor FakeSource: MessengerDataSource {
     /// What the engine does when a socket event arrives.
     func push(unread: Int, _ change: ClomniChange) {
         self.unread = unread
-        handler?(change)
+        observers.values.forEach { $0(change) }
     }
 }
 
@@ -120,6 +127,13 @@ final class HomeControllerTests: XCTestCase {
         try await Task.sleep(nanoseconds: 20_000_000)
         XCTAssertTrue(home.home.tabs.messagesUnread)
         XCTAssertEqual(renders, before + 1)
+
+        await home.retry()
+        let observers = await source.observerCount
+        XCTAssertEqual(observers, 1, "loading again does not listen twice")
+        await home.stop()
+        let afterStop = await source.observerCount
+        XCTAssertEqual(afterStop, 0)
     }
 
     func testStartingAConversation() async {
