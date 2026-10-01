@@ -405,6 +405,8 @@ struct DeviceInfo: Equatable {
     var locale: String
     var timezone: String
     var model: String
+    /// The app's bundle id; the server checks it against the inbox's app (CM-051).
+    var appIdentifier: String?
 
     static func current(deviceId: String) -> DeviceInfo {
         let os = ProcessInfo.processInfo.operatingSystemVersion
@@ -415,13 +417,18 @@ struct DeviceInfo: Equatable {
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
             locale: Locale.current.identifier.components(separatedBy: "@")[0].replacingOccurrences(of: "_", with: "-"),
             timezone: TimeZone.current.identifier,
-            model: machine())
+            model: machine(),
+            appIdentifier: Bundle.main.bundleIdentifier)
     }
 
     var json: JSONValue {
-        ["device_id": .string(deviceId), "platform": "ios", "os_version": .string(osVersion),
-         "app_version": .string(appVersion), "sdk_version": .string(Clomni.version), "locale": .string(locale),
-         "timezone": .string(timezone), "model": .string(model)]
+        var fields: [String: JSONValue] = [
+            "device_id": .string(deviceId), "platform": "ios", "os_version": .string(osVersion),
+            "app_version": .string(appVersion), "sdk_version": .string(Clomni.version), "locale": .string(locale),
+            "timezone": .string(timezone), "model": .string(model),
+        ]
+        fields["app_identifier"] = appIdentifier.map(JSONValue.string)
+        return .object(fields)
     }
 
     /// e.g. "iPhone15,2"; the simulator reports the model it imitates.

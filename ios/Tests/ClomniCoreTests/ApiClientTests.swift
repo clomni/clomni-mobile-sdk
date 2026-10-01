@@ -47,7 +47,14 @@ final class ApiClientTests: XCTestCase {
         XCTAssertEqual(device["sdk_version"]?.stringValue, Clomni.version)
         XCTAssertTrue(device["device_id"]?.stringValue?.hasPrefix("d_") == true)
         XCTAssertNotNil(device["model"]?.stringValue)
+        XCTAssertEqual(device["app_identifier"]?.stringValue, Bundle.main.bundleIdentifier)
         XCTAssertNil(body(request)?["user"])
+
+        var info = DeviceInfo.current(deviceId: "d_1")
+        info.appIdentifier = "az.apar.app"
+        XCTAssertEqual(info.json["app_identifier"], "az.apar.app")
+        info.appIdentifier = nil
+        XCTAssertNil(info.json["app_identifier"], "left out when the process has no bundle id")
     }
 
     func testOtherEndpointsUseTheSessionToken() async throws {
