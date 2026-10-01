@@ -1,5 +1,6 @@
 package ai.clomni.messenger.store
 
+import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Assignee
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
@@ -45,13 +46,16 @@ internal fun message(
 internal fun conversation(id: String = "conv_1", last: Message? = null, createdAt: Long = 0, unread: Int = 0) =
     Conversation(id, ConversationStatus.BOT, null, unread, last, null, null, createdAt)
 
-class StoreTest {
+internal fun pending(clientId: String, conversationId: String = "conv_1", text: String = "t-$clientId") =
+    PendingMessage(conversationId, ClientMessage.Text(text, clientId), text, createdAt = clientId.length.toLong())
+
+class MessageStoreTest {
 
     @get:Rule
     val folder = TemporaryFolder()
 
     private val protocol = ProtocolJson()
-    private val store = Store(null, protocol)
+    private val store = MessageStore(null, protocol)
 
     private fun seqs(conversationId: String = "conv_1") = store.messages(conversationId).map { it.seq }
 
@@ -70,23 +74,17 @@ class StoreTest {
     }
 
     @Test
-    fun serverCopyReplacesTheOptimisticBubble() {
-        store.outbox.add(OutboxItem("conv_1", ClientMessage.Text("Salam", "c1"), "Salam", 1))
-        store.outbox.add(OutboxItem("conv_1", ClientMessage.Text("Necəsən", "c2"), "Necəsən", 2))
+    fun serverCopyReplacesThePendingMessage() {
+        store.outbox.add(pending("c1", text = "Salam"))
+        store.outbox.add(pending("c2", text = "Necəsən"))
         store.putMessages("conv_1", listOf(message(1)), syncedThrough = 1)
-        assertEquals(
-            listOf("msg_1", "c1", "c2"),
-            store.timeline("conv_1").map {
-                when (it) {
-                    is TimelineItem.Received -> it.message.id
-                    is TimelineItem.Outgoing -> it.item.clientId
-                }
-            },
-        )
+        assertEquals(listOf("c1", "c2"), store.pending("conv_1").map { it.id })
+        store.commit()
+
         store.putMessage(message(2, clientId = "c1", text = "Salam"))
-        assertEquals(listOf("c2"), store.outbox.all().map { it.clientId })
-        assertEquals(3, store.timeline("conv_1").size)
-        assertEquals(TimelineItem.Received(message(2, clientId = "c1", text = "Salam")), store.timeline("conv_1")[1])
+        assertEquals(listOf("c2"), store.pending("conv_1").map { it.id })
+        assertEquals(listOf("msg_1", "msg_2"), store.messages("conv_1").map { it.id })
+        assertEquals(listOf(ClomniChange.Messages("conv_1")), store.commit())
     }
 
     @Test
@@ -109,6 +107,9 @@ class StoreTest {
         store.putMessages("conv_1", listOf(message(40)), syncedThrough = 40)
         assertEquals(40L, store.putMessage(message(42)))
         assertNull(store.putMessage(message(41)))
+        assertEquals(42L, store.syncedSeq("conv_1"))
+        // An older page never moves the mark back.
+        store.putMessages("conv_1", listOf(message(39)), syncedThrough = 39)
         assertEquals(42L, store.syncedSeq("conv_1"))
     }
 
@@ -144,53 +145,66 @@ class StoreTest {
         assertEquals(2, store.conversation("conv_2")?.unreadCount)
 
         val update = RealtimeEvent.ConversationUpdate("conv_2", ConversationStatus.OPEN, Assignee("Leyla", null, true), null)
-        assertTrue(store.updateConversation(update))
+        assertTrue(store.apply(update))
         assertEquals(ConversationStatus.OPEN, store.conversation("conv_2")?.status)
         assertEquals("Leyla", store.conversation("conv_2")?.assignee?.name)
         assertEquals(2, store.conversation("conv_2")?.unreadCount)
-        assertFalse(store.updateConversation(update.copy(id = "conv_9")))
+        assertFalse(store.apply(update.copy(id = "conv_9")))
 
-        store.markRead("conv_2")
+        store.markSeen("conv_2")
         assertEquals(0, store.conversation("conv_2")?.unreadCount)
-        store.markRead("conv_9")
+        store.markSeen("conv_9")
     }
 
     @Test
-    fun answeredButtonsStopWorking() {
-        store.putMessages("conv_1", listOf(message(1, interactive = true), message(2)), syncedThrough = 2)
-        assertEquals(1L, store.disableInteraction("msg_1")?.seq)
-        assertEquals(false, store.message("msg_1")?.flow?.interactive)
-        assertEquals(message(2), store.disableInteraction("msg_2"))
-        assertNull(store.disableInteraction("msg_9"))
+    fun onlyTheLatestUnansweredInteractiveMessageCanBeAnswered() {
+        store.putMessages(
+            "conv_1",
+            listOf(message(1, interactive = true), message(2, interactive = false), message(3, interactive = true), message(4)),
+            syncedThrough = 4,
+        )
+        assertFalse(store.canAnswer(store.message("msg_1")!!))
+        assertFalse(store.canAnswer(store.message("msg_2")!!))
+        assertFalse(store.canAnswer(store.message("msg_4")!!))
+        assertTrue(store.canAnswer(store.message("msg_3")!!))
+        store.markAnswered("msg_3")
+        assertTrue(store.isAnswered("msg_3"))
+        assertFalse(store.canAnswer(store.message("msg_3")!!))
+        // Not yet in the store (it is not loaded): only its own flag counts.
+        assertTrue(store.canAnswer(message(9, conversationId = "conv_9", interactive = true)))
     }
 
     @Test
     fun keptOnDiskForTheNextLaunch() {
         val dir = folder.newFolder()
-        val first = Store(dir, protocol)
+        val first = MessageStore(dir, protocol)
         first.putConversation(conversation("conv_1"))
-        first.putMessages("conv_1", (1L..250L).map { message(it, interactive = it == 250L) }, syncedThrough = 250)
+        first.putMessages("conv_1", (1L..150L).map { message(it, interactive = it == 150L) }, syncedThrough = 150)
         first.putMessages("conv/2", listOf(message(1, conversationId = "conv/2")), syncedThrough = null)
-        first.setConfig(protocol.parseConfig("""{"brand":{"name":"Apar","primary_color":"#1F9D63"}}""")!!, """{"brand":{"name":"Apar","primary_color":"#1F9D63"}}""", "W/\"1\"")
+        val body = """{"brand":{"name":"Apar","primary_color":"#1F9D63"}}"""
+        first.setConfig(protocol.parseConfig(body)!!, body, "W/\"1\"")
         first.setUnreadTotal(3)
-        first.setOperatorRead("conv_1", 249)
-        first.outbox.add(OutboxItem("conv_1", ClientMessage.Text("Salam", "c1"), "Salam", 1))
+        first.markReadByOperator("conv_1", 149)
+        first.markAnswered("msg_150")
+        first.outbox.add(pending("c1"))
         first.commit()
 
-        val second = Store(dir, protocol)
+        val second = MessageStore(dir, protocol)
         second.load()
         assertEquals(listOf("conv_1"), second.conversations().map { it.id })
-        assertEquals(250L, second.conversation("conv_1")?.lastMessage?.seq)
-        assertEquals((51L..250L).toList(), second.messages("conv_1").map { it.seq })
-        assertEquals(first.messages("conv_1").takeLast(200), second.messages("conv_1"))
+        assertEquals(150L, second.conversation("conv_1")?.lastMessage?.seq)
+        assertEquals((51L..150L).toList(), second.messages("conv_1").map { it.seq })
+        assertEquals(first.messages("conv_1").takeLast(100), second.messages("conv_1"))
         assertEquals(listOf("msg_1"), second.messages("conv/2").map { it.id })
-        assertEquals(250L, second.syncedSeq("conv_1"))
+        assertEquals(150L, second.syncedSeq("conv_1"))
         assertNull(second.syncedSeq("conv/2"))
         assertEquals("Apar", second.config?.brand?.name)
         assertEquals("W/\"1\"", second.configEtag)
         assertEquals(3, second.unreadTotal)
-        assertEquals(249L, second.operatorReadSeq("conv_1"))
-        assertEquals(listOf("c1"), second.outbox.all().map { it.clientId })
+        assertEquals(149L, second.readByOperator("conv_1"))
+        assertFalse(second.canAnswer(second.message("msg_150")!!))
+        assertEquals(listOf("c1"), second.outbox.all().map { it.id })
+        assertTrue(second.commit().containsAll(listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(3))))
     }
 
     @Test
@@ -201,7 +215,7 @@ class StoreTest {
         File(dir, "messages").mkdirs()
         File(dir, "messages/conv_1.json").writeText("""{"messages":[]}""")
         File(dir, "messages/conv_2.json").writeText("""[1,2]""")
-        val store = Store(dir, protocol)
+        val store = MessageStore(dir, protocol)
         store.load()
         assertEquals(emptyList<Conversation>(), store.conversations())
         assertNull(store.config)
@@ -210,48 +224,98 @@ class StoreTest {
     }
 
     @Test
+    fun aDamagedCacheIsReadAsFarAsItGoes() {
+        val dir = folder.newFolder()
+        File(dir, "outbox.json").writeText(
+            """{"entries":[1,{"message":"x"},{"message":{"client_id":"c1","type":"text","content":{"text":"a"}}},
+               {"conversation_id":"conv_1","message":{"client_id":"c2","type":"text","content":{"text":"b"}},"created_at":"x",
+                "attempts":"y","fields":{"a":1,"b":"c"},"state":"failed","error_code":"e"}]}""",
+        )
+        File(dir, "conversations.json").writeText(
+            """{"conversations":[1,{"id":"x"}],"unread_total":"2","read_by_operator":{"conv_1":"x","conv_2":4},"answered":[1,"msg_1"]}""",
+        )
+        File(dir, "messages").mkdirs()
+        File(dir, "messages/a.json").writeText("""{"conversation_id":"conv_1","messages":[1,{"id":"x"}],"synced_seq":"x"}""")
+        File(dir, "config.json").writeText("""{"etag":5,"body":"{}"}""")
+        val store = MessageStore(dir, protocol)
+        store.load()
+
+        val kept = store.outbox.all().single()
+        assertEquals("c2", kept.id)
+        assertEquals(PendingMessage.State.FAILED, kept.state)
+        assertEquals(0L, kept.createdAt)
+        assertEquals(0, kept.attempts)
+        assertEquals("e", kept.errorCode)
+        assertEquals(mapOf("b" to "c"), kept.fields)
+        assertEquals(emptyList<Conversation>(), store.conversations())
+        // Our own file: a number written as a string still reads.
+        assertEquals(2, store.unreadTotal)
+        assertEquals(4L, store.readByOperator("conv_2"))
+        assertNull(store.readByOperator("conv_1"))
+        assertTrue(store.isAnswered("msg_1"))
+        assertEquals(emptyList<Message>(), store.messages("conv_1"))
+        assertNull(store.syncedSeq("conv_1"))
+        assertEquals("", store.config?.brand?.name)
+        assertEquals("5", store.configEtag)
+
+        // Without a directory there is nothing to read or delete.
+        val memory = MessageStore(null, protocol)
+        memory.load()
+        memory.clear()
+        assertTrue(memory.commit().contains(ClomniChange.Unread(0)))
+    }
+
+    @Test
     fun logoutLeavesNothing() {
         val dir = folder.newFolder()
-        val store = Store(dir, protocol)
-        var notified = 0
-        store.addListener { notified++ }
+        val store = MessageStore(dir, protocol)
         store.putConversation(conversation())
-        store.putMessages("conv_1", listOf(message(1)), syncedThrough = 1)
+        store.putMessages("conv_1", listOf(message(1, interactive = true)), syncedThrough = 1)
         store.setConfig(protocol.parseConfig("{}")!!, "{}", "e")
         store.setUnreadTotal(1)
-        store.outbox.add(OutboxItem("conv_1", ClientMessage.Text("a", "c1"), "a", 1))
+        store.markAnswered("msg_1")
+        store.outbox.add(pending("c1"))
         store.commit()
-        assertEquals(1, notified)
 
-        store.clear(keepOutbox = true)
-        assertEquals(2, notified)
-        assertEquals(listOf("c1"), store.outbox.all().map { it.clientId })
         store.clear()
         assertTrue(store.outbox.all().isEmpty())
         assertEquals(emptyList<Conversation>(), store.conversations())
         assertEquals(emptyList<Message>(), store.messages("conv_1"))
         assertNull(store.config)
         assertEquals(0, store.unreadTotal)
+        assertFalse(store.isAnswered("msg_1"))
         assertEquals(listOf<String>(), dir.list()!!.toList())
+        assertTrue(store.commit().contains(ClomniChange.Unread(0)))
 
-        val reloaded = Store(dir, protocol)
+        val reloaded = MessageStore(dir, protocol)
         reloaded.load()
         assertEquals(emptyList<Conversation>(), reloaded.conversations())
     }
 
     @Test
-    fun listenersHearOnlyRealChanges() {
-        var notified = 0
-        store.addListener { notified++ }
+    fun commitAnswersOnlyRealChanges() {
+        store.putConversation(conversation())
         store.putMessages("conv_1", listOf(message(1)), syncedThrough = null)
-        store.commit()
+        assertEquals(listOf(ClomniChange.Conversations, ClomniChange.Messages("conv_1")), store.commit())
         store.putMessage(message(1))
+        store.putConversation(conversation(last = message(1)))
         store.setUnreadTotal(0)
-        store.setOperatorRead("conv_1", 0)
-        store.setOperatorRead("conv_1", 0)
-        store.commit()
-        store.commit()
-        assertEquals(2, notified)
+        store.markAnswered("msg_9")
+        assertEquals(emptyList<ClomniChange>(), store.commit())
+        store.markReadByOperator("conv_1", 0)
+        store.markReadByOperator("conv_1", 0)
+        store.setUnreadTotal(2)
+        store.markAnswered("msg_1")
+        store.changed(ClomniChange.Messages("conv_7"))
+        assertEquals(
+            listOf(
+                ClomniChange.Read("conv_1", 0),
+                ClomniChange.Unread(2),
+                ClomniChange.Messages("conv_1"),
+                ClomniChange.Messages("conv_7"),
+            ),
+            store.commit(),
+        )
     }
 }
 
@@ -262,57 +326,62 @@ class OutboxTest {
 
     private val protocol = ProtocolJson()
 
-    private fun item(clientId: String, conversationId: String = "conv_1") =
-        OutboxItem(conversationId, ClientMessage.Text("t-$clientId", clientId), "t-$clientId", createdAt = clientId.length.toLong())
-
     @Test
     fun failsAfterThreeAttemptsAndCanBeRetried() {
         val outbox = Outbox(null, protocol)
-        outbox.add(item("c1"))
-        outbox.add(item("c2"))
-        assertEquals("c1", outbox.next()?.clientId)
-        assertEquals(OutboxItem.State.PENDING, outbox.recordFailure("c1")?.state)
-        assertEquals(OutboxItem.State.PENDING, outbox.recordFailure("c1")?.state)
+        outbox.add(pending("c1"))
+        outbox.add(pending("c2"))
+        assertEquals("c1", outbox.next()?.id)
+        assertEquals(PendingMessage.State.SENDING, outbox.recordFailure("c1")?.state)
+        assertEquals(PendingMessage.State.SENDING, outbox.recordFailure("c1")?.state)
         val failed = outbox.recordFailure("c1")!!
-        assertEquals(OutboxItem.State.FAILED, failed.state)
+        assertEquals(PendingMessage.State.FAILED, failed.state)
         assertEquals(3, failed.attempts)
         // A failed message does not hold up the next one.
-        assertEquals("c2", outbox.next()?.clientId)
+        assertEquals("c2", outbox.next()?.id)
 
         assertTrue(outbox.retry("c1"))
-        assertEquals(OutboxItem(item("c1").conversationId, item("c1").message, "t-c1", 2), outbox.get("c1"))
+        assertEquals(pending("c1"), outbox.entry("c1"))
         assertFalse(outbox.retry("c1"))
-        assertEquals("c1", outbox.next()?.clientId)
+        assertEquals("c1", outbox.next()?.id)
         assertNull(outbox.recordFailure("c9"))
+        assertNull(outbox.refuse("c9", null))
+        outbox.add(pending("c3"))
+        val refused = outbox.refuse("c3", null)!!
+        assertEquals(PendingMessage.State.FAILED, refused.state)
+        assertNull(refused.errorCode)
+        assertEquals(emptyMap<String, String>(), refused.fields)
         assertNull(outbox.remove("c9"))
         assertFalse(outbox.retry("c9"))
     }
 
     @Test
-    fun aRefusedMessageFailsAtOnce() {
+    fun aRefusedMessageFailsAtOnceWithTheReason() {
         val outbox = Outbox(null, protocol)
-        outbox.add(item("c1"))
-        val error = ServerError("validation_failed", "phone", "req_1", mapOf("phone" to "invalid"))
-        val failed = outbox.recordFailure("c1", error, final = true)!!
-        assertEquals(OutboxItem.State.FAILED, failed.state)
-        assertEquals(error, failed.error)
+        outbox.add(pending("c1"))
+        val failed = outbox.refuse("c1", ServerError("validation_failed", "phone", "req_1", mapOf("phone" to "invalid")))!!
+        assertEquals(PendingMessage.State.FAILED, failed.state)
+        assertEquals("validation_failed", failed.errorCode)
+        assertEquals(mapOf("phone" to "invalid"), failed.fields)
         assertNull(outbox.next())
+        assertTrue(outbox.retry("c1"))
+        assertEquals(pending("c1"), outbox.entry("c1"))
     }
 
     @Test
     fun survivesTheProcess() {
         val file = JsonFile(File(folder.newFolder(), "outbox.json"))
         val outbox = Outbox(file, protocol)
-        outbox.add(item("c1", "conv_2"))
-        outbox.add(OutboxItem("conv_1", ClientMessage.back("msg_f10", "c2"), "← Geri", 9))
-        outbox.recordFailure("c2", ServerError("validation_failed", "bad", null, mapOf("a" to "b")), final = true)
-        outbox.add(item("c1", "conv_2").copy(preview = "replaced"))
+        outbox.add(pending("c1", "conv_2"))
+        outbox.add(PendingMessage("conv_1", ClientMessage.back("msg_f10", "c2"), null, 9))
+        outbox.refuse("c2", ServerError("validation_failed", "bad", null, mapOf("a" to "b")))
+        outbox.add(pending("c1", "conv_2").copy(preview = "replaced"))
 
         val again = Outbox(file, protocol)
         again.load()
-        assertEquals(outbox.all().sortedBy { it.clientId }, again.all().sortedBy { it.clientId })
-        assertEquals(listOf("c1"), again.items("conv_2").map { it.clientId })
-        assertEquals("replaced", again.get("c1")?.preview)
+        assertEquals(outbox.all(), again.all())
+        assertEquals(listOf("c1"), again.entries("conv_2").map { it.id })
+        assertEquals("replaced", again.entry("c1")?.preview)
 
         again.remove("c1")
         again.clear()

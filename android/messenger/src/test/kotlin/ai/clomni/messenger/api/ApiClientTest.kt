@@ -19,24 +19,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
-import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class MobileApiTest {
+class ApiClientTest {
 
     private val server = MockWebServer()
     private val credentials = Credentials(MemorySecureStore(), ProtocolJson())
     private val sleeps = Collections.synchronizedList(mutableListOf<Long>())
-    private val api = MobileApi(
-        config = ApiConfig("app_8x2k", "android_sdk-3f9", server.url("/v1").toString(), "1.0.0"),
+    private var device = DeviceInfo("d_7f3e", "14", "3.2.1", "1.0.0", "az-AZ", "Asia/Baku", "SM-A546")
+    private var now = 0L
+    private val api = ApiClient(
+        config = ApiConfiguration("app_8x2k", "android_sdk-3f9", server.url("/v1").toString(), "1.0.0"),
         credentials = credentials,
         protocol = ProtocolJson(),
+        device = { device },
         sleep = { sleeps += it },
+        clock = { now },
     )
-    private val device = DeviceInfo("d_7f3e", "14", "3.2.1", "1.0.0", "az-AZ", "Asia/Baku", "SM-A546")
 
     @After
     fun stop() = server.shutdown()
@@ -60,13 +62,14 @@ class MobileApiTest {
     @Test
     fun sessionIsOpenedWithTheAppKeys() {
         server.enqueue(json(session(1), 201))
-        val opened = api.createSession(
-            Identity.User("12345", "aysel@example.com", userHash = "9b1c"),
-            anonymousId = "usr_anon",
-            device = device,
-        )
+        credentials.anonymousId = "usr_anon"
+        val identity = SessionIdentity.User(UserIdentity("12345", "aysel@example.com"), "9b1c")
+        val opened = api.open(identity)
         assertEquals("st_1", opened.sessionToken)
         assertEquals(opened, credentials.session)
+        assertEquals(identity, credentials.identity)
+        // Merged into the identified user: nothing anonymous is left to resume.
+        assertNull(credentials.anonymousId)
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
@@ -87,12 +90,27 @@ class MobileApiTest {
     }
 
     @Test
-    fun anonymousSessionSendsNoUser() {
-        server.enqueue(json(session(1), 201))
-        api.createSession(Identity.Anonymous, null, device.copy(osVersion = null, model = null))
+    fun anonymousSessionSendsNoUserAndKeepsTheAnonymousId() {
+        server.enqueue(json(session(1).replace("\"anonymous\":false", "\"anonymous\":true"), 201))
+        device = device.copy(osVersion = null, model = null)
+        api.open(SessionIdentity.Anonymous)
         val body = server.takeRequest().json()
         assertEquals(setOf("device"), body.keys)
         assertEquals(setOf("device_id", "platform", "app_version", "sdk_version", "locale", "timezone"), body.getValue("device").jsonObject.keys)
+        assertEquals("usr_1", credentials.anonymousId)
+        assertEquals(SessionIdentity.Anonymous, credentials.identity)
+    }
+
+    @Test
+    fun aSessionAboutToExpireIsRenewedFirst() {
+        loggedIn()
+        // expires_at is 2026-10-02T10:30:00Z; 30 s before it, the token is renewed before use.
+        now = java.time.Instant.parse("2026-10-02T10:29:30Z").toEpochMilli()
+        server.enqueue(json(session(2), 201))
+        server.enqueue(json(messagePage))
+        api.listMessages("conv_1")
+        assertEquals("/v1/mobile/sessions/refresh", server.takeRequest().path)
+        assertEquals("Bearer st_2", server.takeRequest().getHeader("Authorization"))
     }
 
     @Test
@@ -112,8 +130,14 @@ class MobileApiTest {
         try {
             api.getUser()
             fail()
-        } catch (e: ApiException) {
-            assertEquals(401, e.status)
+        } catch (e: ClomniError.NotLoggedIn) {
+            // Log in first.
+        }
+        try {
+            api.refreshSession()
+            fail()
+        } catch (e: ClomniError.NotLoggedIn) {
+            // Nothing to refresh.
         }
         assertEquals(0, server.requestCount)
     }
@@ -144,7 +168,7 @@ class MobileApiTest {
         try {
             api.getUser()
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals("token_expired", e.code)
         }
         assertEquals(3, server.requestCount)
@@ -158,7 +182,7 @@ class MobileApiTest {
         try {
             api.getUser()
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals("invalid_token", e.code)
         }
         assertNull(credentials.session)
@@ -171,7 +195,7 @@ class MobileApiTest {
         try {
             api.getUser()
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals(401, e.status)
         }
         assertEquals(1, server.requestCount)
@@ -227,7 +251,7 @@ class MobileApiTest {
         try {
             api.listMessages("conv_1")
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals("rate_limited", e.code)
         }
         assertEquals(listOf(2_000L, 2_000L, 2_000L), sleeps)
@@ -240,7 +264,7 @@ class MobileApiTest {
         try {
             api.getUser()
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals(503, e.status)
         }
         assertEquals(listOf(1_000L, 2_000L, 4_000L), sleeps)
@@ -265,14 +289,14 @@ class MobileApiTest {
         try {
             api.sendMessage("conv_1", ClientMessage.Text("a"))
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals(ServerError("validation_failed", "phone is invalid", "req_9", mapOf("phone" to "invalid")), e.error)
         }
         server.enqueue(MockResponse().setResponseCode(404).setBody("Not Found"))
         try {
             api.getConversation("conv_1")
             fail()
-        } catch (e: ApiException) {
+        } catch (e: ClomniError.Server) {
             assertEquals(404, e.status)
             assertNull(e.error)
         }
@@ -333,7 +357,7 @@ class MobileApiTest {
         api.trackEvent("ride_finished", null)
         val file = File.createTempFile("upload", ".jpg").apply { writeText("abc") }
         assertEquals("upl_1", api.upload(file, "a.jpg", "image/jpeg").uploadId)
-        api.deleteSession()
+        api.logout()
 
         val requests = List(12) { server.takeRequest() }
         assertEquals(
@@ -363,34 +387,47 @@ class MobileApiTest {
     }
 
     @Test
-    fun noAnswerIsAnIOException() {
+    fun socketRefreshUsesTheSameSingleUseToken() {
+        loggedIn()
+        server.enqueue(json(session(2), 201))
+        api.refreshSession()
+        assertEquals("""{"refresh_token":"rt_1"}""", server.takeRequest().body.readUtf8())
+        assertEquals("st_2", credentials.session?.sessionToken)
+    }
+
+    @Test
+    fun noAnswerIsANetworkError() {
         loggedIn()
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
         try {
             api.sendMessage("conv_1", ClientMessage.Text("a"))
             fail()
-        } catch (e: IOException) {
+        } catch (e: ClomniError.Network) {
             // The outbox repeats it with the same client_id.
         }
         server.enqueue(json("""{"id":"msg_1"}""", 201))
         try {
             api.sendMessage("conv_1", ClientMessage.Text("a"))
             fail()
-        } catch (e: IOException) {
+        } catch (e: ClomniError.UnreadableResponse) {
             assertTrue(e.message!!.contains("unreadable"))
         }
     }
 
     @Test
-    fun logoutForgetsTheSessionEvenOffline() {
+    fun logoutForgetsEverythingButTheDeviceEvenOffline() {
         loggedIn()
+        credentials.identity = SessionIdentity.Anonymous
+        credentials.anonymousId = "usr_1"
+        val deviceId = credentials.deviceId
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
-        try {
-            api.deleteSession()
-        } catch (e: IOException) {
-            // Expected: the server was not reached.
-        }
+        api.logout()
         assertNull(credentials.session)
+        assertNull(credentials.identity)
+        assertNull(credentials.anonymousId)
+        assertEquals(deviceId, credentials.deviceId)
+        // Without a session there is nothing to end on the server.
+        api.logout()
     }
 
     private companion object {
@@ -407,15 +444,16 @@ class CredentialsTest {
     fun keptAcrossInstancesAndClearedOnLogout() {
         val credentials = Credentials(store, ProtocolJson())
         val session = MobileSession("st_1", 1_000L, "rt_1", "usr_1", true, null, "wss://x/v1/realtime")
+        val identity = SessionIdentity.User(UserIdentity("12345", "aysel@example.com", "+99450", "Aysel"), "9b1c")
         credentials.session = session
-        credentials.identity = Identity.User("12345", "aysel@example.com", "+99450", "Aysel", "9b1c")
+        credentials.identity = identity
         credentials.anonymousId = "usr_anon"
         val deviceId = credentials.deviceId
         assertTrue(deviceId.startsWith("d_"))
 
         val again = Credentials(store, ProtocolJson())
         assertEquals(session, again.session)
-        assertEquals(Identity.User("12345", "aysel@example.com", "+99450", "Aysel", "9b1c"), again.identity)
+        assertEquals(identity, again.identity)
         assertEquals("usr_anon", again.anonymousId)
         assertEquals(deviceId, again.deviceId)
 
@@ -426,22 +464,23 @@ class CredentialsTest {
         assertNull(afterLogout.anonymousId)
         assertEquals(deviceId, afterLogout.deviceId)
 
-        afterLogout.identity = Identity.Anonymous
-        assertEquals(Identity.Anonymous, Credentials(store, ProtocolJson()).identity)
+        afterLogout.identity = SessionIdentity.Anonymous
+        assertEquals(SessionIdentity.Anonymous, Credentials(store, ProtocolJson()).identity)
+        afterLogout.identity = SessionIdentity.User(UserIdentity(email = "a@x.az"), null)
+        assertEquals(SessionIdentity.User(UserIdentity(email = "a@x.az"), null), Credentials(store, ProtocolJson()).identity)
         store.write("identity", "not json")
+        assertNull(Credentials(store, ProtocolJson()).identity)
+        store.write("identity", """{"hash":"x"}""")
         assertNull(Credentials(store, ProtocolJson()).identity)
     }
 
     @Test
-    fun sameIdentity() {
-        val aysel = Identity.User("12345", "aysel@example.com", userHash = "a")
-        assertTrue(aysel.sameAs(aysel.copy(userHash = "b", phone = "+99450")))
-        assertTrue(!aysel.sameAs(Identity.User("67890", "aysel@example.com")))
-        assertTrue(Identity.User(null, "a@x.az").sameAs(Identity.User(null, "a@x.az")))
-        assertTrue(!Identity.User(null, "a@x.az").sameAs(Identity.User(null, "b@x.az")))
-        assertTrue(Identity.Anonymous.sameAs(Identity.Anonymous))
-        assertTrue(!Identity.Anonymous.sameAs(aysel))
-        assertTrue(!aysel.sameAs(Identity.Anonymous))
-        assertTrue(!aysel.sameAs(null))
+    fun errorsSayWhatHappened() {
+        val refused = ClomniError.Server(409, ai.clomni.messenger.protocol.ServerError("already_answered", "answered", "req_1", emptyMap()))
+        assertEquals("already_answered", refused.code)
+        assertEquals("HTTP 409 already_answered: answered", refused.message)
+        assertEquals("HTTP 502", ClomniError.Server(502, null).message)
+        assertNull(ClomniError.Network("offline").code)
+        assertEquals("empty text", ClomniError.Rejected("empty text").message)
     }
 }

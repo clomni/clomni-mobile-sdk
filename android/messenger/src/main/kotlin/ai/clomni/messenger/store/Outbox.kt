@@ -5,7 +5,6 @@ import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.ServerError
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -13,27 +12,26 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
-import java.io.File
 
-/** A message the user sent that the server has not confirmed yet. */
-internal data class OutboxItem(
+/** A message on its way to the server, shown as the user's bubble until the server's copy replaces it. */
+internal data class PendingMessage(
     val conversationId: String,
     val message: ClientMessage,
-    /** What the user's bubble shows meanwhile: the text, or the title of the button pressed. */
+    /** What the bubble shows: the text, the button's title, the caption. Null for the back button and a form. */
     val preview: String?,
     val createdAt: Long,
-    val state: State = State.PENDING,
+    val state: State = State.SENDING,
     val attempts: Int = 0,
-    /** Why the server refused it, when it did (e.g. `validation_failed` with the form's field errors). */
-    val error: ServerError? = null,
+    /** The server's reason when it refused the message, e.g. `validation_failed` with [fields]. */
+    val errorCode: String? = null,
+    val fields: Map<String, String> = emptyMap(),
 ) {
-    val clientId: String get() = message.clientId
+    val id: String get() = message.clientId
 
     enum class State {
-        /** Waiting to be sent, or between attempts. */
-        PENDING,
+        SENDING,
 
-        /** "Göndərilmədi · Yenidən cəhd et": sent again only when the user asks ([Outbox.retry]). */
+        /** Three attempts failed, or the server refused it: "Göndərilmədi · Yenidən cəhd et". */
         FAILED,
     }
 }
@@ -41,118 +39,117 @@ internal data class OutboxItem(
 /**
  * Every message the user sends is written here before the first attempt and stays until the server confirms it, so
  * neither a lost connection nor a killed process loses it. A retry repeats its `client_id`, which the server handles
- * only once. After [MAX_ATTEMPTS] failed attempts an item is [OutboxItem.State.FAILED].
+ * only once. After [MAX_ATTEMPTS] failed attempts a message is [PendingMessage.State.FAILED] until [retry].
  */
 internal class Outbox(private val file: JsonFile?, private val protocol: ProtocolJson) {
-    private val items = mutableListOf<OutboxItem>()
+    private val entries = mutableListOf<PendingMessage>()
 
     @Synchronized
-    fun all(): List<OutboxItem> = items.toList()
+    fun all(): List<PendingMessage> = entries.toList()
 
     @Synchronized
-    fun items(conversationId: String): List<OutboxItem> = items.filter { it.conversationId == conversationId }
+    fun entries(conversationId: String): List<PendingMessage> = entries.filter { it.conversationId == conversationId }
 
     @Synchronized
-    fun get(clientId: String): OutboxItem? = items.firstOrNull { it.clientId == clientId }
+    fun entry(clientId: String): PendingMessage? = entries.firstOrNull { it.id == clientId }
 
-    /** The oldest item waiting to be sent: messages leave in the order they were written. */
+    /** The oldest message waiting to be sent: they leave in the order they were written. */
     @Synchronized
-    fun next(): OutboxItem? = items.firstOrNull { it.state == OutboxItem.State.PENDING }
+    fun next(): PendingMessage? = entries.firstOrNull { it.state == PendingMessage.State.SENDING }
 
     @Synchronized
-    fun add(item: OutboxItem) {
-        items.removeAll { it.clientId == item.clientId }
-        items += item
+    fun add(entry: PendingMessage) {
+        entries.removeAll { it.id == entry.id }
+        entries += entry
         save()
     }
 
-    /** Confirmed by the server, or given up on: gone from the outbox. */
+    /** Confirmed by the server, or given up on. */
     @Synchronized
-    fun remove(clientId: String): OutboxItem? {
-        val index = items.indexOfFirst { it.clientId == clientId }
+    fun remove(clientId: String): PendingMessage? {
+        val index = entries.indexOfFirst { it.id == clientId }
         if (index < 0) return null
-        return items.removeAt(index).also { save() }
+        return entries.removeAt(index).also { save() }
     }
 
-    /** One attempt failed. [final] (the server refused the message itself) fails it at once. */
+    /** One attempt got no answer; the third makes the message failed. */
     @Synchronized
-    fun recordFailure(clientId: String, error: ServerError? = null, final: Boolean = false): OutboxItem? {
-        val index = items.indexOfFirst { it.clientId == clientId }
-        if (index < 0) return null
-        val item = items[index]
-        val attempts = item.attempts + 1
-        val failed = final || attempts >= MAX_ATTEMPTS
-        items[index] = item.copy(
-            attempts = attempts,
-            error = error ?: item.error,
-            state = if (failed) OutboxItem.State.FAILED else OutboxItem.State.PENDING,
-        )
-        save()
-        return items[index]
+    fun recordFailure(clientId: String): PendingMessage? = update(clientId) {
+        val attempts = it.attempts + 1
+        it.copy(attempts = attempts, state = if (attempts >= MAX_ATTEMPTS) PendingMessage.State.FAILED else it.state)
     }
 
-    /** "Yenidən cəhd et": a failed item goes back to the queue with fresh attempts. */
+    /** The server refused the message itself: failed at once, with its reason. */
+    @Synchronized
+    fun refuse(clientId: String, error: ServerError?): PendingMessage? = update(clientId) {
+        it.copy(state = PendingMessage.State.FAILED, errorCode = error?.code, fields = error?.fields.orEmpty())
+    }
+
+    /** "Yenidən cəhd et": a failed message goes back to the queue with fresh attempts. */
     @Synchronized
     fun retry(clientId: String): Boolean {
-        val index = items.indexOfFirst { it.clientId == clientId && it.state == OutboxItem.State.FAILED }
-        if (index < 0) return false
-        items[index] = items[index].copy(state = OutboxItem.State.PENDING, attempts = 0, error = null)
-        save()
+        if (entry(clientId)?.state != PendingMessage.State.FAILED) return false
+        update(clientId) {
+            it.copy(state = PendingMessage.State.SENDING, attempts = 0, errorCode = null, fields = emptyMap())
+        }
         return true
     }
 
     @Synchronized
     fun load() {
-        items.clear()
+        entries.clear()
         val saved = file?.read() as? JsonObject ?: return
-        (saved["items"] as? JsonArray).orEmpty().mapNotNullTo(items) { decode(it as? JsonObject) }
+        (saved["entries"] as? JsonArray).orEmpty().mapNotNullTo(entries) { decode(it as? JsonObject) }
     }
 
     @Synchronized
     fun clear() {
-        items.clear()
+        entries.clear()
         file?.delete()
     }
 
+    private fun update(clientId: String, change: (PendingMessage) -> PendingMessage): PendingMessage? {
+        val index = entries.indexOfFirst { it.id == clientId }
+        if (index < 0) return null
+        entries[index] = change(entries[index])
+        save()
+        return entries[index]
+    }
+
     private fun save() {
-        file?.write(buildJsonObject { put("items", JsonArray(items.map(::encode))) })
+        file?.write(buildJsonObject { put("entries", JsonArray(entries.map(::encode))) })
     }
 
-    private fun encode(item: OutboxItem) = buildJsonObject {
-        put("conversation_id", item.conversationId)
-        put("message", Json.parseToJsonElement(protocol.encode(item.message)))
-        put("preview", item.preview)
-        put("created_at", item.createdAt)
-        put("state", item.state.name.lowercase())
-        put("attempts", item.attempts)
-        put(
-            "error",
-            item.error?.let { error ->
-                buildJsonObject {
-                    put("code", error.code)
-                    put("message", error.message)
-                    put("request_id", error.requestId)
-                    put("fields", JsonObject(error.fields.mapValues { JsonPrimitive(it.value) }))
-                }
-            } ?: JsonNull,
-        )
+    private fun encode(entry: PendingMessage) = buildJsonObject {
+        put("conversation_id", entry.conversationId)
+        put("message", Json.parseToJsonElement(protocol.encode(entry.message)))
+        put("preview", entry.preview)
+        put("created_at", entry.createdAt)
+        put("state", entry.state.name.lowercase())
+        put("attempts", entry.attempts)
+        put("error_code", entry.errorCode)
+        put("fields", JsonObject(entry.fields.mapValues { JsonPrimitive(it.value) }))
     }
 
-    private fun decode(o: JsonObject?): OutboxItem? {
+    private fun decode(o: JsonObject?): PendingMessage? {
         o ?: return null
         val message = (o["message"] as? JsonObject)?.let { protocol.parseClientMessage(it.toString()) } ?: return null
-        return OutboxItem(
+        return PendingMessage(
             conversationId = o.text("conversation_id") ?: return null,
             message = message,
             preview = o.text("preview"),
             createdAt = (o["created_at"] as? JsonPrimitive)?.longOrNull ?: 0,
-            state = if (o.text("state") == "failed") OutboxItem.State.FAILED else OutboxItem.State.PENDING,
+            state = if (o.text("state") == "failed") PendingMessage.State.FAILED else PendingMessage.State.SENDING,
             attempts = (o["attempts"] as? JsonPrimitive)?.intOrNull ?: 0,
-            error = (o["error"] as? JsonObject)?.let { protocol.parseServerError(buildJsonObject { put("error", it) }.toString()) },
+            errorCode = o.text("error_code"),
+            fields = (o["fields"] as? JsonObject).orEmpty().mapNotNull { (key, value) ->
+                (value as? JsonPrimitive)?.takeIf { it.isString }?.let { key to it.content }
+            }.toMap(),
         )
     }
 
-    private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+    private fun JsonObject.text(key: String): String? =
+        (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
 
     internal companion object {
         const val MAX_ATTEMPTS = 3

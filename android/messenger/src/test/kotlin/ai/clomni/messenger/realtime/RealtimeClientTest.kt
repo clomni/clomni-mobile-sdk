@@ -17,7 +17,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
-class RealtimeConnectionTest {
+class RealtimeClientTest {
 
     private val server = MockWebServer()
     private val executor = Executors.newSingleThreadScheduledExecutor()
@@ -29,12 +29,12 @@ class RealtimeConnectionTest {
     private val opened = LinkedBlockingQueue<WebSocket>()
     private val received = LinkedBlockingQueue<String>()
 
-    private fun connection(secondMs: Long = 1_000) = RealtimeConnection(
+    private fun connection(secondMs: Long = 1_000) = RealtimeClient(
         http = OkHttpClient(),
         protocol = ProtocolJson(),
         executor = executor,
         sdkHeader = "android/1.0.0",
-        listener = object : RealtimeConnection.Listener {
+        listener = object : RealtimeClient.Listener {
             override fun onEvent(event: RealtimeEvent) {
                 events.put(event)
             }
@@ -45,7 +45,7 @@ class RealtimeConnectionTest {
                 disconnects.put(Unit)
             }
         },
-        timing = RealtimeConnection.Timing(reconnectDelayMs = { attempts += it; 20L }, secondMs = secondMs),
+        timing = RealtimeClient.Timing(reconnectDelayMs = { attempts += it; 20L }, secondMs = secondMs),
     )
 
     /** The server side of the next connection. */
@@ -69,8 +69,8 @@ class RealtimeConnectionTest {
         )
     }
 
-    private fun RealtimeConnection.startOn() = executor.submit {
-        start { RealtimeConnection.Endpoint(server.url("/v1/realtime").toString().replace("http://", "ws://"), token) }
+    private fun RealtimeClient.startOn() = executor.submit {
+        start { RealtimeClient.Endpoint(server.url("/v1/realtime").toString().replace("http://", "ws://"), token) }
     }.get()
 
     private fun <T> LinkedBlockingQueue<T>.next(): T = poll(5, TimeUnit.SECONDS) ?: throw AssertionError("nothing arrived")
@@ -100,7 +100,7 @@ class RealtimeConnectionTest {
         socket.send("not json")
         socket.send("""{"event":"conversation.rated","data":{}}""")
         assertEquals(RealtimeEvent.Payload.Unknown("conversation.rated"), events.next().data)
-        assertEquals(RealtimeConnection.State.OPEN, executor.submit<RealtimeConnection.State> { connection.state }.get())
+        assertEquals(RealtimeClient.State.OPEN, executor.submit<RealtimeClient.State> { connection.state }.get())
     }
 
     @Test
@@ -124,7 +124,7 @@ class RealtimeConnectionTest {
     fun twoMissedPingsMeanTheConnectionIsGone() {
         acceptSocket()
         acceptSocket()
-        // heartbeat_sec 1 = 100 ms here: silence for 250 ms gives the connection up.
+        // heartbeat_sec 1 = 100 ms here: silence for 200 ms gives the connection up.
         connection(secondMs = 100).startOn()
         val first = opened.next()
         first.send("""{"event":"ready","data":{"user_id":"usr_1","heartbeat_sec":1}}""")
@@ -164,13 +164,13 @@ class RealtimeConnectionTest {
         Thread.sleep(200)
         assertEquals(1, server.requestCount)
         assertTrue(events.isEmpty())
-        assertEquals(RealtimeConnection.State.STOPPED, connection.state)
+        assertEquals(RealtimeClient.State.STOPPED, connection.state)
 
         // No session: nothing to connect to.
         executor.submit { connection.start { null } }.get()
-        assertEquals(RealtimeConnection.State.STOPPED, connection.state)
-        executor.submit { connection.start { RealtimeConnection.Endpoint("not a url", "st_1") } }.get()
-        assertEquals(RealtimeConnection.State.STOPPED, connection.state)
+        assertEquals(RealtimeClient.State.STOPPED, connection.state)
+        executor.submit { connection.start { RealtimeClient.Endpoint("not a url", "st_1") } }.get()
+        assertEquals(RealtimeClient.State.STOPPED, connection.state)
         assertEquals(1, server.requestCount)
     }
 
@@ -178,24 +178,24 @@ class RealtimeConnectionTest {
     fun retryNowSkipsTheWait() {
         acceptSocket()
         acceptSocket()
-        val connection = RealtimeConnection(
+        val connection = RealtimeClient(
             OkHttpClient(),
             ProtocolJson(),
             executor,
             "android/1.0.0",
-            object : RealtimeConnection.Listener {
+            object : RealtimeClient.Listener {
                 override fun onEvent(event: RealtimeEvent) = Unit
                 override fun onUnauthorized() = Unit
                 override fun onDisconnected() {
                     disconnects.put(Unit)
                 }
             },
-            RealtimeConnection.Timing(reconnectDelayMs = { 60_000L }),
+            RealtimeClient.Timing(reconnectDelayMs = { 60_000L }),
         )
         connection.startOn()
         opened.next().close(1000, null)
         disconnects.next()
-        assertEquals(RealtimeConnection.State.WAITING, executor.submit<RealtimeConnection.State> { connection.state }.get())
+        assertEquals(RealtimeClient.State.WAITING, executor.submit<RealtimeClient.State> { connection.state }.get())
         executor.submit { connection.retryNow() }.get()
         opened.next()
         assertEquals(2, server.requestCount)
@@ -205,7 +205,7 @@ class RealtimeConnectionTest {
     fun delays() {
         assertEquals(
             listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L, 30_000L, 30_000L, 30_000L),
-            (0..7).map(RealtimeConnection::reconnectDelayMs),
+            (0..7).map(RealtimeClient::reconnectDelayMs),
         )
     }
 }

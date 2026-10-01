@@ -10,7 +10,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Small secrets: the session and refresh tokens, the identity to log in again with, the anonymous user, the device id. */
+/** Small secrets: session and refresh tokens, the identity to log in again with, the anonymous user, the device id. */
 internal interface SecureStore {
     fun read(key: String): String?
 

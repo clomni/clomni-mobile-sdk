@@ -63,7 +63,7 @@ public data class UploadedFile(
     val mime: String,
 )
 
-/** The `error` object every failed request carries. New codes may appear within v1; a client goes by the status then. */
+/** The `error` of every failed request. New codes may appear within v1; a client then goes by the status. */
 public data class ServerError(
     val code: String,
     val message: String,

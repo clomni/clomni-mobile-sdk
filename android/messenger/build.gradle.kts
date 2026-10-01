@@ -64,16 +64,16 @@ kover {
     reports {
         filters {
             includes {
-                packages("ai.clomni.messenger.protocol")
+                packages("ai.clomni.messenger.protocol", "ai.clomni.messenger.store")
             }
         }
         variant("debug") {
-            // Brief 11: protocol test coverage of at least 80%.
+            // Brief 11: Protocol and Store test coverage of at least 80%.
             verify {
-                rule("Protocol line coverage") {
+                rule("Protocol and Store line coverage") {
                     minBound(80, CoverageUnit.LINE)
                 }
-                rule("Protocol branch coverage") {
+                rule("Protocol and Store branch coverage") {
                     minBound(80, CoverageUnit.BRANCH)
                 }
             }

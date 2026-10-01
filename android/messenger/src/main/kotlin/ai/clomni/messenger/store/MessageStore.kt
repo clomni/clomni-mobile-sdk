@@ -1,5 +1,6 @@
 package ai.clomni.messenger.store
 
+import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessengerConfig
@@ -16,26 +17,18 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.io.File
-import java.util.concurrent.CopyOnWriteArrayList
-
-/** One row of a conversation on screen: a message from the server, or the user's own one on its way. */
-internal sealed interface TimelineItem {
-    data class Received(val message: Message) : TimelineItem
-
-    data class Outgoing(val item: OutboxItem) : TimelineItem
-}
 
 /**
- * The user's conversations, their messages, the config and the outbox, in memory and on disk, so the Messenger
+ * The user's conversations, their messages, the config and the [outbox], in memory and on disk, so the Messenger
  * shows the last known state the moment it opens.
  *
  * - A message is kept once per `id`, whether it came over REST, the socket or both; a newer copy (`message.updated`)
- *   replaces the old one. A message carrying the `client_id` of an outbox item confirms it and replaces its bubble.
+ *   replaces the old one. A message carrying the `client_id` of a pending message confirms it.
  * - Messages are ordered by `seq`. [syncedSeq] is how far a conversation is known without holes; a message beyond it
  *   ([putMessage] answers its value) means a gap the caller fills with `after_seq`.
- * - Mutations are collected and written by [commit], which also tells the listeners.
+ * - Mutations are collected and written by [commit], which answers what changed for the screens.
  */
-internal class Store(private val dir: File?, private val protocol: ProtocolJson) {
+internal class MessageStore(private val dir: File?, private val protocol: ProtocolJson) {
     val outbox = Outbox(dir?.let { JsonFile(File(it, "outbox.json")) }, protocol)
     private val conversationsFile = dir?.let { JsonFile(File(it, "conversations.json")) }
     private val configFile = dir?.let { JsonFile(File(it, "config.json")) }
@@ -44,12 +37,12 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
     private val messages = HashMap<String, MutableMap<String, Message>>()
     private val synced = HashMap<String, Long>()
     private val operatorRead = HashMap<String, Long>()
+    private val answered = LinkedHashSet<String>()
     private var configBody: String? = null
     private var conversationsDirty = false
     private var configDirty = false
     private val messagesDirty = mutableSetOf<String>()
-    private var changed = false
-    private val listeners = CopyOnWriteArrayList<() -> Unit>()
+    private val changes = LinkedHashSet<ClomniChange>()
 
     @get:Synchronized
     var config: MessengerConfig? = null
@@ -64,16 +57,14 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
     var unreadTotal: Int = 0
         private set
 
-    fun addListener(listener: () -> Unit) {
-        listeners += listener
-    }
-
     // Reads
 
     /** Most recent activity first. */
     @Synchronized
     fun conversations(): List<Conversation> =
-        conversations.values.sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
+        conversations.values.sortedWith(
+            compareByDescending<Conversation> { it.lastMessage?.createdAt ?: it.createdAt }.thenByDescending { it.id },
+        )
 
     @Synchronized
     fun conversation(id: String): Conversation? = conversations[id]
@@ -86,11 +77,8 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
     @Synchronized
     fun message(id: String): Message? = messages.values.firstNotNullOfOrNull { it[id] }
 
-    /** The server's messages by `seq`, then the user's unconfirmed ones in the order they were written. */
-    @Synchronized
-    fun timeline(conversationId: String): List<TimelineItem> =
-        messages(conversationId).map { TimelineItem.Received(it) } +
-            outbox.items(conversationId).map { TimelineItem.Outgoing(it) }
+    /** The user's messages not yet confirmed by the server, oldest first; shown after [messages]. */
+    fun pending(conversationId: String): List<PendingMessage> = outbox.entries(conversationId)
 
     /** The conversation is known without holes up to this `seq`; null before its history was ever loaded. */
     @Synchronized
@@ -98,7 +86,19 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
 
     /** The operator has read the user's messages up to this `seq` ("Oxundu"). */
     @Synchronized
-    fun operatorReadSeq(conversationId: String): Long? = operatorRead[conversationId]
+    fun readByOperator(conversationId: String): Long? = operatorRead[conversationId]
+
+    /** Answered on this device (buttons, form, rating), whatever the server's copy says yet. */
+    @Synchronized
+    fun isAnswered(messageId: String): Boolean = messageId in answered
+
+    /** Only the latest interactive message of a conversation has live buttons, and only until it is answered. */
+    @Synchronized
+    fun canAnswer(message: Message): Boolean {
+        if (message.flow?.interactive != true || message.id in answered) return false
+        val latest = messages(message.conversationId).lastOrNull { it.flow?.interactive == true }
+        return latest == null || latest.id == message.id
+    }
 
     // Mutations
 
@@ -116,7 +116,7 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
         if (merged == known) return
         conversations[conversation.id] = merged
         conversationsDirty = true
-        changed = true
+        changes += ClomniChange.Conversations
     }
 
     /**
@@ -130,7 +130,6 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
             synced[conversationId] = maxOf(synced[conversationId] ?: syncedThrough, syncedThrough)
             advance(conversationId)
             messagesDirty += conversationId
-            changed = true
         }
     }
 
@@ -138,43 +137,38 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
     @Synchronized
     fun putMessage(message: Message): Long? {
         insert(message)
-        val conversationId = message.conversationId
-        val upTo = advance(conversationId) ?: return null
+        val upTo = advance(message.conversationId) ?: return null
         return if (message.seq > upTo + 1) upTo else null
     }
 
+    /** `conversation.updated`; false for a conversation not known yet. */
     @Synchronized
-    fun updateConversation(update: RealtimeEvent.ConversationUpdate): Boolean {
+    fun apply(update: RealtimeEvent.ConversationUpdate): Boolean {
         val known = conversations[update.id] ?: return false
-        putConversation(
-            known.copy(status = update.status, assignee = update.assignee, unreadCount = update.unreadCount ?: known.unreadCount),
-        )
+        val unread = update.unreadCount ?: known.unreadCount
+        putConversation(known.copy(status = update.status, assignee = update.assignee, unreadCount = unread))
         return true
     }
 
-    /**
-     * The buttons of [messageId] stop working: the user answered it, or the server said it is answered or stale (409).
-     * Answers the message, so the caller can reload it.
-     */
+    /** The user answered [messageId] (buttons, form, rating): it stays dead while the server's copy is on its way. */
     @Synchronized
-    fun disableInteraction(messageId: String): Message? {
-        val message = message(messageId) ?: return null
-        val flow = message.flow
-        if (flow != null && flow.interactive) insert(message.copy(flow = flow.copy(interactive = false)))
-        return message
+    fun markAnswered(messageId: String) {
+        if (!answered.add(messageId)) return
+        conversationsDirty = true
+        message(messageId)?.let { changes += ClomniChange.Messages(it.conversationId) }
     }
 
     @Synchronized
-    fun setOperatorRead(conversationId: String, upToSeq: Long) {
+    fun markReadByOperator(conversationId: String, upToSeq: Long) {
         if ((operatorRead[conversationId] ?: -1) >= upToSeq) return
         operatorRead[conversationId] = upToSeq
         conversationsDirty = true
-        changed = true
+        changes += ClomniChange.Read(conversationId, upToSeq)
     }
 
     /** The user has seen the conversation. */
     @Synchronized
-    fun markRead(conversationId: String) {
+    fun markSeen(conversationId: String) {
         val known = conversations[conversationId] ?: return
         if (known.unreadCount != 0) putConversation(known.copy(unreadCount = 0))
     }
@@ -184,7 +178,7 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
         if (total == unreadTotal) return
         unreadTotal = total
         conversationsDirty = true
-        changed = true
+        changes += ClomniChange.Unread(total)
     }
 
     @Synchronized
@@ -193,16 +187,20 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
         configBody = body
         configEtag = etag
         configDirty = true
-        changed = true
+        changes += ClomniChange.Config
     }
 
-    /** Writes what changed since the last commit and tells the listeners. */
-    fun commit() {
-        val notify = synchronized(this) {
-            if (dir != null) save()
-            changed.also { changed = false }
-        }
-        if (notify) listeners.forEach { it() }
+    /** Something outside the store changed for the screens, e.g. the outbox of a conversation. */
+    @Synchronized
+    fun changed(change: ClomniChange) {
+        changes += change
+    }
+
+    /** Writes what changed since the last commit and answers it. */
+    @Synchronized
+    fun commit(): List<ClomniChange> {
+        if (dir != null) save()
+        return changes.toList().also { changes.clear() }
     }
 
     // Disk
@@ -216,14 +214,18 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
             protocol.parseConversation(element.toString())?.let { conversations[it.id] = it }
         }
         unreadTotal = (saved?.get("unread_total") as? JsonPrimitive)?.intOrNull ?: 0
-        (saved?.get("operator_read") as? JsonObject).orEmpty().forEach { (id, seq) ->
+        (saved?.get("read_by_operator") as? JsonObject).orEmpty().forEach { (id, seq) ->
             (seq as? JsonPrimitive)?.longOrNull?.let { operatorRead[id] = it }
+        }
+        (saved?.get("answered") as? JsonArray).orEmpty().forEach { id ->
+            (id as? JsonPrimitive)?.contentOrNull?.let { answered += it }
         }
         File(dir, MESSAGES_DIR).listFiles().orEmpty().forEach { file ->
             val page = JsonFile(file).read() as? JsonObject ?: return@forEach
             val conversationId = (page["conversation_id"] as? JsonPrimitive)?.contentOrNull ?: return@forEach
             (page["messages"] as? JsonArray).orEmpty().forEach { element ->
-                protocol.parseMessage(element)?.let { messages.getOrPut(conversationId) { LinkedHashMap() }[it.id] = it }
+                val message = protocol.parseMessage(element) ?: return@forEach
+                messages.getOrPut(conversationId) { LinkedHashMap() }[message.id] = message
             }
             (page["synced_seq"] as? JsonPrimitive)?.longOrNull?.let { synced[conversationId] = it }
         }
@@ -234,29 +236,29 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
             configEtag = (cachedConfig["etag"] as? JsonPrimitive)?.contentOrNull.takeIf { config != null }
         }
         outbox.load()
+        changes += listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(unreadTotal))
     }
 
-    /** Logout, or another user: nothing of the previous one may stay. [keepOutbox] when the same person continues. */
-    fun clear(keepOutbox: Boolean = false) {
-        synchronized(this) {
-            conversations.clear()
-            messages.clear()
-            synced.clear()
-            operatorRead.clear()
-            config = null
-            configBody = null
-            configEtag = null
-            unreadTotal = 0
-            conversationsDirty = false
-            configDirty = false
-            messagesDirty.clear()
-            changed = false
-            if (!keepOutbox) outbox.clear()
-            dir?.let { File(it, MESSAGES_DIR).deleteRecursively() }
-            conversationsFile?.delete()
-            configFile?.delete()
-        }
-        listeners.forEach { it() }
+    /** Logout, or another identified user: nothing of the previous one stays, unsent messages included. */
+    @Synchronized
+    fun clear() {
+        conversations.clear()
+        messages.clear()
+        synced.clear()
+        operatorRead.clear()
+        answered.clear()
+        config = null
+        configBody = null
+        configEtag = null
+        unreadTotal = 0
+        conversationsDirty = false
+        configDirty = false
+        messagesDirty.clear()
+        outbox.clear()
+        dir?.let { File(it, MESSAGES_DIR).deleteRecursively() }
+        conversationsFile?.delete()
+        configFile?.delete()
+        changes += listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(0))
     }
 
     private fun insert(message: Message) {
@@ -265,9 +267,10 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
         if (known[message.id] != message) {
             known[message.id] = message
             messagesDirty += conversationId
-            changed = true
+            changes += ClomniChange.Messages(conversationId)
         }
-        message.clientId?.let { if (outbox.remove(it) != null) changed = true }
+        // The server's copy of a pending message replaces the optimistic bubble.
+        message.clientId?.let { if (outbox.remove(it) != null) changes += ClomniChange.Messages(conversationId) }
         val conversation = conversations[conversationId]
         val last = conversation?.lastMessage
         if (conversation != null && (last == null || message.seq >= last.seq)) {
@@ -290,13 +293,14 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
                 buildJsonObject {
                     put("conversations", JsonArray(conversations.values.map { it.toJson() }))
                     put("unread_total", unreadTotal)
-                    put("operator_read", JsonObject(operatorRead.mapValues { JsonPrimitive(it.value) }))
+                    put("read_by_operator", JsonObject(operatorRead.mapValues { JsonPrimitive(it.value) }))
+                    put("answered", JsonArray(answered.map(::JsonPrimitive)))
                 },
             )
             conversationsDirty = false
         }
         for (conversationId in messagesDirty) {
-            val kept = messages(conversationId).takeLast(MAX_CACHED_MESSAGES)
+            val kept = messages(conversationId).takeLast(CACHED_MESSAGES_PER_CONVERSATION)
             messageFile(conversationId).write(
                 buildJsonObject {
                     put("conversation_id", conversationId)
@@ -317,7 +321,7 @@ internal class Store(private val dir: File?, private val protocol: ProtocolJson)
 
     internal companion object {
         /** Per conversation on disk; older history is loaded again from the server when scrolled to. */
-        const val MAX_CACHED_MESSAGES = 200
+        const val CACHED_MESSAGES_PER_CONVERSATION = 100
         private const val MESSAGES_DIR = "messages"
     }
 }

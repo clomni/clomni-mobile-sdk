@@ -22,12 +22,14 @@ import java.util.concurrent.TimeUnit
  * The realtime socket (`wss://…/v1/realtime?token=…&protocol=v1`). It only receives, apart from answering pings.
  *
  * - Lost, or refused, it reconnects after 1, 2, 4, 8, 16, then every 30 seconds; the delays start again after `ready`.
- * - Nothing heard for two pings (`heartbeat_sec` from `ready`, 25 until then) means the connection is gone.
+ * - The server pings every `heartbeat_sec` (from `ready`, 25 until then) with `{"event":"ping"}`, answered with
+ *   `{"event":"pong"}`; no frame at all for two heartbeats means the connection is gone. WebSocket-level pings are
+ *   not relied on.
  * - A handshake refused with 401 asks the listener to refresh the session before the next attempt.
  *
  * Every method and every listener call runs on [executor], the SDK's own worker thread.
  */
-internal class RealtimeConnection(
+internal class RealtimeClient(
     private val http: OkHttpClient,
     private val protocol: ProtocolJson,
     private val executor: ScheduledExecutorService,
@@ -171,12 +173,12 @@ internal class RealtimeConnection(
         reconnect = executor.schedule({ if (gen == generation) open() }, delay, TimeUnit.MILLISECONDS)
     }
 
-    /** Two pings' worth of silence (plus half a ping for a late one) and the connection is given up. */
+    /** No frame at all (pings included) for two heartbeats and the connection is given up. */
     private fun armWatchdog() {
         watchdog?.cancel(false)
-        val heartbeat = heartbeatSec * timing.secondMs
         val gen = generation
-        watchdog = executor.schedule({ if (gen == generation) lost() }, heartbeat * 2 + heartbeat / 2, TimeUnit.MILLISECONDS)
+        val silence = 2 * heartbeatSec * timing.secondMs
+        watchdog = executor.schedule({ if (gen == generation) lost() }, silence, TimeUnit.MILLISECONDS)
     }
 
     private fun isPing(text: String): Boolean =

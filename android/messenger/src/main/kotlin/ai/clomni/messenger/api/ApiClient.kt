@@ -31,7 +31,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /** The app's keys and where the API lives. */
-internal data class ApiConfig(
+internal data class ApiConfiguration(
     val appId: String,
     val apiKey: String,
     val baseUrl: String = DEFAULT_BASE_URL,
@@ -53,12 +53,6 @@ internal data class DeviceInfo(
     val model: String?,
 )
 
-/** The server answered with an error status. No answer at all (offline, timeout) is an [IOException] instead. */
-internal class ApiException(val status: Int, val error: ServerError?) :
-    Exception("HTTP $status${error?.let { " ${it.code}: ${it.message}" }.orEmpty()}") {
-    val code: String? get() = error?.code
-}
-
 /** GET /mobile/config: [Changed] carries the body to keep on disk with its ETag. */
 internal sealed interface ConfigResponse {
     object NotModified : ConfigResponse
@@ -68,53 +62,71 @@ internal sealed interface ConfigResponse {
 
 /**
  * The Mobile API (protocol/openapi.yaml) over OkHttp. Calls block: the SDK makes them from its own worker thread.
+ * Failures are [ClomniError]s: [ClomniError.Server] for an error status, [ClomniError.Network] for no answer.
  *
  * - Session endpoints authenticate with the app's keys, every other one with the session token from [credentials].
- * - `401 token_expired`: the session is refreshed (once, however many calls hit it at the same time; the refresh token
- *   is single-use) and the call repeated once. A refresh the server refuses clears the session.
+ * - A session within a minute of expiring is refreshed first. `401 token_expired`: the session is refreshed (once,
+ *   however many calls hit it at the same time; the refresh token is single-use) and the call repeated once. A
+ *   refresh the server refuses clears the session.
  * - `429`: waits `Retry-After` seconds and repeats, up to [MAX_RATE_LIMIT_RETRIES] times.
  * - `5xx`: repeats after 1, 2 and 4 seconds, then gives up.
  */
-internal class MobileApi(
-    private val config: ApiConfig,
+internal class ApiClient(
+    private val config: ApiConfiguration,
     private val credentials: Credentials,
     private val protocol: ProtocolJson,
+    private val device: () -> DeviceInfo,
     private val http: OkHttpClient = defaultClient(),
     private val sleep: (Long) -> Unit = Thread::sleep,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val base: HttpUrl = config.baseUrl.trimEnd('/').toHttpUrl()
     private val refreshLock = Any()
 
     val sdkHeader: String get() = "android/${config.sdkVersion}"
 
-    fun createSession(identity: Identity, anonymousId: String?, device: DeviceInfo): MobileSession {
+    /**
+     * A new session for [identity]. The anonymous user kept from earlier goes along: resumed for an anonymous visitor,
+     * merged into an identified user (whose conversations it then joins).
+     */
+    fun open(identity: SessionIdentity): MobileSession {
         val body = buildJsonObject {
-            if (identity is Identity.User) {
+            if (identity is SessionIdentity.User) {
                 put(
                     "user",
                     buildJsonObject {
-                        identity.userId?.let { put("user_id", it) }
-                        put("email", identity.email)
-                        put("phone", identity.phone)
-                        put("name", identity.name)
-                        put("user_hash", identity.userHash)
+                        identity.user.userId?.let { put("user_id", it) }
+                        put("email", identity.user.email)
+                        put("phone", identity.user.phone)
+                        put("name", identity.user.name)
+                        put("user_hash", identity.hash)
                     },
                 )
             }
-            anonymousId?.let { put("anonymous_id", it) }
-            put("device", device.toJson())
+            credentials.anonymousId?.let { put("anonymous_id", it) }
+            put("device", device().toJson())
         }
         val session = read(call("POST", "mobile/sessions", body, Auth.APP), protocol::parseSession)
         credentials.session = session
+        credentials.identity = identity
+        credentials.anonymousId = if (session.anonymous) session.userId else null
         return session
     }
 
-    /** Logout. The session is forgotten even when the server cannot be reached. */
-    fun deleteSession() {
+    /** The socket's handshake was refused (401): refresh the session the way a `token_expired` answer would. */
+    fun refreshSession() {
+        val token = credentials.session?.sessionToken ?: throw ClomniError.NotLoggedIn()
+        refresh(token)
+    }
+
+    /** Ends the session on the server (best effort) and forgets it here; the device id stays. */
+    fun logout() {
         try {
-            call("DELETE", "mobile/sessions")
+            if (credentials.session != null) call("DELETE", "mobile/sessions")
+        } catch (e: ClomniError) {
+            // Logged out on the device all the same; the session expires on its own.
         } finally {
-            credentials.session = null
+            credentials.clear()
         }
     }
 
@@ -164,7 +176,8 @@ internal class MobileApi(
     )
 
     fun markRead(conversationId: String, upToSeq: Long) {
-        call("POST", "conversations", buildJsonObject { put("up_to_seq", upToSeq) }, segments = listOf(conversationId, "read"))
+        val body = buildJsonObject { put("up_to_seq", upToSeq) }
+        call("POST", "conversations", body, segments = listOf(conversationId, "read"))
     }
 
     fun setTyping(conversationId: String, typing: Boolean) {
@@ -248,11 +261,7 @@ internal class MobileApi(
         var rateLimited = 0
         var serverErrors = 0
         while (true) {
-            val token = if (auth == Auth.SESSION) {
-                credentials.session?.sessionToken ?: throw ApiException(401, null)
-            } else {
-                null
-            }
+            val token = if (auth == Auth.SESSION) validToken() else null
             val request = Request.Builder().url(url).method(method, body?.let(::requestBody)).apply {
                 header("X-Clomni-SDK", sdkHeader)
                 if (token != null) {
@@ -263,8 +272,12 @@ internal class MobileApi(
                 }
                 headers.forEach { (name, value) -> if (value != null) header(name, value) }
             }.build()
-            val response = http.newCall(request).execute().use {
-                Response(it.code, it.body?.string().orEmpty(), it.header("ETag"), it.header("Retry-After"))
+            val response = try {
+                http.newCall(request).execute().use {
+                    Response(it.code, it.body?.string().orEmpty(), it.header("ETag"), it.header("Retry-After"))
+                }
+            } catch (e: IOException) {
+                throw ClomniError.Network(e.message ?: e.javaClass.simpleName)
             }
             val status = response.status
             when {
@@ -281,21 +294,29 @@ internal class MobileApi(
                     sleep(1_000L shl serverErrors)
                     serverErrors++
                 }
-                else -> throw ApiException(status, error(response))
+                else -> throw ClomniError.Server(status, error(response))
             }
         }
+    }
+
+    /** The session token, refreshed first when it is about to expire. */
+    private fun validToken(): String {
+        val session = credentials.session ?: throw ClomniError.NotLoggedIn()
+        if (session.expiresAt - clock() > RENEW_BEFORE_MS) return session.sessionToken
+        refresh(session.sessionToken)
+        return credentials.session?.sessionToken ?: throw ClomniError.NotLoggedIn()
     }
 
     /** Swaps the single-use refresh token for a new session, unless another call already did it for [expiredToken]. */
     private fun refresh(expiredToken: String) {
         synchronized(refreshLock) {
-            val current = credentials.session ?: throw ApiException(401, null)
+            val current = credentials.session ?: throw ClomniError.NotLoggedIn()
             if (current.sessionToken != expiredToken) return
             try {
                 val body = buildJsonObject { put("refresh_token", current.refreshToken) }
                 val response = call("POST", "mobile/sessions/refresh", body, Auth.APP)
                 credentials.session = read(response, protocol::parseSession)
-            } catch (e: ApiException) {
+            } catch (e: ClomniError.Server) {
                 if (e.status == 401 || e.status == 403) credentials.session = null
                 throw e
             }
@@ -310,9 +331,9 @@ internal class MobileApi(
 
     private fun error(response: Response): ServerError? = protocol.parseServerError(response.body)
 
-    /** A success whose body does not parse is treated like no answer: the caller may repeat it. */
+    /** A success whose body does not parse: the caller may repeat it, as after no answer. */
     private fun <T> read(response: Response, parse: (String) -> T?): T =
-        parse(response.body) ?: throw IOException("HTTP ${response.status}: unreadable response body")
+        parse(response.body) ?: throw ClomniError.UnreadableResponse(response.status)
 
     private fun DeviceInfo.toJson() = buildJsonObject {
         put("device_id", deviceId)
@@ -328,6 +349,7 @@ internal class MobileApi(
     internal companion object {
         const val MAX_RATE_LIMIT_RETRIES = 3
         const val MAX_SERVER_RETRIES = 3
+        private const val RENEW_BEFORE_MS = 60_000L
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
