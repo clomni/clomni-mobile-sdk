@@ -5,9 +5,11 @@
   "description": "Clomni mobile messenger protocol v1: JSON Schemas, examples and fixtures shared by the server and the SDKs.",
   "type": "module",
   "scripts": {
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs",
+    "lint": "redocly lint openapi.yaml"
   },
   "devDependencies": {
+    "@redocly/cli": "2.57.0",
     "ajv": "8.17.1",
     "ajv-formats": "3.0.1"
   }
