@@ -10,7 +10,7 @@ import ClomniCore
 /// Callbacks and events run on the main thread.
 public enum Clomni {
     /// This SDK's version.
-    public static let version = SDKInfo.version
+    public static let version: String = SDKInfo.version
 
     // MARK: - Setup
 
