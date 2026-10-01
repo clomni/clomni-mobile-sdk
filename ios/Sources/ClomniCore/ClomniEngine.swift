@@ -111,12 +111,13 @@ public actor ClomniEngine {
         let previous = await api.session
         let session: MobileSession
         do {
-            session = try await api.open(identity)
+            session = try await api.session(for: identity)
         } catch {
             noteDisabled(error)
             throw error
         }
         isAppDisabled = false
+        guard session.sessionToken != previous?.sessionToken else { return deliver() }
         // Another identified user's conversations are not this one's.
         if let previous, !previous.anonymous, previous.userId != session.userId {
             clearLocalData()

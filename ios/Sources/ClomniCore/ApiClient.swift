@@ -40,6 +40,26 @@ public struct UserIdentity: Sendable, Equatable, Codable {
 enum SessionIdentity: Sendable, Equatable, Codable {
     case anonymous
     case user(UserIdentity, hash: String?)
+
+    /// The same person: anonymous both times, or the same user_id (else email) with the same hash. A new name or
+    /// phone is not a new person; `updateUser` carries those.
+    func isSamePerson(as other: SessionIdentity) -> Bool {
+        switch (self, other) {
+        case (.anonymous, .anonymous):
+            return true
+        case let (.user(mine, myHash), .user(theirs, theirHash)):
+            return mine.key != nil && mine.key == theirs.key && myHash == theirHash
+        default:
+            return false
+        }
+    }
+}
+
+extension UserIdentity {
+    /// What the server knows the user by: user_id, else the email (lower case, trimmed).
+    var key: String? {
+        userId ?? email.map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+    }
 }
 
 struct ApiConfiguration: Sendable {
@@ -119,6 +139,17 @@ actor ApiClient {
         for key in [Key.session, Key.identity, Key.anonymousId] {
             vault.write(nil, for: key)
         }
+    }
+
+    /// The kept session when it belongs to `identity` (renewed if it is about to expire, opened again if the refresh
+    /// token is refused); a new one only for another person. An app launch does not cost a login.
+    func session(for identity: SessionIdentity) async throws -> MobileSession {
+        if session != nil, let kept = self.identity, kept.isSamePerson(as: identity) {
+            self.identity = identity
+            vault.setValue(identity, for: Key.identity)
+            return try await validSession()
+        }
+        return try await open(identity)
     }
 
     /// A session that is not about to expire, renewed first if it is.

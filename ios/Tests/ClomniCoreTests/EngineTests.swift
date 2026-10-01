@@ -138,6 +138,54 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(server.requests.last?.url.path, "/v1/events")
     }
 
+    /// An app launch must not cost a login: the kept session serves the same person (brief 8 · 6.1).
+    func testTheSamePersonKeepsTheSession() async throws {
+        let first = await device()
+        try await first.engine.loginUser(UserIdentity(userId: "7", name: "Aysel"), userHash: "hash_7")
+        try await first.engine.loginUser(UserIdentity(userId: "7", name: "Aysel Məmmədova"), userHash: "hash_7")
+        let relaunched = await device(cache: first.cache, vault: first.vault)
+        try await relaunched.engine.loginUser(UserIdentity(userId: "7"), userHash: "hash_7")
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 1)
+        let kept = try XCTUnwrap(first.vault.value(MobileSession.self, for: "session"))
+        _ = try await relaunched.engine.startConversation(openedFrom: nil)
+        XCTAssertEqual(server.requests("POST", "/conversations").last?.headers["Authorization"],
+                       "Bearer \(kept.sessionToken)", "the relaunched app uses the kept token")
+
+        let anonymous = await device()
+        try await anonymous.engine.loginUnidentifiedUser()
+        try await anonymous.engine.loginUnidentifiedUser()
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 2)
+    }
+
+    func testAnotherPersonGetsANewSession() async throws {
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "1"), userHash: "hash_1")
+        try await phone.engine.loginUser(UserIdentity(userId: "2"), userHash: "hash_2")
+        try await phone.engine.loginUser(UserIdentity(userId: "2"), userHash: "other")
+        try await phone.engine.loginUser(UserIdentity(email: "Aysel@Example.com "), userHash: nil)
+        try await phone.engine.loginUser(UserIdentity(email: "aysel@example.com"), userHash: nil)
+        try await phone.engine.loginUnidentifiedUser()
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 5, "same email, other case: same person")
+        await phone.engine.logout()
+        try await phone.engine.loginUnidentifiedUser()
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 6, "a new visitor after logout")
+    }
+
+    /// A kept session that expired is refreshed; one whose refresh token is refused is opened again.
+    func testAnExpiredKeptSessionIsRenewed() async throws {
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "3"), userHash: "hash_3")
+        time.advance(by: 2 * 86_400)
+        try await phone.engine.loginUser(UserIdentity(userId: "3"), userHash: "hash_3")
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions/refresh").count, 1)
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 1)
+
+        time.advance(by: 2 * 86_400)
+        server.revokeRefreshTokens()
+        try await phone.engine.loginUser(UserIdentity(userId: "3"), userHash: "hash_3")
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 2)
+    }
+
     func testSeveralScreensHearEveryChange() async throws {
         let phone = await device()
         let badge = Changes()
