@@ -19,5 +19,7 @@ Pod::Spec.new do |s|
   # the app sees only the `public` facade.
   s.source_files = 'ios/Sources/**/*.swift'
   s.pod_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => '$(inherited) -package-name ClomniMessenger' }
+  # What the SDK collects and which required-reason APIs it calls (none), for the app's privacy report.
+  s.resource_bundles = { 'ClomniMessenger_Privacy' => ['ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'] }
   s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers', 'UserNotifications'
 end

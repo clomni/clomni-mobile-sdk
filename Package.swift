@@ -17,7 +17,7 @@ let package = Package(
         .target(name: "ClomniCore", dependencies: ["ClomniProtocol"], path: "ios/Sources/ClomniCore"),
         .target(name: "ClomniPresentation", dependencies: ["ClomniCore"], path: "ios/Sources/ClomniPresentation"),
         .target(name: "ClomniMessenger", dependencies: ["ClomniCore", "ClomniPresentation"],
-                path: "ios/Sources/ClomniMessenger"),
+                path: "ios/Sources/ClomniMessenger", resources: [.copy("PrivacyInfo.xcprivacy")]),
         .testTarget(name: "ClomniProtocolTests", dependencies: ["ClomniProtocol"], path: "ios/Tests/ClomniProtocolTests"),
         .testTarget(name: "ClomniCoreTests", dependencies: ["ClomniCore"], path: "ios/Tests/ClomniCoreTests"),
         .testTarget(name: "ClomniPresentationTests", dependencies: ["ClomniPresentation"],
