@@ -20,6 +20,12 @@ android {
 
     defaultConfig {
         minSdk = 23
+        // Sent as X-Clomni-SDK: android/<version> on every request.
+        buildConfigField("String", "SDK_VERSION", "\"$version\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
@@ -48,8 +54,10 @@ kotlin {
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
 }
 
 kover {
