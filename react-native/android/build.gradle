@@ -1,0 +1,85 @@
+// The React Native bridge of the Clomni Messenger: one native module that calls the Android SDK, ai.clomni:messenger.
+// In an app, React Native's autolinking includes this module and the app's own plugins build it. On its own (the
+// compile check, see settings.gradle) it brings its plugins itself.
+buildscript {
+    ext.clomniExt = { name ->
+        rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["Clomni_" + name]
+    }
+    if (project == rootProject) {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath "com.android.tools.build:gradle:${project.properties['Clomni_agpVersion']}"
+            classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${project.properties['Clomni_kotlinVersion']}"
+        }
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+
+def newArchitecture = project.hasProperty("newArchEnabled") && project.newArchEnabled == "true"
+// Outside an app: the spec React Native's codegen wrote (react-native/scripts/codegen.js), instead of the React
+// Native plugin writing it during the app's build.
+def codegenDir = project.findProperty("clomniCodegenDir")
+if (newArchitecture && codegenDir == null) {
+    apply plugin: "com.facebook.react"
+}
+
+android {
+    namespace "ai.clomni.reactnative"
+    compileSdk clomniExt("compileSdkVersion") as int
+
+    defaultConfig {
+        minSdkVersion clomniExt("minSdkVersion") as int
+    }
+
+    sourceSets {
+        main {
+            if (newArchitecture || codegenDir != null) {
+                java.srcDirs += ["src/newarch/java"]
+                if (codegenDir != null) java.srcDirs += [file(codegenDir)]
+            } else {
+                java.srcDirs += ["src/oldarch/java"]
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+if (newArchitecture && codegenDir == null) {
+    react {
+        jsRootDir = file("../src/")
+        libraryName = "ClomniSpec"
+        codegenJavaPackageName = "ai.clomni.reactnative"
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+// The compile check names the React Native version; in an app React Native's plugin gives react-android its version.
+def reactNativeVersion = project.findProperty("clomniReactNativeVersion")
+
+dependencies {
+    if (reactNativeVersion != null) {
+        compileOnly "com.facebook.react:react-android:${reactNativeVersion}"
+    } else {
+        implementation "com.facebook.react:react-android"
+    }
+    implementation "ai.clomni:messenger:${clomniExt('messengerVersion')}"
+}

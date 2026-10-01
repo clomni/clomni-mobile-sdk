@@ -1,0 +1,13 @@
+// Only for building this module on its own, for the compile check:
+//   gradle -p react-native/android -PclomniReactNativeVersion=0.86.0 :compileDebugKotlin           (old architecture)
+//   ... -PclomniCodegenDir=../node_modules/.clomni-codegen/android/java :compileDebugKotlin         (New Architecture)
+// In an app, the app's settings.gradle includes this directory and this file is not read.
+rootProject.name = "clomni-react-native"
+
+// The Android SDK from this repository instead of Maven Central (the same substitution an app can use before
+// ai.clomni:messenger is published; README.md).
+includeBuild("../../android") {
+    dependencySubstitution {
+        substitute(module("ai.clomni:messenger")).using(project(":messenger"))
+    }
+}
