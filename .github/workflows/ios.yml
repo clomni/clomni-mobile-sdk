@@ -19,10 +19,15 @@ on:
 
 jobs:
   test:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      # Xcode 16: Swift 6, so the Example's strict concurrency is checked by the compiler the apps will use.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
 
       # The tests read protocol/fixtures from the checkout, so a fixture change runs them too.
       - name: swift test
@@ -43,7 +48,7 @@ jobs:
         run: >
           xcodebuild test
           -scheme ClomniMessenger-Package
-          -destination 'platform=iOS Simulator,name=iPhone 15'
+          -destination 'platform=iOS Simulator,name=iPhone 16'
           -only-testing:ClomniMessengerTests
           -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO
