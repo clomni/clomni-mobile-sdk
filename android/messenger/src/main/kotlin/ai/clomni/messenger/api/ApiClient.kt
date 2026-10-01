@@ -214,10 +214,6 @@ internal class ApiClient(
         )
     }
 
-    fun deleteDevice(token: String) {
-        call("DELETE", "devices", segments = listOf(token))
-    }
-
     /** [openedFrom] (additive, as for POST /conversations): where in the app the flow was started. */
     fun triggerFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String? = null): FlowTriggerResult = read(
         call(

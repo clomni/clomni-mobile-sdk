@@ -6,6 +6,7 @@ import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.MemorySecureStore
+import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SecureStore
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.UserIdentity
@@ -627,6 +628,148 @@ class ClomniEngineTest {
         assertTrue(ClomniChange.Conversations in phone.changes)
     }
 
+    // Push token (brief 8·12: onNewToken → setDeviceToken)
+
+    private fun registrations() = fake.count("POST /v1/devices")
+
+    private fun userOf(phone: Phone) = phone.credentials.session!!.userId
+
+    @Test
+    fun theTokenWaitsForALogin() {
+        val phone = Phone()
+        phone.engine.setDeviceToken("tok_a").await()
+        assertEquals(0, registrations())
+        phone.engine.loginUser(aysel, "hash").await()
+        assertEquals("tok_a", fake.pushTarget(userOf(phone)))
+        val body = kotlinx.serialization.json.Json.parseToJsonElement(
+            fake.sentDeviceBodies.last(),
+        ).jsonObject
+        assertEquals(
+            mapOf("token" to "tok_a", "provider" to "fcm", "environment" to "production"),
+            body.mapValues { it.value.jsonPrimitive.content },
+        )
+    }
+
+    @Test
+    fun theSameTokenIsSentOnce() {
+        val vault = MemorySecureStore()
+        val dir = folder.newFolder()
+        val phone = Phone(vault, dir)
+        phone.engine.loginUser(aysel, "hash").await()
+        phone.engine.setDeviceToken("tok_a").await()
+        assertEquals(1, registrations())
+        // FCM hands the app its token at every start; foreground and connect look too.
+        phone.engine.setDeviceToken("tok_a").await()
+        phone.engine.applicationWillEnterForeground().await()
+        phone.engine.connect().await()
+        phone.engine.disconnect().await()
+        assertEquals(1, registrations())
+        phone.engine.shutdown()
+
+        // The next run reuses the session, and the registration with it.
+        val again = Phone(vault, dir)
+        again.engine.loginUser(aysel, "hash").await()
+        again.engine.setDeviceToken("tok_a").await()
+        assertEquals(1, registrations())
+        assertEquals("tok_a", fake.pushTarget(userOf(again)))
+    }
+
+    @Test
+    fun aNewTokenIsSentAgain() {
+        val phone = Phone()
+        phone.engine.loginUnidentifiedUser().await()
+        phone.engine.setDeviceToken("tok_a").await()
+        phone.engine.setDeviceToken("tok_b").await()
+        assertEquals("tok_b", fake.pushTarget(userOf(phone)))
+        assertEquals(2, registrations())
+    }
+
+    @Test
+    fun anotherUserGetsTheTokenAtLogin() {
+        val phone = Phone()
+        phone.engine.loginUnidentifiedUser().await()
+        val visitor = userOf(phone)
+        phone.engine.setDeviceToken("tok_a").await()
+        assertEquals("tok_a", fake.pushTarget(visitor))
+
+        // The visitor logs in: the conversations and the pushes move to the user.
+        phone.engine.loginUser(aysel, "hash").await()
+        val user = userOf(phone)
+        assertEquals("tok_a", fake.pushTarget(user))
+        assertNull(fake.pushTarget(visitor))
+
+        // Someone else logs in on the same phone.
+        phone.engine.loginUser(UserIdentity("67890"), "hash").await()
+        assertEquals("tok_a", fake.pushTarget(userOf(phone)))
+        assertNull(fake.pushTarget(user))
+        assertEquals(3, registrations())
+    }
+
+    @Test
+    fun logoutStopsPushesUntilTheNextLogin() {
+        val phone = Phone()
+        phone.engine.loginUser(aysel, "hash").await()
+        val user = userOf(phone)
+        phone.engine.setDeviceToken("tok_a").await()
+        phone.engine.logout().await()
+        assertNull(fake.pushTarget(user))
+        phone.engine.applicationWillEnterForeground().await()
+        assertEquals("nobody to register for", 1, registrations())
+
+        // The token stays on the device: the same user is registered again.
+        phone.engine.loginUser(aysel, "hash").await()
+        assertEquals("tok_a", fake.pushTarget(userOf(phone)))
+        assertEquals(2, registrations())
+    }
+
+    @Test
+    fun aFailedRegistrationIsRepeatedLater() {
+        val phone = Phone()
+        phone.engine.loginUser(aysel, "hash").await()
+        val user = userOf(phone)
+        fake.drops["POST /v1/devices"] = 1
+        phone.engine.setDeviceToken("tok_a").await()
+        assertNull(fake.pushTarget(user))
+        phone.engine.applicationWillEnterForeground().await()
+        assertEquals("tok_a", fake.pushTarget(user))
+
+        // Refused the same way, and repeated at the next connect.
+        fake.refusals["POST /v1/devices"] = 400
+        phone.engine.setDeviceToken("tok_b").await()
+        assertEquals("tok_a", fake.pushTarget(user))
+        phone.engine.connect().await()
+        assertEquals("tok_b", fake.pushTarget(user))
+    }
+
+    /** A new token, or a logout, that comes while a registration is out waits for it and then wins. */
+    @Test
+    fun whatComesDuringTheRequestFollowsIt() {
+        val phone = Phone()
+        phone.engine.loginUser(aysel, "hash").await()
+        val user = userOf(phone)
+        val hold = java.util.concurrent.CountDownLatch(1)
+        fake.holdDevices = hold
+        val first = phone.engine.setDeviceToken("tok_a")
+        eventually("the registration is out") { registrations() == 1 }
+        val second = phone.engine.setDeviceToken("tok_b")
+        hold.countDown()
+        first.await()
+        second.await()
+        assertEquals("tok_b", fake.pushTarget(user))
+        assertEquals(PushRegistration("tok_b", user), phone.credentials.pushRegistration)
+
+        val again = java.util.concurrent.CountDownLatch(1)
+        fake.holdDevices = again
+        val third = phone.engine.setDeviceToken("tok_c")
+        eventually("the third is out") { registrations() == 3 }
+        val logout = phone.engine.logout()
+        again.countDown()
+        third.await()
+        logout.await()
+        assertNull("the logout came after: the server has no token for anyone", fake.pushTarget(user))
+        assertEquals(PushRegistration("tok_c", null), phone.credentials.pushRegistration)
+    }
+
     @Test
     fun theOtherWaysToAnswerAndSend() {
         val (phone, conversation) = ready()
@@ -644,10 +787,9 @@ class ClomniEngineTest {
         assertNull(phone.engine.startFlow("payment_failed", null, openMessenger = true, openedFrom = null).await())
         phone.engine.track("ride_finished", JsonObject(mapOf("minutes" to JsonPrimitive(18)))).await()
         assertEquals("Aysel", phone.engine.updateUser(JsonObject(mapOf("name" to JsonPrimitive("Aysel")))).await().name)
-        phone.engine.registerPushToken("fcm-token").await()
-        phone.engine.unregisterPushToken("fcm-token").await()
+        phone.engine.setDeviceToken("fcm-token").await()
         assertEquals(
-            listOf("POST /v1/uploads", "POST /v1/flows/trigger", "POST /v1/events", "PATCH /v1/users/me", "POST /v1/devices", "DELETE /v1/devices/fcm-token"),
+            listOf("POST /v1/uploads", "POST /v1/flows/trigger", "POST /v1/events", "PATCH /v1/users/me", "POST /v1/devices"),
             fake.log.filter { it.startsWith("POST /v1/uploads") || it.contains("/flows/") || it.contains("/events") || it.contains("/users/") || it.contains("/devices") },
         )
 

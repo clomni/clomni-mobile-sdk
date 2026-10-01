@@ -4,6 +4,7 @@ import ai.clomni.messenger.api.ApiClient
 import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
+import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.samePerson
 import ai.clomni.messenger.presentation.ChatDataSource
@@ -138,6 +139,7 @@ internal class ClomniEngine(
             // Another identified user's conversations are not this one's.
             if (previous != null && !previous.anonymous && previous.userId != session.userId) clearLocalData()
         }
+        registerPush()
         notify(ClomniChange.Session)
         if (wantsSocket && inForeground) {
             realtime.stop()
@@ -152,6 +154,8 @@ internal class ClomniEngine(
         realtime.stop()
         nextAttempt?.cancel(false)
         api.logout()
+        // The server dropped this device's token with the session; the next login registers it again.
+        credentials.pushRegistration?.let { credentials.pushRegistration = it.copy(registeredFor = null) }
         clearLocalData()
         notify(ClomniChange.Session)
     }
@@ -163,6 +167,7 @@ internal class ClomniEngine(
         wantsSocket = true
         if (inForeground) realtime.start(::endpoint)
         deliver()
+        registerPush()
     }
 
     fun disconnect(): Future<Unit> = submit {
@@ -180,6 +185,7 @@ internal class ClomniEngine(
         inForeground = true
         if (wantsSocket) realtime.start(::endpoint)
         deliver()
+        registerPush()
     }
 
     // Reading (from the store, at once)
@@ -371,10 +377,17 @@ internal class ClomniEngine(
     /** Only the fields given change; `custom_attributes` are merged on the server. */
     fun updateUser(fields: JsonObject): Future<MobileUser> = submit { authed { api.updateUser(fields) } }
 
-    fun registerPushToken(token: String): Future<Unit> = submit { authed { api.registerDevice(token) } }
-
-    fun unregisterPushToken(token: String): Future<Unit> = submit { authed { api.deleteDevice(token) } }
-
+    /**
+     * `Clomni.setDeviceToken`: the FCM token (FirebaseMessagingService.onNewToken). It is kept on this device and
+     * registered for whoever is logged in: now, at the next login, and again when another user logs in. A new token
+     * replaces the old one. A registration that fails is repeated at the next connect or return to the foreground.
+     * Calls run one at a time on the worker, so a token or a logout that comes while a registration is out waits for
+     * it and then wins.
+     */
+    fun setDeviceToken(token: String): Future<Unit> = submit {
+        if (credentials.pushRegistration?.token != token) credentials.pushRegistration = PushRegistration(token)
+        registerPush()
+    }
     /** `Clomni.startFlow`: the flow bound to an app event, in a new conversation; null when none is bound. */
     override fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String?): Future<Conversation?> = submit {
         val created = authed { api.triggerFlow(event, data, openMessenger, openedFrom) }.conversation ?: return@submit null
@@ -649,6 +662,21 @@ internal class ClomniEngine(
         }
         val uploadId = authed { api.upload(file, upload.fileName, upload.mime) }.uploadId
         return store.outbox.uploaded(entry.id, uploadId)
+    }
+
+    /** Sends the kept token unless the server already has it for the logged-in user. On the worker. */
+    private fun registerPush() {
+        val registration = credentials.pushRegistration ?: return
+        val user = credentials.session?.userId ?: return
+        if (registration.registeredFor == user) return
+        try {
+            authed { api.registerDevice(registration.token) }
+        } catch (e: ClomniError) {
+            // Repeated at the next connect or foreground.
+            return log("push token not registered: ${e.message}")
+        }
+        // A login again inside authed may have made the session someone else's.
+        if (credentials.session?.userId == user) credentials.pushRegistration = registration.copy(registeredFor = user)
     }
 
     private fun reloadAnswered(messageId: String) {
