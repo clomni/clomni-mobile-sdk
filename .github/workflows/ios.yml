@@ -1,0 +1,41 @@
+name: iOS
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'protocol/**'
+      - 'ClomniMessenger.podspec'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'protocol/**'
+      - 'ClomniMessenger.podspec'
+      - '.github/workflows/ios.yml'
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tests read protocol/fixtures from the checkout, so a fixture change runs them too.
+      - name: swift test
+        working-directory: ios
+        run: swift test --enable-code-coverage
+
+      # Linux has no UIKit or SwiftUI; this is where the UI code gets compiled.
+      - name: Build for the iOS Simulator
+        working-directory: ios
+        run: >
+          xcodebuild build
+          -scheme ClomniMessenger
+          -destination 'generic/platform=iOS Simulator'
+          -skipPackagePluginValidation
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: pod lib lint
+        run: pod lib lint ClomniMessenger.podspec --platforms=ios
