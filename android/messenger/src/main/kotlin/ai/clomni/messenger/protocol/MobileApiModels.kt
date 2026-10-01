@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonElement
 // it cannot read (with a log line) rather than failing the whole page.
 
 /** POST /mobile/sessions and /mobile/sessions/refresh. */
-public data class MobileSession(
+internal data class MobileSession(
     val sessionToken: String,
     /** Epoch milliseconds, UTC. */
     val expiresAt: Long,
@@ -18,7 +18,7 @@ public data class MobileSession(
     val wsUrl: String,
 )
 
-public data class Conversation(
+internal data class Conversation(
     val id: String,
     val status: ConversationStatus,
     val assignee: Assignee?,
@@ -30,21 +30,21 @@ public data class Conversation(
     /** Epoch milliseconds, UTC. */
     val createdAt: Long,
 ) {
-    public data class FlowStep(val flowId: String, val nodeId: String)
+    data class FlowStep(val flowId: String, val nodeId: String)
 }
 
-public data class ConversationPage(val conversations: List<Conversation>, val nextCursor: String?)
+internal data class ConversationPage(val conversations: List<Conversation>, val nextCursor: String?)
 
 /** A page of history, sorted by `seq`. */
-public data class MessagePage(val messages: List<Message>, val hasMore: Boolean)
+internal data class MessagePage(val messages: List<Message>, val hasMore: Boolean)
 
 /** POST /conversations: the new conversation with its first bot messages. */
-public data class ConversationWithMessages(val conversation: Conversation, val messages: List<Message>)
+internal data class ConversationWithMessages(val conversation: Conversation, val messages: List<Message>)
 
 /** POST /flows/trigger. [conversation] is null when no flow is bound to the event. */
-public data class FlowTriggerResult(val started: Boolean, val conversation: ConversationWithMessages?)
+internal data class FlowTriggerResult(val started: Boolean, val conversation: ConversationWithMessages?)
 
-public data class MobileUser(
+internal data class MobileUser(
     val id: String,
     val anonymous: Boolean,
     val name: String?,
@@ -55,7 +55,7 @@ public data class MobileUser(
 )
 
 /** POST /uploads. */
-public data class UploadedFile(
+internal data class UploadedFile(
     val uploadId: String,
     val url: String,
     val name: String,
@@ -64,7 +64,7 @@ public data class UploadedFile(
 )
 
 /** The `error` of every failed request. New codes may appear within v1; a client then goes by the status. */
-public data class ServerError(
+internal data class ServerError(
     val code: String,
     val message: String,
     val requestId: String?,

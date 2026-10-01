@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kover)
     alias(libs.plugins.paparazzi)
+    alias(libs.plugins.binary.compatibility.validator)
 }
 
 group = "ai.clomni"
@@ -90,4 +91,14 @@ kover {
             }
         }
     }
+}
+
+// What apps can use is ai.clomni.messenger's facade (Clomni, ClomniPush and their parameter types); everything below it
+// is internal. Two generated classes have no Kotlin visibility and are left out of the dump by name, so a new one
+// shows up in review: AGP's BuildConfig (the SDK version) and the Compose compiler's lambda holder.
+apiValidation {
+    ignoredClasses += listOf(
+        "ai.clomni.messenger.BuildConfig",
+        "ai.clomni.messenger.ui.ComposableSingletons\$ClomniMessengerActivityKt",
+    )
 }

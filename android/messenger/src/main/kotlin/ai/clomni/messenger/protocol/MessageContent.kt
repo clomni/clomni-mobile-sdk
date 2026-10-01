@@ -6,13 +6,13 @@ import kotlinx.serialization.json.JsonElement
  * The `content` of a [Message], by its type (brief 8·5.2). The payload types are nested here, as on iOS, so that
  * `Button`, `Image` and the like do not clash with Compose's in an app that uses the SDK.
  */
-public sealed interface MessageContent {
+internal sealed interface MessageContent {
 
     /** Limited markdown: **bold**, *italic*, [text](https://…), line breaks, emoji. */
-    public data class Text(val text: String) : MessageContent
+    data class Text(val text: String) : MessageContent
 
     /** Flow buttons. Titles are kept whole, however long; the UI wraps a long one to two lines. */
-    public data class QuickReplies(
+    data class QuickReplies(
         val text: String?,
         val buttons: List<Button>,
         val layout: QuickRepliesLayout,
@@ -23,7 +23,7 @@ public sealed interface MessageContent {
     ) : MessageContent
 
     /** [width] and [height] are null when unknown; otherwise the bubble reserves their ratio before loading. */
-    public data class Image(
+    data class Image(
         val url: String,
         val thumbUrl: String?,
         val width: Int?,
@@ -31,7 +31,7 @@ public sealed interface MessageContent {
         val caption: String?,
     ) : MessageContent
 
-    public data class File(
+    data class File(
         val url: String,
         val name: String,
         /** Bytes. */
@@ -40,7 +40,7 @@ public sealed interface MessageContent {
     ) : MessageContent
 
     /** [submitted] holds the sent values once the form is read-only, otherwise null. */
-    public data class Form(
+    data class Form(
         val text: String?,
         val formId: String,
         val fields: List<FormField>,
@@ -49,7 +49,7 @@ public sealed interface MessageContent {
     ) : MessageContent
 
     /** Centred grey text without a bubble. */
-    public data class System(
+    data class System(
         val event: SystemEvent,
         val text: String,
         /** Queue position, for [SystemEvent.WaitingInQueue]. */
@@ -57,9 +57,9 @@ public sealed interface MessageContent {
     ) : MessageContent
 
     /** One card, or a carousel of several. */
-    public data class Card(val cards: List<CardItem>) : MessageContent
+    data class Card(val cards: List<CardItem>) : MessageContent
 
-    public data class Rating(
+    data class Rating(
         val text: String,
         val scale: RatingScale,
         val comment: RatingComment,
@@ -70,9 +70,9 @@ public sealed interface MessageContent {
      * A type this SDK does not know, or a known type whose content is broken. Shown with [Message.fallbackText];
      * [raw] is the `content` as received.
      */
-    public data class Unknown(val type: String, val raw: JsonElement) : MessageContent
+    data class Unknown(val type: String, val raw: JsonElement) : MessageContent
 
-    public data class Button(
+    data class Button(
         val id: String,
         val title: String,
         /** Shown before the title, e.g. a flag emoji. */
@@ -81,7 +81,7 @@ public sealed interface MessageContent {
         val payload: String,
     )
 
-    public enum class QuickRepliesLayout {
+    enum class QuickRepliesLayout {
         /** Full-width buttons, one per row (the default). */
         VERTICAL,
 
@@ -89,7 +89,7 @@ public sealed interface MessageContent {
         CHIPS,
     }
 
-    public data class FormField(
+    data class FormField(
         val key: String,
         val type: FormFieldType,
         val label: String,
@@ -101,11 +101,11 @@ public sealed interface MessageContent {
         /** The choices of a select field; empty for the other types. */
         val options: List<Option>,
     ) {
-        public data class Option(val value: String, val label: String)
+        data class Option(val value: String, val label: String)
     }
 
     /** A field type added after this SDK was built reads as [TEXT]. */
-    public enum class FormFieldType(internal val wire: String) {
+    enum class FormFieldType(internal val wire: String) {
         TEXT("text"),
         TEXTAREA("textarea"),
         PHONE("phone"),
@@ -121,16 +121,16 @@ public sealed interface MessageContent {
     }
 
     /** An event this SDK does not know is [Unknown] and is shown by its text alone. */
-    public sealed interface SystemEvent {
-        public data object OperatorJoined : SystemEvent
-        public data object AssignedToTeam : SystemEvent
-        public data object ConversationClosed : SystemEvent
-        public data object ConversationReopened : SystemEvent
-        public data object WaitingInQueue : SystemEvent
-        public data class Unknown(val raw: String) : SystemEvent
+    sealed interface SystemEvent {
+        data object OperatorJoined : SystemEvent
+        data object AssignedToTeam : SystemEvent
+        data object ConversationClosed : SystemEvent
+        data object ConversationReopened : SystemEvent
+        data object WaitingInQueue : SystemEvent
+        data class Unknown(val raw: String) : SystemEvent
     }
 
-    public data class CardItem(
+    data class CardItem(
         val imageUrl: String?,
         val title: String,
         val subtitle: String?,
@@ -138,7 +138,7 @@ public sealed interface MessageContent {
     )
 
     /** Sends [payload] back as a button reply, or opens [url]; at least one is set. */
-    public data class CardButton(
+    data class CardButton(
         val id: String,
         val title: String,
         val payload: String?,
@@ -146,7 +146,7 @@ public sealed interface MessageContent {
     )
 
     /** An unknown scale cannot be drawn, so it turns the whole content into [Unknown]. */
-    public enum class RatingScale(internal val wire: String) {
+    enum class RatingScale(internal val wire: String) {
         EMOJI_5("emoji_5"),
         STAR_5("star_5"),
         ;
@@ -157,7 +157,7 @@ public sealed interface MessageContent {
     }
 
     /** Whether the rating asks for a comment: absent reads as [HIDDEN], an unknown value as [OPTIONAL]. */
-    public enum class RatingComment(internal val wire: String) {
+    enum class RatingComment(internal val wire: String) {
         HIDDEN("none"),
         OPTIONAL("optional"),
         REQUIRED("required"),

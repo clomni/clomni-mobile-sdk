@@ -6,7 +6,7 @@ package ai.clomni.messenger.protocol
  * Ids are opaque: never parse them or sort by them; [seq] orders a conversation.
  * When [content] is [MessageContent.Unknown] the message is shown as a bot bubble with [fallbackText].
  */
-public data class Message(
+internal data class Message(
     val id: String,
     /** UUID the client sent with its own message; replaces the optimistic bubble. Null for everything else. */
     val clientId: String?,
@@ -24,14 +24,14 @@ public data class Message(
     val fallbackText: String,
 )
 
-public data class Sender(
+internal data class Sender(
     val type: SenderType,
     val id: String? = null,
     val name: String? = null,
     val avatarUrl: String? = null,
 )
 
-public enum class SenderType(internal val wire: String) {
+internal enum class SenderType(internal val wire: String) {
     BOT("bot"),
     OPERATOR("operator"),
     USER("user"),
@@ -47,7 +47,7 @@ public enum class SenderType(internal val wire: String) {
 }
 
 /** The flow node a message came from. [interactive] false: its buttons are disabled. */
-public data class FlowRef(
+internal data class FlowRef(
     val flowId: String,
     val nodeId: String,
     val version: Int?,

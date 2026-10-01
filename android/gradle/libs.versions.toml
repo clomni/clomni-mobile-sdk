@@ -19,6 +19,9 @@ activity = "1.7.0"
 # 2.0.0-alpha02: the last line on Java 17 that renders API 36 (layoutlib 15.2) with Compose 1.8.3; test-only.
 paparazzi = "2.0.0-alpha02"
 kover = "0.9.9"
+# The public API's dump (messenger/api/messenger.api), checked by apiCheck: a change to it fails the build until the
+# dump changes with it, where it can be reviewed. Build-time only.
+binaryCompatibilityValidator = "0.18.1"
 junit = "4.13.2"
 
 [libraries]
@@ -39,3 +42,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+binary-compatibility-validator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }
