@@ -26,12 +26,14 @@ final class MemorySecureStore: SecureStore, @unchecked Sendable {
     private var items: [String: Data] = [:]
 
     func read(_ key: String) -> Data? {
+        IOProbe.note("vault read \(key)")
         lock.lock()
         defer { lock.unlock() }
         return items[key]
     }
 
     func write(_ data: Data?, for key: String) {
+        IOProbe.note("vault write \(key)")
         lock.lock()
         defer { lock.unlock() }
         items[key] = data
@@ -52,6 +54,7 @@ final class KeychainStore: SecureStore, @unchecked Sendable {
     }
 
     func read(_ key: String) -> Data? {
+        IOProbe.note("vault read \(key)")
         var query = query(key)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -61,6 +64,7 @@ final class KeychainStore: SecureStore, @unchecked Sendable {
     }
 
     func write(_ data: Data?, for key: String) {
+        IOProbe.note("vault write \(key)")
         SecItemDelete(query(key) as CFDictionary)
         guard let data else { return }
         var item = query(key)

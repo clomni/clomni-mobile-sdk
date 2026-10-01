@@ -29,10 +29,12 @@ package actor ClomniEngine {
     private let cache: DiskCache
     private let vault: SecureStore
     private let time: TimeSource
-    private var store: MessageStore
-    private var outbox: Outbox
-    package private(set) var config: MessengerConfig?
-    private var configETag: String?
+    // Read from disk on first use, on the actor and never on the caller's thread: `initialize` runs on the main thread
+    // and must not wait for the disk.
+    private lazy var store: MessageStore = cache.load(MessageStore.self, Files.store) ?? MessageStore()
+    private lazy var outbox: Outbox = cache.load(Outbox.self, Files.outbox) ?? Outbox()
+    package private(set) lazy var config: MessengerConfig? = cache.read(Files.config).flatMap(ProtocolJSON.parseConfig)
+    private lazy var configETag: String? = cache.read(Files.configETag).map { String(decoding: $0, as: UTF8.self) }
     /// The inbox is switched off in Clomni: the messenger must not open.
     package private(set) var isAppDisabled = false
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
@@ -68,10 +70,6 @@ package actor ClomniEngine {
         self.vault = vault
         self.time = time
         realtime = RealtimeClient(transport: socket, time: time, address: { try await api.socketURL() })
-        store = cache.load(MessageStore.self, Files.store) ?? MessageStore()
-        outbox = cache.load(Outbox.self, Files.outbox) ?? Outbox()
-        config = cache.read(Files.config).flatMap(ProtocolJSON.parseConfig)
-        configETag = cache.read(Files.configETag).map { String(decoding: $0, as: UTF8.self) }
     }
 
     private enum Files {

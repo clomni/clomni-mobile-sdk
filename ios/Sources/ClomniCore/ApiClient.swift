@@ -94,8 +94,9 @@ actor ApiClient {
     private let transport: HTTPTransport
     private let vault: SecureStore
     private let time: TimeSource
-    private(set) var session: MobileSession?
-    private(set) var identity: SessionIdentity?
+    // From the keychain on first use, on the actor (see ClomniEngine).
+    private(set) lazy var session: MobileSession? = vault.value(MobileSession.self, for: Key.session)
+    private(set) lazy var identity: SessionIdentity? = vault.value(SessionIdentity.self, for: Key.identity)
     private var renewal: Task<Void, Error>?
 
     init(configuration: ApiConfiguration, transport: HTTPTransport, vault: SecureStore, time: TimeSource) {
@@ -103,8 +104,6 @@ actor ApiClient {
         self.transport = transport
         self.vault = vault
         self.time = time
-        session = vault.value(MobileSession.self, for: Key.session)
-        identity = vault.value(SessionIdentity.self, for: Key.identity)
     }
 
     // MARK: - Session

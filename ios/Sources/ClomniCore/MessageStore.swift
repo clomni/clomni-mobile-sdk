@@ -191,10 +191,12 @@ struct DiskCache: Sendable {
     }
 
     func read(_ name: String) -> Data? {
-        try? Data(contentsOf: directory.appendingPathComponent(name))
+        IOProbe.note("read \(name)")
+        return try? Data(contentsOf: directory.appendingPathComponent(name))
     }
 
     func write(_ data: Data?, _ name: String) {
+        IOProbe.note("write \(name)")
         let url = directory.appendingPathComponent(name)
         guard let data else {
             try? FileManager.default.removeItem(at: url)
