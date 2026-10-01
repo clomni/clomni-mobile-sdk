@@ -1,0 +1,1104 @@
+openapi: 3.1.0
+info:
+  title: Clomni Mobile API
+  version: 1.0.0
+  summary: The API the Clomni Messenger SDKs (Android, iOS) talk to.
+  description: |
+    One App SDK inbox in Clomni = one app. The SDK opens a session with the app's public keys, then sends messages over
+    REST and receives everything else over one WebSocket.
+
+    **Rules every endpoint follows**
+    - Every request carries `X-Clomni-SDK: <platform>/<version>`, e.g. `android/1.0.0`.
+    - Ids are prefixed strings (`conv_`, `msg_`, `usr_`, `upl_`, `flw_`, `frm_`). Clients never parse them or sort by
+      them; messages are ordered by `seq`.
+    - Times are UTC, ISO 8601.
+    - Within `/v1` only additions are made: a new field, message type, event or endpoint. A field is never removed,
+      renamed or retyped. Clients skip unknown fields and show an unknown message type through its `fallback_text`.
+      `/v1` is supported for at least 36 months; an endpoint due to go away answers with `Deprecation` and `Sunset`
+      headers first.
+    - Errors share one body (`Error`). A `5xx` is retried with exponential backoff, at most 3 times.
+    - Limits: 30 messages and 10 uploads per minute per user, 600 new sessions per minute per app. Over the limit:
+      `429 rate_limited` with `Retry-After`.
+
+    **Realtime**
+
+    `GET wss://app.clomni.ai/v1/realtime?token=<session_token>&protocol=v1` (the session response's `ws_url`).
+    The socket only receives, apart from `ping`/`pong`. Every frame is `{event, data, ts}` and is described in
+    [schema/event.json](schema/event.json): `ready`, `message.created`, `message.updated`, `typing`, `read`,
+    `conversation.updated`, `unread.changed`, `config.changed`. Unknown events are ignored. On `ready` and after every
+    reconnect (1, 2, 4, 8 … 30 s) the client fills gaps with `GET /conversations/{id}/messages?after_seq=<last>`; a gap
+    in `seq` (40 → 42) is filled the same way. A message that arrives over both REST and the socket is de-duplicated by
+    `id`. Two missed pings mean the connection is gone. While the app is in the background the socket is closed and
+    replies arrive as push notifications ([schema/push.json](schema/push.json)).
+  contact:
+    name: Clomni
+    url: https://clomni.ai
+servers:
+  - url: https://app.clomni.ai/v1
+security:
+  - session: []
+tags:
+  - name: Session
+    description: Log in with the app's public keys, refresh, log out.
+  - name: Config
+    description: Colours, texts and limits of the Messenger.
+  - name: Conversations
+    description: The user's conversations.
+  - name: Messages
+    description: History, sending, read receipts and typing.
+  - name: Uploads
+    description: Files and images sent as attachments.
+  - name: User
+    description: The current user's profile.
+  - name: Devices
+    description: Push tokens.
+  - name: Flows and events
+    description: Flows started by the app, and events for audiences.
+
+paths:
+  /mobile/sessions:
+    post:
+      tags: [Session]
+      operationId: createSession
+      summary: Open a session for a user or an anonymous visitor
+      description: |
+        Identified user: send `user` with `user_hash = hex(HMAC-SHA256(identity_secret, user_id))`, lower case. Without a
+        `user_id` the hash is taken over the email, lower-cased and trimmed. The comparison is constant-time.
+
+        The inbox's identity mode decides what an absent or wrong hash means: `off` ignores it, `recommended` accepts
+        the user unverified, `enforced` answers `403 identity_verification_failed`.
+
+        Anonymous visitor: omit `user`. The server creates an anonymous user and returns its id. Sending that id back as
+        `anonymous_id` on a later session resumes the same user, but only from the device that created it
+        (`device.device_id`); otherwise a new anonymous user is created. Logging in afterwards (`user` + `anonymous_id`)
+        merges the anonymous user's conversations into the identified user.
+      security:
+        - app_id: []
+          api_key: []
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+            examples:
+              identified:
+                value:
+                  user:
+                    user_id: '12345'
+                    email: aysel@example.com
+                    phone: null
+                    user_hash: 9b1c4d0e2f3a5b6c7d8e9f00112233445566778899aabbccddeeff0011223344
+                  device:
+                    device_id: d_7f3e2a91
+                    platform: android
+                    os_version: '14'
+                    app_version: 3.2.1
+                    sdk_version: 1.0.0
+                    locale: az-AZ
+                    timezone: Asia/Baku
+                    model: SM-A546
+              anonymous:
+                value:
+                  device:
+                    device_id: d_7f3e2a91
+                    platform: ios
+                    os_version: '17.5'
+                    app_version: 3.2.1
+                    sdk_version: 1.0.0
+                    locale: az-AZ
+                    timezone: Asia/Baku
+                    model: iPhone15,2
+      responses:
+        '201':
+          description: Session opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/InvalidApiKey'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    delete:
+      tags: [Session]
+      operationId: deleteSession
+      summary: Log out
+      description: Ends the session and removes this device's push token, so the next user of the device gets no pushes
+        meant for this one. The SDK also clears its local cache.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /mobile/sessions/refresh:
+    post:
+      tags: [Session]
+      operationId: refreshSession
+      summary: Exchange a refresh token for a new session
+      description: Called when a request answers `401 token_expired`; the original request is then repeated once. The
+        refresh token is single-use, the response carries the next one.
+      security:
+        - app_id: []
+          api_key: []
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+                  pattern: '^rt_.+'
+            example:
+              refresh_token: rt_4c1e7a0b9d2f
+      responses:
+        '201':
+          description: New session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/config:
+    get:
+      tags: [Config]
+      operationId: getConfig
+      summary: Messenger settings
+      description: |
+        Colours, texts, team, channels and limits for the Messenger. The SDK keeps the last answer on disk, uses it at
+        once on the next launch and checks it in the background with `If-None-Match`. A `config.changed` event on the
+        socket means it is time to fetch again.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - name: lang
+          in: query
+          description: Language of `strings` and the greeting. Defaults to the user's language.
+          schema:
+            $ref: '#/components/schemas/Language'
+        - name: If-None-Match
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current settings
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schema/config.json'
+        '304':
+          description: Unchanged since the given ETag
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /conversations:
+    get:
+      tags: [Conversations]
+      operationId: listConversations
+      summary: The user's conversations, newest first
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: cursor
+          in: query
+          description: '`next_cursor` of the previous page.'
+          schema:
+            type: string
+      responses:
+        '200':
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversations, next_cursor]
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  next_cursor:
+                    type: [string, 'null']
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Conversations]
+      operationId: createConversation
+      summary: Start a conversation
+      description: Starts the inbox's "new conversation" flow. Its first bot messages are in the response; the rest
+        arrive over the socket.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                opened_from:
+                  $ref: '#/components/schemas/OpenedFrom'
+            example:
+              opened_from: profile_support
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationWithMessages'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /conversations/{conversation_id}:
+    get:
+      tags: [Conversations]
+      operationId: getConversation
+      summary: One conversation
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - $ref: '#/components/parameters/ConversationId'
+      responses:
+        '200':
+          description: The conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+
+  /conversations/{conversation_id}/messages:
+    get:
+      tags: [Messages]
+      operationId: listMessages
+      summary: Message history
+      description: Without `before_seq`/`after_seq` the latest page. `before_seq` pages back in time; `after_seq` fills a
+        gap after a reconnect. Messages are sorted by `seq`, ascending.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - $ref: '#/components/parameters/ConversationId'
+        - name: before_seq
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: after_seq
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages, has_more]
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: './schema/message.json'
+                  has_more:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+    post:
+      tags: [Messages]
+      operationId: sendMessage
+      summary: Send a message or answer a flow step
+      description: |
+        Always with a `client_id` (UUID v4); the server never handles one `client_id` twice, so a retry after a lost
+        connection answers with the message already created. The response is the user's own message (for a
+        `button_reply` its text is the button's title); the flow's next messages arrive over the socket.
+
+        A `button_reply` or `form_submit` is checked against the conversation: an answer to a message that is no
+        longer the latest interactive one is `409 stale_interaction`, a second answer to the same message is
+        `409 already_answered`. On a 409 the client disables the buttons and reloads the message.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schema/client-message.json'
+            examples:
+              text:
+                value:
+                  client_id: 6f1c2c8e-1b2a-4c3d-8e9f-0a1b2c3d4e5f
+                  type: text
+                  content:
+                    text: Gedişim bitmədi, pul çıxılmağa davam edir
+              button_reply:
+                value:
+                  client_id: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+                  type: button_reply
+                  content:
+                    reply_to: msg_8f21
+                    button_id: b1
+                    payload: set_lang:az
+      responses:
+        '201':
+          description: The user's message
+          content:
+            application/json:
+              schema:
+                $ref: './schema/message.json'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /conversations/{conversation_id}/read:
+    post:
+      tags: [Messages]
+      operationId: markRead
+      summary: The user has seen messages up to a seq
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [up_to_seq]
+              properties:
+                up_to_seq:
+                  type: integer
+                  minimum: 0
+            example:
+              up_to_seq: 12
+      responses:
+        '204':
+          description: Recorded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+
+  /conversations/{conversation_id}/typing:
+    post:
+      tags: [Messages]
+      operationId: setTyping
+      summary: The user is typing
+      description: At most once every 3 seconds while typing, and `off` when the user stops.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state:
+                  enum: ['on', 'off']
+            example:
+              state: 'on'
+      responses:
+        '204':
+          description: Forwarded to the operator
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+
+  /uploads:
+    post:
+      tags: [Uploads]
+      operationId: upload
+      summary: Upload a file before sending it
+      description: Images up to 10 MB (the SDK scales them to at most 2048 px first), other files up to 25 MB. The
+        returned `upload_id` is then sent as an `attachment` message.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload_id, url, name, size, mime]
+                properties:
+                  upload_id:
+                    type: string
+                    pattern: '^upl_.+'
+                  url:
+                    type: string
+                    format: uri
+                  name:
+                    type: string
+                  size:
+                    type: integer
+                    minimum: 0
+                  mime:
+                    type: string
+              example:
+                upload_id: upl_77ab
+                url: https://app.clomni.ai/f/velo.jpg
+                name: velo.jpg
+                size: 482113
+                mime: image/jpeg
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /users/me:
+    get:
+      tags: [User]
+      operationId: getUser
+      summary: The current user
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [User]
+      operationId: updateUser
+      summary: Update the current user
+      description: Only the fields sent are changed. `custom_attributes` are merged into the existing ones.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+            example:
+              name: Aysel Məmmədova
+              language: az
+              custom_attributes:
+                plan: premium
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /devices:
+    post:
+      tags: [Devices]
+      operationId: registerDevice
+      summary: Register or refresh this device's push token
+      description: Called on every new token (`onNewToken`, `didRegisterForRemoteNotifications`). A token that moves to
+        another user leaves the previous one.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+            example:
+              token: fGz3k1QeR0-pushTokenFromFcm
+              provider: fcm
+              environment: production
+      responses:
+        '204':
+          description: Stored
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /devices/{token}:
+    delete:
+      tags: [Devices]
+      operationId: deleteDevice
+      summary: Stop pushes to a token
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Removed (also when it was not registered)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /flows/trigger:
+    post:
+      tags: [Flows and events]
+      operationId: triggerFlow
+      summary: Start the flow bound to an app event
+      description: |
+        `Clomni.startFlow(event, data)`. Starts the inbox's flow for this event (for example `payment_failed`) in a new
+        conversation. Its texts can use `{{data.*}}`, filled in on the server. With `open_messenger: true` the SDK opens
+        that conversation on screen; otherwise it only shows a push or unread badge when the first message arrives.
+        No flow for the event: `started: false`, nothing is created.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event:
+                  $ref: '#/components/schemas/EventName'
+                data:
+                  type: object
+                open_messenger:
+                  type: boolean
+                  default: false
+            example:
+              event: payment_failed
+              data:
+                order_id: A-1042
+                amount: '12.50'
+              open_messenger: true
+      responses:
+        '200':
+          description: Whether a flow started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [started, conversation]
+                properties:
+                  started:
+                    type: boolean
+                  conversation:
+                    oneOf:
+                      - type: 'null'
+                      - $ref: '#/components/schemas/ConversationWithMessages'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /events:
+    post:
+      tags: [Flows and events]
+      operationId: trackEvent
+      summary: Record an app event for audiences
+      description: Stored for audience conditions and analytics. It never starts a flow; that is `/flows/trigger`.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event:
+                  $ref: '#/components/schemas/EventName'
+                data:
+                  type: object
+            example:
+              event: ride_finished
+              data:
+                minutes: 18
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+components:
+  securitySchemes:
+    app_id:
+      type: apiKey
+      in: header
+      name: X-Clomni-App-Id
+      description: The app's id (`app_` + 8 characters), shown on the App SDK inbox. Public.
+    api_key:
+      type: apiKey
+      in: header
+      name: X-Clomni-Api-Key
+      description: The platform's public key (`android_sdk-…`, `ios_sdk-…`). It may be visible inside the app and is
+        valid for the mobile endpoints only. After a rotation the old key keeps working for 7 days.
+    session:
+      type: http
+      scheme: bearer
+      description: '`session_token` from `/mobile/sessions`, valid 24 hours. `401 token_expired` → refresh and repeat.'
+
+  parameters:
+    Sdk:
+      name: X-Clomni-SDK
+      in: header
+      required: true
+      description: SDK platform and version, e.g. `android/1.0.0`, `ios/1.0.0`, `react-native/1.0.0`.
+      schema:
+        type: string
+        pattern: '^[a-z-]+/[0-9A-Za-z.+-]+$'
+      example: android/1.0.0
+    ConversationId:
+      name: conversation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^conv_.+'
+      example: conv_5521
+
+  schemas:
+    Language:
+      enum: [az, en, ru]
+    Platform:
+      enum: [android, ios]
+    OpenedFrom:
+      type: string
+      maxLength: 64
+      description: The `source` passed to `Clomni.present(source)` or `startFlow`, shown in the inbox and analytics.
+        `push` when opened from a notification.
+    EventName:
+      type: string
+      pattern: '^[a-z][a-z0-9_]{0,63}$'
+    Device:
+      type: object
+      required: [device_id, platform, sdk_version]
+      properties:
+        device_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Generated by the SDK on first launch and kept on the device.
+        platform:
+          $ref: '#/components/schemas/Platform'
+        os_version:
+          type: string
+        app_version:
+          type: string
+        sdk_version:
+          type: string
+        locale:
+          type: string
+        timezone:
+          type: string
+        model:
+          type: string
+    SessionRequest:
+      type: object
+      required: [device]
+      properties:
+        user:
+          type: object
+          description: Omitted for an anonymous visitor.
+          anyOf:
+            - required: [user_id]
+            - required: [email]
+          properties:
+            user_id:
+              type: string
+              minLength: 1
+            email:
+              type: [string, 'null']
+              format: email
+            phone:
+              type: [string, 'null']
+            name:
+              type: [string, 'null']
+            user_hash:
+              type: [string, 'null']
+              pattern: '^[0-9a-f]{64}$'
+        anonymous_id:
+          type: string
+          pattern: '^usr_.+'
+          description: The anonymous user returned by an earlier session on this device.
+        device:
+          $ref: '#/components/schemas/Device'
+    Session:
+      type: object
+      required: [session_token, expires_at, refresh_token, user, ws_url]
+      properties:
+        session_token:
+          type: string
+          pattern: '^st_.+'
+        expires_at:
+          type: string
+          format: date-time
+        refresh_token:
+          type: string
+          pattern: '^rt_.+'
+        user:
+          type: object
+          required: [id, anonymous, language]
+          properties:
+            id:
+              type: string
+              pattern: '^usr_.+'
+            anonymous:
+              type: boolean
+            language:
+              oneOf:
+                - type: 'null'
+                - $ref: '#/components/schemas/Language'
+        ws_url:
+          type: string
+          format: uri
+      example:
+        session_token: st_9d2f4c1e7a0b
+        expires_at: '2026-10-02T10:30:00Z'
+        refresh_token: rt_4c1e7a0b9d2f
+        user:
+          id: usr_12345
+          anonymous: false
+          language: az
+        ws_url: wss://app.clomni.ai/v1/realtime
+    Assignee:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        avatar_url:
+          type: [string, 'null']
+          format: uri
+        online:
+          type: boolean
+    Conversation:
+      type: object
+      required: [id, status, assignee, unread_count, last_message, created_at]
+      properties:
+        id:
+          type: string
+          pattern: '^conv_.+'
+        status:
+          enum: [bot, queued, open, closed]
+          description: '`bot` while a flow runs, `queued` after a handover until an operator joins, `closed` when
+            resolved. Writing into a closed conversation reopens it.'
+        assignee:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/Assignee'
+        unread_count:
+          type: integer
+          minimum: 0
+        last_message:
+          oneOf:
+            - type: 'null'
+            - $ref: './schema/message.json'
+        flow:
+          description: The flow step the conversation waits on, if any.
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [flow_id, node_id]
+              properties:
+                flow_id:
+                  type: string
+                  pattern: '^flw_.+'
+                node_id:
+                  type: string
+        opened_from:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OpenedFrom'
+        created_at:
+          type: string
+          format: date-time
+      example:
+        id: conv_5521
+        status: bot
+        assignee: null
+        unread_count: 1
+        last_message: null
+        flow:
+          flow_id: flw_apar_az
+          node_id: S
+        opened_from: profile_support
+        created_at: '2026-10-01T10:30:00Z'
+    ConversationWithMessages:
+      type: object
+      required: [conversation, messages]
+      properties:
+        conversation:
+          $ref: '#/components/schemas/Conversation'
+        messages:
+          type: array
+          items:
+            $ref: './schema/message.json'
+    User:
+      type: object
+      required: [id, anonymous]
+      properties:
+        id:
+          type: string
+          pattern: '^usr_.+'
+        anonymous:
+          type: boolean
+        name:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+        phone:
+          type: [string, 'null']
+        language:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/Language'
+        custom_attributes:
+          type: object
+      example:
+        id: usr_12345
+        anonymous: false
+        name: Aysel Məmmədova
+        email: aysel@example.com
+        phone: null
+        language: az
+        custom_attributes:
+          plan: premium
+    UserUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: [string, 'null']
+          maxLength: 255
+        email:
+          type: [string, 'null']
+          format: email
+        phone:
+          type: [string, 'null']
+        language:
+          $ref: '#/components/schemas/Language'
+        custom_attributes:
+          type: object
+    DeviceToken:
+      type: object
+      required: [token, provider, environment]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        provider:
+          enum: [fcm, apns]
+        environment:
+          enum: [production, sandbox]
+          description: APNs only; FCM tokens are always `production`. A TestFlight build is `production`.
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              enum:
+                - validation_failed
+                - token_expired
+                - invalid_token
+                - invalid_api_key
+                - identity_verification_failed
+                - app_disabled
+                - conversation_not_found
+                - already_answered
+                - stale_interaction
+                - file_too_large
+                - rate_limited
+                - internal
+              description: New codes may be added within v1; a client treats an unknown code by its HTTP status.
+            message:
+              type: string
+              description: For the developer's log, in English. Not shown to the user.
+            request_id:
+              type: string
+            fields:
+              type: object
+              description: '`validation_failed` only: field → reason, e.g. a form field''s error.'
+              additionalProperties:
+                type: string
+
+  responses:
+    ValidationFailed:
+      description: The request is malformed or a field is invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: validation_failed
+              message: phone is not a valid phone number
+              request_id: req_5f2a
+              fields:
+                phone: invalid
+    Unauthorized:
+      description: The session token is missing, invalid or expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: token_expired
+              message: session token expired, refresh it
+              request_id: req_5f2b
+    InvalidApiKey:
+      description: The app id or api key is wrong, revoked, or for another platform
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_api_key
+              message: api_key is wrong or not for this platform
+              request_id: req_5f2c
+    Forbidden:
+      description: '`identity_verification_failed` (wrong `user_hash` in enforced mode) or `app_disabled` (the inbox is
+        switched off: the SDK hides the launcher and `present()` does nothing)'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: identity_verification_failed
+              message: user_hash is wrong, check identity_secret and user_id
+              request_id: req_5f2d
+    ConversationNotFound:
+      description: No such conversation for this user
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: conversation_not_found
+              message: conversation not found
+              request_id: req_5f2e
+    Conflict:
+      description: '`already_answered` or `stale_interaction`: disable the buttons and reload the message'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: already_answered
+              message: this message has already been answered
+              request_id: req_5f2f
+    FileTooLarge:
+      description: Over 10 MB for an image or 25 MB for another file
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: file_too_large
+              message: file is larger than 25 MB
+              request_id: req_5f30
+    RateLimited:
+      description: Over a rate limit; wait `Retry-After` seconds and repeat
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: rate_limited
+              message: too many requests
+              request_id: req_5f31

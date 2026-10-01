@@ -1,0 +1,12 @@
+# OpenAPI lint for openapi.yaml (npm run lint). The recommended set, plus: every example must match its schema.
+extends:
+  - recommended
+rules:
+  # Unknown fields are allowed by the protocol (clients skip them), so examples may carry them too.
+  no-invalid-media-type-examples:
+    severity: error
+    allowAdditionalProperties: true
+  no-invalid-parameter-examples: error
+  no-invalid-schema-examples: error
+  operation-4xx-response: error
+  info-license: off

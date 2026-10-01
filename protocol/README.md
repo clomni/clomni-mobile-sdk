@@ -11,6 +11,7 @@ is [docs/audit.md](../docs/audit.md) (§15 maps Clomni messages to these types).
 | [schema/event.json](schema/event.json) | WebSocket frame `{event, data, ts}` |
 | [schema/config.json](schema/config.json) | `GET /v1/mobile/config` |
 | [schema/push.json](schema/push.json) | Clomni keys of an FCM / APNs push |
+| [openapi.yaml](openapi.yaml) | Mobile API v1 (REST), OpenAPI 3.1; the realtime socket is described in its `info` |
 
 Rules that the schemas encode:
 - Within v1 only additions: a new field, type or event. Removing a field, renaming it or changing its type is not allowed.
@@ -18,19 +19,20 @@ Rules that the schemas encode:
 - Ids are prefixed strings (`msg_`, `conv_`, `flw_`, `frm_`, `upl_`, `usr_`); clients never parse them or sort by them; order is `seq`.
 - Times are UTC ISO 8601.
 
-Request and response bodies of the Mobile API (sessions, uploads, devices) are not here: they are in the
-OpenAPI file (CM-050), which refers to these schemas.
+The Mobile API's endpoints, auth and errors are in [openapi.yaml](openapi.yaml) (CM-050). It refers to the schemas
+above for messages, client messages and config instead of repeating them.
 
 ## Validate
 
 ```bash
 cd protocol
 npm ci
-npm run validate
+npm run validate   # schemas, examples, fixtures
+npm run lint       # openapi.yaml, including that every example matches its schema
 ```
 
-CI (`.github/workflows/protocol.yml`) runs the same two commands on every pull request that touches
-`protocol/`, and on `main`.
+CI (`.github/workflows/protocol.yml`) runs the same commands on every pull request that touches `protocol/`,
+and on `main`.
 
 `examples/brief/` holds every JSON example of the brief; `fixtures/` (CM-011) the cases both SDKs render.
 Each folder's `index.json` names the schema a file must pass, or `"valid": false` for one that must fail.
