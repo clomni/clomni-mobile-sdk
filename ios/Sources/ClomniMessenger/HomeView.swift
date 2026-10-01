@@ -281,16 +281,34 @@ struct ChannelsCardView: View {
                 .clomniFont(ClomniTheme.FontSize.label, .semibold, relativeTo: .caption)
                 .foregroundStyle(theme.colors.textPrimary.color)
                 .accessibilityAddTraits(.isHeader)
-            // 44 pt targets 6 pt into each other keep the squares 8 pt apart.
-            HStack(spacing: -6) {
+            icons
+                .padding(.horizontal, -7)
+                .padding(.vertical, -7)
+        }
+        .clomniCard(theme)
+    }
+
+    /// 44 pt targets 6 pt into each other keep the squares 8 pt apart, across and between rows; a row that is full
+    /// continues on the next line.
+    @ViewBuilder
+    private var icons: some View {
+        if #available(iOS 16.0, *) {
+            WrapLayout(spacing: -6, leading: true) {
                 ForEach(card.items) { item in
                     ChannelButton(item: item, theme: theme) { openURL(item.url) }
                 }
             }
-            .padding(.horizontal, -7)
-            .padding(.vertical, -7)
+        } else {
+            VStack(alignment: .leading, spacing: -6) {
+                ForEach(Array(card.rows().enumerated()), id: \.offset) { _, row in
+                    HStack(spacing: -6) {
+                        ForEach(row) { item in
+                            ChannelButton(item: item, theme: theme) { openURL(item.url) }
+                        }
+                    }
+                }
+            }
         }
-        .clomniCard(theme)
     }
 }
 

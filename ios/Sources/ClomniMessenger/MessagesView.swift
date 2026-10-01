@@ -44,9 +44,10 @@ struct MessagesView: View {
                 VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
                     NewConversationCardView(card: screen.newConversation, theme: theme, action: actions.newConversation)
                     if let empty = screen.empty {
+                        // textPrimary: the secondary grey on the canvas is 4.32:1, under WCAG AA.
                         Text(empty)
                             .clomniFont(ClomniTheme.FontSize.text, .semibold)
-                            .foregroundStyle(theme.colors.textSecondary.color)
+                            .foregroundStyle(theme.colors.textPrimary.color)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
                             .padding(.top, CGFloat(ClomniTheme.Space.xxl))

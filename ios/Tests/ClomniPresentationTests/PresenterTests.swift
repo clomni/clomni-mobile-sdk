@@ -89,6 +89,21 @@ final class PresenterTests: XCTestCase {
         XCTAssertTrue(minimal.header.teamAvatars.isEmpty)
     }
 
+    /// More channels than fit a row continue on the next one instead of running past the card.
+    func testChannelRows() throws {
+        let types = ["instagram", "whatsapp", "telegram", "facebook", "messenger", "linkedin", "youtube", "tiktok", "x"]
+        let channels = types.map { #"{"type":"\#($0)","url":"https://\#($0).com/apar"}"# }.joined(separator: ",")
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
+            {"brand":{"name":"Apar","primary_color":"#1F9D63"},"home":{"channels":[\##(channels)]}}
+            """##.utf8)))
+        let card = try XCTUnwrap(presenter(config: config).home(snapshot(config)).channels)
+        XCTAssertEqual(card.rows().map(\.count), [7, 2])
+        XCTAssertEqual(card.rows(of: 4).map(\.count), [4, 4, 1])
+        XCTAssertEqual(card.rows().flatMap { $0 }, card.items, "in their order")
+        XCTAssertEqual(card.rows(of: 0).count, 9, "never zero per row")
+        XCTAssertEqual(HomeScreen.ChannelsCard(label: "x", items: []).rows(), [])
+    }
+
     func testRecentMessageIsHiddenWithoutAConversation() {
         XCTAssertNil(presenter().home(snapshot(Fixture.aparConfig, [])).recent)
         let empty = Fixture.conversation("conv_new", message: nil)

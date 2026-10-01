@@ -40,8 +40,17 @@ public struct HomeScreen: Sendable, Equatable {
     }
 
     public struct ChannelsCard: Sendable, Equatable {
+        /// Seven 30 pt icons with their 8 pt gaps fit the card on the narrowest iPhone.
+        public static let iconsPerRow = 7
+
         public let label: String
         public let items: [ChannelItem]
+
+        /// The icons in rows that never run past the card (fixed rows where the layout cannot wrap by itself).
+        public func rows(of size: Int = iconsPerRow) -> [[ChannelItem]] {
+            let size = max(1, size)
+            return stride(from: 0, to: items.count, by: size).map { Array(items[$0..<min($0 + size, items.count)]) }
+        }
     }
 
     public struct Tabs: Sendable, Equatable {

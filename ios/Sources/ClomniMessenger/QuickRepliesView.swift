@@ -87,10 +87,11 @@ struct PillButton: View {
     }
 }
 
-/// Rows of children, right-aligned, wrapping when a row is full.
+/// Rows of children, wrapping when a row is full: right-aligned (pills) or from the leading edge (channel icons).
 @available(iOS 16.0, *)
 struct WrapLayout: Layout {
     var spacing: CGFloat
+    var leading = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? .infinity
@@ -103,7 +104,7 @@ struct WrapLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var y = bounds.minY
         for row in arrange(subviews, width: bounds.width) {
-            var x = bounds.maxX - row.width
+            var x = leading ? bounds.minX : bounds.maxX - row.width
             for index in row.indices {
                 let size = subviews[index].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
                 subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))

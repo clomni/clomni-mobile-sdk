@@ -74,7 +74,10 @@ final class ThemeTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(theme.colors.warning.contrast(with: theme.colors.onWarning), 4.5)
             XCTAssertGreaterThanOrEqual(theme.colors.background.contrast(with: theme.colors.textPrimary), 4.5)
             XCTAssertGreaterThanOrEqual(theme.colors.background.contrast(with: theme.colors.textSecondary), 4.5)
+            XCTAssertGreaterThanOrEqual(theme.colors.canvas.contrast(with: theme.colors.textPrimary), 4.5)
         }
+        // Why "Hələ söhbət yoxdur" on the canvas uses textPrimary: the grey is under 4.5:1 there.
+        XCTAssertEqual(light.colors.canvas.contrast(with: light.colors.textSecondary), 4.32, accuracy: 0.01)
         XCTAssertEqual(ClomniTheme.Radius.card, 12)
         XCTAssertEqual(ClomniTheme.Size.cardOverlap, 40)
         XCTAssertEqual(ClomniTheme.Shadow.card.map(\.radius), [2, 10])
