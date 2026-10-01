@@ -152,6 +152,81 @@ final class EngineTests: EngineTestCase {
         XCTAssertFalse(badge.all.contains(.unread(total: 5)), "stopped listening")
     }
 
+    /// A file is kept on the device, uploaded, then sent as an attachment; the staged copy goes once the server has it.
+    func testAFileIsUploadedThenSent() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        server.inject(.offline, "POST", "/uploads")
+        let data = Data(repeating: 7, count: 2_000)
+        let pending = try await phone.engine.sendFile(data, fileName: "velo.jpg", mime: "image/jpeg",
+                                                      caption: "Velosiped", in: id)
+        XCTAssertEqual(pending.upload?.fileName, "velo.jpg")
+        XCTAssertEqual(pending.upload?.size, 2_000)
+        let stored = await phone.engine.localFile(of: pending)
+        let local = try XCTUnwrap(stored)
+        XCTAssertEqual(try Data(contentsOf: local), data)
+
+        let sent = await drive(time) { await phone.pending(id).isEmpty }
+        XCTAssertTrue(sent)
+        XCTAssertEqual(server.requests("POST", "/uploads").count, 2, "the upload is retried like a message")
+        XCTAssertEqual(body(server.requests("POST", "/messages").last)?["content"],
+                       ["upload_id": "upl_1", "caption": "Velosiped"])
+        XCTAssertEqual(body(server.requests("POST", "/messages").last)?["client_id"]?.stringValue, pending.id)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: local.path))
+        XCTAssertEqual(userMessages(id).count, 1)
+    }
+
+    /// Uploaded but not yet sent when the app closed: the next launch sends the message without uploading again.
+    func testAnUploadedFileIsNotUploadedAgainAfterARestart() async throws {
+        let frozen = TestTime()
+        let before = await device(time: frozen)
+        let (id, _) = try await conversation(on: before)
+        server.inject(.offline, "POST", "/messages")
+        let pending = try await before.engine.sendFile(Data("pdf".utf8), fileName: "qaime.pdf", mime: "application/pdf",
+                                                       caption: nil, in: id)
+        await expect { await before.pending(id).first?.attempts == 1 }
+        let uploaded = await before.pending(id).first?.upload?.uploadId
+        XCTAssertEqual(uploaded, "upl_1")
+
+        let after = await device(cache: before.cache, vault: before.vault)
+        let carried = await after.pending(id)
+        XCTAssertEqual(carried.map(\.id), [pending.id])
+        await after.engine.connect()
+        await expect { await after.pending(id).isEmpty }
+        XCTAssertEqual(server.requests("POST", "/uploads").count, 1)
+        XCTAssertEqual(userMessages(id).count, 1)
+    }
+
+    func testFilesOverTheLimitAreRefused() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        do {
+            try await phone.engine.sendFile(Data(count: 10 * 1_048_576 + 1), fileName: "big.jpg", mime: "image/jpeg",
+                                            caption: nil, in: id)
+            XCTFail("over the 10 MB image limit")
+        } catch {
+            XCTAssertEqual(error as? ClomniError, .rejected("file over 10 MB"))
+        }
+        let pdf = try await phone.engine.sendFile(Data(count: 12 * 1_048_576), fileName: "big.pdf",
+                                                  mime: "application/pdf", caption: nil, in: id)
+        XCTAssertEqual(pdf.upload?.mime, "application/pdf", "other files may be up to 25 MB")
+        await phone.engine.discard(pdf.id)
+        let stored = await phone.engine.localFile(of: pdf)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: try XCTUnwrap(stored).path), "discarding deletes it")
+    }
+
+    func testAConversationOpenedFromAPush() async throws {
+        let other = await device()
+        let (id, _) = try await conversation(on: other, user: "5")
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "5"), userHash: "hash_5")
+        let unknown = await phone.engine.conversation(id)
+        XCTAssertNil(unknown)
+        try await phone.engine.refreshConversation(id)
+        let known = await phone.engine.conversation(id)
+        XCTAssertEqual(known?.status, .bot)
+    }
+
     func testUserPushAndUploadPassThrough() async throws {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()

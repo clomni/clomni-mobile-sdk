@@ -119,7 +119,7 @@ public struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
     }
 
     public let conversationId: String
-    public let message: ClientMessage
+    public internal(set) var message: ClientMessage
     /// What the bubble shows: the text, the button's title, the caption. nil for the back button and a form, whose
     /// labels are the UI's own.
     public let preview: String?
@@ -129,8 +129,22 @@ public struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
     /// The server's reason when it refused the message, e.g. `validation_failed` with `fields`.
     public internal(set) var errorCode: String?
     public internal(set) var fields: [String: String] = [:]
+    /// A file the user attached: kept on this device until the server has the message.
+    public internal(set) var upload: PendingUpload?
 
     public var id: String { message.clientId }
+}
+
+/// An attached file on its way: uploaded first (POST /uploads), then sent as an `attachment` message.
+public struct PendingUpload: Sendable, Equatable, Codable {
+    public let fileName: String
+    public let mime: String
+    /// Bytes.
+    public let size: Int
+    /// The file's name in the SDK's cache directory.
+    let storedAs: String
+    /// Set once the upload succeeded; a retry then only sends the message.
+    public internal(set) var uploadId: String?
 }
 
 /// Pending messages in the order they were written; kept on disk until the server has each one.
@@ -196,6 +210,10 @@ struct DiskCache: Sendable {
         } catch {
             CoreLog.write("could not write \(name): \(error)")
         }
+    }
+
+    func contains(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: directory.appendingPathComponent(name).path)
     }
 
     func load<T: Decodable>(_ type: T.Type, _ name: String) -> T? {

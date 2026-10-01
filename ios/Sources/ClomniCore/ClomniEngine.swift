@@ -381,6 +381,43 @@ public actor ClomniEngine {
         enqueue(.attachment(uploadId: uploadId, caption: caption), in: conversationId, preview: caption)
     }
 
+    /// An image or file (images already scaled to at most 2048 px). It is kept on this device until the server has
+    /// the message, so a lost connection or a restart does not lose it: the outbox uploads it, then sends it.
+    @discardableResult
+    public func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
+                         in conversationId: String) throws -> PendingMessage {
+        let megabytes = mime.hasPrefix("image/") ? config?.limits.imageMb ?? 10 : config?.limits.fileMb ?? 25
+        guard data.count <= megabytes * 1_048_576 else { throw ClomniError.rejected("file over \(megabytes) MB") }
+        let message = ClientMessage(content: .attachment(uploadId: "", caption: caption))
+        let stored = "upload-\(message.clientId)"
+        cache.write(data, stored)
+        guard cache.contains(stored) else { throw ClomniError.rejected("file not stored") }
+        var entry = PendingMessage(conversationId: conversationId, message: message, preview: caption,
+                                   createdAt: time.now())
+        entry.upload = PendingUpload(fileName: fileName, mime: mime, size: data.count, storedAs: stored)
+        outbox.add(entry)
+        changed(conversationId)
+        deliver()
+        return entry
+    }
+
+    /// The file of a pending attachment, to show it before the server has it.
+    public func localFile(of pending: PendingMessage) -> URL? {
+        pending.upload.map { cache.directory.appendingPathComponent($0.storedAs) }
+    }
+
+    /// One conversation as the store knows it.
+    public func conversation(_ id: String) -> Conversation? {
+        store.conversations[id]
+    }
+
+    /// The conversation from the server, e.g. one opened from a push before the list knew it.
+    public func refreshConversation(_ id: String) async throws {
+        store.upsert(try await api.conversation(id))
+        save()
+        notify(.conversations)
+    }
+
     public func upload(_ data: Data, fileName: String, mime: String) async throws -> UploadedFile {
         try await api.upload(data, fileName: fileName, mime: mime)
     }
@@ -399,7 +436,15 @@ public actor ClomniEngine {
     }
 
     public func discard(_ clientId: String) {
-        changed(outbox.remove(clientId)?.conversationId)
+        changed(removePending(clientId)?.conversationId)
+    }
+
+    /// Takes a message out of the outbox, with its staged file.
+    @discardableResult
+    private func removePending(_ clientId: String) -> PendingMessage? {
+        let entry = outbox.remove(clientId)
+        if let upload = entry?.upload { cache.write(nil, upload.storedAs) }
+        return entry
     }
 
     private func answer(_ message: Message) throws {
@@ -431,13 +476,34 @@ public actor ClomniEngine {
 
     private func attempt(_ entry: PendingMessage) async {
         do {
+            var entry = entry
+            if let upload = entry.upload, upload.uploadId == nil {
+                guard let data = cache.read(upload.storedAs) else {
+                    outbox.update(entry.id) {
+                        $0.state = .failed
+                        $0.errorCode = "file_missing"
+                    }
+                    return changed(entry.conversationId)
+                }
+                let uploaded = try await api.upload(data, fileName: upload.fileName, mime: upload.mime)
+                outbox.update(entry.id) {
+                    $0.upload?.uploadId = uploaded.uploadId
+                    if case .attachment(_, let caption) = $0.message.content {
+                        $0.message = ClientMessage(clientId: $0.message.clientId,
+                                                   content: .attachment(uploadId: uploaded.uploadId, caption: caption))
+                    }
+                }
+                save()
+                guard let updated = outbox.entry(entry.id) else { return }
+                entry = updated
+            }
             let message = try await api.send(entry.message, to: entry.conversationId)
-            outbox.remove(entry.id)
+            removePending(entry.id)
             receive(message)
             return
         } catch ClomniError.server(409, let error) {
             // already_answered / stale_interaction: the server has moved on; show its copy of the message.
-            outbox.remove(entry.id)
+            removePending(entry.id)
             if let replyTo = entry.message.replyTo {
                 store.markAnswered(replyTo)
                 let seq = store.message(replyTo, in: entry.conversationId)?.seq
@@ -471,7 +537,7 @@ public actor ClomniEngine {
     private func receive(_ message: Message, fromSocket: Bool = false) {
         let gap = store.insert(message, detectGap: fromSocket)
         // The server's copy of a pending message replaces the optimistic bubble.
-        if let clientId = message.clientId { outbox.remove(clientId) }
+        if let clientId = message.clientId { removePending(clientId) }
         changed(message.conversationId)
         if gap != nil { fillGaps(message.conversationId) }
     }
