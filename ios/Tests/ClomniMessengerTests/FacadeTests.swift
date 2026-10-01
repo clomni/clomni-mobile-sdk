@@ -49,6 +49,7 @@ actor FakeBackend: ClomniBackend {
 
     func updateUser(_ fields: [String: JSONValue]) async throws -> MobileUser {
         calls.append("updateUser")
+        if let failLogin { throw failLogin }
         self.fields.append(fields)
         return ProtocolJSON.parseUser(Data(#"{"id":"usr_5","anonymous":false}"#.utf8))!
     }
@@ -248,12 +249,14 @@ final class FacadeTests: XCTestCase {
         XCTAssertEqual(told.lines, ["unread 3", "unread 0"])
     }
 
-    func testAFailedLoginIsLogged() async {
+    func testFailuresAreLogged() async {
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
         await backend?.fail(.server(status: 403, error: nil))
         Clomni.loginUser(ClomniUser(userId: "5"), userHash: "WRONG")
+        Clomni.updateUser(name: "Aysel")
         await settle()
         XCTAssertTrue(log.contains("[Clomni] error: login failed:"))
+        XCTAssertTrue(log.contains("[Clomni] error: updateUser failed:"))
     }
 
     // MARK: - Opening
