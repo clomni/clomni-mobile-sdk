@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/event.json",
+  "title": "WebSocket frame",
+  "description": "A frame on wss://…/v1/realtime: { event, data, ts }. Messages are sent over REST; the socket only receives (plus pong and typing). Unknown events are ignored by the client.",
+  "type": "object",
+  "required": ["event", "ts"],
+  "properties": {
+    "event": { "type": "string", "pattern": "^[a-z][a-z0-9_.]*$" },
+    "data": {},
+    "ts": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    { "if": { "properties": { "event": { "const": "ready" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/ready" } } } },
+    { "if": { "properties": { "event": { "enum": ["message.created", "message.updated"] } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "message.json" } } } },
+    { "if": { "properties": { "event": { "const": "typing" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/typing" } } } },
+    { "if": { "properties": { "event": { "const": "read" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/read" } } } },
+    { "if": { "properties": { "event": { "const": "conversation.updated" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/conversation_updated" } } } },
+    { "if": { "properties": { "event": { "const": "unread.changed" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/unread_changed" } } } },
+    { "if": { "properties": { "event": { "const": "config.changed" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/config_changed" } } } }
+  ],
+  "$defs": {
+    "conversation_id": { "type": "string", "pattern": "^conv_.+" },
+    "ready": {
+      "type": "object",
+      "required": ["user_id", "heartbeat_sec"],
+      "properties": {
+        "user_id": { "type": "string", "pattern": "^usr_.+" },
+        "heartbeat_sec": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "typing": {
+      "type": "object",
+      "required": ["conversation_id", "sender", "state"],
+      "properties": {
+        "conversation_id": { "$ref": "#/$defs/conversation_id" },
+        "sender": { "$ref": "message.json#/$defs/sender" },
+        "state": { "enum": ["on", "off"] }
+      }
+    },
+    "read": {
+      "type": "object",
+      "required": ["conversation_id", "up_to_seq", "by"],
+      "properties": {
+        "conversation_id": { "$ref": "#/$defs/conversation_id" },
+        "up_to_seq": { "type": "integer", "minimum": 0 },
+        "by": { "enum": ["user", "operator"] }
+      }
+    },
+    "conversation_updated": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/conversation_id" },
+        "status": { "enum": ["bot", "queued", "open", "closed"] },
+        "assignee": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "avatar_url": { "type": ["string", "null"], "format": "uri" }, "online": { "type": "boolean" } } }
+          ]
+        },
+        "unread_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "unread_changed": {
+      "type": "object",
+      "required": ["total"],
+      "properties": { "total": { "type": "integer", "minimum": 0 } }
+    },
+    "config_changed": {
+      "type": "object",
+      "required": ["etag"],
+      "properties": { "etag": { "type": "string", "minLength": 1 } }
+    }
+  }
+}

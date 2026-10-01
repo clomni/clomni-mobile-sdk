@@ -1,0 +1,61 @@
+{
+  "id": "msg_f10",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 9,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "S",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Probleminiz nə ilə bağlıdır?",
+    "buttons": [
+      {
+        "id": "o_u",
+        "title": "Parking zona",
+        "icon": null,
+        "payload": "node:U"
+      },
+      {
+        "id": "o_t",
+        "title": "Velosiped dayandı",
+        "icon": null,
+        "payload": "node:T"
+      },
+      {
+        "id": "o_af",
+        "title": "Texniki nasazlıq",
+        "icon": null,
+        "payload": "node:AF"
+      },
+      {
+        "id": "o_ae",
+        "title": "Kilidləmə",
+        "icon": null,
+        "payload": "node:AE"
+      },
+      {
+        "id": "o_q",
+        "title": "Əşyamı itirdim",
+        "icon": null,
+        "payload": "node:Q"
+      }
+    ],
+    "layout": "chips",
+    "input_disabled": true,
+    "allow_back": true
+  },
+  "fallback_text": "Probleminiz nə ilə bağlıdır?\nParking zona / Velosiped dayandı / Texniki nasazlıq / Kilidləmə / Əşyamı itirdim",
+  "meta": {}
+}

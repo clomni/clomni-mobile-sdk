@@ -1,0 +1,9 @@
+{
+  "client_id": "6f708192-a3b4-4c5d-9e6f-708192a3b4c5",
+  "type": "rating_submit",
+  "content": {
+    "reply_to": "msg_f28",
+    "score": 5,
+    "comment": "Tez cavab verdiniz"
+  }
+}

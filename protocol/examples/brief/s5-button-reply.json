@@ -1,0 +1,2 @@
+{ "client_id": "6f1c2c8e-...", "type": "button_reply",
+  "content": { "reply_to": "msg_8f21", "button_id": "b1", "payload": "set_lang:az" } }

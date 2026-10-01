@@ -1,0 +1,13 @@
+{
+  "client_id": "2a3b4c5d-6e7f-4801-9a2b-3c4d5e6f7a8b",
+  "type": "form_submit",
+  "content": {
+    "reply_to": "msg_f19",
+    "form_id": "frm_contact",
+    "values": {
+      "name": "Aysel Məmmədova",
+      "phone": "+994501234567",
+      "email": ""
+    }
+  }
+}

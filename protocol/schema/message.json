@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/message.json",
+  "title": "Server → client message",
+  "description": "A message as the server sends it to a mobile client (REST and WebSocket). Fields may be added within v1, never removed or retyped; clients skip unknown fields and show an unknown type through fallback_text.",
+  "type": "object",
+  "required": ["id", "conversation_id", "type", "sender", "created_at", "seq", "lang", "content", "fallback_text"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^msg_.+" },
+    "client_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 64, "description": "UUID v4 the client sent with its own message; null for messages it did not send." },
+    "conversation_id": { "type": "string", "pattern": "^conv_.+" },
+    "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, quick_replies, image, file, form, system, card, rating. Any other value is valid and rendered with fallback_text." },
+    "sender": { "$ref": "#/$defs/sender" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "seq": { "type": "integer", "minimum": 1, "description": "Rises within the conversation; ordering uses it, never the id." },
+    "lang": { "enum": ["az", "en", "ru"] },
+    "flow": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/flow" }] },
+    "content": { "type": "object" },
+    "fallback_text": { "type": "string" },
+    "meta": { "type": "object" }
+  },
+  "allOf": [
+    { "if": { "properties": { "type": { "const": "text" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/text" } } } },
+    { "if": { "properties": { "type": { "const": "quick_replies" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/quick_replies" } } } },
+    { "if": { "properties": { "type": { "const": "image" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/image" } } } },
+    { "if": { "properties": { "type": { "const": "file" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/file" } } } },
+    { "if": { "properties": { "type": { "const": "form" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/form" } } } },
+    { "if": { "properties": { "type": { "const": "system" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/system" } } } },
+    { "if": { "properties": { "type": { "const": "card" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/card" } } } },
+    { "if": { "properties": { "type": { "const": "rating" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/rating" } } } }
+  ],
+  "$defs": {
+    "sender": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["bot", "operator", "user", "system"] },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar_url": { "type": ["string", "null"], "format": "uri" }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": ["flow_id", "node_id", "interactive"],
+      "properties": {
+        "flow_id": { "type": "string", "pattern": "^flw_.+" },
+        "node_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1 },
+        "interactive": { "type": "boolean", "description": "false: the buttons of this message are disabled." }
+      }
+    },
+    "text": {
+      "type": "object",
+      "required": ["text"],
+      "properties": { "text": { "type": "string", "maxLength": 4000, "description": "Limited markdown: **bold**, *italic*, [text](https://…), \\n, emoji. Links only https:, tel:, mailto:." } }
+    },
+    "button": {
+      "type": "object",
+      "required": ["id", "title", "payload"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1, "description": "Up to 80 characters is shown whole; a longer one wraps to two lines and ends with …" },
+        "icon": { "type": ["string", "null"], "description": "Shown before the title, e.g. a flag emoji." },
+        "payload": { "type": "string", "minLength": 1, "description": "Opaque to the client; server conventions: node:<id>, set_lang:az|en|ru, nav:back, handoff, end, flow:<id>." }
+      }
+    },
+    "quick_replies": {
+      "type": "object",
+      "required": ["buttons"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 4000 },
+        "buttons": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "$ref": "#/$defs/button" } },
+        "layout": { "enum": ["vertical", "chips"], "default": "vertical" },
+        "input_disabled": { "type": "boolean", "default": false },
+        "allow_back": { "type": "boolean", "default": false }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "thumb_url": { "type": ["string", "null"], "format": "uri" },
+        "width": { "type": ["integer", "null"], "minimum": 1 },
+        "height": { "type": ["integer", "null"], "minimum": 1 },
+        "caption": { "type": ["string", "null"] }
+      }
+    },
+    "file": {
+      "type": "object",
+      "required": ["url", "name", "size", "mime"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "name": { "type": "string", "minLength": 1 },
+        "size": { "type": "integer", "minimum": 0 },
+        "mime": { "type": "string", "minLength": 1 }
+      }
+    },
+    "form_field": {
+      "type": "object",
+      "required": ["key", "type", "label"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["text", "textarea", "phone", "email", "number", "select", "date"] },
+        "label": { "type": "string" },
+        "required": { "type": "boolean", "default": false },
+        "max_length": { "type": "integer", "minimum": 1 },
+        "default_country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "placeholder": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "object", "required": ["value", "label"], "properties": { "value": { "type": "string" }, "label": { "type": "string" } } }
+        }
+      },
+      "if": { "properties": { "type": { "const": "select" } } },
+      "then": { "required": ["options"] }
+    },
+    "form": {
+      "type": "object",
+      "required": ["form_id", "fields", "submit_title"],
+      "properties": {
+        "text": { "type": "string" },
+        "form_id": { "type": "string", "pattern": "^frm_.+" },
+        "fields": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/form_field" } },
+        "submit_title": { "type": "string", "minLength": 1 },
+        "submitted": { "type": ["object", "null"], "description": "The values once sent; the form is then read-only." }
+      }
+    },
+    "system": {
+      "type": "object",
+      "required": ["event", "text"],
+      "properties": {
+        "event": { "type": "string", "description": "Known in v1: operator_joined, assigned_to_team, conversation_closed, conversation_reopened, waiting_in_queue. Others are shown by their text." },
+        "text": { "type": "string" },
+        "position": { "type": "integer", "minimum": 1, "description": "waiting_in_queue only." }
+      }
+    },
+    "card_button": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "payload": { "type": "string" },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "oneOf": [{ "required": ["payload"] }, { "required": ["url"] }]
+    },
+    "card": {
+      "type": "object",
+      "required": ["cards"],
+      "properties": {
+        "cards": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["title"],
+            "properties": {
+              "image_url": { "type": ["string", "null"], "format": "uri" },
+              "title": { "type": "string" },
+              "subtitle": { "type": ["string", "null"] },
+              "buttons": { "type": "array", "items": { "$ref": "#/$defs/card_button" } }
+            }
+          }
+        }
+      }
+    },
+    "rating": {
+      "type": "object",
+      "required": ["text", "scale"],
+      "properties": {
+        "text": { "type": "string" },
+        "scale": { "enum": ["emoji_5", "star_5"] },
+        "comment": { "enum": ["none", "optional", "required"] },
+        "submitted": { "type": ["object", "null"] }
+      }
+    }
+  }
+}

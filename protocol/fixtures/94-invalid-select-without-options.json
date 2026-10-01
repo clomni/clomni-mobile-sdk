@@ -1,0 +1,11 @@
+{
+  "form_id": "frm_x",
+  "submit_title": "Göndər",
+  "fields": [
+    {
+      "key": "city",
+      "type": "select",
+      "label": "Şəhər"
+    }
+  ]
+}

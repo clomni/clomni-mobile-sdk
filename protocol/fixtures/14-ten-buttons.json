@@ -1,0 +1,91 @@
+{
+  "id": "msg_f14",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 13,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "V",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Mövzunu seçin",
+    "buttons": [
+      {
+        "id": "o_1",
+        "title": "Variant 1",
+        "icon": null,
+        "payload": "node:V1"
+      },
+      {
+        "id": "o_2",
+        "title": "Variant 2",
+        "icon": null,
+        "payload": "node:V2"
+      },
+      {
+        "id": "o_3",
+        "title": "Variant 3",
+        "icon": null,
+        "payload": "node:V3"
+      },
+      {
+        "id": "o_4",
+        "title": "Variant 4",
+        "icon": null,
+        "payload": "node:V4"
+      },
+      {
+        "id": "o_5",
+        "title": "Variant 5",
+        "icon": null,
+        "payload": "node:V5"
+      },
+      {
+        "id": "o_6",
+        "title": "Variant 6",
+        "icon": null,
+        "payload": "node:V6"
+      },
+      {
+        "id": "o_7",
+        "title": "Variant 7",
+        "icon": null,
+        "payload": "node:V7"
+      },
+      {
+        "id": "o_8",
+        "title": "Variant 8",
+        "icon": null,
+        "payload": "node:V8"
+      },
+      {
+        "id": "o_9",
+        "title": "Variant 9",
+        "icon": null,
+        "payload": "node:V9"
+      },
+      {
+        "id": "o_10",
+        "title": "Variant 10",
+        "icon": null,
+        "payload": "node:V10"
+      }
+    ],
+    "layout": "chips",
+    "input_disabled": true,
+    "allow_back": false
+  },
+  "fallback_text": "Mövzunu seçin\nVariant 1 / Variant 2 / Variant 3 / Variant 4 / Variant 5 / Variant 6 / Variant 7 / Variant 8 / Variant 9 / Variant 10",
+  "meta": {}
+}

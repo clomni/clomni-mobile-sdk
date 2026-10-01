@@ -1,0 +1,20 @@
+{
+  "id": "msg_x91",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "text": "Salam"
+  },
+  "fallback_text": "Salam",
+  "meta": {}
+}

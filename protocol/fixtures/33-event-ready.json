@@ -1,0 +1,8 @@
+{
+  "event": "ready",
+  "data": {
+    "user_id": "usr_12345",
+    "heartbeat_sec": 25
+  },
+  "ts": "2026-10-01T10:30:01Z"
+}

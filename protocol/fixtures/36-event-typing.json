@@ -1,0 +1,14 @@
+{
+  "event": "typing",
+  "data": {
+    "conversation_id": "conv_5521",
+    "sender": {
+      "type": "bot",
+      "id": "bot_default",
+      "name": "Clomni",
+      "avatar_url": "https://app.clomni.ai/a/bot.png"
+    },
+    "state": "on"
+  },
+  "ts": "2026-10-01T10:30:01Z"
+}

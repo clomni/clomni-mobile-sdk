@@ -1,0 +1,26 @@
+{
+  "id": "msg_f50",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:33:00Z",
+  "seq": 32,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "END",
+    "version": 7,
+    "interactive": false
+  },
+  "content": {
+    "text": "Problemin həll olunmasına şadıq. Yenə sualınız olsa, bizə yazın."
+  },
+  "fallback_text": "Problemin həll olunmasına şadıq. Yenə sualınız olsa, bizə yazın.",
+  "meta": {}
+}

@@ -1,0 +1,21 @@
+{
+  "id": "msg_f04",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "operator",
+    "id": "op_42",
+    "name": "Leyla",
+    "avatar_url": "https://app.clomni.ai/a/leyla.png"
+  },
+  "created_at": "2026-10-01T10:42:00Z",
+  "seq": 4,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "text": "Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik."
+  },
+  "fallback_text": "Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, müraciətiniz üçün təşəkkür edirik. Hörmətli müştəri, mür",
+  "meta": {}
+}

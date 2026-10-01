@@ -1,0 +1,19 @@
+{
+  "id": "msg_f25",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "system",
+  "sender": {
+    "type": "system"
+  },
+  "created_at": "2026-10-01T11:01:00Z",
+  "seq": 24,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "event": "survey_scheduled",
+    "text": "Sizə qısa sorğu göndəriləcək"
+  },
+  "fallback_text": "Sizə qısa sorğu göndəriləcək",
+  "meta": {}
+}

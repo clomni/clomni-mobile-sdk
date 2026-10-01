@@ -1,0 +1,30 @@
+{
+  "id": "msg_f30",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 29,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "A1",
+    "version": 7,
+    "interactive": false
+  },
+  "content": {
+    "text": "Yeni sahələr nəzərə alınmır",
+    "format": "rich"
+  },
+  "fallback_text": "Yeni sahələr nəzərə alınmır",
+  "meta": {
+    "experiment": "b"
+  },
+  "priority": "high"
+}

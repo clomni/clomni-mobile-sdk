@@ -1,0 +1,316 @@
+[
+  {
+    "file": "01-text-bot.json",
+    "schema": "message.json",
+    "note": "Bot mətni, sol tərəf, flow-dan"
+  },
+  {
+    "file": "02-text-operator-markdown.json",
+    "schema": "message.json",
+    "note": "Operator, məhdud markdown: qalın, kursiv, link, sətir keçidi"
+  },
+  {
+    "file": "03-text-user.json",
+    "schema": "message.json",
+    "note": "İstifadəçi mesajı, sağ tərəf, client_id ilə (optimistik bubble əvəz olunur)"
+  },
+  {
+    "file": "04-text-long.json",
+    "schema": "message.json",
+    "note": "Uzun mətn, bubble maks eni 222, sətirlərə bölünür"
+  },
+  {
+    "file": "05-text-emoji-only.json",
+    "schema": "message.json",
+    "note": "Yalnız emoji"
+  },
+  {
+    "file": "06-text-unsafe-link.json",
+    "schema": "message.json",
+    "note": "javascript: linki klient atır (yalnız mətn qalır), tel: işləyir"
+  },
+  {
+    "file": "07-language-select.json",
+    "schema": "message.json",
+    "note": "Üçdilli salamlama və dil seçimi (veb chatdakı flow-un mobil ekvivalenti), seçimdən əvvəl"
+  },
+  {
+    "file": "08-language-select-answered.json",
+    "schema": "message.json",
+    "note": "Eyni mesaj seçimdən sonra: interactive false, düymələr deaktiv və gizlənir"
+  },
+  {
+    "file": "09-apar-level1-A.json",
+    "schema": "message.json",
+    "note": "Apar, 1-ci səviyyə (A): iki tam enli düymə, yazı qutusu kilidli"
+  },
+  {
+    "file": "10-apar-level2-S-chips.json",
+    "schema": "message.json",
+    "note": "Apar, 2-ci səviyyə (S): chips, yan-yana, sonda «← Geri» (allow_back)"
+  },
+  {
+    "file": "11-apar-level3-U.json",
+    "schema": "message.json",
+    "note": "Apar, 3-cü səviyyə (U): vertical + geri"
+  },
+  {
+    "file": "12-apar-level4-handoff.json",
+    "schema": "message.json",
+    "note": "Apar, 4-cü səviyyə (N): handoff və end payload-ları"
+  },
+  {
+    "file": "50-apar-end.json",
+    "schema": "message.json",
+    "note": "Apar END: «Xeyr, problem həll olundu» seçiləndən sonra, flow bitir, interactive false"
+  },
+  {
+    "file": "13-button-title-over-80.json",
+    "schema": "message.json",
+    "note": "80+ simvollu düymə: 2 sətir + «…»"
+  },
+  {
+    "file": "14-ten-buttons.json",
+    "schema": "message.json",
+    "note": "Maksimum 10 düymə, chips"
+  },
+  {
+    "file": "15-quick-replies-no-text.json",
+    "schema": "message.json",
+    "note": "Mətnsiz düymə, yazı qutusu açıq (input_disabled false)"
+  },
+  {
+    "file": "16-image.json",
+    "schema": "message.json",
+    "note": "Şəkil, ölçülər məlum (layout sıçramır), caption"
+  },
+  {
+    "file": "17-image-no-dimensions.json",
+    "schema": "message.json",
+    "note": "Ölçüsü bilinməyən şəkil: placeholder, yükləndikdən sonra ölçü"
+  },
+  {
+    "file": "18-file-pdf.json",
+    "schema": "message.json",
+    "note": "Fayl kartı: ikon, ad, ölçü"
+  },
+  {
+    "file": "19-form-contact.json",
+    "schema": "message.json",
+    "note": "Forma: ad, telefon (AZ), email"
+  },
+  {
+    "file": "20-form-all-field-types.json",
+    "schema": "message.json",
+    "note": "Bütün sahə tipləri: text, textarea, phone, email, number, select, date"
+  },
+  {
+    "file": "21-form-submitted.json",
+    "schema": "message.json",
+    "note": "Göndərilmiş forma: oxu rejimi + «Göndərildi» (message.updated)"
+  },
+  {
+    "file": "22-system-waiting-in-queue.json",
+    "schema": "message.json",
+    "note": "Növbədə, mövqe 3"
+  },
+  {
+    "file": "23-system-operator-joined.json",
+    "schema": "message.json",
+    "note": "Operator qoşuldu, header dəyişir"
+  },
+  {
+    "file": "24-system-conversation-closed.json",
+    "schema": "message.json",
+    "note": "Bağlı söhbət: yazı qutusunun yerində «Yeni söhbət başlat»"
+  },
+  {
+    "file": "25-system-unknown-event.json",
+    "schema": "message.json",
+    "note": "Bilinməyən system hadisəsi: yalnız mətn göstərilir"
+  },
+  {
+    "file": "26-card.json",
+    "schema": "message.json",
+    "note": "card (2-ci mərhələ): 1.0 SDK fallback_text göstərir"
+  },
+  {
+    "file": "27-carousel.json",
+    "schema": "message.json",
+    "note": "Bir neçə kart (carousel)"
+  },
+  {
+    "file": "28-rating.json",
+    "schema": "message.json",
+    "note": "rating (2-ci mərhələ)"
+  },
+  {
+    "file": "29-unknown-type.json",
+    "schema": "message.json",
+    "note": "Tanınmayan tip: crash yox, fallback_text adi bot bubble-ı kimi"
+  },
+  {
+    "file": "30-unknown-fields.json",
+    "schema": "message.json",
+    "note": "Zərfdə və content-də bilinməyən sahələr: atlanır"
+  },
+  {
+    "file": "31-operator-no-avatar.json",
+    "schema": "message.json",
+    "note": "Avatarsız operator: inisial"
+  },
+  {
+    "file": "32-other-language-ru.json",
+    "schema": "message.json",
+    "note": "Rus dili (lang: ru)"
+  },
+  {
+    "file": "33-event-ready.json",
+    "schema": "event.json",
+    "note": "WS: ready"
+  },
+  {
+    "file": "34-event-message-created.json",
+    "schema": "event.json",
+    "note": "WS: message.created (system mesajı)"
+  },
+  {
+    "file": "35-event-message-updated.json",
+    "schema": "event.json",
+    "note": "WS: message.updated (forma göndərildi)"
+  },
+  {
+    "file": "36-event-typing.json",
+    "schema": "event.json",
+    "note": "WS: bot yazır"
+  },
+  {
+    "file": "37-event-read.json",
+    "schema": "event.json",
+    "note": "WS: oxundu"
+  },
+  {
+    "file": "38-event-conversation-updated.json",
+    "schema": "event.json",
+    "note": "WS: operator qoşuldu, header"
+  },
+  {
+    "file": "39-event-unread-changed.json",
+    "schema": "event.json",
+    "note": "WS: oxunmamış sayı (müştərinin öz düyməsindəki badge)"
+  },
+  {
+    "file": "40-event-config-changed.json",
+    "schema": "event.json",
+    "note": "WS: config dəyişib"
+  },
+  {
+    "file": "41-event-unknown.json",
+    "schema": "event.json",
+    "note": "WS: bilinməyən hadisə, nəzərə alınmır"
+  },
+  {
+    "file": "42-config-apar.json",
+    "schema": "config.json",
+    "note": "Config: Apar, launcher söndürülüb, 4 kanal ikonu"
+  },
+  {
+    "file": "43-config-minimal.json",
+    "schema": "config.json",
+    "note": "Minimal config: kanal və komanda avatarı yoxdur, kartlar gizlənir; SDK default mətnləri"
+  },
+  {
+    "file": "44-push-message.json",
+    "schema": "push.json",
+    "note": "Push: operator cavabı"
+  },
+  {
+    "file": "45-client-text.json",
+    "schema": "client-message.json",
+    "note": "Klient: mətn"
+  },
+  {
+    "file": "46-client-button-reply.json",
+    "schema": "client-message.json",
+    "note": "Klient: düymə cavabı (Apar A → S)"
+  },
+  {
+    "file": "47-client-back.json",
+    "schema": "client-message.json",
+    "note": "Klient: «← Geri»"
+  },
+  {
+    "file": "48-client-form-submit.json",
+    "schema": "client-message.json",
+    "note": "Klient: forma"
+  },
+  {
+    "file": "51-client-button-end.json",
+    "schema": "client-message.json",
+    "note": "Klient: Apar N → END (payload end)"
+  },
+  {
+    "file": "52-client-rating.json",
+    "schema": "client-message.json",
+    "note": "Klient: qiymət 5 + şərh"
+  },
+  {
+    "file": "49-client-attachment.json",
+    "schema": "client-message.json",
+    "note": "Klient: şəkil (əvvəl POST /v1/uploads)"
+  },
+  {
+    "file": "90-invalid-quick-replies-empty.json",
+    "schema": "message.json",
+    "note": "Səhv: düyməsiz quick_replies",
+    "valid": false
+  },
+  {
+    "file": "91-invalid-missing-seq.json",
+    "schema": "message.json",
+    "note": "Səhv: seq yoxdur",
+    "valid": false
+  },
+  {
+    "file": "92-invalid-push-body-too-long.json",
+    "schema": "push.json",
+    "note": "Səhv: push mətni 180-dən uzun",
+    "valid": false
+  },
+  {
+    "file": "93-invalid-client-text-empty.json",
+    "schema": "client-message.json",
+    "note": "Səhv: boş mətn göndərilmir",
+    "valid": false
+  },
+  {
+    "file": "94-invalid-select-without-options.json",
+    "schema": "message.json#/$defs/form",
+    "note": "Səhv: select sahəsi variantsız",
+    "valid": false
+  },
+  {
+    "file": "95-invalid-lang.json",
+    "schema": "message.json",
+    "note": "Səhv: dəstəklənməyən dil (de)",
+    "valid": false
+  },
+  {
+    "file": "96-invalid-config-color.json",
+    "schema": "config.json",
+    "note": "Səhv: rəng #RRGGBB deyil",
+    "valid": false
+  },
+  {
+    "file": "97-invalid-event-ready-without-data.json",
+    "schema": "event.json",
+    "note": "Səhv: ready data-sız",
+    "valid": false
+  },
+  {
+    "file": "98-invalid-card-button-both.json",
+    "schema": "message.json#/$defs/card",
+    "note": "Səhv: kart düyməsində həm payload, həm url",
+    "valid": false
+  }
+]

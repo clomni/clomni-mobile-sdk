@@ -1,0 +1,15 @@
+[
+  { "file": "s5-language-select.json", "schema": "message.json", "section": "5 Protokol xülasəsi, server → klient" },
+  { "file": "s5-button-reply.json", "schema": "client-message.json", "section": "5 Protokol xülasəsi, klient → server" },
+  { "file": "s5.1-envelope.json", "schema": "message.json", "section": "8 · 5.1 Zərf" },
+  { "file": "s5.2-text.json", "schema": "message.json#/$defs/text", "section": "8 · 5.2 text" },
+  { "file": "s5.2-quick-replies.json", "schema": "message.json#/$defs/quick_replies", "section": "8 · 5.2 quick_replies" },
+  { "file": "s5.2-image.json", "schema": "message.json#/$defs/image", "section": "8 · 5.2 image" },
+  { "file": "s5.2-file.json", "schema": "message.json#/$defs/file", "section": "8 · 5.2 file" },
+  { "file": "s5.2-form.json", "schema": "message.json#/$defs/form", "section": "8 · 5.2 form" },
+  { "file": "s5.2-system.json", "schema": "message.json#/$defs/system", "section": "8 · 5.2 system" },
+  { "file": "s5.2-card.json", "schema": "message.json#/$defs/card", "section": "8 · 5.2 card / carousel" },
+  { "file": "s5.2-rating.json", "schema": "message.json#/$defs/rating", "section": "8 · 5.2 rating" },
+  { "file": "s6.3-config.json", "schema": "config.json", "section": "8 · 6.3 GET /mobile/config" },
+  { "file": "s6.5-push.json", "schema": "push.json", "section": "8 · 6.5 Push payload" }
+]

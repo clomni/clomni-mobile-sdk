@@ -1,0 +1,24 @@
+{
+  "brand": {
+    "name": "Clomni, Inc.",
+    "primary_color": "green"
+  },
+  "launcher": {
+    "visible": false
+  },
+  "home": {
+    "cards": [
+      "new_conversation"
+    ]
+  },
+  "team": {},
+  "bot": {
+    "name": "Clomni"
+  },
+  "composer": {},
+  "languages": [
+    "az"
+  ],
+  "strings": {},
+  "limits": {}
+}

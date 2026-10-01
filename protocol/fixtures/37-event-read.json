@@ -1,0 +1,9 @@
+{
+  "event": "read",
+  "data": {
+    "conversation_id": "conv_5521",
+    "up_to_seq": 12,
+    "by": "operator"
+  },
+  "ts": "2026-10-01T10:30:01Z"
+}

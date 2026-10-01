@@ -1,0 +1,9 @@
+{
+  "client_id": "5e6f7081-92a3-4b4c-8d5e-6f708192a3b4",
+  "type": "button_reply",
+  "content": {
+    "reply_to": "msg_f12",
+    "button_id": "o_no",
+    "payload": "end"
+  }
+}

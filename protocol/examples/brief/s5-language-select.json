@@ -1,0 +1,17 @@
+{
+  "id": "msg_8f21", "conversation_id": "conv_5521", "seq": 1, "lang": "az",
+  "type": "quick_replies",
+  "sender": { "type": "bot", "name": "Clomni", "avatar_url": "https://..." },
+  "created_at": "2026-10-01T10:30:00Z",
+  "flow": { "flow_id": "flw_lang", "node_id": "A", "version": 7, "interactive": true },
+  "content": {
+    "text": "Salam, Clomni-yə xoş gəlmisiniz.\nZəhmət olmasa dil seçin.\nPlease choose your language.\nПожалуйста, выберите язык.",
+    "buttons": [
+      { "id": "b1", "title": "Azərbaycan dili", "icon": "🇦🇿", "payload": "set_lang:az" },
+      { "id": "b2", "title": "English",         "icon": "🇬🇧", "payload": "set_lang:en" },
+      { "id": "b3", "title": "Русский",         "icon": "🇷🇺", "payload": "set_lang:ru" }
+    ],
+    "layout": "vertical", "input_disabled": false, "allow_back": false
+  },
+  "fallback_text": "Dil seçin: Azərbaycan dili / English / Русский"
+}

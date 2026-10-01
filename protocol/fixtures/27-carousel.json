@@ -1,0 +1,63 @@
+{
+  "id": "msg_f27",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "card",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 26,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "C2",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "cards": [
+      {
+        "image_url": null,
+        "title": "Tarif 1",
+        "subtitle": "10 dəq",
+        "buttons": [
+          {
+            "id": "btn_t1",
+            "title": "Seç",
+            "payload": "node:T1"
+          }
+        ]
+      },
+      {
+        "image_url": null,
+        "title": "Tarif 2",
+        "subtitle": "20 dəq",
+        "buttons": [
+          {
+            "id": "btn_t2",
+            "title": "Seç",
+            "payload": "node:T2"
+          }
+        ]
+      },
+      {
+        "image_url": null,
+        "title": "Tarif 3",
+        "subtitle": "30 dəq",
+        "buttons": [
+          {
+            "id": "btn_t3",
+            "title": "Seç",
+            "payload": "node:T3"
+          }
+        ]
+      }
+    ]
+  },
+  "fallback_text": "Tarif 1 / Tarif 2 / Tarif 3",
+  "meta": {}
+}

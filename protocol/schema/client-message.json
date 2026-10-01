@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/client-message.json",
+  "title": "Client → server message",
+  "description": "Body of POST /v1/conversations/{id}/messages. Every message carries a client_id; the server never handles one client_id twice.",
+  "type": "object",
+  "required": ["client_id", "type", "content"],
+  "properties": {
+    "client_id": { "type": "string", "minLength": 1, "maxLength": 64, "description": "UUID v4." },
+    "type": { "enum": ["text", "button_reply", "form_submit", "attachment", "rating_submit"] },
+    "content": { "type": "object" }
+  },
+  "allOf": [
+    { "if": { "properties": { "type": { "const": "text" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/text" } } } },
+    { "if": { "properties": { "type": { "const": "button_reply" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/button_reply" } } } },
+    { "if": { "properties": { "type": { "const": "form_submit" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/form_submit" } } } },
+    { "if": { "properties": { "type": { "const": "attachment" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/attachment" } } } },
+    { "if": { "properties": { "type": { "const": "rating_submit" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/rating_submit" } } } }
+  ],
+  "$defs": {
+    "text": {
+      "type": "object",
+      "required": ["text"],
+      "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 4000 } }
+    },
+    "button_reply": {
+      "type": "object",
+      "required": ["reply_to", "button_id", "payload"],
+      "properties": {
+        "reply_to": { "type": "string", "pattern": "^msg_.+" },
+        "button_id": { "type": "string", "minLength": 1 },
+        "payload": { "type": "string", "minLength": 1 }
+      }
+    },
+    "form_submit": {
+      "type": "object",
+      "required": ["reply_to", "form_id", "values"],
+      "properties": {
+        "reply_to": { "type": "string", "pattern": "^msg_.+" },
+        "form_id": { "type": "string", "pattern": "^frm_.+" },
+        "values": { "type": "object" }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "required": ["upload_id"],
+      "properties": {
+        "upload_id": { "type": "string", "pattern": "^upl_.+" },
+        "caption": { "type": ["string", "null"], "maxLength": 4000 }
+      }
+    },
+    "rating_submit": {
+      "type": "object",
+      "required": ["reply_to", "score"],
+      "properties": {
+        "reply_to": { "type": "string", "pattern": "^msg_.+" },
+        "score": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "comment": { "type": ["string", "null"], "maxLength": 4000 }
+      }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+{ "cards": [ { "image_url": "https://...", "title": "Velosiped icarəsi", "subtitle": "30 dəq — 1 AZN",
+  "buttons": [ { "id": "btn_1", "title": "Ətraflı", "payload": "node:V1" }, { "id": "btn_2", "title": "Sayt", "url": "https://..." } ] } ] }

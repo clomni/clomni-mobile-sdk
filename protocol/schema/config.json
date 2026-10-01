@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/config.json",
+  "title": "Messenger configuration",
+  "description": "Body of GET /v1/mobile/config. The SDK keeps it on disk, uses it at once on the next launch and checks it in the background with If-None-Match.",
+  "type": "object",
+  "required": ["brand", "launcher", "home", "team", "bot", "composer", "languages", "strings", "limits"],
+  "properties": {
+    "brand": {
+      "type": "object",
+      "required": ["name", "primary_color"],
+      "properties": {
+        "name": { "type": "string" },
+        "logo_url": { "type": ["string", "null"], "format": "uri" },
+        "primary_color": { "$ref": "#/$defs/color" },
+        "on_primary_color": { "$ref": "#/$defs/color" },
+        "theme": { "enum": ["system", "light", "dark"], "default": "system" }
+      }
+    },
+    "launcher": {
+      "type": "object",
+      "required": ["visible"],
+      "properties": {
+        "visible": { "type": "boolean", "default": false, "description": "Off unless the customer turns it on." },
+        "position": { "enum": ["left", "right"], "default": "right" },
+        "bottom_padding": { "type": "integer", "minimum": 0 },
+        "icon": { "type": "string" }
+      }
+    },
+    "home": {
+      "type": "object",
+      "properties": {
+        "greeting_title": { "type": "string" },
+        "greeting_subtitle": { "type": "string" },
+        "show_team_avatars": { "type": "boolean" },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "url"],
+            "properties": {
+              "type": { "type": "string", "description": "instagram, whatsapp, linkedin, email, facebook, tiktok, twitter …" },
+              "url": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "cards": { "type": "array", "items": { "enum": ["recent_conversation", "new_conversation"] } }
+      }
+    },
+    "team": {
+      "type": "object",
+      "properties": {
+        "avatars": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "reply_time": { "type": "string" },
+        "office_hours": {
+          "type": "object",
+          "properties": { "tz": { "type": "string" }, "open_now": { "type": "boolean" } }
+        }
+      }
+    },
+    "bot": {
+      "type": "object",
+      "required": ["name"],
+      "properties": { "name": { "type": "string" }, "avatar_url": { "type": ["string", "null"], "format": "uri" } }
+    },
+    "composer": {
+      "type": "object",
+      "properties": {
+        "placeholder": { "type": "string" },
+        "attachments": { "type": "boolean" },
+        "emoji": { "type": "boolean" }
+      }
+    },
+    "languages": { "type": "array", "minItems": 1, "items": { "enum": ["az", "en", "ru"] } },
+    "strings": { "type": "object", "additionalProperties": { "type": "string" } },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "image_mb": { "type": "integer", "minimum": 1 },
+        "file_mb": { "type": "integer", "minimum": 1 },
+        "text_chars": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+  }
+}

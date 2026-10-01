@@ -1,0 +1,43 @@
+{
+  "id": "msg_f13",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 12,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "X",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Sualınızı seçin",
+    "buttons": [
+      {
+        "id": "o_long",
+        "title": "Gedişimi bitirdim, amma tətbiq hələ də gedişin davam etdiyini göstərir və balansımdan pul çıxılır, nə etməliyəm?",
+        "icon": null,
+        "payload": "node:X1"
+      },
+      {
+        "id": "o_short",
+        "title": "Başqa sual",
+        "icon": null,
+        "payload": "node:X2"
+      }
+    ],
+    "layout": "vertical",
+    "input_disabled": true,
+    "allow_back": false
+  },
+  "fallback_text": "Sualınızı seçin\nGedişimi bitirdim, amma tətbiq hələ də gedişin davam etdiyini göstərir və balansımdan pul çıxılır, nə etməliyəm? / Başqa sual",
+  "meta": {}
+}

@@ -1,0 +1,15 @@
+{
+  "cards": [
+    {
+      "title": "Tarif",
+      "buttons": [
+        {
+          "id": "b",
+          "title": "Seç",
+          "payload": "node:T",
+          "url": "https://apar.az"
+        }
+      ]
+    }
+  ]
+}

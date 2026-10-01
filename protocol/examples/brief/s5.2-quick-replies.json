@@ -1,0 +1,10 @@
+{
+  "text": "Aşağıda qeyd olunan başlıqlardan sizə ən uyğun olanı seçin.",
+  "buttons": [
+    { "id": "btn_s", "title": "Aktiv gediş ilə bağlı problem yaşayıram", "icon": null, "payload": "node:S" },
+    { "id": "btn_r", "title": "Ümumi məlumat əldə etmək istəyirəm", "icon": null, "payload": "node:R" }
+  ],
+  "layout": "vertical",
+  "input_disabled": true,
+  "allow_back": false
+}

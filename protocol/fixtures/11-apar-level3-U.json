@@ -1,0 +1,49 @@
+{
+  "id": "msg_f11",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 10,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "U",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Gedişi harada bitirmək istəyirsiniz?",
+    "buttons": [
+      {
+        "id": "o_n",
+        "title": "Yaşıl şərt: gedişi bitirə bilmirəm",
+        "icon": null,
+        "payload": "node:N"
+      },
+      {
+        "id": "o_ap",
+        "title": "Narıncı gediş bitirə bilmirəm",
+        "icon": null,
+        "payload": "node:AP"
+      },
+      {
+        "id": "o_as",
+        "title": "Skuterlə gedişi bitirə bilmirəm",
+        "icon": null,
+        "payload": "node:AS"
+      }
+    ],
+    "layout": "vertical",
+    "input_disabled": true,
+    "allow_back": true
+  },
+  "fallback_text": "Gedişi harada bitirmək istəyirsiniz?\nYaşıl şərt: gedişi bitirə bilmirəm / Narıncı gediş bitirə bilmirəm / Skuterlə gedişi bitirə bilmirəm",
+  "meta": {}
+}

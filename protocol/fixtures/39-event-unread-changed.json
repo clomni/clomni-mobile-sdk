@@ -1,0 +1,7 @@
+{
+  "event": "unread.changed",
+  "data": {
+    "total": 2
+  },
+  "ts": "2026-10-01T10:30:01Z"
+}

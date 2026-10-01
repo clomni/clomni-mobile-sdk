@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/
+# Android
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+.kotlin/
+# iOS
+.build/
+.swiftpm/
+xcuserdata/
+DerivedData/

@@ -1,0 +1,43 @@
+{
+  "id": "msg_f09",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 8,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "A",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz. Bu canlı çat deyil, lakin müraciətiniz qısa müddət ərzində cavablandırılacaq. ❤️\n\nAşağıda qeyd olunan başlıqlardan sizə ən uyğun olanı seçin.",
+    "buttons": [
+      {
+        "id": "o_s",
+        "title": "Aktiv gediş ilə bağlı problem yaşayıram",
+        "icon": null,
+        "payload": "node:S"
+      },
+      {
+        "id": "o_r",
+        "title": "Ümumi məlumat əldə etmək istəyirəm",
+        "icon": null,
+        "payload": "node:R"
+      }
+    ],
+    "layout": "vertical",
+    "input_disabled": true,
+    "allow_back": false
+  },
+  "fallback_text": "Aktiv gediş ilə bağlı problem yaşayıram / Ümumi məlumat əldə etmək istəyirəm",
+  "meta": {}
+}

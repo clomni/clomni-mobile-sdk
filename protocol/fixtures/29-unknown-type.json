@@ -1,0 +1,30 @@
+{
+  "id": "msg_f29",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "poll",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 28,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "P",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "question": "Hansı saat uyğundur?",
+    "choices": [
+      "10:00",
+      "14:00"
+    ]
+  },
+  "fallback_text": "Hansı saat uyğundur? 10:00 / 14:00",
+  "meta": {}
+}

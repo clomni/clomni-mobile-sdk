@@ -1,0 +1,21 @@
+{
+  "id": "msg_f06",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "operator",
+    "id": "op_42",
+    "name": "Leyla",
+    "avatar_url": "https://app.clomni.ai/a/leyla.png"
+  },
+  "created_at": "2026-10-01T10:44:00Z",
+  "seq": 6,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "text": "Bu linkə basmayın: [oyun](javascript:alert(1)) və [zəng](tel:+994501234567)"
+  },
+  "fallback_text": "Bu linkə basmayın: oyun və zəng",
+  "meta": {}
+}

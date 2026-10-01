@@ -1,0 +1,20 @@
+{
+  "id": "msg_f05",
+  "client_id": "0b1c2d3e-4f50-4a61-8b72-c83d94ea05fb",
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "user",
+    "id": "usr_12345",
+    "name": "Aysel Məmmədova"
+  },
+  "created_at": "2026-10-01T10:43:00Z",
+  "seq": 5,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "text": "👍🙏"
+  },
+  "fallback_text": "👍🙏",
+  "meta": {}
+}

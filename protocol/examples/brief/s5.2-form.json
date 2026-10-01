@@ -1,0 +1,11 @@
+{
+  "text": "Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
+  "form_id": "frm_contact",
+  "fields": [
+    { "key": "name",  "type": "text",  "label": "Ad, soyad", "required": true, "max_length": 80 },
+    { "key": "phone", "type": "phone", "label": "Telefon",   "required": true, "default_country": "AZ" },
+    { "key": "email", "type": "email", "label": "Email",     "required": false }
+  ],
+  "submit_title": "Göndər",
+  "submitted": null
+}

@@ -1,0 +1,9 @@
+{
+  "client_id": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+  "type": "button_reply",
+  "content": {
+    "reply_to": "msg_f09",
+    "button_id": "o_s",
+    "payload": "node:S"
+  }
+}

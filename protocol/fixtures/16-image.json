@@ -1,0 +1,24 @@
+{
+  "id": "msg_f16",
+  "client_id": "3c2b1a09-8f7e-4d6c-9b5a-4f3e2d1c0b9a",
+  "conversation_id": "conv_5521",
+  "type": "image",
+  "sender": {
+    "type": "user",
+    "id": "usr_12345",
+    "name": "Aysel Məmmədova"
+  },
+  "created_at": "2026-10-01T10:45:00Z",
+  "seq": 15,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "url": "https://app.clomni.ai/f/velo.jpg",
+    "thumb_url": "https://app.clomni.ai/f/velo_480.jpg",
+    "width": 1280,
+    "height": 960,
+    "caption": "Velosiped Nizami küçəsindədir"
+  },
+  "fallback_text": "Şəkil: Velosiped Nizami küçəsindədir",
+  "meta": {}
+}

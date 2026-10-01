@@ -1,0 +1,20 @@
+{
+  "id": "msg_f03",
+  "client_id": "6f1c2c8e-1b2a-4c3d-8e9f-0a1b2c3d4e5f",
+  "conversation_id": "conv_5521",
+  "type": "text",
+  "sender": {
+    "type": "user",
+    "id": "usr_12345",
+    "name": "Aysel Məmmədova"
+  },
+  "created_at": "2026-10-01T10:35:00Z",
+  "seq": 3,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "text": "Gedişim bitmədi, pul çıxılmağa davam edir"
+  },
+  "fallback_text": "Gedişim bitmədi, pul çıxılmağa davam edir",
+  "meta": {}
+}

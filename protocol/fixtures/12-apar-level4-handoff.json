@@ -1,0 +1,43 @@
+{
+  "id": "msg_f12",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 11,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_apar_az",
+    "node_id": "N",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Velosipedi yaşıl zonaya qoyun və kilidi bağlayın. Gediş yenə bitmirsə, operatora yazın.",
+    "buttons": [
+      {
+        "id": "o_yes",
+        "title": "Bəli, operatorla danışmaq istəyirəm",
+        "icon": null,
+        "payload": "handoff"
+      },
+      {
+        "id": "o_no",
+        "title": "Xeyr, problem həll olundu",
+        "icon": null,
+        "payload": "end"
+      }
+    ],
+    "layout": "vertical",
+    "input_disabled": true,
+    "allow_back": true
+  },
+  "fallback_text": "Gediş yenə bitmirsə, operatora yazın.\nBəli, operatorla danışmaq istəyirəm / Xeyr, problem həll olundu",
+  "meta": {}
+}

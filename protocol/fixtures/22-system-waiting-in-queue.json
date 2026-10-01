@@ -1,0 +1,20 @@
+{
+  "id": "msg_f22",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "system",
+  "sender": {
+    "type": "system"
+  },
+  "created_at": "2026-10-01T10:36:00Z",
+  "seq": 21,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "event": "waiting_in_queue",
+    "text": "Sizi operatora yönləndiririk",
+    "position": 3
+  },
+  "fallback_text": "Sizi operatora yönləndiririk",
+  "meta": {}
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/push.json",
+  "title": "Push payload",
+  "description": "The Clomni keys of a push: an FCM data message, or the keys next to aps on APNs. Sent only when the user has no open socket, grouped over 10 seconds.",
+  "type": "object",
+  "required": ["clomni", "type", "conversation_id", "title", "body"],
+  "properties": {
+    "clomni": { "const": "1" },
+    "type": { "const": "message" },
+    "conversation_id": { "type": "string", "pattern": "^conv_.+" },
+    "message_id": { "type": "string", "pattern": "^msg_.+" },
+    "title": { "type": "string" },
+    "body": { "type": "string", "maxLength": 180 },
+    "avatar_url": { "type": ["string", "null"], "format": "uri" },
+    "unread_total": { "type": "integer", "minimum": 0 }
+  }
+}
