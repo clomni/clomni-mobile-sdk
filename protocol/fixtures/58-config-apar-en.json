@@ -111,14 +111,14 @@
     "empty_list": "No conversations yet",
     "error": "Something went wrong",
     "retry": "Try again",
-    "offline": "No internet. Messages will be delivered when you are back online",
+    "offline": "No internet connection",
     "now": "now",
     "you": "You",
     "close": "Close",
     "unread": "Unread",
     "email": "Email",
     "phone": "Phone",
-    "header_subtitle": "The team can help too",
+    "header_subtitle": "Typically replies in a few minutes",
     "online": "online",
     "away": "Outside working hours",
     "composer_placeholder": "Write a message…",
@@ -151,7 +151,8 @@
     "days_short": "%d d",
     "away_until": "Next working hours: %@",
     "tomorrow": "tomorrow",
-    "support_messages": "Support messages"
+    "support_messages": "Support messages",
+    "loading": "Loading"
   },
   "limits": {
     "image_mb": 10,
