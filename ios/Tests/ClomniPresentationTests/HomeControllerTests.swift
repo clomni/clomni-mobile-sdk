@@ -114,10 +114,10 @@ final class HomeControllerTests: XCTestCase {
         XCTAssertFalse(home.home.tabs.messagesUnread)
         let before = renders
         await source.push(unread: 1, .typing(conversationId: "conv_1", sender: Sender(type: .operator), isTyping: true))
-        try await Task.sleep(nanoseconds: 20_000_000)
+        await home.settled()
         XCTAssertEqual(renders, before, "typing is the conversation screen's business")
         await source.push(unread: 2, .unread(total: 2))
-        try await Task.sleep(nanoseconds: 20_000_000)
+        await home.settled()
         XCTAssertTrue(home.home.tabs.messagesUnread)
         XCTAssertEqual(renders, before + 1)
 

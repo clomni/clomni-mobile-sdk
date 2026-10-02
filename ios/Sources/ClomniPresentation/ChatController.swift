@@ -57,13 +57,20 @@ package final class ChatController {
     private let typingTimeout: TimeInterval
     private var snapshot: ChatSnapshot
     private var observation: UUID?
-    private var typingHide: Task<Void, Never>?
+    private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
+    private let sleep: @Sendable (TimeInterval) async throws -> Void
+    /// Hides the typing indicator after `typingTimeout` without news.
+    package private(set) var typingHide: Task<Void, Never>?
 
     /// `known`: the user's name, email and phone, filled into forms. The typing indicator hides itself after
-    /// `typingTimeout` (8 s) without news.
+    /// `typingTimeout` (8 s) without news, measured by `sleep`.
     package init(source: ChatDataSource, conversationId: String, language: String?, known: [String: String] = [:],
                 timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() },
-                typingTimeout: TimeInterval = 8) {
+                typingTimeout: TimeInterval = 8,
+                sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+                    try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                }) {
+        self.sleep = sleep
         self.source = source
         self.conversationId = conversationId
         self.language = language
@@ -85,9 +92,7 @@ package final class ChatController {
         await read()
         render()
         if observation == nil {
-            observation = await source.observe { [weak self] change in
-                Task { @MainActor in await self?.changed(change) }
-            }
+            observation = await source.observe { [changes] change in changes.submit(change) }
         }
         if await source.conversation(conversationId) == nil {
             try? await source.refreshConversation(conversationId)
@@ -201,6 +206,11 @@ package final class ChatController {
 
     // MARK: - The engine's changes
 
+    /// Every change the engine reported so far is on screen.
+    package func settled() async {
+        await changes.settled()
+    }
+
     func changed(_ change: ClomniChange) async {
         switch change {
         case .messages(let id) where id == conversationId:
@@ -236,8 +246,12 @@ package final class ChatController {
         render()
         guard sender != nil else { return }
         let timeout = typingTimeout
-        typingHide = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+        typingHide = Task { [weak self, sleep] in
+            do {
+                try await sleep(timeout)
+            } catch {
+                return
+            }
             guard !Task.isCancelled else { return }
             self?.showTyping(nil)
         }

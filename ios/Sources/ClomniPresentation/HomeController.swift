@@ -45,6 +45,12 @@ package final class HomeController {
     private let now: @Sendable () -> Date
     private var snapshot: MessengerSnapshot
     private var observation: UUID?
+    private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
+
+    /// Every change the engine reported so far is on screen.
+    package func settled() async {
+        await changes.settled()
+    }
 
     package init(source: MessengerDataSource, language: String?, userName: String?, timeZone: TimeZone = .current,
                 now: @escaping @Sendable () -> Date = { Date() }) {
@@ -64,9 +70,7 @@ package final class HomeController {
         await read()
         render()
         if observation == nil {
-            observation = await source.observe { [weak self] change in
-                Task { @MainActor in await self?.changed(change) }
-            }
+            observation = await source.observe { [changes] change in changes.submit(change) }
         }
         let config = await source.refreshConfig(language: language)
         snapshot.configLoad = config == nil ? .failed : .loaded

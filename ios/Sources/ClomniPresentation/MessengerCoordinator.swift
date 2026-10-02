@@ -88,6 +88,7 @@ package final class MessengerCoordinator {
     private var bottomPaddingOverride: Double?
     private var listeners: [UUID: (Int) -> Void] = [:]
     private var observation: UUID?
+    private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
     /// END messages already seen, per conversation; a conversation's first look reports none (they are history).
     private var finished: [String: Set<String>] = [:]
 
@@ -321,9 +322,12 @@ package final class MessengerCoordinator {
 
     private func listen() async {
         guard observation == nil else { return }
-        observation = await session.observe { [weak self] change in
-            Task { @MainActor in await self?.changed(change) }
-        }
+        observation = await session.observe { [changes] change in changes.submit(change) }
+    }
+
+    /// Every change the SDK reported so far is handled.
+    package func settled() async {
+        await changes.settled()
     }
 
     func changed(_ change: ClomniChange) async {

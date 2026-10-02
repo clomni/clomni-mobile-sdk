@@ -119,10 +119,14 @@ final class ChatControllerTests: XCTestCase {
     private let source = FakeChat()
     private var renders = 0
 
-    private func controller(typingTimeout: TimeInterval = 8) -> ChatController {
+    private let timer = ManualTimer()
+
+    private func controller() -> ChatController {
+        let timer = timer
         let chat = ChatController(source: source, conversationId: "conv_5521", language: "az",
                                   known: ["name": "Aysel"], timeZone: TimeZone(identifier: "UTC")!,
-                                  now: { Date(timeIntervalSince1970: 1_790_850_720) }, typingTimeout: typingTimeout)
+                                  now: { Date(timeIntervalSince1970: 1_790_850_720) },
+                                  sleep: { try await timer.sleep($0) })
         chat.onChange = { [weak self] in self?.renders += 1 }
         return chat
     }
@@ -211,7 +215,7 @@ final class ChatControllerTests: XCTestCase {
         let fine = await chat.sendFile(Data(count: 5), fileName: "velo.jpg", mime: "image/jpeg", caption: "Velosiped")
         XCTAssertNil(fine)
         await source.push(.messages(conversationId: "conv_5521"))
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         let images = chat.screen.items.compactMap { item -> URL? in
             if case .bubble(let bubble) = item, case .image(let image) = bubble.body { return image.localFile }
             return nil
@@ -225,29 +229,32 @@ final class ChatControllerTests: XCTestCase {
 
     func testTypingShowsAndHides() async throws {
         await source.set([Fixture.message("03-text-user.json")])
-        let chat = controller(typingTimeout: 0.05)
+        let chat = controller()
         await chat.load()
         let leyla = Sender(type: .operator, name: "Leyla")
         await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: true))
         await source.push(.typing(conversationId: "conv_other", sender: leyla, isTyping: true))
-        try await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         guard case .typing? = chat.screen.items.last else { return XCTFail("typing shows") }
-        try await Task.sleep(nanoseconds: 100_000_000)
+        // The timeout passes (on the test's clock).
+        await timer.waitForSleepers(1)
+        await timer.fire()
+        await chat.typingHide?.value
         if case .typing? = chat.screen.items.last { XCTFail("hidden after the timeout") }
 
         // A message from the one typing ends it at once.
         await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: true))
-        try await Task.sleep(nanoseconds: 10_000_000)
+        await chat.settled()
+        guard case .typing? = chat.screen.items.last else { return XCTFail("typing shows again") }
         await source.set([Fixture.message("03-text-user.json"),
                           Fixture.message("31-operator-no-avatar.json", ["created_at": "2026-10-01T10:31:00Z"])])
         await source.push(.messages(conversationId: "conv_5521"))
-        try await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         if case .typing? = chat.screen.items.last { XCTFail("the message replaced the indicator") }
 
         await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: true))
-        try await Task.sleep(nanoseconds: 10_000_000)
         await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: false))
-        try await Task.sleep(nanoseconds: 10_000_000)
+        await chat.settled()
         if case .typing? = chat.screen.items.last { XCTFail("off is off") }
     }
 
@@ -257,11 +264,11 @@ final class ChatControllerTests: XCTestCase {
         let before = renders
         await source.push(.unread(total: 3))
         await source.push(.messages(conversationId: "conv_other"))
-        try await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         XCTAssertEqual(renders, before, "not this conversation's business")
         await source.push(.read(conversationId: "conv_5521", upToSeq: 3))
         await source.push(.conversations)
-        try await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         XCTAssertEqual(renders, before + 2)
         chat.isOffline = true
         XCTAssertEqual(chat.screen.offline, "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
@@ -286,10 +293,10 @@ final class ChatControllerTests: XCTestCase {
 
         // The first message made the server create it: the screen follows the conversation's id.
         await source.push(.conversationCreated(draft: "draft_1", conversationId: "conv_new"))
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         XCTAssertEqual(chat.conversationId, "conv_new")
         await source.push(.conversationCreated(draft: "draft_9", conversationId: "conv_other"))
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        await chat.settled()
         XCTAssertEqual(chat.conversationId, "conv_new", "another draft's")
         made = await calls()
         XCTAssertFalse(made.contains("start"))
@@ -298,5 +305,33 @@ final class ChatControllerTests: XCTestCase {
     func testTheEngineIsAChatSource() {
         let engine: ChatDataSource = ClomniEngine(appId: "app_test", apiKey: "ios_sdk-test")
         XCTAssertNotNil(engine)
+    }
+}
+
+/// The typing timeout's clock in tests: a sleep lasts until `fire`, not for real seconds.
+actor ManualTimer {
+    private var sleepers: [CheckedContinuation<Void, Error>] = []
+    private var arrivals: [(count: Int, waiter: CheckedContinuation<Void, Never>)] = []
+
+    func sleep(_ seconds: TimeInterval) async throws {
+        try await withCheckedThrowingContinuation { (sleeper: CheckedContinuation<Void, Error>) in
+            sleepers.append(sleeper)
+            let ready = arrivals.filter { $0.count <= sleepers.count }
+            arrivals.removeAll { $0.count <= sleepers.count }
+            ready.forEach { $0.waiter.resume() }
+        }
+    }
+
+    /// Until `count` sleeps are waiting.
+    func waitForSleepers(_ count: Int) async {
+        guard sleepers.count < count else { return }
+        await withCheckedContinuation { arrivals.append((count, $0)) }
+    }
+
+    /// Every waiting sleep ends.
+    func fire() {
+        let waking = sleepers
+        sleepers = []
+        waking.forEach { $0.resume() }
     }
 }

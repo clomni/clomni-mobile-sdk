@@ -203,7 +203,9 @@ final class EdgeCaseTests: EngineTestCase {
         XCTAssertTrue(reconnected)
         phone.socket.ready()
         await expect { await phone.messages(id).count == 2 }
-        XCTAssertEqual(server.requests("GET", "/messages").last?.url.query, "after_seq=1&limit=100")
+        // The gap's fetch; a catch-up after the socket opened may come after it, so not necessarily the last request.
+        XCTAssertTrue(server.requests("GET", "/messages").contains { $0.url.query == "after_seq=1&limit=100" },
+                      "\(server.requests("GET", "/messages").map(\.url.query))")
         let caughtUp = await phone.messages(id).last?.content
         XCTAssertEqual(caughtUp, .text("Siz yox ikən yazdıq"))
     }
@@ -230,7 +232,9 @@ final class EdgeCaseTests: EngineTestCase {
         server.botSays("itən", in: id, silently: true)
         server.botSays("gələn", in: id)
         await expect { await phone.messages(id).map(\.seq) == [1, 2, 3] }
-        XCTAssertEqual(server.requests("GET", "/messages").last?.url.query, "after_seq=1&limit=100")
+        // The gap's fetch; a catch-up after the socket opened may come after it, so not necessarily the last request.
+        XCTAssertTrue(server.requests("GET", "/messages").contains { $0.url.query == "after_seq=1&limit=100" },
+                      "\(server.requests("GET", "/messages").map(\.url.query))")
     }
 
     /// "İki cihaz": a button pressed on one phone is disabled on the other through message.updated.
