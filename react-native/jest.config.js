@@ -6,11 +6,11 @@ module.exports = {
     '^.+\\.ts$': ['ts-jest', { tsconfig: { module: 'CommonJS', moduleResolution: 'Node', target: 'ES2020',
       esModuleInterop: true, strict: true, skipLibCheck: true, types: ['jest'] } }],
   },
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/plugin'],
   moduleNameMapper: {
     '^react-native$': '<rootDir>/test/react-native.ts',
   },
   // NativeClomni.ts is codegen's spec; the app never runs it.
-  collectCoverageFrom: ['src/**/*.ts', '!src/__tests__/**', '!src/NativeClomni.ts'],
+  collectCoverageFrom: ['src/**/*.ts', 'plugin/**/*.js', '!src/__tests__/**', '!plugin/__tests__/**', '!src/NativeClomni.ts'],
   coverageThreshold: { global: { lines: 90, branches: 85 } },
 };
