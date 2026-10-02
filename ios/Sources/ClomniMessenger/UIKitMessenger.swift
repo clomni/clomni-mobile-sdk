@@ -20,10 +20,17 @@ final class UIKitMessenger: MessengerRenderer {
     private let launcher = LauncherController()
     private var presented: UIViewController?
     private var typeface: Typeface?
+    private var themeOverride = ThemeOverride()
 
     init(engine: ClomniEngine, coordinator: MessengerCoordinator) {
         self.engine = engine
         self.coordinator = coordinator
+    }
+
+    func setThemeOverride(_ override: ThemeOverride) {
+        themeOverride = override
+        rootModel.themeOverride = override
+        render()
     }
 
     func setTypeface(_ family: String?) {
@@ -47,7 +54,8 @@ final class UIKitMessenger: MessengerRenderer {
             presented.dismiss(animated: true)
         }
         if let state = coordinator.launcher {
-            launcher.show(state, config: coordinator.config, typeface: typeface) { [weak coordinator] in
+            launcher.show(state, config: coordinator.config, typeface: typeface, themeOverride: themeOverride) {
+                [weak coordinator] in
                 coordinator?.present(source: "launcher")
             }
         } else {
@@ -85,6 +93,7 @@ final class MessengerRootModel: ObservableObject {
     @Published private(set) var source: String?
     @Published private(set) var preparationFailed = false
     @Published var typeface: Typeface?
+    @Published var themeOverride = ThemeOverride()
 
     func update(from coordinator: MessengerCoordinator) {
         if route != coordinator.route { route = coordinator.route }

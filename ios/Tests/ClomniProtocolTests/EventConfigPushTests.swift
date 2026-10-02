@@ -82,78 +82,92 @@ final class RealtimeEventTests: ProtocolTestCase {
 final class MessengerConfigTests: ProtocolTestCase {
     func testAparConfig() throws {
         let config = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("42-config-apar.json")))
+        XCTAssertEqual(config.version, 12)
         XCTAssertEqual(config.brand.name, "Apar")
-        XCTAssertEqual(config.brand.logoUrl?.absoluteString, "https://app.clomni.ai/a/apar.png")
+        XCTAssertEqual(config.brand.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
+        XCTAssertNil(config.brand.logoDarkUrl)
         XCTAssertEqual(config.brand.primaryColor, "#1F9D63")
-        XCTAssertEqual(config.brand.onPrimaryColor, "#FFFFFF")
-        XCTAssertEqual(config.brand.theme, .system)
-        XCTAssertFalse(config.launcher.visible)
-        XCTAssertEqual(config.launcher.position, .right)
-        XCTAssertEqual(config.launcher.bottomPadding, 20)
-        XCTAssertEqual(config.launcher.icon, "default")
-        XCTAssertEqual(config.home.greetingTitle, "Necə kömək edə bilərik?")
-        XCTAssertEqual(config.home.greetingSubtitle, "Bizdən nəsə soruşun və ya fikrinizi bildirin")
-        XCTAssertTrue(config.home.showTeamAvatars)
-        XCTAssertEqual(config.home.channels.map(\.type), ["instagram", "whatsapp", "linkedin", "email"])
-        XCTAssertEqual(config.home.channels.last?.url.absoluteString, "mailto:support@apar.az")
-        XCTAssertEqual(config.home.cards, [.recentConversation, .newConversation])
+        XCTAssertEqual(config.brand.headerStyle, .gradient)
+        XCTAssertNil(config.brand.headerImageUrl)
+        XCTAssertFalse(config.brand.glow)
+        XCTAssertEqual(config.brand.colors?.light, MessengerConfig.Palette(
+            primary: "#1F9D63", onPrimary: "#000000", primarySoft: "#E9F5EF", primaryLine: "#CEE9DD",
+            headerFrom: "#1F9D63", headerTo: "#177248", headerText: "#FFFFFF"))
+        XCTAssertEqual(config.brand.colors?.dark.primary, "#27C87E")
+        XCTAssertEqual(config.team.show, true)
         XCTAssertEqual(config.team.avatars.count, 3)
         XCTAssertEqual(config.team.replyTime, "Adətən bir neçə dəqiqəyə cavab veririk")
+        XCTAssertEqual(config.team.replyTimeOffline, "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik")
         XCTAssertEqual(config.team.officeHours, MessengerConfig.OfficeHours(timeZone: "Asia/Baku", openNow: true,
                                                                             nextOpenAt: nil))
-        XCTAssertEqual(config.bot.name, "Clomni")
-        XCTAssertEqual(config.bot.avatarUrl?.absoluteString, "https://app.clomni.ai/a/bot.png")
-        XCTAssertEqual(config.composer.placeholder, "Mesaj yazın…")
-        XCTAssertTrue(config.composer.attachments)
-        XCTAssertTrue(config.composer.emoji)
+        XCTAssertEqual(config.bot, MessengerConfig.Bot(name: "Clomni", avatarUrl: nil))
+        XCTAssertEqual(config.home.cards, [.send, .recent, .channels])
+        XCTAssertEqual(config.home.channels.map(\.type), ["instagram", "whatsapp", "linkedin", "email"])
+        XCTAssertEqual(config.theme, MessengerConfig.Theme(
+            mode: .system, launcher: MessengerConfig.Launcher(enabled: false, position: .right, bottomPadding: 20)))
+        XCTAssertEqual(config.composer, MessengerConfig.Composer(attachments: true, emoji: true))
         XCTAssertEqual(config.languages, ["az", "en", "ru"])
-        XCTAssertEqual(config.strings["choose_above"], "Yuxarıdakı variantlardan birini seçin")
-        XCTAssertEqual(config.strings.count, 7)
+        XCTAssertEqual(config.strings["send_card_title"], "Bizə mesaj göndərin")
+        XCTAssertEqual(config.strings["greeting_line1"], "Salam, {first_name} 👋")
         XCTAssertEqual(config.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 25, textChars: 4000))
+        XCTAssertTrue(config.poweredBy)
     }
 
     func testMinimalConfigTakesDefaults() throws {
         let config = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("43-config-minimal.json")))
+        XCTAssertEqual(config.version, 1)
         XCTAssertEqual(config.brand.name, "Clomni, Inc.")
         XCTAssertEqual(config.brand.primaryColor, "#10A670")
         XCTAssertNil(config.brand.logoUrl)
-        XCTAssertNil(config.brand.onPrimaryColor)
-        XCTAssertEqual(config.brand.theme, .system)
-        XCTAssertEqual(config.launcher, MessengerConfig.Launcher(visible: false, position: .right, bottomPadding: 20,
-                                                                 icon: "default"))
-        XCTAssertNil(config.home.greetingTitle)
+        XCTAssertNil(config.brand.logoDarkUrl)
+        XCTAssertEqual(config.brand.colors?.dark.headerText, "#1B1D21", "light green: dark text")
+        XCTAssertEqual(config.brand.headerStyle, .solid)
+        XCTAssertEqual(config.theme, MessengerConfig.Theme(
+            mode: .system, launcher: MessengerConfig.Launcher(enabled: false, position: .right, bottomPadding: 20)))
+        XCTAssertEqual(config.home.cards, [.send])
         XCTAssertTrue(config.home.channels.isEmpty)
-        XCTAssertEqual(config.home.cards, [.newConversation])
-        XCTAssertEqual(config.team, MessengerConfig.Team(avatars: [], replyTime: nil, officeHours: nil))
+        XCTAssertEqual(config.team, MessengerConfig.Team(
+            show: false, avatars: [], replyTime: "Adətən bir neçə dəqiqəyə cavab veririk",
+            replyTimeOffline: "Hazırda iş saatı deyil, iş saatında cavab verəcəyik",
+            officeHours: MessengerConfig.OfficeHours(timeZone: nil, openNow: true, nextOpenAt: nil)))
         XCTAssertEqual(config.bot, MessengerConfig.Bot(name: "Clomni", avatarUrl: nil))
-        XCTAssertEqual(config.composer, MessengerConfig.Composer(placeholder: nil, attachments: true, emoji: true))
         XCTAssertEqual(config.languages, ["az"])
         XCTAssertTrue(config.strings.isEmpty)
-        XCTAssertEqual(config.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 25, textChars: 4000))
+        XCTAssertTrue(config.poweredBy)
     }
 
     func testEmptyAndOddConfigs() throws {
         let empty = try XCTUnwrap(ProtocolJSON.parseConfig(Data("{}".utf8)))
+        XCTAssertEqual(empty.version, 0)
         XCTAssertEqual(empty.brand.name, "")
-        XCTAssertEqual(empty.home.cards, [.recentConversation, .newConversation])
+        XCTAssertEqual(empty.home.cards, [.send, .recent, .channels], "no list: every card")
         XCTAssertEqual(empty.languages, ["az"])
 
-        let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"""
-        {"brand":{"name":"X","primary_color":"#12345","on_primary_color":"#abcdef","theme":"neon"},
-         "launcher":{"visible":true,"position":"left","bottom_padding":-4},
-         "home":{"channels":[{"type":"x"},{"type":"tiktok","url":"https://tiktok.com/@x"}],"cards":["promo","new_conversation"]},
-         "team":{"avatars":["https://a/1.png",7],"office_hours":{"tz":"Asia/Baku"}},
-         "strings":{"send":"Göndər","count":3},"languages":[],"limits":{"image_mb":0,"file_mb":5}}
-        """#.utf8)))
+        let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
+        {"brand":{"name":"X","primary_color":"#12345","header_style":"neon","glow":"yes",
+                  "colors":{"light":{"primary":"#1F9D63"},"dark":{}}},
+         "theme":{"mode":"neon","launcher":{"enabled":true,"position":"left","bottom_padding":500}},
+         "home":{"channels":[{"type":"x"},{"type":"tiktok","url":"https://tiktok.com/@x"},
+                             {"type":"a","url":"https://a.az"},{"type":"b","url":"https://b.az"},
+                             {"type":"c","url":"https://c.az"},{"type":"d","url":"https://d.az"},
+                             {"type":"e","url":"https://e.az"}],
+                 "cards":["channels","promo","recent","channels"]},
+         "team":{"show":false,"avatars":["https://a/1.png",7],"office_hours":{"tz":"Asia/Baku"}},
+         "strings":{"send":"Göndər","count":3},"languages":[],"limits":{"image_mb":0,"file_mb":5},
+         "powered_by":false}
+        """##.utf8)))
         XCTAssertEqual(odd.brand.primaryColor, MessengerConfig.Brand.defaultPrimaryColor)
-        XCTAssertEqual(odd.brand.onPrimaryColor, "#abcdef")
-        XCTAssertEqual(odd.brand.theme, .system)
-        XCTAssertEqual(odd.launcher, MessengerConfig.Launcher(visible: true, position: .left, bottomPadding: 20,
-                                                              icon: "default"))
-        XCTAssertEqual(odd.home.channels.map(\.type), ["tiktok"])
-        XCTAssertEqual(odd.home.cards, [.newConversation])
+        XCTAssertEqual(odd.brand.headerStyle, .gradient)
+        XCTAssertFalse(odd.brand.glow)
+        XCTAssertNil(odd.brand.colors, "an incomplete set is no set")
+        XCTAssertEqual(odd.theme, MessengerConfig.Theme(
+            mode: .system, launcher: MessengerConfig.Launcher(enabled: true, position: .left, bottomPadding: 20)))
+        XCTAssertEqual(odd.home.channels.map(\.type), ["tiktok", "a", "b", "c", "d"], "at most five")
+        XCTAssertEqual(odd.home.cards, [.send, .channels, .recent], "send always, each card once, in order")
+        XCTAssertFalse(odd.team.show)
         XCTAssertEqual(odd.team.avatars.count, 1)
         XCTAssertEqual(odd.team.officeHours?.openNow, true)
+        XCTAssertFalse(odd.poweredBy)
         let closed = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
             #"{"team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}"#.utf8)))
         XCTAssertEqual(closed.team.officeHours?.nextOpenAt, Date(timeIntervalSince1970: 1_790_917_200))
@@ -161,6 +175,12 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(odd.strings, ["send": "Göndər"])
         XCTAssertEqual(odd.languages, ["az"])
         XCTAssertEqual(odd.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 5, textChars: 4000))
+
+        let image = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
+            #"{"brand":{"header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/h","glow":true}}"#.utf8)))
+        XCTAssertEqual(image.brand.headerStyle, .image)
+        XCTAssertEqual(image.brand.headerImageUrl?.absoluteString, "https://app.clomni.ai/v1/images/h")
+        XCTAssertTrue(image.brand.glow)
     }
 
     func testNotAConfig() {

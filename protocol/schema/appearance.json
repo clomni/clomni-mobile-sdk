@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/appearance.json",
+  "title": "Messenger appearance",
+  "description": "The document the panel edits for an App SDK inbox (a draft, then published versions); GET /mobile/config is built from the published one. The panel and the server check it with this schema, the server with json_schemer's draft 7, so only keywords draft 7 knows are used. Images are ids of uploaded images (img_…). The server also checks what a schema cannot: that each image belongs to the inbox and fits its place, and that at most 5 channels are enabled.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["brand", "team", "bot", "texts", "home", "theme", "powered_by"],
+  "properties": {
+    "brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "primary_color", "header_style", "glow"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "primary_color": { "$ref": "#/$defs/color" },
+        "header_style": { "enum": ["gradient", "solid", "image"] },
+        "glow": { "type": "boolean" },
+        "logo": { "$ref": "#/$defs/image" },
+        "logo_dark": { "$ref": "#/$defs/image" },
+        "header_image": { "$ref": "#/$defs/image" }
+      }
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["show", "mode", "avatars", "reply_time"],
+      "properties": {
+        "show": { "type": "boolean" },
+        "mode": { "enum": ["auto", "manual"], "description": "auto: the inbox's three most recently active agents; manual: avatars." },
+        "avatars": { "type": "array", "maxItems": 3, "items": { "type": "string", "pattern": "^img_[A-Za-z0-9]{8,40}$" } },
+        "reply_time": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["preset"],
+          "properties": {
+            "preset": { "enum": ["minutes", "hour", "day", "custom"] },
+            "custom": { "$ref": "#/$defs/text60" }
+          },
+          "if": { "properties": { "preset": { "const": "custom" } } },
+          "then": { "required": ["custom"] }
+        },
+        "reply_time_offline": { "$ref": "#/$defs/text80" }
+      }
+    },
+    "bot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "maxLength": 24, "description": "Empty: the inbox's business name." },
+        "avatar": { "$ref": "#/$defs/image" }
+      }
+    },
+    "texts": {
+      "type": "object",
+      "description": "Overrides of strings.json, per key and language; a language left out keeps the default.",
+      "additionalProperties": false,
+      "properties": {
+        "greeting_line1": { "$ref": "#/$defs/text40" },
+        "greeting_line1_anonymous": { "$ref": "#/$defs/text40" },
+        "greeting_line2": { "$ref": "#/$defs/text40" },
+        "send_card_title": { "$ref": "#/$defs/text40" },
+        "composer_placeholder": { "$ref": "#/$defs/text40" },
+        "header_subtitle": { "$ref": "#/$defs/text40" },
+        "tab_home": { "$ref": "#/$defs/text16" },
+        "tab_messages": { "$ref": "#/$defs/text16" },
+        "empty_list": { "$ref": "#/$defs/text60" },
+        "closed": { "$ref": "#/$defs/text60" },
+        "offline": { "$ref": "#/$defs/text80" }
+      }
+    },
+    "home": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cards", "channels"],
+      "properties": {
+        "cards": {
+          "type": "array",
+          "description": "In the order shown; send is always there.",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "enum": ["send", "recent", "channels"] },
+          "contains": { "const": "send" }
+        },
+        "channels": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/channel" }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "launcher"],
+      "properties": {
+        "mode": { "enum": ["system", "light", "dark"] },
+        "launcher": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "position", "bottom_padding"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "position": { "enum": ["left", "right"] },
+            "bottom_padding": { "type": "integer", "minimum": 0, "maximum": 200 }
+          }
+        }
+      }
+    },
+    "powered_by": { "type": "boolean", "description": "false only counts on a plan that allows it (app_sdk_white_label)." }
+  },
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "image": { "type": ["string", "null"], "pattern": "^img_[A-Za-z0-9]{8,40}$" },
+    "text16": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "az": { "type": "string", "maxLength": 16 },
+        "en": { "type": "string", "maxLength": 16 },
+        "ru": { "type": "string", "maxLength": 16 }
+      }
+    },
+    "text40": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "az": { "type": "string", "maxLength": 40 },
+        "en": { "type": "string", "maxLength": 40 },
+        "ru": { "type": "string", "maxLength": 40 }
+      }
+    },
+    "text60": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "az": { "type": "string", "maxLength": 60 },
+        "en": { "type": "string", "maxLength": 60 },
+        "ru": { "type": "string", "maxLength": 60 }
+      }
+    },
+    "text80": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "az": { "type": "string", "maxLength": 80 },
+        "en": { "type": "string", "maxLength": 80 },
+        "ru": { "type": "string", "maxLength": 80 }
+      }
+    },
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "url", "enabled"],
+      "properties": {
+        "type": { "enum": ["instagram", "whatsapp", "facebook", "telegram", "linkedin", "tiktok", "email", "phone"] },
+        "url": { "type": "string", "maxLength": 500 },
+        "enabled": { "type": "boolean" }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "whatsapp" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^https://wa\\.me/\\S+$" } } } },
+        { "if": { "properties": { "type": { "const": "email" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^mailto:[^@\\s]+@[^@\\s]+$" } } } },
+        { "if": { "properties": { "type": { "const": "phone" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^tel:\\+?[0-9][0-9 ()-]{2,}$" } } } },
+        { "if": { "properties": { "type": { "const": "instagram" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^https://(www\\.)?instagram\\.com/\\S+$" } } } },
+        { "if": { "properties": { "type": { "const": "facebook" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^https://(www\\.|m\\.)?(facebook\\.com|fb\\.com)/\\S+$" } } } },
+        { "if": { "properties": { "type": { "const": "telegram" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^https://(t\\.me|telegram\\.me)/\\S+$" } } } },
+        { "if": { "properties": { "type": { "const": "linkedin" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^https://([a-z]{2,3}\\.)?linkedin\\.com/\\S+$" } } } },
+        { "if": { "properties": { "type": { "const": "tiktok" } } }, "then": { "properties": { "url": { "type": "string", "pattern": "^https://(www\\.)?tiktok\\.com/\\S+$" } } } }
+      ]
+    }
+  }
+}

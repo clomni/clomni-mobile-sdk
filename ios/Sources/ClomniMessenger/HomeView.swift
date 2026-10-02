@@ -51,8 +51,8 @@ struct HomeHeaderView: View {
             HStack(spacing: CGFloat(ClomniTheme.Space.l)) {
                 BrandMark(header: header, theme: theme)
                 Spacer(minLength: 0)
-                TeamAvatars(urls: header.teamAvatars, ring: theme.colors.primaryDark, theme: theme)
-                CloseButton(label: header.closeLabel, color: theme.colors.onPrimary, action: close)
+                TeamAvatars(urls: header.teamAvatars, ring: theme.colors.headerFrom, theme: theme)
+                CloseButton(label: header.closeLabel, color: ink, action: close)
             }
             .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
             VStack(alignment: .leading, spacing: 0) {
@@ -64,17 +64,70 @@ struct HomeHeaderView: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
         }
-        .foregroundStyle(theme.colors.onPrimary.color)
+        .foregroundStyle(ink.color)
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xxl))
         // 62 = the 40 the cards ride up + 22 of air above them.
         .padding(.bottom, 62)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            // The only gradient in the messenger: primaryDark at the top to primary, behind the status bar too.
-            LinearGradient(gradient: Gradient(colors: [theme.colors.primaryDark.color, theme.colors.primary.color]),
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea(edges: .top)
+            ZStack {
+                if header.glow {
+                    HeaderGlow(color: theme.colors.primary)
+                }
+                HeaderBackground(style: header.style, theme: theme)
+            }
+            .ignoresSafeArea(edges: .top)
         }
+    }
+
+    /// header_text: white over a picture (its dark veil), else white or near-black by the header's colours.
+    private var ink: RGBColor {
+        if case .image = header.style { return .white }
+        return theme.colors.headerText
+    }
+}
+
+/// The glow (APPEARANCE-CONTRACT 1): a soft radial light of the brand colour at 25% behind the header, so it shows
+/// where it spills out under it, around the cards, whatever the header's style; as the panel's preview and Android
+/// draw it: an ellipse 140% of the header's width and 260 pt tall, from 45% of the header's height down.
+struct HeaderGlow: View {
+    let color: RGBColor
+
+    var body: some View {
+        GeometryReader { proxy in
+            EllipticalGradient(gradient: Gradient(colors: [color.color.opacity(0.25), .clear]),
+                               center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5)
+                .frame(width: proxy.size.width * 1.4, height: 260)
+                .position(x: proxy.size.width / 2, y: proxy.size.height * 0.45 + 130)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Behind the header and the status bar: the brand gradient (header_from at the top to header_to; one colour when
+/// solid) or the panel's picture under a black veil, 35% at the top to 55% at the bottom.
+struct HeaderBackground: View {
+    let style: HomeScreen.Style
+    let theme: ClomniTheme
+
+    var body: some View {
+        ZStack {
+            switch style {
+            case .gradient, .solid:
+                LinearGradient(gradient: Gradient(colors: [theme.colors.headerFrom.color, theme.colors.headerTo.color]),
+                               startPoint: .top, endPoint: .bottom)
+            case .image(let url):
+                GeometryReader { proxy in
+                    RemoteImage(url: url, kind: .header, points: proxy.size.width, theme: theme)
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                }
+                LinearGradient(gradient: Gradient(colors: [Color.black.opacity(0.35), Color.black.opacity(0.55)]),
+                               startPoint: .top, endPoint: .bottom)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -88,14 +141,10 @@ struct BrandMark: View {
             ZStack {
                 RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.logo), style: .continuous)
                     .fill(Color.white)
-                if let logo = header.logoUrl {
-                    AsyncImage(url: logo) { phase in
-                        if let image = phase.image {
-                            image.resizable().scaledToFit().padding(3)
-                        } else {
-                            Color.clear
-                        }
-                    }
+                // The dark-mode logo when the panel has one.
+                if let logo = (theme.isDark ? header.logoDarkUrl : nil) ?? header.logoUrl {
+                    RemoteImage(url: logo, kind: .icon, points: ClomniTheme.Size.logo, theme: theme, fit: true)
+                        .padding(3)
                 } else {
                     Text(header.brandInitial)
                         .clomniFixedFont(13, .bold)
@@ -171,14 +220,29 @@ struct HomeCardsView: View {
                     FailureView(failure: failure, theme: theme, retry: actions.retry)
                 }
             case .ready:
-                if let card = screen.newConversation {
-                    NewConversationCardView(card: card, theme: theme, action: actions.newConversation)
+                // In the panel's order.
+                ForEach(screen.order, id: \.self) { card in
+                    switch card {
+                    case .send:
+                        if let send = screen.newConversation {
+                            NewConversationCardView(card: send, theme: theme, action: actions.newConversation)
+                        }
+                    case .recent:
+                        if let recent = screen.recent {
+                            RecentCardView(card: recent, theme: theme, open: actions.openConversation)
+                        }
+                    case .channels:
+                        if let channels = screen.channels {
+                            ChannelsCardView(card: channels, theme: theme)
+                        }
+                    }
                 }
-                if let recent = screen.recent {
-                    RecentCardView(card: recent, theme: theme, open: actions.openConversation)
-                }
-                if let channels = screen.channels {
-                    ChannelsCardView(card: channels, theme: theme)
+                if let poweredBy = screen.poweredBy {
+                    Text(verbatim: poweredBy)
+                        .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
+                        .foregroundStyle(theme.colors.textSecondary.color)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, CGFloat(ClomniTheme.Space.s))
                 }
             }
         }

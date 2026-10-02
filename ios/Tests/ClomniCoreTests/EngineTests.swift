@@ -33,13 +33,18 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(config?.limits.textChars, 50)
         await phone.engine.refreshConfig()
         XCTAssertEqual(server.requests("GET", "/mobile/config").last?.headers["If-None-Match"], server.configETag)
+        XCTAssertEqual(server.requests("GET", "/mobile/config").last?.url.query, "lang=az",
+                       "a refresh asks for the language the texts are in")
 
         let relaunched = await device(cache: phone.cache, vault: phone.vault)
         let cached = await relaunched.engine.config
         XCTAssertEqual(cached, config)
+        await relaunched.engine.refreshConfig(language: "ru")
         await relaunched.online()
-        relaunched.socket.push(FakeServer.frame("config.changed", ["etag": "W/\"c2\""]))
-        await expect { self.server.requests("GET", "/mobile/config").count == 3 }
+        relaunched.socket.push(FakeServer.frame("config.changed", ["etag": "W/\"c2\"", "version": 13]))
+        await expect { self.server.requests("GET", "/mobile/config").count == 4 }
+        XCTAssertEqual(server.requests("GET", "/mobile/config").last?.url.query, "lang=ru",
+                       "the refetch asks for the language the texts are in")
         XCTAssertTrue(phone.changes.all.contains(.config))
     }
 

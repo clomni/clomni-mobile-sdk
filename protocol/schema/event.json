@@ -69,8 +69,11 @@
     },
     "config_changed": {
       "type": "object",
-      "required": ["etag"],
-      "properties": { "etag": { "type": "string", "minLength": 1 } }
+      "required": ["etag", "version"],
+      "properties": {
+        "etag": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 0, "description": "The published appearance version the config now has." }
+      }
     }
   }
 }

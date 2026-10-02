@@ -16,6 +16,7 @@ struct MessengerRootView: View {
     let engine: ClomniEngine
     @StateObject private var home: MessengerModel
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
 
     init(model: MessengerRootModel, coordinator: MessengerCoordinator, engine: ClomniEngine) {
         self.model = model
@@ -25,15 +26,25 @@ struct MessengerRootView: View {
     }
 
     private var theme: ClomniTheme {
-        let brand = model.config?.brand
-        let dark = ClomniTheme.isDark(brand?.theme, systemIsDark: colorScheme == .dark)
-        return ClomniTheme.make(brand: brand, dark: dark)
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
     }
 
     var body: some View {
         content
             .environment(\.clomniTypeface, model.typeface)
+            .environment(\.clomniThemeOverride, model.themeOverride)
+            // The panel's (or the app's) light or dark mode for the system's controls too.
+            .preferredColorScheme(colorScheme(model.themeOverride.mode ?? model.config?.theme.mode))
+            .configCrossfade(model.config)
             .task { await coordinator.prepare() }
+    }
+
+    private func colorScheme(_ mode: MessengerConfig.Mode?) -> ColorScheme? {
+        switch mode {
+        case .light?: return .light
+        case .dark?: return .dark
+        default: return nil
+        }
     }
 
     @ViewBuilder

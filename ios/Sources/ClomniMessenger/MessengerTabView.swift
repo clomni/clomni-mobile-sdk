@@ -55,11 +55,10 @@ struct MessengerTabView: View {
     var conversationStarted: (String) -> Void = { _ in }
     @State private var tab = MessengerTab.home
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
 
     private var theme: ClomniTheme {
-        let brand = model.config?.brand
-        let dark = ClomniTheme.isDark(brand?.theme, systemIsDark: colorScheme == .dark)
-        return ClomniTheme.make(brand: brand, dark: dark)
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
     }
 
     private var actions: MessengerActions {
@@ -95,6 +94,7 @@ struct MessengerTabView: View {
         .background(theme.colors.background.color.ignoresSafeArea())
         // Text grows with Dynamic Type up to about twice its size.
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+        .configCrossfade(model.config)
         .task { await model.load() }
     }
 }

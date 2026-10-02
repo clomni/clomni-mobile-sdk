@@ -60,7 +60,7 @@ struct QuickRepliesView: View {
     }
 }
 
-/// background, 1 pt primarySoft border, primary text 14/500, radius 18, padding 7×13; up to two lines, then "…".
+/// background, 1 pt primaryLine border, primary text 14/500, radius 18, padding 7×13; up to two lines, then "…".
 /// The tap target reaches 44 pt even where the pill is smaller.
 struct PillButton: View {
     let title: String
@@ -81,7 +81,7 @@ struct PillButton: View {
                 .padding(.vertical, 7)
                 .padding(.horizontal, 13)
                 .background(shape.fill(theme.colors.background.color))
-                .overlay(shape.stroke(isBack ? theme.colors.border.color : theme.colors.primarySoft.color, lineWidth: 1))
+                .overlay(shape.stroke(isBack ? theme.colors.border.color : theme.colors.primaryLine.color, lineWidth: 1))
                 .padding(.vertical, 6)
                 .contentShape(Rectangle())
                 .padding(.vertical, -6)

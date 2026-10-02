@@ -1,24 +1,59 @@
 {
+  "version": 1,
   "brand": {
     "name": "Clomni, Inc.",
-    "primary_color": "green"
+    "primary_color": "green",
+    "header_style": "solid",
+    "glow": false,
+    "colors": {
+      "light": {
+        "primary": "#10A670",
+        "on_primary": "#000000",
+        "primary_soft": "#E7F6F1",
+        "primary_line": "#CAEBE0",
+        "header_from": "#10A670",
+        "header_to": "#10A670",
+        "header_text": "#FFFFFF"
+      },
+      "dark": {
+        "primary": "#14D58F",
+        "on_primary": "#000000",
+        "primary_soft": "#122622",
+        "primary_line": "#123E31",
+        "header_from": "#14D58F",
+        "header_to": "#14D58F",
+        "header_text": "#1B1D21"
+      }
+    }
   },
-  "launcher": {
-    "visible": false
+  "team": {
+    "show": false,
+    "mode": "auto",
+    "avatars": [],
+    "reply_time": "Adətən bir neçə dəqiqəyə cavab veririk",
+    "reply_time_offline": "Hazırda iş saatı deyil, iş saatında cavab verəcəyik",
+    "office_hours": {}
+  },
+  "bot": {
+    "name": "Clomni"
   },
   "home": {
     "cards": [
-      "new_conversation"
-    ]
+      "send"
+    ],
+    "channels": []
   },
-  "team": {},
-  "bot": {
-    "name": "Clomni"
+  "theme": {
+    "mode": "system",
+    "launcher": {
+      "enabled": false
+    }
   },
   "composer": {},
   "languages": [
     "az"
   ],
   "strings": {},
-  "limits": {}
+  "limits": {},
+  "powered_by": true
 }

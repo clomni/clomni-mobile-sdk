@@ -9,12 +9,18 @@ package struct ClomniTheme: Sendable, Equatable {
     package struct Colors: Sendable, Equatable {
         /// User messages, pill text, send, active icons. One step lighter in dark mode.
         package let primary: RGBColor
-        /// The top of the Home header's gradient: one step darker than `primary`.
-        package let primaryDark: RGBColor
-        /// Pill borders: `primary` at 25% over the background; a muted dark tone of the brand hue in dark mode.
-        package let primarySoft: RGBColor
-        /// Text on `primary`: the config's colour, or white or black, whichever reaches 4.5:1.
+        /// Text on `primary`: white, or black where white does not reach 4.5:1.
         package let onPrimary: RGBColor
+        /// `primary` at 10% over the background: image placeholders and soft backgrounds.
+        package let primarySoft: RGBColor
+        /// `primary` at 22% over the background: pill borders.
+        package let primaryLine: RGBColor
+        /// The header, top to bottom: light to dark (one colour for a solid header).
+        package let headerFrom: RGBColor
+        package let headerTo: RGBColor
+        /// Text and icons on the header: white where it reaches 3:1 on both header colours (the greeting is large
+        /// text), else #1B1D21. Not `onPrimary`, which in dark mode can be black on a dark header.
+        package let headerText: RGBColor
         package let background: RGBColor
         /// Behind the Home cards.
         package let canvas: RGBColor
@@ -96,17 +102,41 @@ package struct ClomniTheme: Sendable, Equatable {
     /// Clomni's own colour, for a config that has none.
     package static let defaultPrimary = RGBColor(hex: MessengerConfig.Brand.defaultPrimaryColor) ?? .black
 
-    package static func make(brand: MessengerConfig.Brand?, dark: Bool) -> ClomniTheme {
-        let base = brand.flatMap { RGBColor(hex: $0.primaryColor) } ?? defaultPrimary
-        let primary = dark ? base.steps(1) : base
+    /// The tokens for `brand`: the server's colours when it sent them, else derived here by the same rules
+    /// (APPEARANCE-CONTRACT § 1). `primaryColor` (the app's `Clomni.setTheme`) wins over the panel: its tokens are
+    /// always derived here.
+    package static func make(brand: MessengerConfig.Brand?, dark: Bool, primaryColor: String? = nil) -> ClomniTheme {
         let background = dark ? hex("#121316") : .white
-        let (hue, saturation, _) = base.hsl
+        var tokens: Tokens
+        if let primaryColor, let base = RGBColor(hex: primaryColor) {
+            tokens = derive(base, dark: dark)
+        } else if let palette = dark ? brand?.colors?.dark : brand?.colors?.light {
+            let from = hex(palette.headerFrom)
+            let to = hex(palette.headerTo)
+            tokens = Tokens(primary: hex(palette.primary), onPrimary: hex(palette.onPrimary),
+                            primarySoft: hex(palette.primarySoft), primaryLine: hex(palette.primaryLine),
+                            headerFrom: from, headerTo: to,
+                            headerText: palette.headerText.flatMap { RGBColor(hex: $0) } ?? headerText(on: from, to))
+        } else {
+            tokens = derive(brand.flatMap { RGBColor(hex: $0.primaryColor) } ?? defaultPrimary, dark: dark)
+        }
+        if brand?.headerStyle == .solid, tokens.headerFrom != tokens.primary || tokens.headerTo != tokens.primary {
+            tokens.headerFrom = tokens.primary
+            tokens.headerTo = tokens.primary
+            tokens.headerText = headerText(on: tokens.primary, tokens.primary)
+        }
+        if brand?.headerStyle == .image, brand?.headerImageUrl != nil {
+            // Over the picture's dark veil.
+            tokens.headerText = .white
+        }
         let colors = Colors(
-            primary: primary,
-            primaryDark: primary.steps(-1),
-            primarySoft: dark ? RGBColor(hue: hue, saturation: saturation / 2, lightness: 0.28)
-                : primary.over(background, opacity: 0.25),
-            onPrimary: brand?.onPrimaryColor.flatMap { RGBColor(hex: $0) } ?? readableText(on: primary),
+            primary: tokens.primary,
+            onPrimary: tokens.onPrimary,
+            primarySoft: tokens.primarySoft,
+            primaryLine: tokens.primaryLine,
+            headerFrom: tokens.headerFrom,
+            headerTo: tokens.headerTo,
+            headerText: tokens.headerText,
             background: background,
             canvas: hex(dark ? "#0B0C0E" : "#F5F6F8"),
             surface: hex(dark ? "#22242A" : "#F1F2F4"),
@@ -121,13 +151,52 @@ package struct ClomniTheme: Sendable, Equatable {
         return ClomniTheme(colors: colors, isDark: dark)
     }
 
+    /// The theme the screens draw with: the config's, with the app's `Clomni.setTheme` over it.
+    package static func make(config: MessengerConfig?, systemIsDark: Bool, override: ThemeOverride = ThemeOverride())
+        -> ClomniTheme {
+        let dark = isDark(override.mode ?? config?.theme.mode, systemIsDark: systemIsDark)
+        return make(brand: config?.brand, dark: dark, primaryColor: override.primaryColor)
+    }
+
+    /// The brand's tokens.
+    package struct Tokens: Sendable, Equatable {
+        package var primary: RGBColor
+        package var onPrimary: RGBColor
+        package var primarySoft: RGBColor
+        package var primaryLine: RGBColor
+        package var headerFrom: RGBColor
+        package var headerTo: RGBColor
+        package var headerText: RGBColor
+    }
+
+    /// The server's rules, for when it sent no colours or the app chose its own: in dark mode the primary is one step
+    /// lighter; on_primary is white unless white is under 4.5:1; soft and line are the primary at 10% and 22% over
+    /// the background; the header runs from the brand colour to one step darker, in dark mode to two steps darker
+    /// (so the brand's own colour, with white text on it, stays at the top). A step is 10 points of HSL lightness.
+    package static func derive(_ base: RGBColor, dark: Bool) -> Tokens {
+        let background = dark ? hex("#121316") : .white
+        let primary = dark ? base.steps(1) : base
+        let from = base
+        let to = base.steps(dark ? -2 : -1)
+        return Tokens(primary: primary, onPrimary: readableText(on: primary),
+                      primarySoft: primary.over(background, opacity: 0.10),
+                      primaryLine: primary.over(background, opacity: 0.22),
+                      headerFrom: from, headerTo: to, headerText: headerText(on: from, to))
+    }
+
+    /// White when it reaches 3:1 on both header colours, else #1B1D21 (APPEARANCE-CONTRACT § 1, header_text).
+    package static func headerText(on from: RGBColor, _ to: RGBColor) -> RGBColor {
+        from.contrast(with: .white) >= 3 && to.contrast(with: .white) >= 3 ? .white : hex("#1B1D21")
+    }
+
     private static func hex(_ value: String) -> RGBColor {
         RGBColor(hex: value) ?? .black
     }
 
-    /// The config's `brand.theme` wins over the system's appearance unless it says `system`.
-    package static func isDark(_ theme: MessengerConfig.Theme?, systemIsDark: Bool) -> Bool {
-        switch theme {
+    /// The config's `theme.mode` (or the app's `Clomni.setTheme`) wins over the system's appearance unless it says
+    /// `system`.
+    package static func isDark(_ mode: MessengerConfig.Mode?, systemIsDark: Bool) -> Bool {
+        switch mode {
         case .dark?: return true
         case .light?: return false
         default: return systemIsDark
@@ -138,5 +207,17 @@ package struct ClomniTheme: Sendable, Equatable {
     /// one of the two reaches at least 4.58:1 on any colour.
     package static func readableText(on background: RGBColor) -> RGBColor {
         background.contrast(with: .white) >= 4.5 ? .white : .black
+    }
+}
+
+/// The app's `Clomni.setTheme`: each field it gave wins over the panel; nil leaves the panel's.
+package struct ThemeOverride: Sendable, Equatable {
+    /// "#RRGGBB"; the tokens are then derived in the SDK by the server's rules.
+    package var primaryColor: String?
+    package var mode: MessengerConfig.Mode?
+
+    package init(primaryColor: String? = nil, mode: MessengerConfig.Mode? = nil) {
+        self.primaryColor = primaryColor
+        self.mode = mode
     }
 }

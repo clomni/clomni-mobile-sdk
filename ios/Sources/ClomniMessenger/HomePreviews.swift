@@ -11,16 +11,15 @@ import ClomniPresentation
 /// The Apar example of the brief, for Xcode previews.
 enum PreviewData {
     static let config: MessengerConfig? = ProtocolJSON.parseConfig(Data(#"""
-    {"brand":{"name":"Apar","primary_color":"#1F9D63","on_primary_color":"#FFFFFF","theme":"system"},
-     "launcher":{"visible":false},
-     "home":{"greeting_title":"Necə kömək edə bilərik?","show_team_avatars":true,
+    {"version":1,"brand":{"name":"Apar","primary_color":"#1F9D63","header_style":"gradient","glow":false},
+     "theme":{"mode":"system","launcher":{"enabled":false}},
+     "home":{"cards":["send","recent","channels"],
              "channels":[{"type":"instagram","url":"https://instagram.com/apar.az"},
                          {"type":"whatsapp","url":"https://wa.me/994501234567"},
                          {"type":"linkedin","url":"https://linkedin.com/company/apar"},
-                         {"type":"email","url":"mailto:support@apar.az"}],
-             "cards":["recent_conversation","new_conversation"]},
-     "team":{"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
-     "bot":{"name":"Clomni"},"composer":{},"languages":["az","en","ru"],"strings":{},"limits":{}}
+                         {"type":"email","url":"mailto:support@apar.az"}]},
+     "team":{"show":true,"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
+     "bot":{"name":"Clomni"},"composer":{},"languages":["az","en","ru"],"strings":{},"limits":{},"powered_by":true}
     """#.utf8))
 
     static let conversation: Conversation? = ProtocolJSON.parseConversation(Data(#"""
