@@ -39,3 +39,16 @@ Clomni.initialize(appId: "app_…", apiKey: "ios_…")
 and open the messenger from the app's own button: `Clomni.present(source: "profile_support")`. Login, push and the rest
 are in the Example app ([ios/Example](ios/Example)), whose code CI compiles; the public API is listed in
 [ios/api/ClomniMessenger.txt](ios/api/ClomniMessenger.txt) and the changes in [ios/CHANGELOG.md](ios/CHANGELOG.md).
+
+### Releasing iOS
+
+SwiftPM finds versions by the repository's tags, so the iOS SDK's tags are bare semantic versions (`1.0.0`); the other
+packages' tags carry a prefix (`android-1.0.0`, `react-native-1.0.0`, `flutter-1.0.0`) and SwiftPM ignores them.
+
+1. The same version in `ClomniMessenger.podspec`, `SDKInfo.version` and a `## 1.0.0` section of `ios/CHANGELOG.md`
+   without "(unreleased)": `scripts/ios-release-check.sh 1.0.0 --release`.
+2. Push the tag `1.0.0`. SwiftPM has the release at once; the "iOS release" workflow tests, builds and lints it,
+   publishes the podspec to CocoaPods trunk (secret `COCOAPODS_TRUNK_TOKEN`; skipped with a warning without it) and
+   writes the GitHub release from the changelog section.
+
+Run by hand, the workflow is a dry run: the same checks, nothing published.

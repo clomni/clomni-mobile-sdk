@@ -1,0 +1,97 @@
+name: iOS release
+
+# A tag MAJOR.MINOR.PATCH (no prefix: SwiftPM resolves the package by these tags) releases the iOS SDK: SwiftPM has it
+# the moment the tag is pushed; this workflow checks it, publishes the podspec to CocoaPods trunk and writes the
+# GitHub release. Other packages use prefixed tags (android-…, react-native-…, flutter-…) and never match.
+#
+# Run by hand (workflow_dispatch) it is a dry run: every check, nothing published. Publishing needs the secret
+# COCOAPODS_TRUNK_TOKEN (`pod trunk register`, then the token from ~/.netrc); without it the trunk step is skipped
+# and says so.
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to check, e.g. 1.0.0 (the podspec''s when empty)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      PUBLISH: ${{ github.event_name == 'push' }}
+      COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.4'
+
+      - name: One version everywhere
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$PUBLISH" = true ]; then
+            version="$GITHUB_REF_NAME"
+            scripts/ios-release-check.sh "$version" --release > notes.md
+          else
+            version="$INPUT_VERSION"
+            [ -n "$version" ] || version=$(sed -n "s/^ *s\.version *= *'\(.*\)'.*/\1/p" ClomniMessenger.podspec)
+            scripts/ios-release-check.sh "$version" > notes.md
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          cat notes.md
+
+      - name: swift test
+        run: swift test
+
+      - name: Build for the iOS Simulator
+        run: >
+          xcodebuild build
+          -scheme ClomniMessenger
+          -destination 'generic/platform=iOS Simulator'
+          -skipPackagePluginValidation
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Framework size
+        run: |
+          brew install xcodegen
+          scripts/ios-framework-size.sh
+
+      - name: pod lib lint
+        run: pod lib lint ClomniMessenger.podspec --platforms=ios
+
+      # Fetches the source by the tag, as an app's `pod install` will; only once the tag exists.
+      - name: pod spec lint
+        if: env.PUBLISH == 'true'
+        run: pod spec lint ClomniMessenger.podspec --platforms=ios
+
+      - name: CocoaPods trunk
+        if: env.PUBLISH == 'true'
+        run: |
+          if [ -z "$COCOAPODS_TRUNK_TOKEN" ]; then
+            echo "::warning::COCOAPODS_TRUNK_TOKEN is not set: the podspec is not published (SwiftPM has the tag)"
+            exit 0
+          fi
+          pod trunk push ClomniMessenger.podspec
+
+      - name: GitHub release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$VERSION" --title "iOS $VERSION" --notes-file notes.md --verify-tag
+
+      - name: Dry run
+        if: env.PUBLISH != 'true'
+        run: echo "Dry run for $VERSION. Checked, built and linted; nothing published."
