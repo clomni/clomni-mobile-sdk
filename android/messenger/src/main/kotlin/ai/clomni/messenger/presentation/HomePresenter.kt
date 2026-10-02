@@ -12,6 +12,7 @@ import java.util.TimeZone
 /** Everything the Home tab shows, decided here so the Compose view only draws it (brief 8·7.3, 7.5). */
 internal data class HomeScreen(
     val phase: Phase,
+    val loadingLabel: String = "",
     val header: Header,
     /** Null hides a card. */
     val newConversation: NewConversationCard?,
@@ -40,6 +41,10 @@ internal data class HomeScreen(
         val logoUrl: String?,
         /** For dark mode; [logoUrl] when null. */
         val logoDarkUrl: String?,
+        /** The written logo in place of the logo and the name; null shows those. */
+        val wordmarkUrl: String? = null,
+        /** For dark mode; [wordmarkUrl] when null. */
+        val wordmarkDarkUrl: String? = null,
         val style: MessengerConfig.HeaderStyle,
         /** The photo of [MessengerConfig.HeaderStyle.IMAGE], under a dark veil. */
         val imageUrl: String?,
@@ -49,10 +54,12 @@ internal data class HomeScreen(
         val brandInitial: String,
         /** Up to three, overlapping. */
         val teamAvatars: List<String>,
-        /** "Salam, Aysel 👋", smaller than [title] and in the same colour. */
+        /** "Salam, Aysel", smaller than [title] and in the same colour. */
         val greeting: String,
         /** "Necə kömək edə bilərik?" */
         val title: String,
+        /** The panel's size for the two lines. */
+        val titleSize: MessengerConfig.TitleSize = MessengerConfig.TitleSize.M,
         val closeLabel: String,
     )
 
@@ -92,6 +99,7 @@ internal data class ConversationRow(
 internal data class MessagesScreen(
     val title: String,
     val phase: HomeScreen.Phase,
+    val loadingLabel: String = "",
     val rows: List<ConversationRow>,
     /** "Hələ söhbət yoxdur", when the list is loaded and empty. */
     val empty: String?,
@@ -137,6 +145,7 @@ internal class HomePresenter(
         }
         val failed = config == null && snapshot.configLoad == MessengerSnapshot.Load.FAILED
         return HomeScreen(
+            loadingLabel = strings[Key.LOADING],
             phase = when {
                 config != null -> HomeScreen.Phase.READY
                 failed -> HomeScreen.Phase.FAILED
@@ -171,6 +180,7 @@ internal class HomePresenter(
         return MessagesScreen(
             title = strings[Key.TAB_MESSAGES],
             phase = phase,
+            loadingLabel = strings[Key.LOADING],
             rows = rows,
             empty = if (phase == HomeScreen.Phase.READY && rows.isEmpty()) strings[Key.EMPTY_LIST] else null,
             newConversation = newConversation(snapshot.config),
@@ -221,6 +231,8 @@ internal class HomePresenter(
             brandName = brand,
             logoUrl = config?.brand?.logoUrl,
             logoDarkUrl = config?.brand?.logoDarkUrl,
+            wordmarkUrl = config?.brand?.wordmarkUrl,
+            wordmarkDarkUrl = config?.brand?.wordmarkDarkUrl,
             // A picture style without its picture is the gradient.
             style = config?.brand?.headerStyle
                 ?.takeUnless { it == MessengerConfig.HeaderStyle.IMAGE && config.brand.headerImageUrl == null }
@@ -231,6 +243,7 @@ internal class HomePresenter(
             teamAvatars = if (config?.team?.show == false) emptyList() else config?.team?.avatars.orEmpty().take(3),
             greeting = strings.greeting(snapshot.userName),
             title = strings[Key.GREETING_LINE2],
+            titleSize = config?.home?.titleSize ?: MessengerConfig.TitleSize.M,
             closeLabel = strings[Key.CLOSE],
         )
     }

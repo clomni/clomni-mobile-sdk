@@ -12,6 +12,9 @@ internal object ImageSizing {
     enum class Kind(val widths: List<Int>) {
         ICON(listOf(48, 96, 144)),
         HEADER(listOf(360, 720, 1080)),
+
+        /** The written logo: `?w=300|600|1200`. */
+        WORDMARK(listOf(300, 600, 1200)),
     }
 
     /** [url] for a picture [dp] wide on a screen of [density]; the URL's own query stays. */

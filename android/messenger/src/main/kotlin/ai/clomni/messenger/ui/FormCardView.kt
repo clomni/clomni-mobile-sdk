@@ -63,7 +63,7 @@ internal fun FormCardView(
     val errors = rememberSaveable(card.messageId, saver = mapSaver()) { mutableStateMapOf<String, String>() }
     var sent by rememberSaveable(card.messageId) { mutableStateOf(false) }
     Column(
-        modifier.padding(vertical = 9.dp, horizontal = ClomniTheme.Space.l.dp),
+        modifier.padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp),
         verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
     ) {
         card.text?.let {

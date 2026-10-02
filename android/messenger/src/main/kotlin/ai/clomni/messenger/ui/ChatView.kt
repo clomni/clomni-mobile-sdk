@@ -152,6 +152,7 @@ internal fun ClomniChat(
         },
         writeAnyway = writeAnyway,
         setWriteAnyway = { writeAnyway = true },
+        loadingOlder = loadingOlder,
     )
     fullScreen?.let { url -> FullScreenImage(url, screen.header.closeLabel) { fullScreen = null } }
 }
@@ -197,25 +198,23 @@ internal fun ChatScreenView(
     writeAnyway: Boolean = false,
     setWriteAnyway: () -> Unit = {},
     lazy: Boolean = true,
+    /** Older messages are on their way: a small indicator at the top of the list. */
+    loadingOlder: Boolean = false,
 ) {
     Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
         ChatHeaderView(screen.header, theme, actions)
         screen.offline?.let { OfflineStrip(it, theme) }
         val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
         when (screen.phase) {
-            HomeScreen.Phase.LOADING -> Column(
-                body.padding(ClomniTheme.Space.xl.dp),
-                verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.s.dp),
-            ) {
-                Box(Modifier.width(200.dp)) { SkeletonBlock(38f, theme) }
-                Box(Modifier.width(222.dp)) { SkeletonBlock(58f, theme) }
-                Box(Modifier.fillMaxWidth(), Alignment.CenterEnd) { Box(Modifier.width(160.dp)) { SkeletonBlock(38f, theme) } }
+            // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
+            HomeScreen.Phase.LOADING -> Box(body, Alignment.Center) {
+                LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
             }
             HomeScreen.Phase.FAILED -> Column(body.padding(ClomniTheme.Space.xl.dp)) {
                 screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
             }
             HomeScreen.Phase.READY -> if (lazy) {
-                LazyTranscript(screen.items, theme, actions, body)
+                LazyTranscript(screen.items, theme, actions, body, loadingOlder, screen.loadingLabel)
             } else {
                 Column(
                     body.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
@@ -235,14 +234,23 @@ internal fun ChatScreenView(
  * open rise 6 dp and fade in. Reaching the top asks for older messages.
  */
 @Composable
-private fun LazyTranscript(items: List<ChatItem>, theme: ClomniTheme, actions: ChatActions, modifier: Modifier) {
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = (items.size - 1).coerceAtLeast(0))
+private fun LazyTranscript(
+    items: List<ChatItem>,
+    theme: ClomniTheme,
+    actions: ChatActions,
+    modifier: Modifier,
+    loadingOlder: Boolean = false,
+    loadingLabel: String = "",
+) {
+    // While older messages load, item 0 is their indicator and the messages follow it.
+    val last = items.size - 1 + if (loadingOlder) 1 else 0
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = last.coerceAtLeast(0))
     val known = remember { items.mapTo(HashSet()) { it.id } }
     val still = reduceMotion()
     val lastId = items.lastOrNull()?.id
     LaunchedEffect(lastId) {
         // Without motion the end is simply there.
-        if (items.isNotEmpty()) if (still) state.scrollToItem(items.size - 1) else state.animateScrollToItem(items.size - 1)
+        if (items.isNotEmpty()) if (still) state.scrollToItem(last) else state.animateScrollToItem(last)
     }
     val reachedTop by rememberUpdatedState(actions.reachedTop)
     LaunchedEffect(state) {
@@ -260,6 +268,13 @@ private fun LazyTranscript(items: List<ChatItem>, theme: ClomniTheme, actions: C
         ),
         verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
     ) {
+        if (loadingOlder) {
+            item(key = "older") {
+                Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                    LoadingSpinner(true, theme.colors.primary, loadingLabel, Modifier.padding(vertical = ClomniTheme.Space.s.dp), 20.dp)
+                }
+            }
+        }
         items(items, key = { it.id }) { item ->
             Box(Modifier.appearing(item.id !in known, still)) { ChatItemView(item, theme, actions) }
         }

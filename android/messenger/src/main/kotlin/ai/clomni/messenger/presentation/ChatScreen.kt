@@ -11,6 +11,8 @@ import java.io.File
 /** Everything the conversation screen shows (brief 8·7.4, 7.5, 7.6), decided here so the Compose view only draws. */
 internal data class ChatScreen(
     val phase: HomeScreen.Phase,
+    /** "Yüklənir": the loading indicator's name for TalkBack. */
+    val loadingLabel: String = "",
     val header: ChatHeader,
     val items: List<ChatItem>,
     val composer: ChatComposer,

@@ -59,7 +59,7 @@ class MessengerConfigTest {
             config.theme,
         )
         assertEquals(MessengerConfig.Composer(attachments = true, emoji = true), config.composer)
-        assertEquals("Salam, {first_name} 👋", config.strings["greeting_line1"])
+        assertEquals("Salam, {first_name}", config.strings["greeting_line1"])
         assertEquals("the panel's own", "Bizdən nəsə soruşun", config.strings["greeting_line2"])
         assertEquals(MessengerConfig.Limits(10, 25, 4000), config.limits)
         assertTrue(config.poweredBy)
@@ -128,6 +128,34 @@ class MessengerConfigTest {
         assertFalse(config.theme.launcher.enabled)
         assertEquals(listOf("az"), config.languages)
         assertTrue(config.poweredBy)
+    }
+
+    /** brand.logo_style "wordmark" with its picture; the mark otherwise, also for a style without a picture. */
+    @Test
+    fun theWrittenLogo() {
+        val wordmark = config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).brand
+        assertEquals("https://app.clomni.ai/v1/images/img_Wm7Qk2Lx9PzR4sTv8NcY", wordmark.wordmarkUrl)
+        assertNull(wordmark.wordmarkDarkUrl)
+        assertNull(config(apar).brand.wordmarkUrl)
+        val mark = config("""{"brand":{"logo_style":"mark","wordmark_url":"https://x/w.png"}}""").brand
+        assertNull("the panel chose the mark", mark.wordmarkUrl)
+        assertNull(config("""{"brand":{"logo_style":"wordmark"}}""").brand.wordmarkUrl)
+        val dark = config("""{"brand":{"logo_style":"wordmark","wordmark_url":"https://x/w.png","wordmark_dark_url":"https://x/d.png"}}""")
+        assertEquals("https://x/d.png", dark.brand.wordmarkDarkUrl)
+        assertEquals("1200 wide at most", "https://x/w.png?w=600&format=webp", ai.clomni.messenger.presentation.ImageSizing.url("https://x/w.png", ai.clomni.messenger.presentation.ImageSizing.Kind.WORDMARK, 216f, 2.75f))
+    }
+
+    /** home.title_size: s, m, l; absent or unknown is m. */
+    @Test
+    fun theGreetingsSize() {
+        fun size(json: String) = config("""{"home":$json}""").home.titleSize
+        assertEquals(MessengerConfig.TitleSize.S, size("""{"title_size":"s"}"""))
+        assertEquals(MessengerConfig.TitleSize.L, size("""{"title_size":"l"}"""))
+        assertEquals(MessengerConfig.TitleSize.M, size("""{"title_size":"xl"}"""))
+        assertEquals(MessengerConfig.TitleSize.M, size("{}"))
+        assertEquals(MessengerConfig.TitleSize.M, config(apar).home.titleSize)
+        assertEquals(MessengerConfig.TitleSize.L, config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).home.titleSize)
+        assertEquals(listOf(15f, 20f, 17f, 24f, 19f, 28f), MessengerConfig.TitleSize.entries.flatMap { listOf(it.firstLine, it.secondLine) })
     }
 
     @Test

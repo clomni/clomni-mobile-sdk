@@ -36,8 +36,27 @@ internal data class MessengerConfig(
         val glow: Boolean,
         /** The colours the server derived; null makes the SDK derive them by the same rules. */
         val colors: Colors?,
+        /**
+         * The full written logo for Home's header, in place of the logo and the name (`logo_style: "wordmark"`); null
+         * for the mark, also when the server sent the style without a picture.
+         */
+        val wordmarkUrl: String? = null,
+        /** For dark mode; [wordmarkUrl] when null. */
+        val wordmarkDarkUrl: String? = null,
     ) {
         companion object {
+            /** For [ai.clomni.messenger.presentation.ClomniTheme]'s grey before any config: the secondary text grey. */
+            internal val neutral = Brand(
+                name = "",
+                logoUrl = null,
+                logoDarkUrl = null,
+                primaryColor = "#6A6E7A",
+                headerStyle = HeaderStyle.SOLID,
+                headerImageUrl = null,
+                glow = false,
+                colors = null,
+            )
+
             /** Clomni green, used when the config has no valid brand colour. */
             const val DEFAULT_PRIMARY_COLOR: String = "#10A670"
         }
@@ -87,9 +106,18 @@ internal data class MessengerConfig(
         val cards: List<HomeCard>,
         /** At most five, in the panel's order. */
         val channels: List<Channel>,
+        /** The greeting's size, chosen in the panel. */
+        val titleSize: TitleSize = TitleSize.M,
     )
 
     enum class HomeCard { SEND, RECENT, CHANNELS }
+
+    /** `home.title_size`: the greeting's two lines, sp (first line normal, second semibold). Unknown: [M]. */
+    enum class TitleSize(val firstLine: Float, val secondLine: Float) {
+        S(15f, 20f),
+        M(17f, 24f),
+        L(19f, 28f),
+    }
 
     /** A social channel icon on Home; [type] is open-ended (instagram, whatsapp, linkedin, email, …). */
     data class Channel(val type: String, val url: String)

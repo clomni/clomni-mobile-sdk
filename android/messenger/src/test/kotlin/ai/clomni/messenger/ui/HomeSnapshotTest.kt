@@ -105,6 +105,14 @@ class HomeSnapshotTest {
         snap("home_all_channels", loaded(config, emptyList()))
     }
 
+    /** The list's first opening: the indicator in the middle (DESIGN-PASS 5). */
+    @Test
+    fun messagesLoading() = snap(
+        "messages_loading",
+        loaded(conversations = emptyList()).copy(conversationsLoad = MessengerSnapshot.Load.LOADING),
+        MessengerTab.MESSAGES,
+    )
+
     @Test
     fun messagesEmpty() = snap("messages_empty", loaded(conversations = emptyList()), MessengerTab.MESSAGES)
 

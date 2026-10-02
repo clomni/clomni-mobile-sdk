@@ -195,7 +195,7 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
         bubble.meta?.let { meta ->
             BasicText(
                 meta,
-                Modifier.padding(top = 5.dp, start = 34.dp).clearAndSetSemantics {},
+                Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = 36.dp).clearAndSetSemantics {},
                 style = clomniText(ClomniTheme.FontSize.meta, theme.colors.textSecondary),
             )
         }
@@ -216,7 +216,7 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             Modifier.widthIn(max = if (incoming) 222.dp else 210.dp)
                 .clip(shape)
                 .background(fill.color)
-                .padding(vertical = 9.dp, horizontal = ClomniTheme.Space.l.dp)
+                .padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp)
                 .clearAndSetSemantics { contentDescription = bubble.accessibilityLabel },
             style = clomniText(ClomniTheme.FontSize.text, ink),
         )
@@ -278,16 +278,23 @@ private fun ImageBubble(
                 role = Role.Image
             },
     ) {
-        // primary_soft until the picture is here, as every placeholder (APPEARANCE-CONTRACT 4).
-        Box(Modifier.size(width.dp, height.dp).background(theme.colors.primarySoft.color)) {
+        // A grey place of the bubble's size until the picture is here (DESIGN-PASS 5).
+        Box(Modifier.size(width.dp, height.dp).background(theme.colors.surface.color)) {
             if (painter != null) {
                 Image(painter, null, Modifier.size(width.dp, height.dp), contentScale = ContentScale.Crop)
+                // The bubble's grey place and the indicator until the picture is here.
+                LoadingSpinner(
+                    painter.state is AsyncImagePainter.State.Loading,
+                    theme.colors.primary,
+                    "",
+                    Modifier.align(Alignment.Center),
+                )
             }
         }
         image.caption?.let { caption ->
             BasicText(
                 attributedText(caption, ink),
-                Modifier.width(width.dp).background(fill.color).padding(vertical = 9.dp, horizontal = ClomniTheme.Space.l.dp),
+                Modifier.width(width.dp).background(fill.color).padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp),
                 style = clomniText(ClomniTheme.FontSize.text, ink),
             )
         }
@@ -330,13 +337,13 @@ private fun StatusLine(status: Bubble.Status, theme: ClomniTheme, retry: (String
     val style = clomniText(ClomniTheme.FontSize.meta, if (status.isFailure) theme.colors.errorText else theme.colors.textSecondary)
     val retryId = status.retryId
     if (retryId == null) {
-        BasicText(status.text, Modifier.padding(top = 5.dp), style = style)
+        BasicText(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), style = style)
     } else {
         // The 15 dp line reaches a 48 dp target without moving anything.
         val reach = 16.dp
         BasicText(
             status.text,
-            Modifier.padding(top = 5.dp).bleed(vertical = reach).button(status.text) { retry(retryId) }.padding(vertical = reach),
+            Modifier.padding(top = ClomniTheme.Space.xxs.dp).bleed(vertical = reach).button(status.text) { retry(retryId) }.padding(vertical = reach),
             style = style,
         )
     }
@@ -394,7 +401,7 @@ private fun TypingRow(line: TypingLine, theme: ClomniTheme) {
         Row(
             Modifier.clip(RoundedCornerShape(ClomniTheme.Radius.message.dp))
                 .background(theme.colors.surface.color)
-                .padding(vertical = 12.dp, horizontal = 13.dp),
+                .padding(vertical = 12.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             for (index in 0 until 3) {

@@ -189,6 +189,11 @@ class MessageStoreTest {
         first.outbox.add(pending("c1"))
         first.commit()
 
+        // The first frame reads the look alone, before (or without) the whole cache.
+        val early = MessageStore(dir, protocol)
+        assertEquals("#1F9D63", early.cachedConfig()?.brand?.primaryColor)
+        assertTrue(early.conversations().isEmpty())
+
         val second = MessageStore(dir, protocol)
         second.load()
         assertEquals(listOf("conv_1"), second.conversations().map { it.id })

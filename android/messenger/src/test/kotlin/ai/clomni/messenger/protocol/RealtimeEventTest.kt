@@ -103,7 +103,7 @@ class RealtimeEventTest {
         assertEquals(Payload.Ready("usr_1", 0), data("ready", """{"user_id":"usr_1","heartbeat_sec":0}"""))
         assertEquals(Payload.UnreadChanged(-1), data("unread.changed", """{"total":-1}"""))
         assertEquals(Payload.Read("conv_1", 3, SenderType.UNKNOWN), data("read", """{"conversation_id":"conv_1","up_to_seq":3,"by":"bot_x"}"""))
-        assertEquals(RealtimeEvent("ping", Payload.Unknown("ping"), null), protocol.json.parseEvent("""{"event":"ping"}"""))
+        assertEquals(RealtimeEvent("ping", Payload.Ping, null), protocol.json.parseEvent("""{"event":"ping"}"""))
     }
 
     @Test

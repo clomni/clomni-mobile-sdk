@@ -193,6 +193,9 @@ internal class ClomniEngine(
 
     override val config: MessengerConfig? get() = store.config
 
+    /** [config], read from disk on the calling thread if the worker has not got to it yet: for the first frame. */
+    override fun cachedConfig(): MessengerConfig? = store.cachedConfig()
+
     override val unreadTotal: Int get() = store.unreadTotal
 
     override fun conversations(): List<Conversation> = store.conversations()
@@ -446,7 +449,7 @@ internal class ClomniEngine(
                     if (!store.apply(data.update)) store.putConversation(authed { api.getConversation(data.update.id) })
                 is RealtimeEvent.Payload.UnreadChanged -> store.setUnreadTotal(data.total)
                 is RealtimeEvent.Payload.ConfigChanged -> loadConfig(null)
-                is RealtimeEvent.Payload.Unknown -> Unit
+                is RealtimeEvent.Payload.Unknown, RealtimeEvent.Payload.Ping -> Unit
             }
         } catch (e: Exception) {
             ClomniLog.warning { "${event.event}: ${e.message}" }

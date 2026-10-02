@@ -70,16 +70,16 @@ class PresenterTest {
         assertEquals("A", header.brandInitial)
         assertEquals("https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN", header.logoUrl)
         assertEquals(3, header.teamAvatars.size)
-        assertEquals("Salam, Aysel 👋", header.greeting)
+        assertEquals("Salam, Aysel", header.greeting)
         assertEquals("the panel's line", "Bizdən nəsə soruşun", header.title)
         assertEquals("Bağla", header.closeLabel)
 
-        assertEquals("Salam 👋", presenter().home(snapshot(user = null)).header.greeting)
-        assertEquals("Salam 👋", presenter().home(snapshot(user = "   ")).header.greeting)
+        assertEquals("Salam", presenter().home(snapshot(user = null)).header.greeting)
+        assertEquals("Salam", presenter().home(snapshot(user = "   ")).header.greeting)
         // The SDK's own texts ({first_name}); the panel's come with the config in its language.
         val english = HomePresenter(ClomniStrings("en"), utc, now)
-        assertEquals("Hi, Aysel 👋", english.home(snapshot(user = "Aysel Məmmədova")).header.greeting)
-        assertEquals("Hi 👋", english.home(snapshot(user = null)).header.greeting)
+        assertEquals("Hi, Aysel", english.home(snapshot(user = "Aysel Məmmədova")).header.greeting)
+        assertEquals("Hi", english.home(snapshot(user = null)).header.greeting)
         val fullName = ClomniStrings("az", mapOf("greeting_line1" to "Xoş gəldiniz, {name}!"))
         assertEquals("Xoş gəldiniz, Aysel Məmmədova!", fullName.greeting("Aysel Məmmədova"))
 

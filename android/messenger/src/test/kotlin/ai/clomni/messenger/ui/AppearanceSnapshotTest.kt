@@ -180,6 +180,27 @@ class AppearanceSnapshotTest {
     @Test
     fun darkWithoutDarkLogo() = snap("dark_logo_fallback", apar(), dark = true)
 
+    /** The written logo in place of the logo and the name (APPEARANCE-CONTRACT 4a), Home only. */
+    @Test
+    fun wordmark() = snap("wordmark", apar(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK""""))
+
+    /** Dark mode without a dark version: the same picture. */
+    @Test
+    fun wordmarkDark() = snap("wordmark_dark", apar(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK""""), dark = true)
+
+    /** The conversation keeps the logo and the name. */
+    @Test
+    fun wordmarkInAConversation() {
+        val config = apar(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK"""")
+        val screen = ai.clomni.messenger.presentation.ChatPresenter(ClomniStrings("az", config.strings), TimeZone.getTimeZone("UTC"), now)
+            .screen(ai.clomni.messenger.presentation.ChatSnapshot(config = config, load = MessengerSnapshot.Load.LOADED))
+        paparazzi.snapshot("wordmark_conversation") {
+            CompositionLocalProvider(LocalInspectionMode provides true, LocalPreviewImages provides pictures) {
+                ChatScreenView(screen, ClomniTheme.make(config.brand, false), ChatActions())
+            }
+        }
+    }
+
     /** Clomni.setTheme: the app's colour and mode over the panel's. */
     @Test
     fun appsTheme() = snap("app_theme", apar(), override = ThemeOverride(primaryColor = BLUE, mode = MessengerConfig.ThemeMode.DARK))
@@ -197,6 +218,7 @@ class AppearanceSnapshotTest {
         const val LOGO_DARK = "https://app.clomni.ai/v1/images/logo-dark"
         const val BOT = "https://app.clomni.ai/v1/images/bot"
         const val HEADER = "https://app.clomni.ai/v1/images/header"
+        const val WORDMARK = "https://app.clomni.ai/v1/images/wordmark"
         const val LEYLA = "https://app.clomni.ai/a/leyla.png"
         const val RAUF = "https://app.clomni.ai/a/rauf.png"
         const val NIGAR = "https://app.clomni.ai/a/nigar.png"
@@ -219,6 +241,7 @@ class AppearanceSnapshotTest {
                 RAUF to face(0xFF7C3AED.toInt(), "R"),
                 NIGAR to face(0xFF0E7490.toInt(), "N"),
                 HEADER to landscape(),
+                WORDMARK to written(),
             )
         }
 
@@ -256,6 +279,15 @@ class AppearanceSnapshotTest {
             paint.color = 0xFF4F46E5.toInt()
             drawCircle(38f, 48f, 6f, paint)
             drawCircle(58f, 48f, 6f, paint)
+        }
+
+        /** A wide, transparent written logo: a mark and the name in white, 4:1. */
+        private fun written() = picture(480, 120) { paint ->
+            paint.color = 0xFFFFFFFF.toInt()
+            drawRoundRect(RectF(8f, 16f, 96f, 104f), 22f, 22f, paint)
+            paint.color = 0xFF1F9D63.toInt()
+            drawCircle(52f, 60f, 22f, paint)
+            letter(paint, "Apar Taxi", 0xFFFFFFFF.toInt(), 64f, 290f, 60f)
         }
 
         private fun landscape() = picture(720, 400) { paint ->

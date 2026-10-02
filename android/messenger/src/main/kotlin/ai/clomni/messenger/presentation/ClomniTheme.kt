@@ -52,15 +52,12 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val pill = 18f
         val card = 12f
         val input = 20f
-        val logo = 6f
+        val logo = 8f
         val channel = 8f
     }
 
     object FontSize {
         val greeting = 22f
-
-        /** "Salam, Aysel 👋" over the greeting, at full colour (BRIEF-DEVIATIONS 18). */
-        val greetingFirstLine = 17f
         val brand = 17f
         val title = 14.5f
         val text = 14f
@@ -70,18 +67,19 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val meta = 11f
     }
 
+    /** Multiples of 4 only: 4 · 8 · 12 · 16 · 20 · 24 · 32 (coordinator's scale, the same on iOS). */
     object Space {
-        val xxs = 3f
-        val xs = 6f
+        val xxs = 4f
+        val xs = 8f
         val s = 8f
-        val m = 10f
+        val m = 12f
         val l = 12f
-        val xl = 14f
-        val xxl = 18f
+        val xl = 16f
+        val xxl = 20f
     }
 
     object Size {
-        val logo = 22f
+        val logo = 32f
         val headerAvatar = 24f
 
         /** Header avatars overlap by this much. */
@@ -125,6 +123,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
          * the background; the header from the brand to a step darker ([primaryOverride] is always derived here).
          */
         fun make(brand: MessengerConfig.Brand?, dark: Boolean, primaryOverride: RgbColor? = null): ClomniTheme {
+            if (brand == null && primaryOverride == null) return neutral(dark)
             val background = if (dark) hex("#121316") else RgbColor.WHITE
             val palette = if (primaryOverride == null) brand?.colors?.let { if (dark) it.dark else it.light } else null
             val brandColors = palette?.let(::fromPalette)
@@ -166,6 +165,16 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                 onWarning = hex(if (dark) "#F2DC8B" else "#5C4400"),
             )
             return ClomniTheme(colors, dark)
+        }
+
+        /**
+         * No config yet and no `setTheme` colour: grey, never a brand colour that is not the app's. The skeleton
+         * shows in it until the config arrives.
+         */
+        private fun neutral(dark: Boolean): ClomniTheme {
+            val grey = make(MessengerConfig.Brand.neutral, dark)
+            val c = grey.colors
+            return grey.copy(colors = c.copy(headerFrom = c.surface, headerTo = c.surface, headerText = c.textPrimary))
         }
 
         /** The brand's own colours, from the server or derived here. */

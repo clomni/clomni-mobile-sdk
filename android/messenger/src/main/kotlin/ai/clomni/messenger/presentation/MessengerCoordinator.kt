@@ -17,6 +17,9 @@ internal interface MessengerSession {
     val unreadTotal: Int
     val config: MessengerConfig?
 
+    /** [config], read from the disk cache now if need be (a small file). */
+    fun cachedConfig(): MessengerConfig?
+
     fun loginUnidentifiedUser(): Future<Unit>
 
     fun refreshConfig(language: String?): Future<MessengerConfig?>
@@ -167,6 +170,16 @@ internal class MessengerCoordinator(
         }
 
     // Getting ready
+
+    /**
+     * Before the messenger's first frame (on the UI thread): the look the previous run kept, read now if the SDK's
+     * worker has not yet, so the screen opens in the brand's colours instead of changing to them.
+     */
+    fun firstFrame() {
+        if (config != null) return
+        config = session.cachedConfig() ?: return
+        changed()
+    }
 
     /** After initialize and login: listens to the SDK, takes the cached config and unread count, opens the socket. */
     fun start(done: () -> Unit = {}) {
