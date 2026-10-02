@@ -57,6 +57,18 @@ final class ThemeTests: XCTestCase {
 
         let solid = ClomniTheme.make(brand: try brand("#1F9D63", style: "solid"), dark: false).colors
         XCTAssertEqual([solid.headerFrom, solid.headerTo], [apar, apar], "one colour")
+
+        // header_text: white needs 3:1 on both header colours. White is 2.2:1 on Apar's light top (#27C87E), so the
+        // light header's text is near-black; dark mode's header (#1F9D63 → #0E482D) takes white, as the solid one does.
+        XCTAssertEqual(light.headerText.hex, "#1B1D21")
+        XCTAssertEqual(dark.headerText, .white)
+        XCTAssertEqual(solid.headerText, .white)
+        XCTAssertEqual(ClomniTheme.headerText(on: RGBColor(hex: "#FFD60A")!, RGBColor(hex: "#5A2D82")!).hex, "#1B1D21",
+                       "both colours must carry it")
+        let picture = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
+            ##"{"brand":{"primary_color":"#FFD60A","header_style":"image","header_image_url":"https://a.az/h.png"}}"##.utf8)))
+        XCTAssertEqual(ClomniTheme.make(brand: picture.brand, dark: false).colors.headerText, .white,
+                       "over a picture's dark veil, always white")
     }
 
     /// The server's colours win over the SDK's own arithmetic, so Android and iOS show the same.
@@ -67,8 +79,20 @@ final class ThemeTests: XCTestCase {
                         light.headerTo].map(\.hex),
                        ["#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A"])
         let dark = ClomniTheme.make(brand: apar.brand, dark: true).colors
-        XCTAssertEqual([dark.primary, dark.onPrimary, dark.headerFrom, dark.headerTo].map(\.hex),
-                       ["#34B57A", "#0B0C0E", "#1F9D63", "#0E4F33"])
+        XCTAssertEqual([dark.primary, dark.onPrimary, dark.headerFrom, dark.headerTo, dark.headerText].map(\.hex),
+                       ["#34B57A", "#0B0C0E", "#1F9D63", "#0E4F33", "#FFFFFF"],
+                       "the dark header's text is not on_primary's black")
+        // A server that sends no header_text yet: worked out from its header colours.
+        let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
+            {"brand":{"primary_color":"#1F9D63","colors":{
+              "light":{"primary":"#1F9D63","on_primary":"#FFFFFF","primary_soft":"#E9F5EF","primary_line":"#C6E6D5",
+                       "header_from":"#3FB37C","header_to":"#13734A"},
+              "dark":{"primary":"#34B57A","on_primary":"#0B0C0E","primary_soft":"#16241D","primary_line":"#24503A",
+                      "header_from":"#1F9D63","header_to":"#0E4F33"}}}}
+            """##.utf8)))
+        XCTAssertNil(older.brand.colors?.light.headerText)
+        XCTAssertEqual(ClomniTheme.make(brand: older.brand, dark: false).colors.headerText.hex, "#1B1D21")
+        XCTAssertEqual(ClomniTheme.make(brand: older.brand, dark: true).colors.headerText, .white)
 
         // Clomni.setTheme's colour wins over both: derived here from it.
         let own = ClomniTheme.make(brand: apar.brand, dark: false, primaryColor: "#0A66C2").colors

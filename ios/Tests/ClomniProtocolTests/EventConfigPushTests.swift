@@ -98,7 +98,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertFalse(config.brand.glow)
         XCTAssertEqual(config.brand.colors?.light, MessengerConfig.Palette(
             primary: "#1F9D63", onPrimary: "#FFFFFF", primarySoft: "#E9F5EF", primaryLine: "#C6E6D5",
-            headerFrom: "#3FB37C", headerTo: "#13734A"))
+            headerFrom: "#3FB37C", headerTo: "#13734A", headerText: "#FFFFFF"))
         XCTAssertEqual(config.brand.colors?.dark.onPrimary, "#0B0C0E")
         XCTAssertEqual(config.team.show, true)
         XCTAssertEqual(config.team.avatars.count, 3)

@@ -75,10 +75,10 @@ struct HomeHeaderView: View {
         }
     }
 
-    /// White over a picture, which has its dark veil; on_primary over the brand's colours.
+    /// header_text: white over a picture (its dark veil), else white or near-black by the header's colours.
     private var ink: RGBColor {
         if case .image = header.style { return .white }
-        return theme.colors.onPrimary
+        return theme.colors.headerText
     }
 }
 

@@ -59,6 +59,8 @@ package struct MessengerConfig: Sendable, Equatable {
         package let headerFrom: String
         /// Its bottom.
         package let headerTo: String
+        /// Text and icons on the header; nil from a server before it sent this (the SDK then works it out).
+        package let headerText: String?
     }
 
     package struct Team: Sendable, Equatable {
@@ -211,7 +213,7 @@ extension MessengerConfig {
         poweredBy = f.optionalBool("powered_by") ?? true
     }
 
-    /// All six colours, or nil.
+    /// The six colours (and header_text when there), or nil.
     private static func palette(_ f: JSONFields) -> Palette? {
         let color = { (key: String) in hexColor(f.optionalString(key)) }
         guard let primary = color("primary"), let onPrimary = color("on_primary"), let soft = color("primary_soft"),
@@ -219,7 +221,7 @@ extension MessengerConfig {
             return nil
         }
         return Palette(primary: primary, onPrimary: onPrimary, primarySoft: soft, primaryLine: line, headerFrom: from,
-                       headerTo: to)
+                       headerTo: to, headerText: color("header_text"))
     }
 
     /// "#RRGGBB", or nil for anything else.

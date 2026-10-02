@@ -18,6 +18,9 @@ package struct ClomniTheme: Sendable, Equatable {
         /// The header, top to bottom: light to dark (one colour for a solid header).
         package let headerFrom: RGBColor
         package let headerTo: RGBColor
+        /// Text and icons on the header: white where it reaches 3:1 on both header colours (the greeting is large
+        /// text), else #1B1D21. Not `onPrimary`, which in dark mode can be black on a dark header.
+        package let headerText: RGBColor
         package let background: RGBColor
         /// Behind the Home cards.
         package let canvas: RGBColor
@@ -108,15 +111,23 @@ package struct ClomniTheme: Sendable, Equatable {
         if let primaryColor, let base = RGBColor(hex: primaryColor) {
             tokens = derive(base, dark: dark)
         } else if let palette = dark ? brand?.colors?.dark : brand?.colors?.light {
+            let from = hex(palette.headerFrom)
+            let to = hex(palette.headerTo)
             tokens = Tokens(primary: hex(palette.primary), onPrimary: hex(palette.onPrimary),
                             primarySoft: hex(palette.primarySoft), primaryLine: hex(palette.primaryLine),
-                            headerFrom: hex(palette.headerFrom), headerTo: hex(palette.headerTo))
+                            headerFrom: from, headerTo: to,
+                            headerText: palette.headerText.flatMap { RGBColor(hex: $0) } ?? headerText(on: from, to))
         } else {
             tokens = derive(brand.flatMap { RGBColor(hex: $0.primaryColor) } ?? defaultPrimary, dark: dark)
         }
-        if brand?.headerStyle == .solid {
+        if brand?.headerStyle == .solid, tokens.headerFrom != tokens.primary || tokens.headerTo != tokens.primary {
             tokens.headerFrom = tokens.primary
             tokens.headerTo = tokens.primary
+            tokens.headerText = headerText(on: tokens.primary, tokens.primary)
+        }
+        if brand?.headerStyle == .image, brand?.headerImageUrl != nil {
+            // Over the picture's dark veil.
+            tokens.headerText = .white
         }
         let colors = Colors(
             primary: tokens.primary,
@@ -125,6 +136,7 @@ package struct ClomniTheme: Sendable, Equatable {
             primaryLine: tokens.primaryLine,
             headerFrom: tokens.headerFrom,
             headerTo: tokens.headerTo,
+            headerText: tokens.headerText,
             background: background,
             canvas: hex(dark ? "#0B0C0E" : "#F5F6F8"),
             surface: hex(dark ? "#22242A" : "#F1F2F4"),
@@ -154,6 +166,7 @@ package struct ClomniTheme: Sendable, Equatable {
         package var primaryLine: RGBColor
         package var headerFrom: RGBColor
         package var headerTo: RGBColor
+        package var headerText: RGBColor
     }
 
     /// The server's rules, for when it sent no colours or the app chose its own: in dark mode the primary is one step
@@ -164,11 +177,17 @@ package struct ClomniTheme: Sendable, Equatable {
     package static func derive(_ base: RGBColor, dark: Bool) -> Tokens {
         let background = dark ? hex("#121316") : .white
         let primary = dark ? base.steps(1) : base
+        let from = dark ? base : base.steps(1)
+        let to = dark ? base.steps(-2) : base.steps(-1)
         return Tokens(primary: primary, onPrimary: readableText(on: primary),
                       primarySoft: primary.over(background, opacity: 0.10),
                       primaryLine: primary.over(background, opacity: 0.22),
-                      headerFrom: dark ? base : base.steps(1),
-                      headerTo: dark ? base.steps(-2) : base.steps(-1))
+                      headerFrom: from, headerTo: to, headerText: headerText(on: from, to))
+    }
+
+    /// White when it reaches 3:1 on both header colours, else #1B1D21 (APPEARANCE-CONTRACT § 1, header_text).
+    package static func headerText(on from: RGBColor, _ to: RGBColor) -> RGBColor {
+        from.contrast(with: .white) >= 3 && to.contrast(with: .white) >= 3 ? .white : hex("#1B1D21")
     }
 
     private static func hex(_ value: String) -> RGBColor {
