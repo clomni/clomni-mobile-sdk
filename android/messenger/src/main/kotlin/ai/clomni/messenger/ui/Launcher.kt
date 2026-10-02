@@ -87,7 +87,7 @@ internal class ActivityLauncherSurface : LauncherOverlay.Surface<Activity> {
             decor.addView(it)
         }
         val dark = (screen.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        view.bind(state, ClomniTheme.make(config?.brand, ClomniTheme.isDark(config?.brand?.theme, dark)), tap)
+        view.bind(state, ClomniTheme.resolve(config, dark), tap)
     }
 
     override fun hide(screen: Activity) {

@@ -7,6 +7,7 @@ import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ChatScreen
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
+import ai.clomni.messenger.presentation.ThemeOverrides
 import ai.clomni.messenger.protocol.MessengerConfig
 import android.content.Context
 import android.content.ContextWrapper
@@ -155,9 +156,10 @@ internal fun ClomniChat(
 
 @Composable
 internal fun rememberTheme(config: MessengerConfig?): ClomniTheme {
-    val brand = config?.brand
-    val dark = ClomniTheme.isDark(brand?.theme, isSystemInDarkTheme())
-    return remember(brand, dark) { ClomniTheme.make(brand, dark) }
+    val systemIsDark = isSystemInDarkTheme()
+    return remember(config, systemIsDark, ThemeOverrides.primaryColor, ThemeOverrides.mode) {
+        ClomniTheme.resolve(config, systemIsDark)
+    }
 }
 
 /**

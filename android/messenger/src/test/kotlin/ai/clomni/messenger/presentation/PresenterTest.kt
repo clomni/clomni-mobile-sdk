@@ -21,7 +21,7 @@ import java.util.TimeZone
 internal object Fixture {
     private val protocol = ProtocolJson()
 
-    val aparConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
+    val aparConfig: MessengerConfig get() = protocol.parseConfig(APAR_CONFIG_V2)!!
     val minimalConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/43-config-minimal.json"))!!
 
     /** A conversation whose last message is the fixture [message] (created at 2026-10-01T10:30Z, or [at]). */
@@ -76,7 +76,12 @@ class PresenterTest {
 
         assertEquals("Salam 👋", presenter().home(snapshot(user = null)).header.greeting)
         assertEquals("Salam 👋", presenter().home(snapshot(user = "   ")).header.greeting)
-        assertEquals("Hi, Aysel 👋", presenter("en").home(snapshot(user = "Aysel")).header.greeting)
+        // The SDK's own texts ({first_name}); the panel's come with the config in its language.
+        val english = HomePresenter(ClomniStrings("en"), utc, now)
+        assertEquals("Hi, Aysel 👋", english.home(snapshot(user = "Aysel Məmmədova")).header.greeting)
+        assertEquals("Hi 👋", english.home(snapshot(user = null)).header.greeting)
+        val fullName = ClomniStrings("az", mapOf("greeting_line1" to "Xoş gəldiniz, {name}!"))
+        assertEquals("Xoş gəldiniz, Aysel Məmmədova!", fullName.greeting("Aysel Məmmədova"))
 
         val minimal = presenter(config = Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig)).header
         assertEquals("the SDK's text when the config has none", "Necə kömək edə bilərik?", minimal.title)

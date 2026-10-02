@@ -64,7 +64,7 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
     Column(
         Modifier.fillMaxWidth()
             // The only gradient in the messenger: primaryDark at the top to primary, behind the status bar too.
-            .background(Brush.verticalGradient(listOf(theme.colors.primaryDark.color, theme.colors.primary.color)))
+            .background(Brush.verticalGradient(listOf(theme.colors.headerFrom.color, theme.colors.headerTo.color)))
             .windowInsetsPadding(WindowInsets.statusBars)
             // 62 = the 40 the cards ride up + 22 of air above them.
             .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.xxl.dp, bottom = 62.dp),
@@ -72,7 +72,7 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             BrandMark(header, theme)
             Spacer(Modifier.weight(1f))
-            TeamAvatars(header.teamAvatars, theme.colors.primaryDark, theme)
+            TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
             if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
             CloseButton(header.closeLabel, text, close)
         }

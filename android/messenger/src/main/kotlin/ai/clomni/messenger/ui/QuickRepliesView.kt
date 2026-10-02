@@ -66,7 +66,7 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
 }
 
 /**
- * Background, a 1 dp primarySoft border, primary text 14/500, radius 18, padding 7×13; up to two lines, then "…". The
+ * Background, a 1 dp primaryLine border, primary text 14/500, radius 18, padding 7×13; up to two lines, then "…". The
  * tap target reaches 48 dp where the pill is smaller.
  */
 @Composable
@@ -81,7 +81,7 @@ private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabl
             button.title,
             Modifier.clip(shape)
                 .background(theme.colors.background.color)
-                .border(1.dp, if (isBack) theme.colors.border.color else theme.colors.primarySoft.color, shape)
+                .border(1.dp, if (isBack) theme.colors.border.color else theme.colors.primaryLine.color, shape)
                 .padding(vertical = 7.dp, horizontal = 13.dp),
             style = clomniText(
                 ClomniTheme.FontSize.text,

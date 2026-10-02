@@ -226,7 +226,7 @@ class ChatPresenterTest {
             "Növbəti iş saatı: sabah 05:00",
             screen(emptyList()) { it.copy(config = nextOpen) }.header.subtitle,
         )
-        val hidden = Fixture.aparConfig.let { it.copy(home = it.home.copy(showTeamAvatars = false)) }
+        val hidden = Fixture.aparConfig.let { it.copy(team = it.team.copy(show = false)) }
         assertEquals(ChatHeader.Lead.Team(emptyList()), screen(emptyList()) { it.copy(config = hidden) }.header.lead)
     }
 

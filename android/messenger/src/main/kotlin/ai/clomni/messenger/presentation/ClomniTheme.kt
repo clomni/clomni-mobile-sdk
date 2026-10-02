@@ -11,10 +11,13 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     data class Colors(
         /** User messages, pill text, send, active icons. One step lighter in dark mode. */
         val primary: RgbColor,
-        /** The top of the Home header's gradient: one step darker than [primary]. */
-        val primaryDark: RgbColor,
-        /** Pill borders: [primary] at 25% over the background; a muted dark tone of the brand hue in dark mode. */
+        /** The Home header's top and bottom: light to dark (both [primary] for a solid header). */
+        val headerFrom: RgbColor,
+        val headerTo: RgbColor,
+        /** [primary] at 10% over the background: image placeholders, soft backgrounds. */
         val primarySoft: RgbColor,
+        /** [primary] at 22% over the background: pill borders. */
+        val primaryLine: RgbColor,
         /** Text on [primary]: the config's colour, or white or black, whichever reaches 4.5:1. */
         val onPrimary: RgbColor,
         val background: RgbColor,
@@ -96,16 +99,33 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         /** Clomni's own colour, for a config that has none. */
         val defaultPrimary: RgbColor = RgbColor.parse(MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR) ?: RgbColor.BLACK
 
-        fun make(brand: MessengerConfig.Brand?, dark: Boolean): ClomniTheme {
-            val base = brand?.let { RgbColor.parse(it.primaryColor) } ?: defaultPrimary
-            val primary = if (dark) base.steps(1) else base
+        /**
+         * The look for [config] (null: Clomni's own) on a system that is or is not dark; `Clomni.setTheme` wins over the
+         * panel for the colour and the mode.
+         */
+        fun resolve(config: MessengerConfig?, systemIsDark: Boolean, overrides: ThemeOverrides = ThemeOverrides.Companion): ClomniTheme {
+            val dark = isDark(overrides.mode ?: config?.theme?.mode, systemIsDark)
+            return make(config?.brand, dark, overrides.primaryColor)
+        }
+
+        /**
+         * The server's colours for the brand when it sent them (APPEARANCE-CONTRACT 1), otherwise the same rules here:
+         * the brand, one step lighter in dark mode; text on it white or black by contrast; soft 10% and line 22% over
+         * the background; the header light to dark ([primaryOverride] is always derived here).
+         */
+        fun make(brand: MessengerConfig.Brand?, dark: Boolean, primaryOverride: RgbColor? = null): ClomniTheme {
             val background = if (dark) hex("#121316") else RgbColor.WHITE
-            val (hue, saturation, _) = base.hsl
+            val palette = if (primaryOverride == null) brand?.colors?.let { if (dark) it.dark else it.light } else null
+            val brandColors = palette?.let(::fromPalette)
+                ?: derive(primaryOverride ?: brand?.let { RgbColor.parse(it.primaryColor) } ?: defaultPrimary, dark, background)
+            val solid = brand?.headerStyle == MessengerConfig.HeaderStyle.SOLID
             val colors = Colors(
-                primary = primary,
-                primaryDark = primary.steps(-1),
-                primarySoft = if (dark) RgbColor.fromHsl(hue, saturation / 2, 0.28) else primary.over(background, 0.25),
-                onPrimary = brand?.onPrimaryColor?.let(RgbColor::parse) ?: readableText(primary),
+                primary = brandColors.primary,
+                headerFrom = if (solid) brandColors.primary else brandColors.headerFrom,
+                headerTo = if (solid) brandColors.primary else brandColors.headerTo,
+                primarySoft = brandColors.primarySoft,
+                primaryLine = brandColors.primaryLine,
+                onPrimary = brandColors.onPrimary,
                 background = background,
                 canvas = hex(if (dark) "#0B0C0E" else "#F5F6F8"),
                 surface = hex(if (dark) "#22242A" else "#F1F2F4"),
@@ -121,10 +141,44 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             return ClomniTheme(colors, dark)
         }
 
-        /** The config's `brand.theme` wins over the system's appearance unless it says `system`. */
-        fun isDark(theme: MessengerConfig.Theme?, systemIsDark: Boolean): Boolean = when (theme) {
-            MessengerConfig.Theme.DARK -> true
-            MessengerConfig.Theme.LIGHT -> false
+        /** The brand's own colours, from the server or derived here. */
+        data class BrandColors(
+            val primary: RgbColor,
+            val onPrimary: RgbColor,
+            val primarySoft: RgbColor,
+            val primaryLine: RgbColor,
+            val headerFrom: RgbColor,
+            val headerTo: RgbColor,
+        )
+
+        /** The server's rules (APPEARANCE-CONTRACT 1), for a config without colours or a colour set in the app. */
+        fun derive(base: RgbColor, dark: Boolean, background: RgbColor): BrandColors {
+            val primary = if (dark) base.steps(1) else base
+            // Light: one step lighter at the top, one darker at the bottom; dark: both one step darker than that.
+            val shade = if (dark) -1 else 0
+            return BrandColors(
+                primary = primary,
+                onPrimary = readableText(primary),
+                primarySoft = primary.over(background, 0.10),
+                primaryLine = primary.over(background, 0.22),
+                headerFrom = base.steps(1 + shade),
+                headerTo = base.steps(-1 + shade),
+            )
+        }
+
+        private fun fromPalette(palette: MessengerConfig.Palette) = BrandColors(
+            primary = hex(palette.primary),
+            onPrimary = hex(palette.onPrimary),
+            primarySoft = hex(palette.primarySoft),
+            primaryLine = hex(palette.primaryLine),
+            headerFrom = hex(palette.headerFrom),
+            headerTo = hex(palette.headerTo),
+        )
+
+        /** `Clomni.setTheme`'s mode, else the panel's `theme.mode`; `system` follows the device. */
+        fun isDark(mode: MessengerConfig.ThemeMode?, systemIsDark: Boolean): Boolean = when (mode) {
+            MessengerConfig.ThemeMode.DARK -> true
+            MessengerConfig.ThemeMode.LIGHT -> false
             else -> systemIsDark
         }
 
@@ -137,4 +191,15 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
 
         private fun hex(value: String) = RgbColor.parse(value) ?: RgbColor.BLACK
     }
+}
+
+/** What the app set with `Clomni.setTheme`: it wins over the panel. The companion is the app's own. */
+internal open class ThemeOverrides {
+    @Volatile
+    var primaryColor: RgbColor? = null
+
+    @Volatile
+    var mode: MessengerConfig.ThemeMode? = null
+
+    companion object : ThemeOverrides()
 }
