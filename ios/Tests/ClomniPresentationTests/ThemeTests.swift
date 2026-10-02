@@ -3,6 +3,9 @@ import XCTest
 import ClomniProtocol
 @testable import ClomniPresentation
 
+// macOS's QuickDraw also declares RGBColor; this module's own name wins over both imports.
+typealias RGBColor = ClomniPresentation.RGBColor
+
 final class ThemeTests: XCTestCase {
     private let apar = RGBColor(hex: "#1F9D63")!
 
