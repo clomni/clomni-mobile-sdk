@@ -1,3 +1,4 @@
-## 0.0.1
+## 1.0.0 (unreleased)
 
-* TODO: Describe initial release.
+The first release: the Clomni Messenger through the native iOS and Android SDKs (opening it, users, push, the unread
+count and events as streams, log level and font).

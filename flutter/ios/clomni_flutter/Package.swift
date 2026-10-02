@@ -12,24 +12,16 @@ let package = Package(
         .library(name: "clomni-flutter", targets: ["clomni_flutter"])
     ],
     dependencies: [
-        .package(name: "FlutterFramework", path: "../FlutterFramework")
+        .package(name: "FlutterFramework", path: "../FlutterFramework"),
+        // The iOS SDK (before it is published, an app can point Xcode at a checkout instead; README.md).
+        .package(url: "https://github.com/rzayevkenann/clomni-mobile-sdk.git", from: "1.0.0")
     ],
     targets: [
         .target(
             name: "clomni_flutter",
             dependencies: [
-                .product(name: "FlutterFramework", package: "FlutterFramework")
-            ],
-            resources: [
-                // If your plugin requires a privacy manifest, for example if it uses any required
-                // reason APIs, update the PrivacyInfo.xcprivacy file to describe your plugin's
-                // privacy impact, and then uncomment these lines. For more information, see
-                // https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
-                // .process("PrivacyInfo.xcprivacy"),
-
-                // If you have other resources that need to be bundled with your plugin, refer to
-                // the following instructions to add them:
-                // https://developer.apple.com/documentation/xcode/bundling-resources-with-a-swift-package
+                .product(name: "FlutterFramework", package: "FlutterFramework"),
+                .product(name: "ClomniMessenger", package: "clomni-mobile-sdk")
             ]
         )
     ]
