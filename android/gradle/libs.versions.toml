@@ -23,6 +23,9 @@ kover = "0.9.9"
 # dump changes with it, where it can be reviewed. Build-time only.
 binaryCompatibilityValidator = "0.18.1"
 junit = "4.13.2"
+# Device tests (androidTest): compiled on dev, run on an emulator in CI. Test-only.
+androidxTestRunner = "1.6.2"
+androidxTestJunit = "1.2.1"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -34,6 +37,11 @@ compose-foundation = { module = "androidx.compose.foundation:foundation" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 junit = { module = "junit:junit", version.ref = "junit" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-junit4-accessibility = { module = "androidx.compose.ui:ui-test-junit4-accessibility" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

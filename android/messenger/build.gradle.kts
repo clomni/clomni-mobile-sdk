@@ -25,6 +25,7 @@ android {
         minSdk = 23
         // Sent as X-Clomni-SDK: android/<version> on every request.
         buildConfigField("String", "SDK_VERSION", "\"$version\"")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -74,6 +75,14 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
+
+    // On a device (CI's emulator): the Keystore, the activity lifecycle, initialize under StrictMode, accessibility.
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.compose.ui.test.junit4.accessibility)
+    androidTestImplementation(libs.compose.ui.test.manifest)
 }
 
 kover {
@@ -105,4 +114,19 @@ apiValidation {
         "ai.clomni.messenger.BuildConfig",
         "ai.clomni.messenger.ui.ComposableSingletons\$ClomniMessengerActivityKt",
     )
+}
+
+// Brief 11: the release AAR (a library: not shrunk here, R8 runs in the app) is at most 1.5 MB. Part of CI.
+val checkAarSize by tasks.registering {
+    description = "Fails when the release AAR is larger than 1.5 MB."
+    group = "verification"
+    val aar = layout.buildDirectory.file("outputs/aar/messenger-release.aar")
+    dependsOn("bundleReleaseAar")
+    inputs.file(aar)
+    doLast {
+        val bytes = aar.get().asFile.length()
+        val limit = 1_500_000L
+        logger.lifecycle("messenger-release.aar: $bytes bytes (limit $limit)")
+        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over the brief's 1.5 MB" }
+    }
 }
