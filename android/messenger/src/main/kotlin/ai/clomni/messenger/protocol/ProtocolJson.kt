@@ -556,6 +556,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 primaryLine = color("primary_line") ?: return null,
                 headerFrom = color("header_from") ?: return null,
                 headerTo = color("header_to") ?: return null,
+                headerText = color("header_text"),
             )
         }
         if (o.isEmpty()) return null

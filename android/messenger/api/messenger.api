@@ -28,6 +28,11 @@ public final class ai/clomni/messenger/Clomni {
 	public static final fun setLauncherVisible (Z)V
 	public static final fun setLogLevel (Lai/clomni/messenger/ClomniLogLevel;)V
 	public static final fun setNotificationIcon (I)V
+	public static final fun setTheme ()V
+	public static final fun setTheme (Ljava/lang/String;)V
+	public static final fun setTheme (Ljava/lang/String;Landroid/graphics/Typeface;)V
+	public static final fun setTheme (Ljava/lang/String;Landroid/graphics/Typeface;Lai/clomni/messenger/ClomniThemeMode;)V
+	public static synthetic fun setTheme$default (Ljava/lang/String;Landroid/graphics/Typeface;Lai/clomni/messenger/ClomniThemeMode;ILjava/lang/Object;)V
 	public static final fun setTypeface (Landroid/graphics/Typeface;)V
 	public static final fun startFlow (Ljava/lang/String;)V
 	public static final fun startFlow (Ljava/lang/String;Ljava/util/Map;)V
@@ -58,6 +63,15 @@ public final class ai/clomni/messenger/ClomniPush {
 	public static final field INSTANCE Lai/clomni/messenger/ClomniPush;
 	public static final fun handle (Landroid/content/Context;Ljava/util/Map;)Z
 	public static final fun isClomniPush (Ljava/util/Map;)Z
+}
+
+public final class ai/clomni/messenger/ClomniThemeMode : java/lang/Enum {
+	public static final field DARK Lai/clomni/messenger/ClomniThemeMode;
+	public static final field LIGHT Lai/clomni/messenger/ClomniThemeMode;
+	public static final field SYSTEM Lai/clomni/messenger/ClomniThemeMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lai/clomni/messenger/ClomniThemeMode;
+	public static fun values ()[Lai/clomni/messenger/ClomniThemeMode;
 }
 
 public final class ai/clomni/messenger/ClomniUser {

@@ -533,7 +533,12 @@ internal class ClomniEngine(
         deliver()
     }
 
-    private fun loadConfig(language: String?) {
+    /** The language of the last config asked for: its texts are that language's, and config.changed keeps it. */
+    private var configLanguage: String? = null
+
+    private fun loadConfig(requested: String?) {
+        val language = requested ?: configLanguage
+        configLanguage = language
         try {
             when (val response = authed { api.getConfig(language, store.configEtag) }) {
                 ConfigResponse.NotModified -> Unit

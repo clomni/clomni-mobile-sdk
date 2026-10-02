@@ -14,11 +14,13 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         /** The Home header's top and bottom: light to dark (both [primary] for a solid header). */
         val headerFrom: RgbColor,
         val headerTo: RgbColor,
+        /** Text and icons on the header: white where it reaches 3:1 on both header colours, else dark; white on a picture. */
+        val headerText: RgbColor,
         /** [primary] at 10% over the background: image placeholders, soft backgrounds. */
         val primarySoft: RgbColor,
         /** [primary] at 22% over the background: pill borders. */
         val primaryLine: RgbColor,
-        /** Text on [primary]: the config's colour, or white or black, whichever reaches 4.5:1. */
+        /** Text on [primary]: the server's colour, or white or black, whichever reaches 4.5:1. Not on the header. */
         val onPrimary: RgbColor,
         val background: RgbColor,
         /** Behind the Home cards. */
@@ -103,9 +105,9 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
          * The look for [config] (null: Clomni's own) on a system that is or is not dark; `Clomni.setTheme` wins over the
          * panel for the colour and the mode.
          */
-        fun resolve(config: MessengerConfig?, systemIsDark: Boolean, overrides: ThemeOverrides = ThemeOverrides.Companion): ClomniTheme {
-            val dark = isDark(overrides.mode ?: config?.theme?.mode, systemIsDark)
-            return make(config?.brand, dark, overrides.primaryColor)
+        fun resolve(config: MessengerConfig?, systemIsDark: Boolean, override: ThemeOverride = ThemeOverride()): ClomniTheme {
+            val dark = isDark(override.mode ?: config?.theme?.mode, systemIsDark)
+            return make(config?.brand, dark, override.primaryColor)
         }
 
         /**
@@ -119,10 +121,18 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             val brandColors = palette?.let(::fromPalette)
                 ?: derive(primaryOverride ?: brand?.let { RgbColor.parse(it.primaryColor) } ?: defaultPrimary, dark, background)
             val solid = brand?.headerStyle == MessengerConfig.HeaderStyle.SOLID
+            val headerFrom = if (solid) brandColors.primary else brandColors.headerFrom
+            val headerTo = if (solid) brandColors.primary else brandColors.headerTo
+            val picture = brand?.headerStyle == MessengerConfig.HeaderStyle.IMAGE && brand.headerImageUrl != null
             val colors = Colors(
                 primary = brandColors.primary,
-                headerFrom = if (solid) brandColors.primary else brandColors.headerFrom,
-                headerTo = if (solid) brandColors.primary else brandColors.headerTo,
+                headerFrom = headerFrom,
+                headerTo = headerTo,
+                headerText = when {
+                    // The picture has its dark veil.
+                    picture -> RgbColor.WHITE
+                    else -> brandColors.headerText ?: headerText(headerFrom, headerTo)
+                },
                 primarySoft = brandColors.primarySoft,
                 primaryLine = brandColors.primaryLine,
                 onPrimary = brandColors.onPrimary,
@@ -149,6 +159,8 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             val primaryLine: RgbColor,
             val headerFrom: RgbColor,
             val headerTo: RgbColor,
+            /** The server's; null: [headerText] of the header's colours. */
+            val headerText: RgbColor? = null,
         )
 
         /** The server's rules (APPEARANCE-CONTRACT 1), for a config without colours or a colour set in the app. */
@@ -173,6 +185,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             primaryLine = hex(palette.primaryLine),
             headerFrom = hex(palette.headerFrom),
             headerTo = hex(palette.headerTo),
+            headerText = palette.headerText?.let(::hex),
         )
 
         /** `Clomni.setTheme`'s mode, else the panel's `theme.mode`; `system` follows the device. */
@@ -181,6 +194,13 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             MessengerConfig.ThemeMode.LIGHT -> false
             else -> systemIsDark
         }
+
+        /**
+         * The header's text and icons (APPEARANCE-CONTRACT 1, header_text): white where it reaches 3:1 on both of the
+         * header's colours (the greeting is large text), otherwise #1B1D21.
+         */
+        fun headerText(from: RgbColor, to: RgbColor): RgbColor =
+            if (from.contrast(RgbColor.WHITE) >= 3.0 && to.contrast(RgbColor.WHITE) >= 3.0) RgbColor.WHITE else hex("#1B1D21")
 
         /**
          * White when it reaches 4.5:1 (WCAG AA for body text) on [background], otherwise black, which then always
@@ -193,13 +213,38 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     }
 }
 
-/** What the app set with `Clomni.setTheme`: it wins over the panel. The companion is the app's own. */
-internal open class ThemeOverrides {
-    @Volatile
-    var primaryColor: RgbColor? = null
+/** What the app set with `Clomni.setTheme`: it wins over the panel; null leaves that one to the panel. */
+internal data class ThemeOverride(val primaryColor: RgbColor? = null, val mode: MessengerConfig.ThemeMode? = null)
 
-    @Volatile
-    var mode: MessengerConfig.ThemeMode? = null
-
-    companion object : ThemeOverrides()
+/**
+ * The look [fraction] (0…1) of the way from this one to [target]: a new appearance fades in rather than jumping.
+ * The mode is the target's.
+ */
+internal fun ClomniTheme.toward(target: ClomniTheme, fraction: Double): ClomniTheme {
+    if (fraction >= 1.0 || this == target) return target
+    val a = colors
+    val b = target.colors
+    fun mix(from: RgbColor, to: RgbColor) = to.over(from, fraction)
+    return ClomniTheme(
+        ClomniTheme.Colors(
+            primary = mix(a.primary, b.primary),
+            headerFrom = mix(a.headerFrom, b.headerFrom),
+            headerTo = mix(a.headerTo, b.headerTo),
+            headerText = mix(a.headerText, b.headerText),
+            primarySoft = mix(a.primarySoft, b.primarySoft),
+            primaryLine = mix(a.primaryLine, b.primaryLine),
+            onPrimary = mix(a.onPrimary, b.onPrimary),
+            background = mix(a.background, b.background),
+            canvas = mix(a.canvas, b.canvas),
+            surface = mix(a.surface, b.surface),
+            textPrimary = mix(a.textPrimary, b.textPrimary),
+            textSecondary = mix(a.textSecondary, b.textSecondary),
+            border = mix(a.border, b.border),
+            unread = mix(a.unread, b.unread),
+            online = mix(a.online, b.online),
+            warning = mix(a.warning, b.warning),
+            onWarning = mix(a.onWarning, b.onWarning),
+        ),
+        target.isDark,
+    )
 }

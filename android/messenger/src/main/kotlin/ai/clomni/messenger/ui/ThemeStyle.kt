@@ -2,10 +2,14 @@ package ai.clomni.messenger.ui
 
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.RgbColor
+import ai.clomni.messenger.presentation.ThemeOverride
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -21,6 +25,11 @@ import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 
 internal val RgbColor.color: Color get() = Color(argb)
+
+/** `Clomni.setTheme`'s colour and mode: every open screen redraws when it changes; the launcher reads it too. */
+internal object AppTheme {
+    var override: ThemeOverride by mutableStateOf(ThemeOverride())
+}
 
 /**
  * The app's own font (`Clomni.setTypeface`) for every text of the messenger; null is the platform's. A weight the

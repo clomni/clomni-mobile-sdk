@@ -5,6 +5,7 @@ import ai.clomni.messenger.presentation.ChannelItem
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.ConversationRow
 import ai.clomni.messenger.presentation.HomeScreen
+import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.RgbColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -54,18 +56,19 @@ private val target = ClomniTheme.Size.touchTarget.dp
 internal fun Modifier.button(label: String, onClick: () -> Unit): Modifier =
     clickable(role = Role.Button, onClick = onClick).clearAndSetSemantics { contentDescription = label }
 
-/** A round avatar: the picture when it loads, the initial on grey until then (or without one). */
+/**
+ * A round avatar: the picture when it loads; until then (or without one) the initial on grey, or primary_soft where
+ * there is no initial (the team's avatars).
+ */
 @Composable
 internal fun Avatar(url: String?, initial: String, size: Float, theme: ClomniTheme, modifier: Modifier = Modifier) {
-    Box(modifier.size(size.dp).clip(CircleShape).background(theme.colors.textSecondary.color), Alignment.Center) {
+    val circle = if (initial.isEmpty()) theme.colors.primarySoft else theme.colors.textSecondary
+    Box(modifier.size(size.dp).clip(CircleShape).background(circle.color), Alignment.Center) {
         // Sized with the circle, not with the user's font scale.
         val fontSize: TextUnit = with(LocalDensity.current) { (size * 0.41f).dp.toSp() }
         val style = clomniText(0f, RgbColor.WHITE, FontWeight.SemiBold).copy(fontSize = fontSize, lineHeight = fontSize)
         BasicText(initial, style = style)
-        // Previews and screenshot tests draw no network images.
-        if (url != null && !LocalInspectionMode.current) {
-            AsyncImage(url, contentDescription = null, Modifier.size(size.dp), contentScale = ContentScale.Crop)
-        }
+        if (url != null) RemoteImageFill(url, ImageSizing.Kind.ICON, size, Color.Transparent)
     }
 }
 
@@ -89,13 +92,14 @@ internal fun TeamAvatars(urls: List<String>, ring: RgbColor, theme: ClomniTheme)
     }
 }
 
-/** A grey block standing in for content while the first load runs (brief 8·7.5: no spinner). */
+/** A block in the brand's soft tone standing in for content while the first load runs (brief 8·7.5: no spinner). */
 @Composable
 internal fun SkeletonBlock(height: Float, theme: ClomniTheme) {
     Box(
         Modifier.fillMaxWidth().height(height.dp)
             .clip(RoundedCornerShape(ClomniTheme.Radius.card.dp))
-            .background(theme.colors.surface.color)
+            // primary_soft, as every placeholder (APPEARANCE-CONTRACT 4).
+            .background(theme.colors.primarySoft.color)
             .clearAndSetSemantics {},
     )
 }

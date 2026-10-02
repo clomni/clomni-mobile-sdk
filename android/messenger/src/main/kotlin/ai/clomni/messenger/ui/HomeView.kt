@@ -2,6 +2,8 @@ package ai.clomni.messenger.ui
 
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
+import ai.clomni.messenger.presentation.ImageSizing
+import ai.clomni.messenger.protocol.MessengerConfig
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -29,17 +31,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 
 /** The Home tab (brief 8·7.3): the brand header with the greeting, and the cards riding up over it by 40. */
 @Composable
@@ -60,37 +63,75 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
 
 @Composable
 private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () -> Unit) {
-    val text = theme.colors.onPrimary
-    Column(
-        Modifier.fillMaxWidth()
-            // The only gradient in the messenger: primaryDark at the top to primary, behind the status bar too.
-            .background(Brush.verticalGradient(listOf(theme.colors.headerFrom.color, theme.colors.headerTo.color)))
-            .windowInsetsPadding(WindowInsets.statusBars)
-            // 62 = the 40 the cards ride up + 22 of air above them.
-            .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.xxl.dp, bottom = 62.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-            BrandMark(header, theme)
-            Spacer(Modifier.weight(1f))
-            TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
-            if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
-            CloseButton(header.closeLabel, text, close)
-        }
-        Column(Modifier.padding(top = 20.dp).semantics(mergeDescendants = true) { heading() }) {
-            val greeting = clomniText(
-                ClomniTheme.FontSize.greeting,
-                text,
-                FontWeight.SemiBold,
-                lineHeight = 1.22f,
-                letterSpacing = -0.4f,
-            )
-            BasicText(header.greeting, Modifier.alpha(0.62f), style = greeting)
-            BasicText(header.title, style = greeting)
+    // header_text: white on a dark header or a picture, dark on a light one; never on_primary.
+    val text = theme.colors.headerText
+    Box(Modifier.fillMaxWidth()) {
+        HeaderBackground(header, theme, Modifier.matchParentSize())
+        Column(
+            Modifier.fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                // 62 = the 40 the cards ride up + 22 of air above them.
+                .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.xxl.dp, bottom = 62.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+                BrandMark(header, theme)
+                Spacer(Modifier.weight(1f))
+                TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
+                if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
+                CloseButton(header.closeLabel, text, close)
+            }
+            Column(Modifier.padding(top = 20.dp).semantics(mergeDescendants = true) { heading() }) {
+                val greeting = clomniText(
+                    ClomniTheme.FontSize.greeting,
+                    text,
+                    FontWeight.SemiBold,
+                    lineHeight = 1.22f,
+                    letterSpacing = -0.4f,
+                )
+                BasicText(header.greeting, Modifier.alpha(0.62f), style = greeting)
+                BasicText(header.title, style = greeting)
+            }
         }
     }
 }
 
-/** The 22 dp white square with the logo (or the brand's initial) and the brand name 17/700. */
+/**
+ * Behind the header and the status bar: the brand gradient (header_from at the top to header_to; one colour when
+ * solid), or the panel's picture under a black veil, 35% at the top to 55% at the bottom; with the glow, a soft
+ * radial light of the brand colour at 25% (APPEARANCE-CONTRACT 1).
+ */
+@Composable
+private fun HeaderBackground(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier) {
+    val picture = header.imageUrl.takeIf { header.style == MessengerConfig.HeaderStyle.IMAGE }
+    val glow = theme.colors.primary.color.copy(alpha = 0.25f)
+    Box(
+        modifier.clearAndSetSemantics {}.drawWithContent {
+            if (picture == null) {
+                drawRect(Brush.verticalGradient(listOf(theme.colors.headerFrom.color, theme.colors.headerTo.color)))
+            }
+            drawContent()
+            if (picture != null) drawRect(Brush.verticalGradient(listOf(VEIL_TOP, VEIL_BOTTOM)))
+            if (header.glow) {
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(glow, Color.Transparent),
+                        center = Offset(size.width / 2, size.height),
+                        radius = 260.dp.toPx(),
+                    ),
+                )
+            }
+        },
+    ) {
+        if (picture != null) {
+            RemoteImageFill(picture, ImageSizing.Kind.HEADER, LocalConfiguration.current.screenWidthDp.toFloat(), theme.colors.primarySoft.color)
+        }
+    }
+}
+
+private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
+private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
+
+/** The 22 dp white square with the logo (the dark-mode one in dark mode) or the brand's initial, and the brand name 17/700. */
 @Composable
 private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -101,9 +142,16 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
                 .clearAndSetSemantics {},
             Alignment.Center,
         ) {
-            val logo = header.logoUrl
-            if (logo != null && !LocalInspectionMode.current) {
-                AsyncImage(logo, contentDescription = null, Modifier.padding(3.dp), contentScale = ContentScale.Fit)
+            val logo = (if (theme.isDark) header.logoDarkUrl else null) ?: header.logoUrl
+            if (logo != null) {
+                RemoteImage(
+                    logo,
+                    ImageSizing.Kind.ICON,
+                    ClomniTheme.Size.logo,
+                    theme.colors.primarySoft.color,
+                    Modifier.fillMaxSize().padding(3.dp),
+                    fit = true,
+                )
             } else {
                 val size = with(LocalDensity.current) { 13.dp.toSp() }
                 BasicText(
@@ -118,7 +166,7 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
             header.brandName,
             style = clomniText(
                 ClomniTheme.FontSize.brand,
-                theme.colors.onPrimary,
+                theme.colors.headerText,
                 FontWeight.Bold,
                 lineHeight = 1.2f,
                 letterSpacing = -0.2f,
@@ -128,7 +176,7 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
     }
 }
 
-/** Skeleton, error, or the cards the config asks for; switching fades (200 ms), nothing moves. */
+/** Skeleton, error, or the cards the config asks for, in its order; switching fades (200 ms), nothing moves. */
 @Composable
 private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions, modifier: Modifier) {
     Crossfade(screen.phase, modifier, animationSpec = tween(200), label = "home") { phase ->
@@ -140,9 +188,21 @@ private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                 }
                 HomeScreen.Phase.FAILED -> screen.failure?.let { FailureView(it, theme, actions.retry) }
                 HomeScreen.Phase.READY -> {
-                    screen.newConversation?.let { NewConversationCardView(it, theme, actions.newConversation) }
-                    screen.recent?.let { RecentCardView(it, theme, actions.openConversation) }
-                    screen.channels?.let { ChannelsCardView(it, theme) }
+                    for (card in screen.order) {
+                        when (card) {
+                            MessengerConfig.HomeCard.SEND ->
+                                screen.newConversation?.let { NewConversationCardView(it, theme, actions.newConversation) }
+                            MessengerConfig.HomeCard.RECENT -> screen.recent?.let { RecentCardView(it, theme, actions.openConversation) }
+                            MessengerConfig.HomeCard.CHANNELS -> screen.channels?.let { ChannelsCardView(it, theme) }
+                        }
+                    }
+                    screen.poweredBy?.let {
+                        BasicText(
+                            it,
+                            Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.s.dp),
+                            style = clomniText(ClomniTheme.FontSize.meta, theme.colors.textSecondary).copy(textAlign = TextAlign.Center),
+                        )
+                    }
                 }
             }
         }

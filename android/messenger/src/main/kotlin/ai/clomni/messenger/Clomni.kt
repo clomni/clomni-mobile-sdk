@@ -3,8 +3,11 @@ package ai.clomni.messenger
 import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.log.ClomniLog
-import ai.clomni.messenger.ui.MessengerRuntime
+import ai.clomni.messenger.presentation.RgbColor
+import ai.clomni.messenger.presentation.ThemeOverride
+import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.ui.ClomniFonts
+import ai.clomni.messenger.ui.MessengerRuntime
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Handler
@@ -197,6 +200,24 @@ public object Clomni {
         ClomniFonts.typeface = typeface
     }
 
+    /**
+     * The app's own look over the panel's. [primaryColor] "#RRGGBB": the other brand colours are derived from it by
+     * the panel's rules. [mode]: light, dark, or as the system is. Each call replaces the last; null leaves that one to
+     * the panel. [typeface] sets the font as [setTypeface] does; null leaves the font as it is. The open messenger and
+     * the launcher change at once.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun setTheme(primaryColor: String? = null, typeface: Typeface? = null, mode: ClomniThemeMode? = null) {
+        val color = primaryColor?.let(RgbColor::parse)
+        if (primaryColor != null && color == null) {
+            ClomniLog.error { "setTheme: primaryColor \"$primaryColor\" is not #RRGGBB; the panel's colour stays" }
+        }
+        typeface?.let(::setTypeface)
+        val override = ThemeOverride(color, mode?.mode)
+        onMain { MessengerRuntime.setTheme(override) }
+    }
+
     /** Lifts the launcher above the app's bottom navigation, in dp. */
     @JvmStatic
     public fun setBottomPadding(dp: Int) {
@@ -275,6 +296,13 @@ public object Clomni {
         is Array<*> -> JsonArray(value.map(::json))
         else -> throw IllegalArgumentException("data holds a ${value::class.java.simpleName}, which JSON cannot carry")
     }
+}
+
+/** Light, dark, or as the system is, for [Clomni.setTheme]. */
+public enum class ClomniThemeMode(internal val mode: MessengerConfig.ThemeMode) {
+    SYSTEM(MessengerConfig.ThemeMode.SYSTEM),
+    LIGHT(MessengerConfig.ThemeMode.LIGHT),
+    DARK(MessengerConfig.ThemeMode.DARK),
 }
 
 /** How much the SDK writes to logcat, for [Clomni.setLogLevel]. */

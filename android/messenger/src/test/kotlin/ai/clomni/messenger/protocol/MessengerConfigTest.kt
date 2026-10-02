@@ -27,8 +27,8 @@ class MessengerConfigTest {
                 headerImageUrl = null,
                 glow = false,
                 colors = MessengerConfig.Colors(
-                    light = MessengerConfig.Palette("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A"),
-                    dark = MessengerConfig.Palette("#34B57A", "#0B0C0E", "#16241D", "#24503A", "#1F9D63", "#0E4F33"),
+                    light = MessengerConfig.Palette("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A", "#FFFFFF"),
+                    dark = MessengerConfig.Palette("#34B57A", "#0B0C0E", "#16241D", "#24503A", "#1F9D63", "#0E4F33", "#FFFFFF"),
                 ),
             ),
             config.brand,
@@ -105,6 +105,10 @@ class MessengerConfigTest {
         val notHex = APAR_CONFIG_V2.replace("\"#0E4F33\"", "\"dark green\"")
         assertNull(config(notHex).brand.colors)
         assertNull(config("""{"brand":{}}""").brand.colors)
+        // header_text came later: a server without it still sends usable colours, and the SDK works the text out.
+        val withoutText = config(APAR_CONFIG_V2.replace(", \"header_text\": \"#FFFFFF\"", ""))
+        assertEquals("#3FB37C", withoutText.brand.colors?.light?.headerFrom)
+        assertNull(withoutText.brand.colors?.light?.headerText)
     }
 
     @Test

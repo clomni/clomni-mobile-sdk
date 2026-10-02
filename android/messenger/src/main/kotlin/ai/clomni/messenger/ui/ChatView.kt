@@ -7,7 +7,7 @@ import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ChatScreen
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
-import ai.clomni.messenger.presentation.ThemeOverrides
+import ai.clomni.messenger.presentation.toward
 import ai.clomni.messenger.protocol.MessengerConfig
 import android.content.Context
 import android.content.ContextWrapper
@@ -17,6 +17,8 @@ import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -157,9 +159,28 @@ internal fun ClomniChat(
 @Composable
 internal fun rememberTheme(config: MessengerConfig?): ClomniTheme {
     val systemIsDark = isSystemInDarkTheme()
-    return remember(config, systemIsDark, ThemeOverrides.primaryColor, ThemeOverrides.mode) {
-        ClomniTheme.resolve(config, systemIsDark)
+    val override = AppTheme.override
+    val target = remember(config, systemIsDark, override) { ClomniTheme.resolve(config, systemIsDark, override) }
+    return animateTheme(target)
+}
+
+/**
+ * A new look (config.changed, `Clomni.setTheme`) fades in over 250 ms on the open screen (APPEARANCE-CONTRACT 4):
+ * every colour moves from what is on screen to the new one.
+ */
+@Composable
+private fun animateTheme(target: ClomniTheme): ClomniTheme {
+    val progress = remember { Animatable(1f) }
+    var from by remember { mutableStateOf(target) }
+    var to by remember { mutableStateOf(target) }
+    LaunchedEffect(target) {
+        if (target == to) return@LaunchedEffect
+        from = from.toward(to, progress.value.toDouble())
+        to = target
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(250))
     }
+    return from.toward(to, progress.value.toDouble())
 }
 
 /**

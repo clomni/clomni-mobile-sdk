@@ -138,8 +138,8 @@ internal fun MessengerRoot(runtime: MessengerRuntime) {
     val route = state.route
     LaunchedEffect(coordinator) { coordinator.prepare() }
     val window = (LocalContext.current as? Activity)?.window
-    // Home's header is the brand colour; the conversation's is the background.
-    val lightTop = route is MessengerRoute.Conversation && state.ready && !theme.isDark
+    // The conversation's top is the background; Home's is its header, with header_text's colour on it.
+    val lightTop = if (route is MessengerRoute.Conversation && state.ready) !theme.isDark else theme.colors.headerText.luminance < 0.5
     SideEffect { window?.barIcons(darkStatus = lightTop, darkNavigation = !theme.isDark) }
     val close = coordinator::dismiss
     Box(Modifier.fillMaxSize().background(theme.colors.background.color)) {

@@ -53,14 +53,51 @@ class ThemeTest {
         val brand = Fixture.aparConfig.brand
         val light = ClomniTheme.make(brand, dark = false).colors
         assertEquals(
-            listOf("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A"),
-            light.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo) }.map { it.hex },
+            listOf("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A", "#FFFFFF"),
+            light.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo, headerText) }.map { it.hex },
         )
         val dark = ClomniTheme.make(brand, dark = true).colors
         assertEquals(
-            listOf("#34B57A", "#0B0C0E", "#16241D", "#24503A", "#1F9D63", "#0E4F33"),
-            dark.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo) }.map { it.hex },
+            listOf("#34B57A", "#0B0C0E", "#16241D", "#24503A", "#1F9D63", "#0E4F33", "#FFFFFF"),
+            dark.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo, headerText) }.map { it.hex },
         )
+    }
+
+    /**
+     * header_text (APPEARANCE-CONTRACT 1): white where white reaches 3:1 on both of the header's colours, otherwise
+     * #1B1D21; white on a picture, which has its veil. on_primary is never the header's.
+     */
+    @Test
+    fun headerText() {
+        val derived = ClomniTheme.make(brand("#1F9D63"), dark = false).colors
+        assertEquals("#27C87E", derived.headerFrom.hex)
+        assertEquals(2.19, derived.headerFrom.contrast(RgbColor.WHITE), 0.01)
+        assertEquals("white is too light on Apar's light top", "#1B1D21", derived.headerText.hex)
+        assertEquals("#FFFFFF", ClomniTheme.make(brand("#1F9D63"), dark = true).colors.headerText.hex)
+        assertEquals("#FFFFFF", ClomniTheme.make(brand("#0A66C2"), dark = false).colors.headerText.hex)
+        assertEquals("#1B1D21", ClomniTheme.make(brand("#FFD400", style = "solid"), dark = false).colors.headerText.hex)
+        // In dark mode on_primary is near-black, which a dark header would swallow; the header's text stays white.
+        val blue = ClomniTheme.make(brand("#0A66C2"), dark = true).colors
+        assertEquals(listOf("#000000", "#FFFFFF"), listOf(blue.onPrimary.hex, blue.headerText.hex))
+        val picture = ProtocolJson()
+            .parseConfig("""{"brand":{"primary_color":"#FFD400","header_style":"image","header_image_url":"https://x/h.png"}}""")!!
+        assertEquals("#FFFFFF", ClomniTheme.make(picture.brand, dark = false).colors.headerText.hex)
+        val noText = Fixture.aparConfig.brand.let { b -> b.copy(colors = b.colors!!.copy(light = b.colors!!.light.copy(headerText = null))) }
+        assertEquals("from the server's #3FB37C", "#1B1D21", ClomniTheme.make(noText, dark = false).colors.headerText.hex)
+    }
+
+    /** config.changed and setTheme: the screen's colours move to the new ones rather than jump. */
+    @Test
+    fun aNewLookFadesIn() {
+        val from = ClomniTheme.make(brand("#1F9D63"), dark = false)
+        val to = ClomniTheme.make(brand("#0A66C2"), dark = true)
+        assertEquals(from.colors, from.toward(to, 0.0).colors)
+        assertEquals(to, from.toward(to, 1.0))
+        val half = from.toward(to, 0.5)
+        assertEquals(to.colors.primary.over(from.colors.primary, 0.5), half.colors.primary)
+        assertEquals(to.colors.background.over(from.colors.background, 0.5), half.colors.background)
+        assertTrue(half.isDark)
+        assertEquals(to, to.toward(to, 0.3))
     }
 
     /**
@@ -95,10 +132,8 @@ class ThemeTest {
     /** Clomni.setTheme: the app's colour (derived here) and mode win over the panel's. */
     @Test
     fun theAppsThemeWins() {
-        val overrides = object : ThemeOverrides() {}
-        overrides.primaryColor = RgbColor.parse("#0A66C2")
-        overrides.mode = MessengerConfig.ThemeMode.DARK
-        val theme = ClomniTheme.resolve(Fixture.aparConfig, systemIsDark = false, overrides)
+        val override = ThemeOverride(RgbColor.parse("#0A66C2"), MessengerConfig.ThemeMode.DARK)
+        val theme = ClomniTheme.resolve(Fixture.aparConfig, systemIsDark = false, override)
         assertTrue(theme.isDark)
         assertEquals(RgbColor.parse("#0A66C2")!!.steps(1), theme.colors.primary)
         val panel = ClomniTheme.resolve(Fixture.aparConfig.let { it.copy(theme = it.theme.copy(mode = MessengerConfig.ThemeMode.DARK)) }, false)

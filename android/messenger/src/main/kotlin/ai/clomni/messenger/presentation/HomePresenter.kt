@@ -194,10 +194,11 @@ internal class HomePresenter(
         val fromUs = message.sender.type == SenderType.USER || message.sender.type == SenderType.SYSTEM
         val otherName = if (fromUs) conversation.assignee?.name ?: botName ?: brand else name
         val botAvatar = botAvatar(config)
-        val otherAvatar = if (fromUs) {
-            conversation.assignee?.avatarUrl ?: botAvatar
-        } else {
-            message.sender.avatarUrl ?: if (message.sender.type == SenderType.BOT) botAvatar else null
+        val otherAvatar = when {
+            fromUs -> conversation.assignee?.avatarUrl ?: botAvatar
+            // The panel's bot picture, as in the conversation.
+            message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar
+            else -> message.sender.avatarUrl
         }
         val preview = plainText(message)
         val ago = time.ago(message.createdAt, now)
@@ -220,7 +221,10 @@ internal class HomePresenter(
             brandName = brand,
             logoUrl = config?.brand?.logoUrl,
             logoDarkUrl = config?.brand?.logoDarkUrl,
-            style = config?.brand?.headerStyle ?: MessengerConfig.HeaderStyle.GRADIENT,
+            // A picture style without its picture is the gradient.
+            style = config?.brand?.headerStyle
+                ?.takeUnless { it == MessengerConfig.HeaderStyle.IMAGE && config.brand.headerImageUrl == null }
+                ?: MessengerConfig.HeaderStyle.GRADIENT,
             imageUrl = config?.brand?.headerImageUrl,
             glow = config?.brand?.glow ?: false,
             brandInitial = brand.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),

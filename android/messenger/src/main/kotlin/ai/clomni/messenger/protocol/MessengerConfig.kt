@@ -58,6 +58,8 @@ internal data class MessengerConfig(
         /** The header's top and bottom. */
         val headerFrom: String,
         val headerTo: String,
+        /** Text and icons on the header; null from a server before it sent one: the SDK works it out. */
+        val headerText: String? = null,
     )
 
     data class Team(

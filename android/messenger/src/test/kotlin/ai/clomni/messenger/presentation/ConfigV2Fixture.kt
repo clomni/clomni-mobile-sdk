@@ -16,9 +16,9 @@ internal const val APAR_CONFIG_V2 = """{
     "glow": false,
     "colors": {
       "light": { "primary": "#1F9D63", "on_primary": "#FFFFFF", "primary_soft": "#E9F5EF", "primary_line": "#C6E6D5",
-                 "header_from": "#3FB37C", "header_to": "#13734A" },
+                 "header_from": "#3FB37C", "header_to": "#13734A", "header_text": "#FFFFFF" },
       "dark":  { "primary": "#34B57A", "on_primary": "#0B0C0E", "primary_soft": "#16241D", "primary_line": "#24503A",
-                 "header_from": "#1F9D63", "header_to": "#0E4F33" }
+                 "header_from": "#1F9D63", "header_to": "#0E4F33", "header_text": "#FFFFFF" }
     }
   },
   "team": {
