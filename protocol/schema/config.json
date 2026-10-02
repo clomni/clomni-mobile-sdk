@@ -12,10 +12,21 @@
       "required": ["name", "primary_color", "header_style", "glow", "colors"],
       "properties": {
         "name": { "type": "string" },
+        "initial": {
+          "type": "string",
+          "maxLength": 1,
+          "description": "What stands in for a missing logo: the name's first letter or digit, upper case (\"TANZ\" MMC gives T); empty when there is none. An SDK's own fallback picks it the same way."
+        },
         "logo_url": { "$ref": "#/$defs/image_url" },
         "logo_dark_url": { "$ref": "#/$defs/image_url", "description": "For dark mode; null: the logo." },
         "primary_color": { "$ref": "#/$defs/color" },
         "header_style": { "enum": ["gradient", "solid", "image"] },
+        "logo_style": {
+          "enum": ["mark", "wordmark"],
+          "description": "wordmark: draw wordmark_url (wordmark_dark_url in dark mode, else wordmark_url) in place of the logo and the name in Home's header only, 32 high, at most 60% of the header's width, fitted, never cut or stretched; space kept while it loads; the mark with the name if it fails to load; brand.name as its accessibility label. The conversation's header always keeps the mark (small logo or initial and the name). Sent as wordmark only with a wordmark_url. Absent or unknown: mark."
+        },
+        "wordmark_url": { "$ref": "#/$defs/image_url", "description": "The full written logo, transparent; at most 1200 wide (?w=300|600|1200)." },
+        "wordmark_dark_url": { "$ref": "#/$defs/image_url", "description": "For dark mode; null: the wordmark." },
         "header_image_url": { "$ref": "#/$defs/image_url", "description": "header_style image: the SDK draws a dark overlay (black 35% to 55%, top to bottom) and white text on it." },
         "glow": { "type": "boolean", "description": "A soft radial glow of the brand colour (25%) behind the header." },
         "colors": {
@@ -61,6 +72,10 @@
       "type": "object",
       "required": ["cards", "channels"],
       "properties": {
+        "title_size": {
+          "enum": ["s", "m", "l"],
+          "description": "The greeting's size: s 15/20, m 17/24, l 19/28 (first line, normal, full header_text / second line, semibold); line height 1.25 times the size; the system font scale (Dynamic Type, fontScale) applies on top and long text wraps, never cut. Absent or unknown: m."
+        },
         "cards": { "type": "array", "description": "In the order shown; send is always there.", "items": { "enum": ["send", "recent", "channels"] } },
         "channels": {
           "type": "array",

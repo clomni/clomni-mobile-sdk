@@ -17,7 +17,8 @@ info:
       `/v1` is supported for at least 36 months; an endpoint due to go away answers with `Deprecation` and `Sunset`
       headers first.
     - An SDK older than the oldest one still supported for its platform gets the same headers on every answer:
-      `Deprecation: true`, `Sunset: <HTTP date>` (RFC 8594) when the date is set, and
+      `Deprecation: @<epoch seconds>` (RFC 9745: when it stopped being supported), `Sunset: <HTTP date>` (RFC 8594)
+      when the date is set, and
       `Link: <https://…>; rel="deprecation"`. The SDK logs them for the developer; nothing changes for the user.
     - Errors share one body (`Error`), every error of every endpoint, including an unknown path (`404 not_found`), a
       method the path does not take (`405 method_not_allowed`, with `Allow`), a body over 1 MB outside `/uploads`
@@ -31,11 +32,24 @@ info:
     `GET wss://app.clomni.ai/v1/realtime?token=<session_token>&protocol=v1` (the session response's `ws_url`).
     The socket only receives, apart from `ping`/`pong`. Every frame is `{event, data, ts}` and is described in
     [schema/event.json](schema/event.json): `ready`, `message.created`, `message.updated`, `typing`, `read`,
-    `conversation.updated`, `unread.changed`, `config.changed`. Unknown events are ignored. On `ready` and after every
+    `conversation.updated`, `unread.changed`, `config.changed`, `flow.completed` (a flow ended or handed over: the SDKs'
+    `onFlowCompleted`). Unknown events are ignored. On `ready` and after every
     reconnect (1, 2, 4, 8 … 30 s) the client fills gaps with `GET /conversations/{id}/messages?after_seq=<last>`; a gap
     in `seq` (40 → 42) is filled the same way. A message that arrives over both REST and the socket is de-duplicated by
     `id`. Two missed pings mean the connection is gone. While the app is in the background the socket is closed and
     replies arrive as push notifications ([schema/push.json](schema/push.json)).
+
+    - The token is checked before the upgrade: unknown or ended `401 invalid_token`, expired `401 token_expired` (refresh
+      and reconnect), a `protocol` other than `v1` `400`, an app switched off `403 app_disabled`; the body is `Error`.
+    - `ready {user_id, heartbeat_sec}` comes once the socket is subscribed: nothing published after it is missed.
+    - The server sends `{"event":"ping","ts"}` every `heartbeat_sec` (25); the app answers `{"event":"pong","ts"}`. Two
+      heartbeats without a frame from the app and the server closes the socket.
+    - The app may send `pong` and `typing {conversation_id, state}` only
+      ([schema/realtime-client.json](schema/realtime-client.json)); anything else is ignored. Frames: at most 4 KB.
+    - At most 5 sockets per user at once; a sixth closes the oldest.
+    - Close codes: `1001` the server is restarting, or the app stopped answering pings (reconnect);
+      `1008` closed for a newer socket of the same user; `1009` a frame over 4 KB; `4401` the session ended (logout,
+      a refresh token used twice, the app's API key revoked) - open a new session, then reconnect.
   contact:
     name: Clomni
     url: https://clomni.ai
@@ -44,6 +58,10 @@ servers:
 security:
   - session: []
 tags:
+  - name: Panel push keys
+    description: |
+      Not part of the Mobile API: the dashboard API (my.clomni.co, the administrator's own login) where the panel
+      uploads the app's push keys and sends a test push. Listed here because the SDK's push setup depends on it.
   - name: Session
     description: Log in with the app's public keys, refresh, log out.
   - name: Config
@@ -62,6 +80,113 @@ tags:
     description: Flows started by the app, and events for audiences.
 
 paths:
+  /api/v1/accounts/{account_id}/inboxes/{inbox_id}/app_sdk/push:
+    servers:
+      - url: https://my.clomni.co
+    parameters:
+      - { name: account_id, in: path, required: true, schema: { type: integer } }
+      - { name: inbox_id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Panel push keys]
+      operationId: getPushKeys
+      summary: What push keys are uploaded (never the keys), and the last 7 days' pushes
+      security: []
+      responses:
+        '200':
+          description: The public part of each provider's keys and the counts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PanelPushState' }
+        '401': { description: Not an administrator of the account }
+        '404': { description: Not an App SDK inbox }
+  /api/v1/accounts/{account_id}/inboxes/{inbox_id}/app_sdk/push/{provider}:
+    servers:
+      - url: https://my.clomni.co
+    parameters:
+      - { name: account_id, in: path, required: true, schema: { type: integer } }
+      - { name: inbox_id, in: path, required: true, schema: { type: integer } }
+      - { name: provider, in: path, required: true, schema: { type: string, enum: [fcm, apns] } }
+    put:
+      tags: [Panel push keys]
+      operationId: uploadPushKeys
+      summary: Upload a Firebase service account (fcm) or an APNs .p8 key (apns)
+      description: |
+        fcm takes `service_account` (the JSON Google gives, as a string or an object; project_id, client_email and an
+        RSA private_key are required). apns takes `key_p8` (the .p8 file's text, an EC private key), `key_id` and
+        `team_id` (10 letters or digits) and `bundle_id` (the inbox's iOS bundle id when left out). The keys are kept
+        encrypted and never answered back.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                service_account: {}
+                key_p8: { type: string }
+                key_id: { type: string }
+                team_id: { type: string }
+                bundle_id: { type: string }
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PanelPushState' }
+        '422':
+          description: 'The keys cannot work: field -> reason'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors: { type: object, additionalProperties: { type: string } }
+    delete:
+      tags: [Panel push keys]
+      operationId: removePushKeys
+      summary: Remove the provider's keys
+      security: []
+      responses:
+        '200':
+          description: Removed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PanelPushState' }
+        '404': { description: Not an App SDK inbox }
+  /api/v1/accounts/{account_id}/inboxes/{inbox_id}/app_sdk/push/test:
+    servers:
+      - url: https://my.clomni.co
+    parameters:
+      - { name: account_id, in: path, required: true, schema: { type: integer } }
+      - { name: inbox_id, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Panel push keys]
+      operationId: testPush
+      summary: Push one device of the inbox now
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id]
+              properties:
+                device_id: { type: integer }
+      responses:
+        '200':
+          description: 'What FCM or APNs answered: delivered, or why not, in its own words'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delivered, outcome]
+                properties:
+                  delivered: { type: boolean }
+                  outcome: { type: string, enum: [sent, dead, retry, failed, keys, skipped, no_token] }
+                  error: { type: [string, 'null'] }
+        '404': { description: No such device in the inbox }
   /mobile/sessions:
     post:
       tags: [Session]
@@ -720,6 +845,10 @@ paths:
                 open_messenger:
                   type: boolean
                   default: false
+                opened_from:
+                  description: Where in the app it was started, as with `POST /conversations`; `event:<event>` when absent.
+                  allOf:
+                    - $ref: '#/components/schemas/OpenedFrom'
             example:
               event: payment_failed
               data:
@@ -820,6 +949,52 @@ components:
       example: conv_5521
 
   schemas:
+    PanelPushState:
+      type: object
+      properties:
+        credentials:
+          type: object
+          properties:
+            fcm:
+              type: object
+              properties:
+                configured: { type: boolean }
+                project_id: { type: string }
+                client_email: { type: string }
+                uploaded_at: { type: string, format: date-time }
+                last_error: { type: string, description: 'The last refusal of the keys themselves (401/403)' }
+                last_error_at: { type: string, format: date-time }
+            apns:
+              type: object
+              properties:
+                configured: { type: boolean }
+                key_id: { type: string }
+                team_id: { type: string }
+                bundle_id: { type: string }
+                uploaded_at: { type: string, format: date-time }
+                last_error: { type: string }
+                last_error_at: { type: string, format: date-time }
+        last_7_days:
+          type: object
+          description: 'Per platform (ios, android): sent, failed, removed (dead tokens), skipped (no keys)'
+          additionalProperties:
+            type: object
+            additionalProperties: { type: integer }
+        devices:
+          type: array
+          description: 'Up to 20 devices with a push token, last seen first: what POST test can push. Never the token.'
+          items:
+            type: object
+            properties:
+              id: { type: integer, description: 'The device_id POST test takes' }
+              platform: { $ref: '#/components/schemas/Platform' }
+              model: { type: [string, 'null'] }
+              os_version: { type: [string, 'null'] }
+              app_version: { type: [string, 'null'] }
+              sdk_version: { type: [string, 'null'] }
+              locale: { type: [string, 'null'] }
+              last_seen_at: { type: [string, 'null'], format: date-time }
+              push_environment: { type: [string, 'null'], enum: [sandbox, production, null] }
     Language:
       enum: [az, en, ru]
     Platform:

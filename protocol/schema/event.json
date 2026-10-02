@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://app.clomni.ai/protocol/v1/event.json",
   "title": "WebSocket frame",
-  "description": "A frame on wss://…/v1/realtime: { event, data, ts }. Messages are sent over REST; the socket only receives (plus pong and typing). Unknown events are ignored by the client.",
+  "description": "A frame the server sends on wss://…/v1/realtime: { event, data, ts }. ping has no data and is answered with pong (realtime-client.json). Messages are sent over REST; the socket only receives, apart from pong and typing. Unknown events are ignored by the client.",
   "type": "object",
   "required": ["event", "ts"],
   "properties": {
@@ -17,7 +17,8 @@
     { "if": { "properties": { "event": { "const": "read" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/read" } } } },
     { "if": { "properties": { "event": { "const": "conversation.updated" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/conversation_updated" } } } },
     { "if": { "properties": { "event": { "const": "unread.changed" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/unread_changed" } } } },
-    { "if": { "properties": { "event": { "const": "config.changed" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/config_changed" } } } }
+    { "if": { "properties": { "event": { "const": "config.changed" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/config_changed" } } } },
+    { "if": { "properties": { "event": { "const": "flow.completed" } } }, "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/flow_completed" } } } }
   ],
   "$defs": {
     "conversation_id": { "type": "string", "pattern": "^conv_.+" },
@@ -73,6 +74,16 @@
       "properties": {
         "etag": { "type": "string", "minLength": 1 },
         "version": { "type": "integer", "minimum": 0, "description": "The published appearance version the config now has." }
+      }
+    },
+    "flow_completed": {
+      "type": "object",
+      "description": "A flow has finished: end (it ran to its end, the conversation is closed) or handoff (a person or the assistant takes over). The SDKs call onFlowCompleted with it.",
+      "required": ["conversation_id", "flow_id", "outcome"],
+      "properties": {
+        "conversation_id": { "$ref": "#/$defs/conversation_id" },
+        "flow_id": { "type": "string", "pattern": "^flw_.+" },
+        "outcome": { "enum": ["end", "handoff"] }
       }
     }
   }
