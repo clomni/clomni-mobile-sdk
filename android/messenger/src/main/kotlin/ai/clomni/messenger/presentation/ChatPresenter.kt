@@ -30,6 +30,7 @@ internal class ChatPresenter(
         val lastIncoming = snapshot.messages.lastOrNull { it.sender.type != SenderType.USER && it.type != "system" }
         return ChatScreen(
             phase = phase,
+            loadingLabel = strings[Key.LOADING],
             header = header(snapshot),
             items = items(snapshot),
             composer = composer(snapshot),

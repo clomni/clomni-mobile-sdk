@@ -40,7 +40,10 @@ internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel
         val padding = Modifier.padding(ClomniTheme.Space.l.dp)
         val spacing = Arrangement.spacedBy(ClomniTheme.Space.m.dp)
         when (screen.phase) {
-            HomeScreen.Phase.LOADING -> Column(padding, spacing) { repeat(3) { SkeletonBlock(58f, theme) } }
+            // The first time: the indicator in the middle (after 300 ms); afterwards the cached list at once.
+            HomeScreen.Phase.LOADING -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
+            }
             HomeScreen.Phase.FAILED -> screen.failure?.let { Box(padding) { FailureView(it, theme, actions.retry) } }
             HomeScreen.Phase.READY -> Column(Modifier.verticalScroll(rememberScrollState()).then(padding), spacing) {
                 NewConversationCardView(screen.newConversation, theme, actions.newConversation)

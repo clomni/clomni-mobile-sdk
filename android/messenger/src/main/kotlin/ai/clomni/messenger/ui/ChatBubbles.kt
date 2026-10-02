@@ -278,10 +278,17 @@ private fun ImageBubble(
                 role = Role.Image
             },
     ) {
-        // primary_soft until the picture is here, as every placeholder (APPEARANCE-CONTRACT 4).
-        Box(Modifier.size(width.dp, height.dp).background(theme.colors.primarySoft.color)) {
+        // A grey place of the bubble's size until the picture is here (DESIGN-PASS 5).
+        Box(Modifier.size(width.dp, height.dp).background(theme.colors.surface.color)) {
             if (painter != null) {
                 Image(painter, null, Modifier.size(width.dp, height.dp), contentScale = ContentScale.Crop)
+                // The bubble's grey place and the indicator until the picture is here.
+                LoadingSpinner(
+                    painter.state is AsyncImagePainter.State.Loading,
+                    theme.colors.primary,
+                    "",
+                    Modifier.align(Alignment.Center),
+                )
             }
         }
         image.caption?.let { caption ->

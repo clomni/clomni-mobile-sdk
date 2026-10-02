@@ -12,6 +12,7 @@ import java.util.TimeZone
 /** Everything the Home tab shows, decided here so the Compose view only draws it (brief 8·7.3, 7.5). */
 internal data class HomeScreen(
     val phase: Phase,
+    val loadingLabel: String = "",
     val header: Header,
     /** Null hides a card. */
     val newConversation: NewConversationCard?,
@@ -98,6 +99,7 @@ internal data class ConversationRow(
 internal data class MessagesScreen(
     val title: String,
     val phase: HomeScreen.Phase,
+    val loadingLabel: String = "",
     val rows: List<ConversationRow>,
     /** "Hələ söhbət yoxdur", when the list is loaded and empty. */
     val empty: String?,
@@ -143,6 +145,7 @@ internal class HomePresenter(
         }
         val failed = config == null && snapshot.configLoad == MessengerSnapshot.Load.FAILED
         return HomeScreen(
+            loadingLabel = strings[Key.LOADING],
             phase = when {
                 config != null -> HomeScreen.Phase.READY
                 failed -> HomeScreen.Phase.FAILED
@@ -177,6 +180,7 @@ internal class HomePresenter(
         return MessagesScreen(
             title = strings[Key.TAB_MESSAGES],
             phase = phase,
+            loadingLabel = strings[Key.LOADING],
             rows = rows,
             empty = if (phase == HomeScreen.Phase.READY && rows.isEmpty()) strings[Key.EMPTY_LIST] else null,
             newConversation = newConversation(snapshot.config),

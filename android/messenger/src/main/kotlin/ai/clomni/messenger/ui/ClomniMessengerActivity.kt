@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -179,7 +180,14 @@ internal fun MessengerRoot(runtime: MessengerRuntime) {
                     MessengerSnapshot(isOffline = state.offline)
                 }
                 val presenter = HomePresenter(ClomniStrings(state.config?.languages?.firstOrNull()), now = System.currentTimeMillis())
-                HomeView(presenter.home(snapshot), theme, MessengerActions(close = close, retry = { coordinator.prepare() }))
+                val home = presenter.home(snapshot)
+                HomeView(home, theme, MessengerActions(close = close, retry = { coordinator.prepare() }))
+                // The first opening, with no look kept yet: the grey skeleton, and the indicator in the middle.
+                if (state.config == null) {
+                    Box(Modifier.fillMaxSize(), Alignment.Center) {
+                        LoadingSpinner(!state.failed, theme.colors.primary, home.loadingLabel)
+                    }
+                }
             }
         }
     }
