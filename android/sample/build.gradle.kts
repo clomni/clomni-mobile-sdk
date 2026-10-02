@@ -15,10 +15,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        // An App SDK inbox's keys (Clomni panel → Mobil tətbiq): -Pclomni.appId=… -Pclomni.apiKey=… [-Pclomni.baseUrl=…]
+        // An App SDK inbox's keys (Clomni panel → Mobil tətbiq): -Pclomni.appId=… -Pclomni.apiKey=…
         buildConfigField("String", "CLOMNI_APP_ID", "\"${providers.gradleProperty("clomni.appId").getOrElse("app_demo")}\"")
         buildConfigField("String", "CLOMNI_API_KEY", "\"${providers.gradleProperty("clomni.apiKey").getOrElse("android_sdk-demo")}\"")
-        buildConfigField("String", "CLOMNI_BASE_URL", "\"${providers.gradleProperty("clomni.baseUrl").getOrElse("")}\"")
     }
 
     buildFeatures {

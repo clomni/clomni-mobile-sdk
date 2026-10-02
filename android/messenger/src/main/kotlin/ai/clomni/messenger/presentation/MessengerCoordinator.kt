@@ -63,14 +63,19 @@ internal data class LauncherState(
 
 /** The app's callbacks (brief 8·9). */
 internal class MessengerEvents {
+    // Set from any thread, called on the UI thread.
+
     /** With the `source` the app passed to `present`. */
-    var messengerOpened: ((String?) -> Unit)? = null
-    var messengerClosed: (() -> Unit)? = null
-    var conversationStarted: ((String) -> Unit)? = null
-    var unreadCountChanged: ((Int) -> Unit)? = null
+    @Volatile var messengerOpened: ((String?) -> Unit)? = null
+
+    @Volatile var messengerClosed: (() -> Unit)? = null
+
+    @Volatile var conversationStarted: ((String) -> Unit)? = null
+
+    @Volatile var unreadCountChanged: ((Int) -> Unit)? = null
 
     /** A flow reached its END node, with the flow's id. */
-    var flowCompleted: ((String) -> Unit)? = null
+    @Volatile var flowCompleted: ((String) -> Unit)? = null
 }
 
 /**

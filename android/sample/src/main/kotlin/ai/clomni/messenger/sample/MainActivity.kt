@@ -100,10 +100,10 @@ class MainActivity : Activity() {
         column.addView(log)
         setContentView(ScrollView(this).apply { addView(column) })
 
-        Clomni.onMessengerOpened = { source -> note("opened ($source)") }
-        Clomni.onMessengerClosed = { note("closed") }
-        Clomni.onConversationStarted = { id -> note("conversation $id") }
-        Clomni.onFlowCompleted = { flow -> note("flow completed: $flow") }
+        Clomni.onMessengerOpened { source -> note("opened ($source)") }
+        Clomni.onMessengerClosed { note("closed") }
+        Clomni.onConversationStarted { id -> note("conversation $id") }
+        Clomni.onFlowCompleted { flow -> note("flow completed: $flow") }
 
         // Android 13+: notifications need the user's yes, asked by the app.
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

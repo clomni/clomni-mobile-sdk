@@ -11,7 +11,6 @@ class SampleApp : Application() {
             this,
             appId = BuildConfig.CLOMNI_APP_ID,
             apiKey = BuildConfig.CLOMNI_API_KEY,
-            baseUrl = BuildConfig.CLOMNI_BASE_URL.ifEmpty { null },
         )
     }
 }

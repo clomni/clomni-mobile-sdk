@@ -13,8 +13,11 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/** The logged-in user of the app, for [Clomni.loginUser]; every field is optional but one of [userId] or [email]. */
-public data class ClomniUser(
+/**
+ * The app's user, for [Clomni.loginUser]. Clomni knows the user by [userId], else by [email]; [phone] and [name] are
+ * shown to the operators and fill the messenger's forms.
+ */
+public data class ClomniUser @JvmOverloads constructor(
     val userId: String? = null,
     val email: String? = null,
     val phone: String? = null,
@@ -22,10 +25,12 @@ public data class ClomniUser(
 )
 
 /**
- * The messenger's opening API (brief 8·9; the same names as iOS). Nothing here adds anything to the app's screens:
- * the messenger opens only when the app calls [present] (or [startFlow] with `openMessenger`), and the floating
- * button shows only after [setLauncherVisible] or when the panel turns it on. Calls may come from any thread.
- * The final public shape is CM-076's.
+ * The Clomni Messenger SDK (brief 8·9): everything the app calls is here, with the same names as on iOS.
+ *
+ * Every method may be called from any thread; the work is done on the main thread, in the order of the calls.
+ * Callbacks and listeners are called on the main thread. Nothing here adds anything to the app's screens: the
+ * messenger opens only when the app asks ([present], [startFlow] with `openMessenger`, a tap on a Clomni
+ * notification), and the floating button shows only after [setLauncherVisible] or when the panel turns it on.
  */
 public object Clomni {
     private val main by lazy { Handler(Looper.getMainLooper()) }
@@ -34,35 +39,154 @@ public object Clomni {
         if (Looper.myLooper() == Looper.getMainLooper()) action() else main.post(action)
     }
 
+    /** This SDK's version. */
+    @JvmStatic
+    public val version: String
+        get() = BuildConfig.SDK_VERSION
+
+    // Setup
+
     /**
-     * Prepares the connection and push. [region] "eu" is app.clomni.ai; [baseUrl] overrides it (e.g. a staging
-     * server). Call it once, from `Application.onCreate`.
+     * Prepares the connection and push; adds nothing to the app's screens. Call it once, from
+     * `Application.onCreate` (a notification can start the process, and the messenger it opens needs the SDK).
+     * [region] is "eu".
      */
     @JvmStatic
     @JvmOverloads
-    public fun initialize(context: Context, appId: String, apiKey: String, region: String = "eu", baseUrl: String? = null) {
-        val url = baseUrl ?: when (region.lowercase()) {
+    public fun initialize(context: Context, appId: String, apiKey: String, region: String = "eu") {
+        val url = when (region.lowercase()) {
             "eu" -> ApiConfiguration.DEFAULT_BASE_URL
             else -> ApiConfiguration.DEFAULT_BASE_URL.also { ClomniLog.warning { "unknown region \"$region\", using eu" } }
         }
-        onMain { MessengerRuntime.initialize(context, appId, apiKey, url) }
+        val app = context.applicationContext
+        onMain { MessengerRuntime.initialize(app, appId, apiKey, url) }
     }
 
-    /** [userHash] = hex(HMAC-SHA256(identity_secret, user_id)), computed on the app's server. */
+    /**
+     * The app's logged-in user. [userHash] is hex(HMAC-SHA256(identity_secret, userId)), computed on the app's
+     * server, never in the app. Conversations of an anonymous visitor on this device move to the user.
+     */
     @JvmStatic
     public fun loginUser(user: ClomniUser, userHash: String?) {
         val identity = UserIdentity(user.userId, user.email, user.phone, user.name)
         onMain { MessengerRuntime.login(identity) { it.loginUser(identity, userHash) } }
     }
 
+    /**
+     * An anonymous visitor, the same one on this device until [logout]. Not needed before [present]: the messenger
+     * starts one itself when nobody is logged in.
+     */
     @JvmStatic
     public fun loginUnidentifiedUser() {
         onMain { MessengerRuntime.login(null) { it.loginUnidentifiedUser() } }
     }
 
     /**
+     * Changes only what is given; [customAttributes] (strings, numbers, booleans, lists and maps of them) are merged
+     * with the user's existing ones. [language] is "az", "en" or "ru".
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun updateUser(name: String? = null, language: String? = null, customAttributes: Map<String, Any?>? = null) {
+        val fields = LinkedHashMap<String, JsonElement>()
+        name?.let { fields["name"] = JsonPrimitive(it) }
+        language?.let { fields["language"] = JsonPrimitive(it) }
+        if (customAttributes != null) {
+            fields["custom_attributes"] = try {
+                json(customAttributes)
+            } catch (e: IllegalArgumentException) {
+                return ClomniLog.error { "updateUser: ${e.message}" }
+            }
+        }
+        if (fields.isEmpty()) return ClomniLog.warning { "updateUser: nothing to change" }
+        onMain { MessengerRuntime.updateUser(JsonObject(fields)) }
+    }
+
+    /**
+     * Ends the session and deletes the messenger's data on this device. Call it when the app's user logs out, or the
+     * next user sees this one's conversations.
+     */
+    @JvmStatic
+    public fun logout() {
+        onMain { MessengerRuntime.logout() }
+    }
+
+    /**
+     * How much the SDK writes to logcat (tag `Clomni`): [ClomniLogLevel.NONE] writes nothing, the default is
+     * [ClomniLogLevel.WARNING]; [ClomniLogLevel.DEBUG] while developing.
+     */
+    @JvmStatic
+    public fun setLogLevel(level: ClomniLogLevel) {
+        ClomniLog.level = level.level
+    }
+
+    // Opening the messenger
+
+    /**
+     * Home. [source] says where in the app (for example "profile_support") and is stored with a conversation started
+     * from here.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun present(source: String? = null) {
+        onMain { MessengerRuntime.coordinator?.present(source) ?: notReady() }
+    }
+
+    /** Straight into a new conversation, with the inbox's first flow. */
+    @JvmStatic
+    @JvmOverloads
+    public fun presentNewConversation(source: String? = null) {
+        onMain { MessengerRuntime.coordinator?.presentNewConversation(source) ?: notReady() }
+    }
+
+    /** One conversation, by its id ([onConversationStarted] gives it). */
+    @JvmStatic
+    public fun presentConversation(id: String) {
+        onMain { MessengerRuntime.coordinator?.presentConversation(id) ?: notReady() }
+    }
+
+    /** Closes the messenger from code; the user is where they were in the app. */
+    @JvmStatic
+    public fun dismiss() {
+        onMain { MessengerRuntime.coordinator?.dismiss() }
+    }
+
+    /**
+     * Starts the flow bound to an app event (for example "payment_failed" or "ride_problem") in a new conversation.
+     * Its texts can use [data] as `{{data.order_id}}` (strings, numbers, booleans, lists and maps of them). With
+     * [openMessenger] the conversation opens on screen; otherwise the user learns of it from a push or the unread
+     * count. Nothing happens when no flow is bound to the event.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun startFlow(event: String, data: Map<String, Any?> = emptyMap(), openMessenger: Boolean = false, source: String? = null) {
+        val json = try {
+            json(data) as JsonObject
+        } catch (e: IllegalArgumentException) {
+            return ClomniLog.error { "startFlow: ${e.message}" }
+        }
+        onMain {
+            MessengerRuntime.coordinator?.startFlow(event, json.takeIf { it.isNotEmpty() }, openMessenger, source) ?: notReady()
+        }
+    }
+
+    /** The floating button: off by default, and the panel can turn it on too. The app's choice wins. */
+    @JvmStatic
+    public fun setLauncherVisible(visible: Boolean) {
+        onMain { MessengerRuntime.setLauncherVisible(visible) }
+    }
+
+    /** Lifts the launcher above the app's bottom navigation, in dp. */
+    @JvmStatic
+    public fun setBottomPadding(dp: Int) {
+        onMain { MessengerRuntime.setBottomPadding(dp) }
+    }
+
+    // Push (with ClomniPush)
+
+    /**
      * The FCM token, from FirebaseMessagingService.onNewToken (and FirebaseMessaging.getToken at start). It is kept
-     * and registered for whoever is logged in, again after a login as someone else; before [initialize] it waits.
+     * and registered for whoever is logged in, and again for the next user.
      */
     @JvmStatic
     public fun setDeviceToken(token: String) {
@@ -75,77 +199,9 @@ public object Clomni {
         MessengerRuntime.notificationIcon = icon
     }
 
-    /**
-     * How much the SDK writes to logcat (tag `Clomni`): [ClomniLogLevel.NONE] writes nothing, the default is
-     * [ClomniLogLevel.WARNING]; [ClomniLogLevel.DEBUG] while developing.
-     */
-    @JvmStatic
-    public fun setLogLevel(level: ClomniLogLevel) {
-        ClomniLog.level = level.level
-    }
+    // Unread count and events
 
-    /** Ends the session and deletes the messenger's data on this device. */
-    @JvmStatic
-    public fun logout() {
-        onMain { MessengerRuntime.logout() }
-    }
-
-    /** Home. [source] (where in the app, e.g. "profile_support") becomes a new conversation's `opened_from`. */
-    @JvmStatic
-    @JvmOverloads
-    public fun present(source: String? = null) {
-        onMain { MessengerRuntime.coordinator?.present(source) ?: notReady() }
-    }
-
-    /** Straight into a new conversation and its flow. */
-    @JvmStatic
-    @JvmOverloads
-    public fun presentNewConversation(source: String? = null) {
-        onMain { MessengerRuntime.coordinator?.presentNewConversation(source) ?: notReady() }
-    }
-
-    @JvmStatic
-    public fun presentConversation(id: String) {
-        onMain { MessengerRuntime.coordinator?.presentConversation(id) ?: notReady() }
-    }
-
-    /** Closes the messenger from code; the app is where it was. */
-    @JvmStatic
-    public fun dismiss() {
-        onMain { MessengerRuntime.coordinator?.dismiss() }
-    }
-
-    /**
-     * The flow bound to an app event (`ride_problem`, `payment_failed`) in a new conversation, with [data] (strings,
-     * numbers, booleans, nulls, lists and maps of them): opened on screen when [openMessenger], otherwise announced by
-     * a push or the unread count.
-     */
-    @JvmStatic
-    @JvmOverloads
-    public fun startFlow(event: String, data: Map<String, Any?> = emptyMap(), openMessenger: Boolean = false, source: String? = null) {
-        val json = try {
-            JsonObject(data.mapValues { json(it.value) })
-        } catch (e: IllegalArgumentException) {
-            return ClomniLog.error { "startFlow: ${e.message}" }
-        }
-        onMain {
-            MessengerRuntime.coordinator?.startFlow(event, json.takeIf { it.isNotEmpty() }, openMessenger, source) ?: notReady()
-        }
-    }
-
-    /** The floating button, off by default; the panel can turn it on too. The app's choice wins. */
-    @JvmStatic
-    public fun setLauncherVisible(visible: Boolean) {
-        onMain { MessengerRuntime.setLauncherVisible(visible) }
-    }
-
-    /** Lifts the launcher above the app's bottom navigation, in dp. */
-    @JvmStatic
-    public fun setBottomPadding(dp: Int) {
-        onMain { MessengerRuntime.setBottomPadding(dp) }
-    }
-
-    /** Hears the unread count at once, then on every change (on the main thread): for the app's own badge. */
+    /** Called at once with the unread count, then on every change, until removed; for the app's own badge. */
     @JvmStatic
     public fun addUnreadCountListener(listener: UnreadCountListener) {
         onMain { MessengerRuntime.addUnreadCountListener(listener) }
@@ -156,42 +212,34 @@ public object Clomni {
         onMain { MessengerRuntime.removeUnreadCountListener(listener) }
     }
 
-    /** With the `source` passed to [present]. */
+    /** The messenger opened, with the source given to [present]. One listener; null removes it. */
     @JvmStatic
-    public var onMessengerOpened: ((String?) -> Unit)?
-        get() = MessengerRuntime.events.messengerOpened
-        set(value) {
-            MessengerRuntime.events.messengerOpened = value
-        }
+    public fun onMessengerOpened(listener: MessengerOpenedListener?) {
+        MessengerRuntime.events.messengerOpened = listener?.let { { source -> it.onMessengerOpened(source) } }
+    }
 
     @JvmStatic
-    public var onMessengerClosed: (() -> Unit)?
-        get() = MessengerRuntime.events.messengerClosed
-        set(value) {
-            MessengerRuntime.events.messengerClosed = value
-        }
+    public fun onMessengerClosed(listener: MessengerClosedListener?) {
+        MessengerRuntime.events.messengerClosed = listener?.let { { it.onMessengerClosed() } }
+    }
 
+    /** A new conversation, with its id. */
     @JvmStatic
-    public var onConversationStarted: ((String) -> Unit)?
-        get() = MessengerRuntime.events.conversationStarted
-        set(value) {
-            MessengerRuntime.events.conversationStarted = value
-        }
+    public fun onConversationStarted(listener: ConversationStartedListener?) {
+        MessengerRuntime.events.conversationStarted = listener?.let { { id -> it.onConversationStarted(id) } }
+    }
 
+    /** The unread count changed; [addUnreadCountListener] also hears the current one at once. */
     @JvmStatic
-    public var onUnreadCountChanged: ((Int) -> Unit)?
-        get() = MessengerRuntime.events.unreadCountChanged
-        set(value) {
-            MessengerRuntime.events.unreadCountChanged = value
-        }
+    public fun onUnreadCountChanged(listener: UnreadCountListener?) {
+        MessengerRuntime.events.unreadCountChanged = listener?.let { { count -> it.onUnreadCountChanged(count) } }
+    }
 
     /** A flow reached its end, with the flow's id. */
     @JvmStatic
-    public var onFlowCompleted: ((String) -> Unit)?
-        get() = MessengerRuntime.events.flowCompleted
-        set(value) {
-            MessengerRuntime.events.flowCompleted = value
-        }
+    public fun onFlowCompleted(listener: FlowCompletedListener?) {
+        MessengerRuntime.events.flowCompleted = listener?.let { { flowId -> it.onFlowCompleted(flowId) } }
+    }
 
     private fun notReady() = ClomniLog.error { "call Clomni.initialize first" }
 
@@ -221,7 +269,27 @@ public enum class ClomniLogLevel(internal val level: ClomniLog.Level?) {
     DEBUG(ClomniLog.Level.DEBUG),
 }
 
-/** The unread count for the app's own badge ([Clomni.addUnreadCountListener]). */
+/** The unread count for the app's own badge ([Clomni.addUnreadCountListener], [Clomni.onUnreadCountChanged]). */
 public fun interface UnreadCountListener {
     public fun onUnreadCountChanged(count: Int)
+}
+
+/** [Clomni.onMessengerOpened]. */
+public fun interface MessengerOpenedListener {
+    public fun onMessengerOpened(source: String?)
+}
+
+/** [Clomni.onMessengerClosed]. */
+public fun interface MessengerClosedListener {
+    public fun onMessengerClosed()
+}
+
+/** [Clomni.onConversationStarted]. */
+public fun interface ConversationStartedListener {
+    public fun onConversationStarted(conversationId: String)
+}
+
+/** [Clomni.onFlowCompleted]. */
+public fun interface FlowCompletedListener {
+    public fun onFlowCompleted(flowId: String)
 }

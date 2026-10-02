@@ -117,6 +117,13 @@ internal object MessengerRuntime {
         }
     }
 
+    fun updateUser(fields: kotlinx.serialization.json.JsonObject) {
+        val engine = engine ?: return ClomniLog.error { "call Clomni.initialize first" }
+        waits.execute {
+            runCatching { engine.updateUser(fields).get() }.onFailure { ClomniLog.error { "updateUser failed: ${it.cause ?: it}" } }
+        }
+    }
+
     fun logout() {
         val engine = engine ?: return
         identity = null
