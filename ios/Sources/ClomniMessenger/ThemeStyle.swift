@@ -21,6 +21,11 @@ private struct TypefaceKey: EnvironmentKey {
     static let defaultValue: Typeface? = nil
 }
 
+/// The loading indicator's VoiceOver label in the screen's language, for views that do not get the screen.
+private struct LoadingLabelKey: EnvironmentKey {
+    static let defaultValue = ClomniStrings(language: nil)[.loading]
+}
+
 /// The app's `Clomni.setTheme` colour and mode.
 private struct ThemeOverrideKey: EnvironmentKey {
     static let defaultValue = ThemeOverride()
@@ -30,6 +35,11 @@ extension EnvironmentValues {
     var clomniThemeOverride: ThemeOverride {
         get { self[ThemeOverrideKey.self] }
         set { self[ThemeOverrideKey.self] = newValue }
+    }
+
+    var clomniLoadingLabel: String {
+        get { self[LoadingLabelKey.self] }
+        set { self[LoadingLabelKey.self] = newValue }
     }
 
     var clomniTypeface: Typeface? {
@@ -115,11 +125,6 @@ extension View {
     /// A new appearance from the panel (config.changed) fades in over 250 ms on the open screen.
     func configCrossfade(_ config: MessengerConfig?) -> some View {
         animation(.easeInOut(duration: 0.25), value: config)
-    }
-
-    /// Skeleton blocks are one element for VoiceOver, "Yüklənir", instead of nothing at all.
-    func loadingElement(_ label: String) -> some View {
-        accessibilityElement(children: .ignore).accessibilityLabel(Text(label))
     }
 
     /// A Home card: background, radius 12, padding 12×14, one soft shadow (a 1 pt border in dark mode).

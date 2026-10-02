@@ -79,6 +79,7 @@ struct ChatView: View {
                          send: send, attach: { choosingAttachment = true }, startNew: startNew)
         }
         .background(theme.colors.background.color.ignoresSafeArea())
+        .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .configCrossfade(model.config)
         .task { await model.controller.load() }
@@ -114,15 +115,9 @@ struct ChatView: View {
     private var transcript: some View {
         switch model.screen.phase {
         case .loading:
-            VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
-                SkeletonBlock(height: 38, theme: theme).frame(width: 200)
-                SkeletonBlock(height: 58, theme: theme).frame(width: 222)
-                SkeletonBlock(height: 38, theme: theme).frame(width: 160)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                Spacer()
-            }
-            .padding(CGFloat(ClomniTheme.Space.xl))
-            .loadingElement(model.screen.loadingLabel)
+            // Nothing cached: the spinner in the middle, once the load takes a while.
+            LoadingIndicator(loading: true, label: model.screen.loadingLabel, theme: theme)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed:
             VStack {
                 if let failure = model.screen.failure {
@@ -136,6 +131,11 @@ struct ChatView: View {
         case .ready:
             ScrollViewReader { proxy in
                 ScrollView {
+                    // Older messages on their way: a small spinner at the top of the list.
+                    if loadingOlder {
+                        LoadingIndicator(loading: loadingOlder, label: model.screen.loadingLabel, theme: theme, size: 20)
+                            .padding(.top, CGFloat(ClomniTheme.Space.s))
+                    }
                     ChatTranscript(items: model.screen.items, theme: theme, actions: actions, reachedTop: loadOlder)
                         .onAppear {
                             if let last = model.screen.items.last?.id { proxy.scrollTo(last, anchor: .bottom) }

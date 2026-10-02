@@ -32,13 +32,9 @@ struct MessagesView: View {
     private var content: some View {
         switch screen.phase {
         case .loading:
-            VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
-                SkeletonBlock(height: 58, theme: theme)
-                SkeletonBlock(height: 58, theme: theme)
-                SkeletonBlock(height: 58, theme: theme)
-            }
-            .padding(CGFloat(ClomniTheme.Space.l))
-            .loadingElement(screen.loadingLabel)
+            // The first time only; after that the list comes from the cache.
+            LoadingIndicator(loading: true, label: screen.loadingLabel, theme: theme)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed:
             if let failure = screen.failure {
                 FailureView(failure: failure, theme: theme, retry: actions.retry)

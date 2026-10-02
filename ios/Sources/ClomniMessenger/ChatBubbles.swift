@@ -66,13 +66,13 @@ struct ChatTranscript: View {
             ForEach(items) { item in
                 ChatItemView(item: item, theme: theme, actions: actions)
                     .id(item.id)
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 6)))
+                    .transition(.opacity)
             }
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
         .padding(.top, CGFloat(ClomniTheme.Space.xl))
         .padding(.bottom, CGFloat(ClomniTheme.Space.s))
-        .animation(.easeOut(duration: 0.22), value: items.map(\.id))
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: items.map(\.id))
     }
 }
 
@@ -263,6 +263,7 @@ struct ImageBubble: View {
     let ink: Color
     let open: (URL) -> Void
     @Environment(\.clomniLoadsRemoteImages) private var loadsImages
+    @Environment(\.clomniLoadingLabel) private var loadingLabel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -314,10 +315,12 @@ struct ImageBubble: View {
         }
     }
 
+    /// The image's own size in grey, with the spinner while it loads.
     private var placeholder: some View {
         RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous)
             .fill(theme.colors.surface.color)
             .frame(width: CGFloat(image.width), height: CGFloat(image.height))
+            .overlay(LoadingIndicator(loading: loadsImages && image.url != nil, label: loadingLabel, theme: theme))
     }
 }
 

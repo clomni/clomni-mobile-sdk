@@ -16,6 +16,7 @@ struct MessengerRootView: View {
     let engine: ClomniEngine
     @StateObject private var home: MessengerModel
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(model: MessengerRootModel, coordinator: MessengerCoordinator, engine: ClomniEngine) {
         self.model = model
@@ -37,6 +38,8 @@ struct MessengerRootView: View {
             // The panel's (or the app's) light or dark mode for the system's controls too.
             .preferredColorScheme(colorScheme(model.themeOverride.mode ?? model.config?.theme.mode))
             .configCrossfade(model.config)
+            // The push's timing; Reduce Motion: no movement.
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: model.route)
             .task { await coordinator.prepare() }
     }
 
@@ -56,6 +59,8 @@ struct MessengerRootView: View {
                                back: { coordinator.navigate(to: .home) },
                                close: { coordinator.dismiss() })
                 .id(id)
+                // As a navigation push: in from the trailing edge, out the same way on back.
+                .transition(.move(edge: .trailing))
         case .home? where model.ready:
             MessengerTabView(model: home, source: model.source, close: { coordinator.dismiss() },
                              openConversation: { coordinator.navigate(to: .conversation($0)) })

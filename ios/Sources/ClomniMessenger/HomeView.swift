@@ -291,11 +291,13 @@ struct HomeCardsView: View {
         VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
             switch screen.phase {
             case .loading:
+                // No config yet: the neutral blocks, with the spinner over them once it takes a while.
                 VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
                     SkeletonBlock(height: 58, theme: theme)
                     SkeletonBlock(height: 74, theme: theme)
                 }
-                .loadingElement(screen.loadingLabel)
+                .accessibilityHidden(true)
+                .overlay(LoadingIndicator(loading: true, label: screen.loadingLabel, theme: theme))
             case .failed:
                 if let failure = screen.failure {
                     FailureView(failure: failure, theme: theme, retry: actions.retry)
