@@ -174,14 +174,15 @@ struct AvatarView: View {
     }
 }
 
-/// A grey block standing in for content while the first load runs (brief 8 · 7.5: no spinner).
+/// A block in the brand's soft tone standing in for content while the first load runs (brief 8 · 7.5: no spinner).
 struct SkeletonBlock: View {
     let height: Double
     let theme: ClomniTheme
 
     var body: some View {
+        // primary_soft, as every placeholder (APPEARANCE-CONTRACT § 4).
         RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous)
-            .fill(theme.colors.surface.color)
+            .fill(theme.colors.primarySoft.color)
             .frame(maxWidth: .infinity)
             .frame(height: CGFloat(height))
             .accessibilityHidden(true)

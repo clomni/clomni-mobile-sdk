@@ -50,6 +50,7 @@ package actor ClomniEngine {
     private var typingSentAt: [String: Date] = [:]
     private var pushRegistration: Task<Void, Never>?
     private var registerPushAgain = false
+    private var configLanguage: String?
 
     package init(appId: String, apiKey: String, baseURL: URL? = nil) {
         #if canImport(Security)
@@ -267,6 +268,9 @@ package actor ClomniEngine {
     /// The config kept from last time, checked with its ETag.
     @discardableResult
     package func refreshConfig(language: String? = nil) async -> MessengerConfig? {
+        // The config's texts are one language's; a refetch (config.changed) asks for the same one.
+        let language = language ?? configLanguage
+        configLanguage = language
         do {
             if case .changed(let config, let body, let etag) = try await api.config(language: language, etag: configETag) {
                 self.config = config
