@@ -21,6 +21,8 @@ The first release.
   panel's order, up to five channels, "Powered by Clomni", light or dark mode, and the texts with `{name}` and
   `{first_name}`. A published change fades in on the open screen. `setTheme(primaryColor:typeface:mode:)` puts the
   app's own colour, font and mode over the panel's.
+- A new conversation is created on the server with the user's first message, not when it is opened; offline, the
+  outbox creates it once and then sends.
 - Every method may be called from any thread; callbacks run on the main thread. `initialize` does no disk or keychain
   work on the main thread.
 - System frameworks only. A privacy manifest (`PrivacyInfo.xcprivacy`): no tracking, no required-reason APIs.

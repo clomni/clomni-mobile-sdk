@@ -40,8 +40,6 @@ struct ChatView: View {
     @ObservedObject var model: ChatModel
     let back: () -> Void
     let close: () -> Void
-    /// "Yeni söhbət başlat" started one (the app's onConversationStarted).
-    var conversationStarted: (String) -> Void = { _ in }
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.clomniThemeOverride) private var themeOverride
     @State private var draft = ""
@@ -172,7 +170,7 @@ struct ChatView: View {
     private func startNew() {
         writeAnyway = false
         Task { @MainActor in
-            if let id = await model.controller.startNewConversation() { conversationStarted(id) }
+            await model.controller.startNewConversation()
         }
     }
 

@@ -118,7 +118,10 @@ package struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
         case failed
     }
 
-    package let conversationId: String
+    /// A draft's id (`ClomniEngine.draftConversation`) until the server has created the conversation.
+    package internal(set) var conversationId: String
+    /// A draft's `opened_from`, for creating it.
+    package internal(set) var openedFrom: String?
     package internal(set) var message: ClientMessage
     /// What the bubble shows: the text, the button's title, the caption. nil for the back button and a form, whose
     /// labels are the UI's own.
@@ -171,6 +174,13 @@ struct Outbox: Codable, Equatable {
     mutating func remove(_ clientId: String) -> PendingMessage? {
         guard let index = entries.firstIndex(where: { $0.id == clientId }) else { return nil }
         return entries.remove(at: index)
+    }
+
+    /// A draft's messages, to the conversation the server created for it.
+    mutating func retarget(_ draft: String, to conversationId: String) {
+        for index in entries.indices where entries[index].conversationId == draft {
+            entries[index].conversationId = conversationId
+        }
     }
 
     mutating func update(_ clientId: String, _ change: (inout PendingMessage) -> Void) {

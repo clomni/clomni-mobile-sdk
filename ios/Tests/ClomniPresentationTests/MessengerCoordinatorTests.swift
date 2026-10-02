@@ -13,7 +13,6 @@ actor FakeSession: MessengerSession {
     var unread = 0
     var cachedConfig: MessengerConfig?
     var freshConfig: MessengerConfig? = Fixture.aparConfig
-    var startFails = false
     var flowBound = true
     var stored: [String: [Message]] = [:]
     var calls: [String] = []
@@ -25,7 +24,7 @@ actor FakeSession: MessengerSession {
     var config: MessengerConfig? { cachedConfig }
 
     func set(loggedIn: Bool = false, disabled: Bool = false, disableOnLogin: Bool = false, unread: Int = 0,
-             cached: MessengerConfig? = nil, fresh: MessengerConfig? = Fixture.aparConfig, startFails: Bool = false,
+             cached: MessengerConfig? = nil, fresh: MessengerConfig? = Fixture.aparConfig,
              flowBound: Bool = true) {
         self.loggedIn = loggedIn
         self.disabled = disabled
@@ -33,7 +32,6 @@ actor FakeSession: MessengerSession {
         self.unread = unread
         cachedConfig = cached
         freshConfig = fresh
-        self.startFails = startFails
         self.flowBound = flowBound
     }
 
@@ -59,10 +57,9 @@ actor FakeSession: MessengerSession {
 
     func connect() async { calls.append("connect") }
 
-    func startConversation(openedFrom: String?) async throws -> Conversation {
-        calls.append("start \(openedFrom ?? "-")")
-        if startFails { throw ClomniError.network("offline") }
-        return Fixture.conversation(status: "bot")
+    func draftConversation(openedFrom: String?) async -> String {
+        calls.append("draft \(openedFrom ?? "-")")
+        return "draft_\(calls.count)"
     }
 
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
@@ -262,26 +259,32 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertFalse(known.present())
     }
 
-    func testANewConversationCarriesTheSource() async {
+    /// A new conversation is a draft until its first message: opening and closing asks the server for nothing, and
+    /// the app hears onConversationStarted when the server has created it.
+    func testANewConversationCarriesTheSource() async throws {
         await session.set(loggedIn: true)
         let messenger = coordinator()
+        await messenger.prepare()
+        let before = await calls()
         let id = await messenger.presentNewConversation(source: "ride_screen")
-        XCTAssertEqual(id, "conv_5521")
-        XCTAssertEqual(messenger.route, .conversation("conv_5521"))
-        XCTAssertEqual(heard.started, ["conv_5521"])
+        let draft = try XCTUnwrap(id)
+        XCTAssertEqual(messenger.route, .conversation(draft))
         XCTAssertEqual(heard.opened, ["ride_screen"])
+        XCTAssertTrue(heard.started.isEmpty, "nothing exists yet")
         var made = await calls()
-        XCTAssertTrue(made.contains("start ride_screen"), "\(made)")
+        XCTAssertEqual(Array(made.dropFirst(before.count)), ["draft ride_screen"], "no other call")
+
+        await session.push(.conversationCreated(draft: draft, conversationId: "conv_5521"))
+        try await Task.sleep(nanoseconds: 20_000_000)
+        XCTAssertEqual(heard.started, ["conv_5521"])
 
         messenger.dismiss()
-        await session.set(loggedIn: true, startFails: true)
-        let failed = await messenger.presentNewConversation()
-        XCTAssertNil(failed)
-        XCTAssertEqual(messenger.route, .home, "Home, with its retry, instead of an endless skeleton")
+        let second = await messenger.presentNewConversation()
+        XCTAssertNotNil(second)
+        messenger.dismiss()
         made = await calls()
-        XCTAssertTrue(made.contains("start -"))
-        messenger.conversationStarted("conv_from_home")
-        XCTAssertEqual(heard.started, ["conv_5521", "conv_from_home"])
+        XCTAssertEqual(made.last, "draft -")
+        XCTAssertEqual(heard.started, ["conv_5521"], "opened and closed: no conversation")
     }
 
     func testStartingAFlow() async {
@@ -431,8 +434,6 @@ final class MessengerCoordinatorTests: XCTestCase {
         messenger.present()
         XCTAssertFalse(messenger.showsForegroundPushes, "Home")
         messenger.navigate(to: .conversation("conv_5521"))
-        XCTAssertFalse(messenger.showsForegroundPushes)
-        messenger.navigate(to: .startingConversation)
         XCTAssertFalse(messenger.showsForegroundPushes)
         messenger.pushArrived(push(unread: 3))
         messenger.pushArrived(push(unread: nil))

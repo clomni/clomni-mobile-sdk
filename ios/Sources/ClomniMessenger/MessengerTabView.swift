@@ -51,8 +51,6 @@ struct MessengerTabView: View {
     let source: String?
     let close: () -> Void
     let openConversation: (String) -> Void
-    /// A conversation the user started here (the app's onConversationStarted).
-    var conversationStarted: (String) -> Void = { _ in }
     @State private var tab = MessengerTab.home
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.clomniThemeOverride) private var themeOverride
@@ -64,12 +62,8 @@ struct MessengerTabView: View {
     private var actions: MessengerActions {
         MessengerActions(
             close: close,
-            newConversation: { [model, source, openConversation, conversationStarted] in
-                Task { @MainActor in
-                    guard let id = await model.controller.startConversation(openedFrom: source) else { return }
-                    conversationStarted(id)
-                    openConversation(id)
-                }
+            newConversation: { [model, source, openConversation] in
+                Task { @MainActor in openConversation(await model.controller.startConversation(openedFrom: source)) }
             },
             openConversation: openConversation,
             retry: { [model] in

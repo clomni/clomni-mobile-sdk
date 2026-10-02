@@ -67,9 +67,9 @@ actor FakeBackend: ClomniBackend {
         calls.append("connect")
     }
 
-    func startConversation(openedFrom: String?) async throws -> Conversation {
-        calls.append("startConversation \(openedFrom ?? "-")")
-        return ProtocolJSON.parseConversation(Data(#"{"id":"conv_new","status":"bot","created_at":"2026-10-01T10:30:00Z"}"#.utf8))!
+    func draftConversation(openedFrom: String?) async -> String {
+        calls.append("draftConversation \(openedFrom ?? "-")")
+        return "draft_new"
     }
 
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
@@ -277,7 +277,7 @@ final class FacadeTests: XCTestCase {
         XCTAssertNil(runtime.coordinator?.route)
         Clomni.presentNewConversation(source: "help_button")
         await settle()
-        XCTAssertEqual(runtime.coordinator?.route, .conversation("conv_new"))
+        XCTAssertEqual(runtime.coordinator?.route, .conversation("draft_new"), "created with its first message")
         Clomni.dismiss()
 
         Clomni.startFlow("ride_problem", data: ["ride_id": "R-77", "minutes": 18], openMessenger: true, source: "ride")
@@ -288,8 +288,8 @@ final class FacadeTests: XCTestCase {
         Clomni.startFlow("payment_failed", data: ["when": Date()])
         XCTAssertTrue(log.contains("[Clomni] error: startFlow: data holds something JSON cannot carry"))
 
-        XCTAssertEqual(told.lines, ["opened profile_support", "closed", "opened help_button", "started conv_new",
-                                    "closed", "started conv_flow", "opened ride"])
+        XCTAssertEqual(told.lines, ["opened profile_support", "closed", "opened help_button", "closed",
+                                    "started conv_flow", "opened ride"])
         XCTAssertEqual(told.offMain, 0)
     }
 

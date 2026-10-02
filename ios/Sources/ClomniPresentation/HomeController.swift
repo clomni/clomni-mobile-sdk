@@ -11,7 +11,7 @@ package protocol MessengerDataSource: Sendable {
     func conversations() async -> [Conversation]
     func refreshConversations() async throws
     var unreadTotal: Int { get async }
-    func startConversation(openedFrom: String?) async throws -> Conversation
+    func draftConversation(openedFrom: String?) async -> String
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
     func stopObserving(_ token: UUID) async
 }
@@ -44,7 +44,6 @@ package final class HomeController {
     private let timeZone: TimeZone
     private let now: @Sendable () -> Date
     private var snapshot: MessengerSnapshot
-    private var starting = false
     private var observation: UUID?
 
     package init(source: MessengerDataSource, language: String?, userName: String?, timeZone: TimeZone = .current,
@@ -96,15 +95,9 @@ package final class HomeController {
         await load()
     }
 
-    /// "Bizə mesaj göndərin": the new conversation's id, or nil when it failed or one is already starting.
-    package func startConversation(openedFrom: String?) async -> String? {
-        guard !starting else { return nil }
-        starting = true
-        defer { starting = false }
-        let conversation = try? await source.startConversation(openedFrom: openedFrom)
-        await read()
-        render()
-        return conversation?.id
+    /// "Bizə mesaj göndərin": a draft's id. The server creates the conversation with its first message.
+    package func startConversation(openedFrom: String?) async -> String {
+        await source.draftConversation(openedFrom: openedFrom)
     }
 
     func changed(_ change: ClomniChange) async {

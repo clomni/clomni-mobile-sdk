@@ -53,15 +53,13 @@ struct MessengerRootView: View {
         case .conversation(let id)? where model.ready:
             ConversationScreen(engine: engine, conversationId: id,
                                back: { coordinator.navigate(to: .home) },
-                               close: { coordinator.dismiss() },
-                               started: { coordinator.conversationStarted($0) })
+                               close: { coordinator.dismiss() })
                 .id(id)
         case .home? where model.ready:
             MessengerTabView(model: home, source: model.source, close: { coordinator.dismiss() },
-                             openConversation: { coordinator.navigate(to: .conversation($0)) },
-                             conversationStarted: { coordinator.conversationStarted($0) })
+                             openConversation: { coordinator.navigate(to: .conversation($0)) })
         default:
-            // Not ready yet, or a conversation being started: grey blocks in the brand's colour, ✕ still working.
+            // Not ready yet: grey blocks in the brand's colour, ✕ still working.
             // When getting ready failed, "Yenidən cəhd et" instead.
             HomeView(screen: HomePresenter(strings: ClomniStrings(language: model.config?.languages.first),
                                            now: Date()).preparing(failed: model.preparationFailed),
@@ -77,18 +75,15 @@ struct ConversationScreen: View {
     @StateObject private var model: ChatModel
     let back: () -> Void
     let close: () -> Void
-    let started: (String) -> Void
 
-    init(engine: ClomniEngine, conversationId: String, back: @escaping () -> Void, close: @escaping () -> Void,
-         started: @escaping (String) -> Void) {
+    init(engine: ClomniEngine, conversationId: String, back: @escaping () -> Void, close: @escaping () -> Void) {
         _model = StateObject(wrappedValue: ChatModel(engine: engine, conversationId: conversationId, language: nil))
         self.back = back
         self.close = close
-        self.started = started
     }
 
     var body: some View {
-        ChatView(model: model, back: back, close: close, conversationStarted: started)
+        ChatView(model: model, back: back, close: close)
     }
 }
 #endif

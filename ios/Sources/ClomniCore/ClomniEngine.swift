@@ -13,6 +13,8 @@ package enum ClomniChange: Sendable, Equatable {
     case unread(total: Int)
     case typing(conversationId: String, sender: Sender, isTyping: Bool)
     case read(conversationId: String, upToSeq: Int)
+    /// A new conversation's first message made the server create it: the draft's id is `conversationId` from now on.
+    case conversationCreated(draft: String, conversationId: String)
 }
 
 /// The SDK below the screens: the session, the socket, the cache and the outbox (brief 8 · 9: Api, Realtime, Store).
@@ -51,6 +53,10 @@ package actor ClomniEngine {
     private var pushRegistration: Task<Void, Never>?
     private var registerPushAgain = false
     private var configLanguage: String?
+    /// New conversations not on the server yet, with their `opened_from`.
+    private var drafts: [String: String?] = [:]
+    /// Drafts the server has created, to their ids.
+    private var createdDrafts: [String: String] = [:]
 
     package init(appId: String, apiKey: String, baseURL: URL? = nil) {
         #if canImport(Security)
@@ -159,6 +165,8 @@ package actor ClomniEngine {
     private func clearLocalData() {
         store = MessageStore()
         outbox = Outbox()
+        drafts = [:]
+        createdDrafts = [:]
         readSent = [:]
         save()
         notify(.conversations)
@@ -293,15 +301,28 @@ package actor ClomniEngine {
         notify(.conversations)
     }
 
-    /// Starts the inbox's new-conversation flow; its first messages come with it.
-    package func startConversation(openedFrom: String?) async throws -> Conversation {
-        let created = try await api.createConversation(openedFrom: openedFrom)
-        apply(created)
-        return created.conversation
+    /// A new conversation that exists only here until its first message: the server creates it then (starting the
+    /// inbox's new-conversation flow), so opening and closing the messenger leaves nothing in the panel.
+    package func draftConversation(openedFrom: String?) -> String {
+        let id = "\(Self.draftPrefix)\(UUID().uuidString.lowercased())"
+        drafts[id] = openedFrom
+        return id
+    }
+
+    package static let draftPrefix = "draft_"
+
+    package static func isDraft(_ conversationId: String) -> Bool {
+        conversationId.hasPrefix(draftPrefix)
+    }
+
+    /// The server's id of a draft it has created; any other id as it is.
+    package func resolved(_ conversationId: String) -> String {
+        createdDrafts[conversationId] ?? conversationId
     }
 
     /// Brings a conversation up to date: the latest page the first time, what is newer than the cache after that.
     package func loadMessages(in conversationId: String) async throws {
+        guard !Self.isDraft(conversationId) else { return }
         if let newest = store.lastSeq(in: conversationId) {
             try await fetch(conversationId, after: newest)
         } else {
@@ -338,6 +359,7 @@ package actor ClomniEngine {
 
     /// `on` at most every 3 seconds while typing, `off` once when the user stops.
     package func setTyping(_ isTyping: Bool, in conversationId: String) async {
+        guard !Self.isDraft(conversationId) else { return }
         if isTyping {
             if let last = typingSentAt[conversationId], time.now().timeIntervalSince(last) < 3 { return }
             typingSentAt[conversationId] = time.now()
@@ -403,6 +425,7 @@ package actor ClomniEngine {
     @discardableResult
     package func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                          in conversationId: String) throws -> PendingMessage {
+        let conversationId = resolved(conversationId)
         let megabytes = mime.hasPrefix("image/") ? config?.limits.imageMb ?? 10 : config?.limits.fileMb ?? 25
         guard data.count <= megabytes * 1_048_576 else { throw ClomniError.rejected("file over \(megabytes) MB") }
         let message = ClientMessage(content: .attachment(uploadId: "", caption: caption))
@@ -411,6 +434,7 @@ package actor ClomniEngine {
         guard cache.contains(stored) else { throw ClomniError.rejected("file not stored") }
         var entry = PendingMessage(conversationId: conversationId, message: message, preview: caption,
                                    createdAt: time.now())
+        entry.openedFrom = drafts[conversationId] ?? nil
         entry.upload = PendingUpload(fileName: fileName, mime: mime, size: data.count, storedAs: stored)
         outbox.add(entry)
         changed(conversationId)
@@ -430,6 +454,7 @@ package actor ClomniEngine {
 
     /// The conversation from the server, e.g. one opened from a push before the list knew it.
     package func refreshConversation(_ id: String) async throws {
+        guard !Self.isDraft(id) else { return }
         store.upsert(try await api.conversation(id))
         save()
         notify(.conversations)
@@ -470,8 +495,10 @@ package actor ClomniEngine {
     }
 
     private func enqueue(_ content: ClientMessage.Content, in conversationId: String, preview: String?) -> PendingMessage {
-        let entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content), preview: preview,
+        let conversationId = resolved(conversationId)
+        var entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content), preview: preview,
                                    createdAt: time.now())
+        entry.openedFrom = drafts[conversationId] ?? nil
         outbox.add(entry)
         changed(conversationId)
         deliver()
@@ -514,6 +541,11 @@ package actor ClomniEngine {
                 guard let updated = outbox.entry(entry.id) else { return }
                 entry = updated
             }
+            if Self.isDraft(entry.conversationId) {
+                try await create(entry.conversationId, openedFrom: entry.openedFrom)
+                guard let updated = outbox.entry(entry.id) else { return }
+                entry = updated
+            }
             let message = try await api.send(entry.message, to: entry.conversationId)
             removePending(entry.id)
             receive(message)
@@ -547,6 +579,25 @@ package actor ClomniEngine {
             }
         }
         changed(entry.conversationId)
+    }
+
+    /// The draft's first message is on its way: the server creates the conversation, once (the draft's messages
+    /// move to its id at once and on disk), and the message follows with its own client id.
+    private func create(_ draft: String, openedFrom: String?) async throws {
+        let id = try await startConversation(openedFrom: openedFrom).id
+        createdDrafts[draft] = id
+        drafts[draft] = nil
+        outbox.retarget(draft, to: id)
+        save()
+        notify(.conversationCreated(draft: draft, conversationId: id))
+    }
+
+    /// Creates a conversation on the server, which starts the inbox's new-conversation flow; its first messages come
+    /// with it. Only through a draft's first message (and tests).
+    func startConversation(openedFrom: String?) async throws -> Conversation {
+        let created = try await api.createConversation(openedFrom: openedFrom)
+        apply(created)
+        return created.conversation
     }
 
     // MARK: - Incoming

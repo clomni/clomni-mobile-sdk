@@ -73,7 +73,8 @@ public enum Clomni {
         MainThread.run { ClomniRuntime.shared.coordinator(for: "present")?.present(source: source) }
     }
 
-    /// Straight into a new conversation, with the inbox's first flow.
+    /// Straight into a new conversation. The server creates it, and starts the inbox's first flow, when the user
+    /// sends the first message: opening and closing leaves nothing behind.
     public static func presentNewConversation(source: String? = nil) {
         MainThread.run {
             guard let coordinator = ClomniRuntime.shared.coordinator(for: "presentNewConversation") else { return }
@@ -201,7 +202,8 @@ public enum Clomni {
         set { ClomniShared.state.write { $0.events.messengerClosed = newValue } }
     }
 
-    /// A new conversation, with its id.
+    /// A new conversation, with its id: when the server has created it (with the user's first message, or by
+    /// `startFlow`).
     public static var onConversationStarted: (@MainActor @Sendable (String) -> Void)? {
         get { ClomniShared.state.read { $0.events.conversationStarted } }
         set { ClomniShared.state.write { $0.events.conversationStarted = newValue } }

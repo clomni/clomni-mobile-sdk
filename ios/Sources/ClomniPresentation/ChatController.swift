@@ -25,7 +25,7 @@ package protocol ChatDataSource: Sendable {
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                   in conversationId: String) async throws -> PendingMessage
     func retry(_ clientId: String) async throws
-    func startConversation(openedFrom: String?) async throws -> Conversation
+    func draftConversation(openedFrom: String?) async -> String
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
     func stopObserving(_ token: UUID) async
 }
@@ -39,7 +39,8 @@ package final class ChatController {
     package private(set) var screen: ChatScreen
     /// Called after `screen` changed.
     package var onChange: (() -> Void)?
-    /// Changes when "Yeni söhbət başlat" opens a new conversation in place of a closed one.
+    /// Changes when "Yeni söhbət başlat" opens a new conversation in place of a closed one, and when the server
+    /// creates a draft with its first message.
     package private(set) var conversationId: String
 
     package var isOffline = false {
@@ -186,17 +187,16 @@ package final class ChatController {
         }
     }
 
-    /// "Yeni söhbət başlat": this screen moves to a new conversation; its id, or nil when it could not start.
-    package func startNewConversation() async -> String? {
-        guard let conversation = try? await source.startConversation(openedFrom: nil) else { return nil }
+    /// "Yeni söhbət başlat": this screen moves to a new conversation's draft, which the server creates with its
+    /// first message.
+    package func startNewConversation() async {
         typingHide?.cancel()
         await source.setTyping(false, in: conversationId)
-        conversationId = conversation.id
+        conversationId = await source.draftConversation(openedFrom: nil)
         let known = snapshot.known
         snapshot = ChatSnapshot()
         snapshot.known = known
         await load()
-        return conversation.id
     }
 
     // MARK: - The engine's changes
@@ -216,6 +216,10 @@ package final class ChatController {
         case .typing(let id, let sender, let isTyping) where id == conversationId:
             showTyping(isTyping ? sender : nil)
         case .read(let id, _) where id == conversationId:
+            await read()
+            render()
+        case .conversationCreated(let draft, let id) where draft == conversationId:
+            conversationId = id
             await read()
             render()
         case .conversations, .config, .session:

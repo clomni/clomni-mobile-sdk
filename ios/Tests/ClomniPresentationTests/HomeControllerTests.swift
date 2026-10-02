@@ -11,7 +11,6 @@ actor FakeSource: MessengerDataSource {
     var list: [Conversation] = []
     var unread = 0
     var conversationsFail = false
-    var startFails = false
     var starts = 0
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
     var observerCount: Int { observers.count }
@@ -30,14 +29,9 @@ actor FakeSource: MessengerDataSource {
         if conversationsFail { throw ClomniError.network("offline") }
     }
 
-    func startConversation(openedFrom: String?) async throws -> Conversation {
+    func draftConversation(openedFrom: String?) async -> String {
         starts += 1
-        // Long enough for a second tap to arrive meanwhile.
-        try await Task.sleep(nanoseconds: 20_000_000)
-        if startFails { throw ClomniError.network("offline") }
-        let conversation = Fixture.conversation("conv_\(starts)", message: "09-apar-level1-A.json")
-        list.insert(conversation, at: 0)
-        return conversation
+        return "draft_\(starts)"
     }
 
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
@@ -51,12 +45,11 @@ actor FakeSource: MessengerDataSource {
     }
 
     func set(cached: MessengerConfig? = nil, fresh: MessengerConfig? = nil, list: [Conversation]? = nil,
-             conversationsFail: Bool = false, startFails: Bool = false) {
+             conversationsFail: Bool = false) {
         self.cached = cached
         self.fresh = fresh
         if let list { self.list = list }
         self.conversationsFail = conversationsFail
-        self.startFails = startFails
     }
 
     /// What the engine does when a socket event arrives.
@@ -140,17 +133,9 @@ final class HomeControllerTests: XCTestCase {
         await source.set(fresh: Fixture.aparConfig)
         let home = controller()
         await home.load()
-        async let first = home.startConversation(openedFrom: "home")
-        async let second = home.startConversation(openedFrom: "home")
-        let ids = await [first, second]
-        XCTAssertEqual(ids.compactMap { $0 }, ["conv_1"], "a second tap while the first is starting does nothing")
-        let starts = await source.starts
-        XCTAssertEqual(starts, 1)
-        XCTAssertEqual(home.messages.rows.first?.id, "conv_1")
-
-        await source.set(cached: Fixture.aparConfig, startFails: true)
-        let failed = await home.startConversation(openedFrom: nil)
-        XCTAssertNil(failed)
+        let id = await home.startConversation(openedFrom: "home")
+        XCTAssertEqual(id, "draft_1", "a draft: nothing on the server until its first message")
+        XCTAssertTrue(home.messages.rows.isEmpty, "not in the list either")
     }
 
     func testNameAndConnectivityRedraw() {

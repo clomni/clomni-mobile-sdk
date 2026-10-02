@@ -13,7 +13,7 @@ package protocol MessengerSession: Sendable {
     func loginUnidentifiedUser() async throws
     func refreshConfig(language: String?) async -> MessengerConfig?
     func connect() async
-    func startConversation(openedFrom: String?) async throws -> Conversation
+    func draftConversation(openedFrom: String?) async -> String
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation?
     func messages(in conversationId: String) async -> [Message]
@@ -25,8 +25,7 @@ extension ClomniEngine: MessengerSession {}
 /// Where the open messenger is.
 package enum MessengerRoute: Sendable, Equatable {
     case home
-    /// A conversation being created: a skeleton until the server answers.
-    case startingConversation
+    /// A conversation, or a new one's draft (`ClomniEngine.draftConversation`) until its first message.
     case conversation(String)
 }
 
@@ -201,19 +200,13 @@ package final class MessengerCoordinator {
         open(.conversation(id), source: source)
     }
 
-    /// Starts the inbox's new-conversation flow and shows it; its id, or nil when it could not start (Home stays).
+    /// Shows a new conversation; the server creates it (and its flow starts) with the user's first message, so
+    /// opening and closing asks the server for nothing. The draft's id, or nil when nothing opens.
     @discardableResult
     package func presentNewConversation(source: String? = nil) async -> String? {
-        guard open(.startingConversation, source: source) else { return nil }
-        guard await prepare(), let conversation = try? await session.startConversation(openedFrom: self.source) else {
-            if route == .startingConversation { route = .home }
-            changed()
-            return nil
-        }
-        conversationStarted(conversation.id)
-        if route != nil { route = .conversation(conversation.id) }
-        changed()
-        return conversation.id
+        guard readiness != .disabled else { return nil }
+        let draft = await session.draftConversation(openedFrom: route == nil ? source : self.source)
+        return open(.conversation(draft), source: source) ? draft : nil
     }
 
     /// `Clomni.startFlow`: the flow bound to an app event, in a new conversation, shown when `openMessenger`.
@@ -343,6 +336,8 @@ package final class MessengerCoordinator {
             changed()
         case .messages(let conversationId):
             reportFinishedFlows(in: conversationId, await session.messages(in: conversationId))
+        case .conversationCreated(_, let conversationId):
+            conversationStarted(conversationId)
         default:
             break
         }

@@ -93,11 +93,9 @@ actor FakeChat: ChatDataSource {
 
     func retry(_ clientId: String) throws { calls.append("retry \(clientId)") }
 
-    func startConversation(openedFrom: String?) async throws -> Conversation {
-        calls.append("start")
-        conversations["conv_new"] = Fixture.conversation(status: "bot")
-        return ProtocolJSON.parseConversation(ProtocolJSON.encode(
-            ["id": "conv_new", "status": "bot", "created_at": "2026-10-01T10:00:00Z"]))!
+    func draftConversation(openedFrom: String?) async -> String {
+        calls.append("draft")
+        return "draft_1"
     }
 
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
@@ -280,12 +278,21 @@ final class ChatControllerTests: XCTestCase {
         await source.set([Fixture.message("24-system-conversation-closed.json")])
         let chat = controller()
         await chat.load()
-        let id = await chat.startNewConversation()
-        XCTAssertEqual(id, "conv_new")
-        XCTAssertEqual(chat.conversationId, "conv_new")
-        let made = await calls()
-        XCTAssertTrue(made.contains("load conv_new"))
+        await chat.startNewConversation()
+        XCTAssertEqual(chat.conversationId, "draft_1", "a draft until its first message")
+        var made = await calls()
+        XCTAssertTrue(made.contains("draft"))
         XCTAssertTrue(chat.screen.items.isEmpty)
+
+        // The first message made the server create it: the screen follows the conversation's id.
+        await source.push(.conversationCreated(draft: "draft_1", conversationId: "conv_new"))
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        XCTAssertEqual(chat.conversationId, "conv_new")
+        await source.push(.conversationCreated(draft: "draft_9", conversationId: "conv_other"))
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        XCTAssertEqual(chat.conversationId, "conv_new", "another draft's")
+        made = await calls()
+        XCTAssertFalse(made.contains("start"))
     }
 
     func testTheEngineIsAChatSource() {
