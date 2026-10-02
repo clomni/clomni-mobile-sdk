@@ -34,6 +34,7 @@ const methods = {
   logout: record('logout'),
   setLogLevel: record('setLogLevel'),
   setTypeface: record('setTypeface'),
+  setTheme: record('setTheme'),
   present: record('present'),
   presentNewConversation: record('presentNewConversation'),
   presentConversation: record('presentConversation'),

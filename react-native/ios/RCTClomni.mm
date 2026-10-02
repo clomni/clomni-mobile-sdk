@@ -122,6 +122,13 @@ RCT_EXPORT_METHOD(setTypeface:(nullable NSString *)familyName)
   [_clomni setTypeface:familyName];
 }
 
+RCT_EXPORT_METHOD(setTheme:(nullable NSString *)primaryColor
+                  typeface:(nullable NSString *)typeface
+                  mode:(nullable NSString *)mode)
+{
+  [_clomni setTheme:primaryColor typeface:typeface mode:mode];
+}
+
 RCT_EXPORT_METHOD(present:(nullable NSString *)source)
 {
   [_clomni presentWithSource:source];

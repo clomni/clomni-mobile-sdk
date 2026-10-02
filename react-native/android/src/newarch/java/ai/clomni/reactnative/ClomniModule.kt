@@ -29,6 +29,9 @@ class ClomniModule(context: ReactApplicationContext) : NativeClomniSpec(context)
 
     override fun setTypeface(familyName: String?) = impl.setTypeface(familyName)
 
+    override fun setTheme(primaryColor: String?, typeface: String?, mode: String?) =
+        impl.setTheme(primaryColor, typeface, mode)
+
     override fun present(source: String?) = impl.present(source)
 
     override fun presentNewConversation(source: String?) = impl.presentNewConversation(source)

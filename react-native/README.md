@@ -110,6 +110,9 @@ Clomni.updateUser({ language: 'az', customAttributes: { plan: 'premium' } });
 Clomni.present('profile_support');
 Clomni.startFlow('ride_problem', { ride_id: 'R-1042' }, { openMessenger: true, source: 'ride_detail' });
 
+// The app's own colour, font and mode over the panel's look; what is left out stays the panel's.
+Clomni.setTheme({ primaryColor: '#0A66C2', typeface: 'Montserrat', mode: 'dark' });
+
 // The unread count for the app's own badge: at once, then on every change.
 const subscription = Clomni.addEventListener('unreadCountChanged', (count) => setBadge(count));
 subscription.remove();
@@ -147,6 +150,7 @@ const show = Clomni.shouldShowForeground(data);
 | `startFlow(event, data?, { openMessenger?, source? })` | the flow bound to an app event |
 | `setLauncherVisible(visible)`, `setBottomPadding(padding)` | the optional floating button |
 | `setDeviceToken(token)`, `isClomniPush(data)`, `handlePush(data)`, `shouldShowForeground(data)` (iOS), `setNotificationIcon(name)` (Android) | push |
+| `setTheme({ primaryColor?, typeface?, mode? })` | the app's look over the panel's: `'#RRGGBB'`, a font family, `'light' \| 'dark' \| 'system'`; each call replaces the last |
 | `setLogLevel('none' \| 'error' \| 'warning' \| 'info' \| 'debug')`, `setTypeface(familyName \| null)` | log and font |
 | `addEventListener(name, listener)` → `{ remove() }` | `unreadCountChanged`, `messengerOpened`, `messengerClosed`, `conversationStarted`, `flowCompleted` |
 

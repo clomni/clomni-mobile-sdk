@@ -3,6 +3,7 @@ package ai.clomni.reactnative
 import ai.clomni.messenger.Clomni
 import ai.clomni.messenger.ClomniLogLevel
 import ai.clomni.messenger.ClomniPush
+import ai.clomni.messenger.ClomniThemeMode
 import ai.clomni.messenger.ClomniUser
 import ai.clomni.messenger.ConversationStartedListener
 import ai.clomni.messenger.FlowCompletedListener
@@ -84,11 +85,18 @@ internal class ClomniModuleImpl(
      * ReactFontManager); null is the system font.
      */
     fun setTypeface(familyName: String?) {
-        val typeface = familyName?.let {
-            ReactFontManager.getInstance().getTypeface(it, Typeface.NORMAL, context.assets)
-        }
-        Clomni.setTypeface(typeface)
+        Clomni.setTypeface(familyName?.let(::typeface))
     }
+
+    /** The app's colour, font (as [setTypeface]) and mode over the panel's; the SDK checks the colour. */
+    fun setTheme(primaryColor: String?, typeface: String?, mode: String?) {
+        val themeMode = ClomniThemeMode.values().firstOrNull { it.name.equals(mode, ignoreCase = true) }
+        if (mode != null && themeMode == null) Log.w(TAG, "setTheme: unknown mode \"$mode\"; the panel's mode stays")
+        Clomni.setTheme(primaryColor, typeface?.let(::typeface), themeMode)
+    }
+
+    private fun typeface(familyName: String): Typeface =
+        ReactFontManager.getInstance().getTypeface(familyName, Typeface.NORMAL, context.assets)
 
     fun setDeviceToken(token: String) = Clomni.setDeviceToken(token)
 

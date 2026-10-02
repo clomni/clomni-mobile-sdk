@@ -20,6 +20,7 @@ export interface Spec extends TurboModule {
   logout(): void;
   setLogLevel(level: string): void;
   setTypeface(familyName: string | null): void;
+  setTheme(primaryColor: string | null, typeface: string | null, mode: string | null): void;
 
   present(source: string | null): void;
   presentNewConversation(source: string | null): void;

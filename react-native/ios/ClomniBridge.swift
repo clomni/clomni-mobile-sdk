@@ -76,6 +76,17 @@ public final class ClomniBridge: NSObject, @unchecked Sendable {
         Clomni.setTypeface(familyName)
     }
 
+    /// The app's colour, font and mode over the panel's; the SDK checks the colour.
+    @objc(setTheme:typeface:mode:)
+    public func setTheme(_ primaryColor: String?, typeface: String?, mode: String?) {
+        let modes: [String: ClomniThemeMode] = ["light": .light, "dark": .dark, "system": .system]
+        let themeMode = mode.flatMap { modes[$0] }
+        if let mode, themeMode == nil {
+            NSLog("[Clomni] setTheme: unknown mode \"%@\"; the panel's mode stays", mode)
+        }
+        Clomni.setTheme(primaryColor: primaryColor, typeface: typeface, mode: themeMode)
+    }
+
     @objc(presentWithSource:)
     public func present(source: String?) {
         Clomni.present(source: source)

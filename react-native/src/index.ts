@@ -22,6 +22,18 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 /** `none` writes nothing; the default is `warning`. */
 export type ClomniLogLevel = 'none' | 'error' | 'warning' | 'info' | 'debug';
 
+/** For `Clomni.setTheme`: light, dark, or as the system is. */
+export type ClomniThemeMode = 'light' | 'dark' | 'system';
+
+/** For `Clomni.setTheme`: what is left out (or null) stays the panel's. */
+export type ClomniTheme = {
+  /** "#RRGGBB"; the other brand colours are derived from it by the panel's rules. */
+  primaryColor?: string | null;
+  /** A font family, as for `setTypeface`; left out, the font stays as it is. */
+  typeface?: string | null;
+  mode?: ClomniThemeMode | null;
+};
+
 export type StartFlowOptions = {
   /** Open the new conversation on screen; otherwise the user learns of it from a push or the unread count. */
   openMessenger?: boolean;
@@ -52,6 +64,9 @@ export type ClomniSubscription = {
 };
 
 const NATIVE_EVENT = 'ClomniEvent';
+
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+const THEME_MODES: readonly string[] = ['light', 'dark', 'system'];
 
 const NOT_LINKED =
   "@clomni/react-native: the native module is not in this app's build. Run `pod install` (iOS) and rebuild the app. " +
@@ -156,6 +171,24 @@ export const Clomni = {
   /** The app's own font family for the messenger's texts; null is the system font. */
   setTypeface(familyName: string | null): void {
     native().setTypeface(familyName);
+  },
+
+  /**
+   * The app's own look over the panel's: its colour, font and mode. Each call replaces the last; what is left out
+   * stays the panel's. The open messenger and the launcher change at once.
+   */
+  setTheme(theme: ClomniTheme = {}): void {
+    let primaryColor = theme.primaryColor ?? null;
+    if (primaryColor !== null && !HEX_COLOR.test(primaryColor)) {
+      console.error(`[Clomni] setTheme: primaryColor "${primaryColor}" is not #RRGGBB; the panel's colour stays`);
+      primaryColor = null;
+    }
+    let mode = theme.mode ?? null;
+    if (mode !== null && !THEME_MODES.includes(mode)) {
+      console.error(`[Clomni] setTheme: mode "${mode}" is not light, dark or system; the panel's mode stays`);
+      mode = null;
+    }
+    native().setTheme(primaryColor, theme.typeface ?? null, mode);
   },
 
   /** Home. `source` says where in the app (for example "profile_support"). */

@@ -46,6 +46,9 @@ class ClomniModule(context: ReactApplicationContext) : ReactContextBaseJavaModul
     fun setTypeface(familyName: String?) = impl.setTypeface(familyName)
 
     @ReactMethod
+    fun setTheme(primaryColor: String?, typeface: String?, mode: String?) = impl.setTheme(primaryColor, typeface, mode)
+
+    @ReactMethod
     fun present(source: String?) = impl.present(source)
 
     @ReactMethod

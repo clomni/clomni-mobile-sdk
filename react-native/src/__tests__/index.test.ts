@@ -111,6 +111,40 @@ describe('calls reach the native SDK', () => {
   });
 });
 
+describe('setTheme', () => {
+  it("passes the app's colour, font and mode; what is left out stays the panel's", () => {
+    Clomni.setTheme({ primaryColor: '#0A66C2', typeface: 'Montserrat', mode: 'dark' });
+    Clomni.setTheme({ mode: 'system' });
+    Clomni.setTheme({ primaryColor: '#0a66c2', typeface: null });
+    Clomni.setTheme();
+    expect(calls()).toEqual([
+      ['setTheme', '#0A66C2', 'Montserrat', 'dark'],
+      ['setTheme', null, null, 'system'],
+      ['setTheme', '#0a66c2', null, null],
+      ['setTheme', null, null, null],
+    ]);
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('refuses a colour that is not #RRGGBB and a mode it does not know, and keeps the rest', () => {
+    Clomni.setTheme({ primaryColor: 'blue', typeface: 'Montserrat', mode: 'dark' });
+    Clomni.setTheme({ primaryColor: '#0A66C' });
+    Clomni.setTheme({ primaryColor: '#0A66C2FF' });
+    Clomni.setTheme({ primaryColor: '0A66C2' });
+    Clomni.setTheme({ primaryColor: '#0A66C2', mode: 'dim' as never });
+    expect(calls()).toEqual([
+      ['setTheme', null, 'Montserrat', 'dark'],
+      ['setTheme', null, null, null],
+      ['setTheme', null, null, null],
+      ['setTheme', null, null, null],
+      ['setTheme', '#0A66C2', null, null],
+    ]);
+    expect(errors).toHaveBeenCalledTimes(5);
+    expect(errors).toHaveBeenCalledWith('[Clomni] setTheme: primaryColor "blue" is not #RRGGBB; the panel\'s colour stays');
+    expect(errors).toHaveBeenCalledWith('[Clomni] setTheme: mode "dim" is not light, dark or system; the panel\'s mode stays');
+  });
+});
+
 describe('push', () => {
   const clomniPush = { clomni: '1', type: 'message', conversation_id: 'conv_5521', title: 'Leyla · Apar', body: 'Salam' };
   const ownPush = { order_id: '7', aps: { alert: 'Sifarişiniz yoldadır' } };
