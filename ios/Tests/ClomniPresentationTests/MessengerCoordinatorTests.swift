@@ -188,7 +188,7 @@ final class MessengerCoordinatorTests: XCTestCase {
 
         // The panel can turn it on, on the left; the app's choice wins over the panel's.
         let panelOn = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
-            {"brand":{"name":"Apar","primary_color":"#1F9D63"},"launcher":{"visible":true,"position":"left","bottom_padding":0}}
+            {"brand":{"name":"Apar","primary_color":"#1F9D63"},"theme":{"launcher":{"enabled":true,"position":"left","bottom_padding":0}}}
             """##.utf8)))
         await session.set(loggedIn: true, unread: 120, cached: panelOn, fresh: panelOn)
         let fromPanel = coordinator()

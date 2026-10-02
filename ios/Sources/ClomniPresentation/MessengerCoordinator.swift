@@ -109,13 +109,13 @@ package final class MessengerCoordinator {
     /// Present only when turned on (`setLauncherVisible`, else the config's `launcher.visible`), the SDK is ready
     /// and the messenger is closed.
     package var launcher: LauncherState? {
-        guard readiness == .ready, route == nil, launcherOverride ?? config?.launcher.visible ?? false else {
+        guard readiness == .ready, route == nil, launcherOverride ?? config?.theme.launcher.enabled ?? false else {
             return nil
         }
         let badge = unreadTotal > 0 ? (unreadTotal > 99 ? "99+" : String(unreadTotal)) : nil
-        let label = strings[.newConversation] + (unreadTotal > 0 ? ", \(strings[.unreadMessages])" : "")
-        return LauncherState(side: config?.launcher.position ?? .right,
-                             bottomPadding: bottomPaddingOverride ?? Double(config?.launcher.bottomPadding ?? 20),
+        let label = strings[.sendCardTitle] + (unreadTotal > 0 ? ", \(strings[.unreadMessages])" : "")
+        return LauncherState(side: config?.theme.launcher.position ?? .right,
+                             bottomPadding: bottomPaddingOverride ?? Double(config?.theme.launcher.bottomPadding ?? 20),
                              badge: badge, accessibilityLabel: label)
     }
 

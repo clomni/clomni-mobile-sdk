@@ -60,13 +60,13 @@ package struct ChatPresenter: Sendable {
         let away = hours?.openNow == false
         let back = hours?.nextOpenAt.map { strings.format(.awayUntil, time.upcoming($0, now: now)) } ?? strings[.away]
         let subtitle = away ? back
-            : conversation?.status == .queued ? config?.team.replyTime ?? strings[.teamCanHelp] : strings[.teamCanHelp]
+            : conversation?.status == .queued ? config?.team.replyTime ?? strings[.headerSubtitle] : strings[.headerSubtitle]
         return ChatHeader(lead: .team(teamAvatars(config)), title: brand, subtitle: subtitle,
                           backLabel: strings[.goBack], closeLabel: strings[.close])
     }
 
     private func teamAvatars(_ config: MessengerConfig?) -> [URL] {
-        config?.home.showTeamAvatars == false ? [] : Array((config?.team.avatars ?? []).prefix(3))
+        config?.team.show == false ? [] : Array((config?.team.avatars ?? []).prefix(3))
     }
 
     // MARK: - Composer
@@ -76,12 +76,12 @@ package struct ChatPresenter: Sendable {
         let waiting = snapshot.messages.last { snapshot.answerable.contains($0.id) }
         var mode = ChatComposer.Mode.open
         if snapshot.conversation?.status == .closed {
-            mode = .closed(text: strings[.conversationClosed], action: strings[.startNewConversation])
+            mode = .closed(text: strings[.closed], action: strings[.startNewConversation])
         } else if case .quickReplies(let replies)? = waiting?.content, replies.inputDisabled {
             mode = .locked(strings[.chooseAbove])
         }
         return ChatComposer(
-            mode: mode, placeholder: config?.composer.placeholder ?? strings[.messagePlaceholder],
+            mode: mode, placeholder: strings[.composerPlaceholder],
             showsAttach: config?.composer.attachments ?? true, showsEmoji: config?.composer.emoji ?? true,
             limit: config?.limits.textChars ?? 4_000, sendLabel: strings[.send], attachLabel: strings[.attach],
             emojiLabel: strings[.emoji], imageLabel: strings[.image], fileLabel: strings[.file])
@@ -352,7 +352,8 @@ package struct ChatPresenter: Sendable {
         switch sender.type {
         case .bot:
             let name = sender.name ?? botName ?? brand
-            return (name, ChatAvatar(url: config?.bot.avatarUrl ?? sender.avatarUrl, initial: initial(name), isBot: true))
+            return (name, ChatAvatar(url: config?.bot.avatarUrl ?? sender.avatarUrl ?? config?.brand.logoUrl, initial: initial(name),
+                                     isBot: true))
         case .operator:
             let assignee = snapshot.conversation?.assignee
             let name = sender.name ?? assignee?.name ?? brand

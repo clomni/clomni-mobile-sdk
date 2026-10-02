@@ -5,24 +5,25 @@ import Foundation
 package struct ClomniStrings: Sendable, Equatable {
     package enum Key: String, CaseIterable, Sendable {
         case today, yesterday, tomorrow, send
-        case newConversation = "new_conversation"
-        case greetingHello = "greeting_hello"
-        case greetingTitle = "greeting_title"
+        case sendCardTitle = "send_card_title"
+        case greetingLine1 = "greeting_line1"
+        case greetingLine1Anonymous = "greeting_line1_anonymous"
+        case greetingLine2 = "greeting_line2"
         case recentMessage = "recent_message"
         case followUs = "follow_us"
         case tabHome = "tab_home"
         case tabMessages = "tab_messages"
-        case noConversations = "no_conversations"
+        case emptyList = "empty_list"
         case error, retry, offline, now, you, close, unread, email, phone
         // The conversation (CM-083).
-        case teamCanHelp = "team_can_help"
+        case headerSubtitle = "header_subtitle"
         case online
         case away
         case awayUntil = "away_until"
-        case messagePlaceholder = "message_placeholder"
+        case composerPlaceholder = "composer_placeholder"
         case chooseAbove = "choose_above"
         case sending, sent, read, failed
-        case conversationClosed = "conversation_closed"
+        case closed
         case startNewConversation = "start_new_conversation"
         case back
         case goBack = "go_back"
@@ -105,18 +106,18 @@ package struct ClomniStrings: Sendable, Equatable {
 
     static let fallbacks: [String: [Key: String]] = [
         "az": [
-            .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .newConversation: "Bizə mesaj göndərin",
-            .greetingHello: "Salam", .greetingTitle: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
+            .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .sendCardTitle: "Bizə mesaj göndərin",
+            .greetingLine1: "Salam, {name} 👋", .greetingLine1Anonymous: "Salam 👋", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
             .followUs: "Bizi izləyin", .tabHome: "Ana səhifə", .tabMessages: "Mesajlar",
-            .noConversations: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
+            .emptyList: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
             .offline: "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", .now: "indi", .you: "Siz",
             .close: "Bağla", .unread: "Oxunmamış", .unreadMessages: "Oxunmamış mesaj var", .minutesShort: "%d dəq",
             .hoursShort: "%d saat", .daysShort: "%d gün", .email: "E-poçt", .phone: "Telefon",
-            .teamCanHelp: "Komanda da kömək edə bilər", .online: "onlayn", .away: "Hazırda iş saatı deyil",
+            .headerSubtitle: "Komanda da kömək edə bilər", .online: "onlayn", .away: "Hazırda iş saatı deyil",
             .awayUntil: "Növbəti iş saatı: %@",
-            .messagePlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdakı variantlardan birini seçin",
+            .composerPlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdakı variantlardan birini seçin",
             .sending: "Göndərilir", .sent: "Göndərildi", .read: "Oxundu", .failed: "Göndərilmədi",
-            .conversationClosed: "Söhbət bağlanıb", .startNewConversation: "Yeni söhbət başlat", .back: "← Geri",
+            .closed: "Söhbət bağlanıb", .startNewConversation: "Yeni söhbət başlat", .back: "← Geri",
             .goBack: "Geri", .bot: "Bot", .button: "Düymə", .typing: "yazır", .attach: "Fayl əlavə et",
             .emoji: "Emoji", .image: "Şəkil", .file: "Fayl", .fieldRequired: "Bu sahəni doldurun",
             .invalidEmail: "Email düzgün deyil", .invalidPhone: "Telefon nömrəsi düzgün deyil",
@@ -125,18 +126,18 @@ package struct ClomniStrings: Sendable, Equatable {
             .opensImage: "Şəkli tam ekranda açır", .opensFile: "Faylı açır",
         ],
         "en": [
-            .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .newConversation: "Send us a message",
-            .greetingHello: "Hi", .greetingTitle: "How can we help?", .recentMessage: "Recent message",
+            .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
+            .greetingLine1: "Hi, {name} 👋", .greetingLine1Anonymous: "Hi 👋", .greetingLine2: "How can we help?", .recentMessage: "Recent message",
             .followUs: "Follow us", .tabHome: "Home", .tabMessages: "Messages",
-            .noConversations: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
+            .emptyList: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
             .offline: "No internet. Messages will be delivered when you are back online", .now: "now", .you: "You",
             .close: "Close", .unread: "Unread", .unreadMessages: "Unread messages", .minutesShort: "%d min",
             .hoursShort: "%d h", .daysShort: "%d d", .email: "Email", .phone: "Phone",
-            .teamCanHelp: "The team can help too", .online: "online", .away: "Outside working hours",
+            .headerSubtitle: "The team can help too", .online: "online", .away: "Outside working hours",
             .awayUntil: "Next working hours: %@",
-            .messagePlaceholder: "Write a message…", .chooseAbove: "Choose one of the options above",
+            .composerPlaceholder: "Write a message…", .chooseAbove: "Choose one of the options above",
             .sending: "Sending", .sent: "Sent", .read: "Read", .failed: "Not sent",
-            .conversationClosed: "Conversation closed", .startNewConversation: "Start a new conversation",
+            .closed: "Conversation closed", .startNewConversation: "Start a new conversation",
             .back: "← Back", .goBack: "Back", .bot: "Bot", .button: "Button", .typing: "is typing",
             .attach: "Attach a file", .emoji: "Emoji", .image: "Image", .file: "File",
             .fieldRequired: "Fill in this field", .invalidEmail: "Enter a valid email",
@@ -146,18 +147,18 @@ package struct ClomniStrings: Sendable, Equatable {
             .opensImage: "Opens the picture full screen", .opensFile: "Opens the file",
         ],
         "ru": [
-            .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .newConversation: "Напишите нам",
-            .greetingHello: "Здравствуйте", .greetingTitle: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
+            .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
+            .greetingLine1: "Здравствуйте, {name} 👋", .greetingLine1Anonymous: "Здравствуйте 👋", .greetingLine2: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
             .followUs: "Мы в соцсетях", .tabHome: "Главная", .tabMessages: "Сообщения",
-            .noConversations: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
+            .emptyList: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
             .offline: "Нет интернета, сообщения будут доставлены позже", .now: "сейчас", .you: "Вы",
             .close: "Закрыть", .unread: "Не прочитано", .unreadMessages: "Есть непрочитанные сообщения",
             .minutesShort: "%d мин", .hoursShort: "%d ч", .daysShort: "%d дн", .email: "Почта", .phone: "Телефон",
-            .teamCanHelp: "Команда тоже может помочь", .online: "в сети", .away: "Сейчас нерабочее время",
+            .headerSubtitle: "Команда тоже может помочь", .online: "в сети", .away: "Сейчас нерабочее время",
             .awayUntil: "Следующее рабочее время: %@",
-            .messagePlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите один из вариантов выше",
+            .composerPlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите один из вариантов выше",
             .sending: "Отправляется", .sent: "Отправлено", .read: "Прочитано", .failed: "Не отправлено",
-            .conversationClosed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад",
+            .closed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад",
             .goBack: "Назад", .bot: "Бот", .button: "Кнопка", .typing: "печатает", .attach: "Прикрепить файл",
             .emoji: "Эмодзи", .image: "Изображение", .file: "Файл", .fieldRequired: "Заполните это поле",
             .invalidEmail: "Неверный email", .invalidPhone: "Неверный номер телефона",

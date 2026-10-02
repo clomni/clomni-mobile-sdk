@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "brand": { "name": "Clomni, Inc.", "primary_color": "#10A670" },
+  "home": { "cards": ["send"] },
+  "bot": { "name": "Clomni" },
+  "languages": ["az"]
+}

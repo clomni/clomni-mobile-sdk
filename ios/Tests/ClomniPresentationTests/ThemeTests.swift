@@ -15,8 +15,8 @@ final class ThemeTests: XCTestCase {
         XCTAssertLessThanOrEqual(worst, tolerance, "\(actual) vs \(expected)", file: file, line: line)
     }
 
-    private func brand(_ color: String, onPrimary: String? = nil) throws -> MessengerConfig.Brand {
-        let json = #"{"brand":{"name":"Apar","primary_color":"\#(color)""# + (onPrimary.map { #","on_primary_color":"\#($0)""# } ?? "") + "}}"
+    private func brand(_ color: String, style: String = "gradient") throws -> MessengerConfig.Brand {
+        let json = #"{"brand":{"name":"Apar","primary_color":"\#(color)","header_style":"\#(style)"}}"#
         return try XCTUnwrap(ProtocolJSON.parseConfig(Data(json.utf8))).brand
     }
 
@@ -38,22 +38,53 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(apar.steps(20).hex, "#FFFFFF", "lightness stops at white")
     }
 
-    /// Brief 8 · 7.1 with #1F9D63: primaryDark #13734A, primarySoft #BFE3CF, dark-mode primarySoft #2F5E46 and a
-    /// one-step lighter primary (the reference draws #34B57A).
-    func testDerivedColoursMatchTheBriefsExamples() throws {
+    /// The contract's rules (APPEARANCE-CONTRACT § 1), for a config without the server's colours: soft 10% and line
+    /// 22% over the background; the header from one step lighter to one step darker, in dark mode from the brand
+    /// colour to two steps darker; dark mode's primary one step lighter.
+    func testDerivedTokensFollowTheContract() throws {
         let light = ClomniTheme.make(brand: try brand("#1F9D63"), dark: false).colors
         XCTAssertEqual(light.primary, apar)
-        assertClose(light.primaryDark, "#13734A", 5)
-        assertClose(light.primarySoft, "#BFE3CF", 10)
+        XCTAssertEqual([light.primarySoft, light.primaryLine, light.headerFrom, light.headerTo].map(\.hex),
+                       ["#E9F5EF", "#CEE9DD", "#27C87E", "#177248"])
+        XCTAssertEqual(light.primarySoft, apar.over(.white, opacity: 0.10))
+        XCTAssertEqual(light.headerFrom, apar.steps(1))
+        XCTAssertEqual(light.headerTo, apar.steps(-1))
 
         let dark = ClomniTheme.make(brand: try brand("#1F9D63"), dark: true).colors
-        assertClose(dark.primarySoft, "#2F5E46", 5)
-        // One step lighter: the same hue, about the same lightness as the reference; more saturated than it.
-        let reference = RGBColor(hex: "#34B57A")!.hsl
-        XCTAssertEqual(dark.primary.hsl.hue, reference.hue, accuracy: 1)
-        XCTAssertEqual(dark.primary.hsl.lightness, reference.lightness, accuracy: 0.015)
         XCTAssertEqual(dark.primary.hex, "#27C87E")
-        XCTAssertEqual(dark.primaryDark.hex, apar.hex, "the header's darker tone is the brand colour itself in dark mode")
+        XCTAssertEqual([dark.primarySoft, dark.primaryLine, dark.headerFrom, dark.headerTo].map(\.hex),
+                       ["#142520", "#173B2D", "#1F9D63", "#0E482D"])
+
+        let solid = ClomniTheme.make(brand: try brand("#1F9D63", style: "solid"), dark: false).colors
+        XCTAssertEqual([solid.headerFrom, solid.headerTo], [apar, apar], "one colour")
+    }
+
+    /// The server's colours win over the SDK's own arithmetic, so Android and iOS show the same.
+    func testTheServersColoursWin() throws {
+        let apar = Fixture.aparConfig
+        let light = ClomniTheme.make(brand: apar.brand, dark: false).colors
+        XCTAssertEqual([light.primary, light.onPrimary, light.primarySoft, light.primaryLine, light.headerFrom,
+                        light.headerTo].map(\.hex),
+                       ["#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A"])
+        let dark = ClomniTheme.make(brand: apar.brand, dark: true).colors
+        XCTAssertEqual([dark.primary, dark.onPrimary, dark.headerFrom, dark.headerTo].map(\.hex),
+                       ["#34B57A", "#0B0C0E", "#1F9D63", "#0E4F33"])
+
+        // Clomni.setTheme's colour wins over both: derived here from it.
+        let own = ClomniTheme.make(brand: apar.brand, dark: false, primaryColor: "#0A66C2").colors
+        XCTAssertEqual(own.primary.hex, "#0A66C2")
+        XCTAssertEqual(own.headerFrom, RGBColor(hex: "#0A66C2")!.steps(1))
+        XCTAssertEqual(ClomniTheme.make(brand: apar.brand, dark: false, primaryColor: "blue").colors.primary.hex,
+                       "#1F9D63", "an unreadable colour is ignored")
+
+        // The mode: the app's, else the panel's, else the system's.
+        let panelDark = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"theme":{"mode":"dark"}}"#.utf8)))
+        XCTAssertTrue(ClomniTheme.make(config: panelDark, systemIsDark: false).isDark)
+        XCTAssertFalse(ClomniTheme.make(config: panelDark, systemIsDark: true,
+                                        override: ThemeOverride(mode: .light)).isDark)
+        XCTAssertTrue(ClomniTheme.make(config: apar, systemIsDark: true).isDark)
+        XCTAssertEqual(ClomniTheme.make(config: apar, systemIsDark: false,
+                                        override: ThemeOverride(primaryColor: "#0A66C2")).colors.primary.hex, "#0A66C2")
     }
 
     func testNeutralTokens() {
@@ -83,10 +114,8 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(ClomniTheme.Shadow.card.map(\.radius), [2, 10])
     }
 
-    /// onPrimary: the config's colour, otherwise white or black by WCAG 4.5:1.
+    /// onPrimary, where the SDK derives it: white or black by WCAG 4.5:1.
     func testTextOnPrimary() throws {
-        XCTAssertEqual(ClomniTheme.make(brand: try brand("#1F9D63", onPrimary: "#FFFFFF"), dark: false).colors.onPrimary,
-                       .white, "Apar's config says white")
         // White on #1F9D63 is 3.5:1, black 6.1:1.
         XCTAssertEqual(ClomniTheme.make(brand: try brand("#1F9D63"), dark: false).colors.onPrimary, .black)
         XCTAssertEqual(ClomniTheme.make(brand: try brand("#1A2B4C"), dark: false).colors.onPrimary, .white)

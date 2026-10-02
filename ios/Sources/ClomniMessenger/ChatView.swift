@@ -43,6 +43,7 @@ struct ChatView: View {
     /// "Yeni söhbət başlat" started one (the app's onConversationStarted).
     var conversationStarted: (String) -> Void = { _ in }
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
     @State private var draft = ""
     @State private var writeAnyway = false
     @State private var choosingAttachment = false
@@ -56,9 +57,7 @@ struct ChatView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
-        let brand = model.config?.brand
-        let dark = ClomniTheme.isDark(brand?.theme, systemIsDark: colorScheme == .dark)
-        return ClomniTheme.make(brand: brand, dark: dark)
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
     }
 
     private var actions: ChatActions {
@@ -83,6 +82,7 @@ struct ChatView: View {
         }
         .background(theme.colors.background.color.ignoresSafeArea())
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+        .configCrossfade(model.config)
         .task { await model.controller.load() }
         .onDisappear { Task { await model.controller.stop() } }
         .onChange(of: draft) { text in Task { await model.controller.textChanged(text) } }

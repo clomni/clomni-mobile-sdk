@@ -21,7 +21,17 @@ private struct TypefaceKey: EnvironmentKey {
     static let defaultValue: Typeface? = nil
 }
 
+/// The app's `Clomni.setTheme` colour and mode.
+private struct ThemeOverrideKey: EnvironmentKey {
+    static let defaultValue = ThemeOverride()
+}
+
 extension EnvironmentValues {
+    var clomniThemeOverride: ThemeOverride {
+        get { self[ThemeOverrideKey.self] }
+        set { self[ThemeOverrideKey.self] = newValue }
+    }
+
     var clomniTypeface: Typeface? {
         get { self[TypefaceKey.self] }
         set { self[TypefaceKey.self] = newValue }
@@ -102,6 +112,11 @@ extension View {
         modifier(FixedFont(size: size, weight: weight))
     }
 
+    /// A new appearance from the panel (config.changed) fades in over 250 ms on the open screen.
+    func configCrossfade(_ config: MessengerConfig?) -> some View {
+        animation(.easeInOut(duration: 0.25), value: config)
+    }
+
     /// Skeleton blocks are one element for VoiceOver, "Yüklənir", instead of nothing at all.
     func loadingElement(_ label: String) -> some View {
         accessibilityElement(children: .ignore).accessibilityLabel(Text(label))
@@ -135,28 +150,22 @@ struct CardStyle: ViewModifier {
     }
 }
 
-/// A round avatar: the picture when it loads, the initial on grey until then (or without one).
+/// A round avatar: the picture when it loads; until then (or without one) the initial on grey, or primary_soft
+/// where there is no initial (the team's avatars).
 struct AvatarView: View {
     let url: URL?
     let initial: String
     let size: Double
     let theme: ClomniTheme
-    @Environment(\.clomniLoadsRemoteImages) private var loadsImages
 
     var body: some View {
         ZStack {
-            Circle().fill(theme.colors.textSecondary.color)
+            Circle().fill(initial.isEmpty ? theme.colors.primarySoft.color : theme.colors.textSecondary.color)
             Text(initial)
                 .clomniFixedFont(size * 0.41, .semibold)
                 .foregroundStyle(Color.white)
-            if let url = url, loadsImages {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        Color.clear
-                    }
-                }
+            if let url = url {
+                RemoteImage(url: url, kind: .icon, points: size, theme: theme, placeholder: .clear)
             }
         }
         .frame(width: CGFloat(size), height: CGFloat(size))

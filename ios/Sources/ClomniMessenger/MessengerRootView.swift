@@ -16,6 +16,7 @@ struct MessengerRootView: View {
     let engine: ClomniEngine
     @StateObject private var home: MessengerModel
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
 
     init(model: MessengerRootModel, coordinator: MessengerCoordinator, engine: ClomniEngine) {
         self.model = model
@@ -25,14 +26,13 @@ struct MessengerRootView: View {
     }
 
     private var theme: ClomniTheme {
-        let brand = model.config?.brand
-        let dark = ClomniTheme.isDark(brand?.theme, systemIsDark: colorScheme == .dark)
-        return ClomniTheme.make(brand: brand, dark: dark)
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
     }
 
     var body: some View {
         content
             .environment(\.clomniTypeface, model.typeface)
+            .configCrossfade(model.config)
             .task { await coordinator.prepare() }
     }
 

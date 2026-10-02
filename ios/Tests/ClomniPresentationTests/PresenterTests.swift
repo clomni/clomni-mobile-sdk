@@ -12,8 +12,16 @@ enum Fixture {
         (try? Data(contentsOf: directory.appendingPathComponent(name))) ?? Data()
     }
 
-    static var aparConfig: MessengerConfig { ProtocolJSON.parseConfig(data("42-config-apar.json"))! }
-    static var minimalConfig: MessengerConfig { ProtocolJSON.parseConfig(data("43-config-minimal.json"))! }
+    /// Config v2, from ios/Tests/Fixtures until protocol/fixtures has it.
+    static let configDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Fixtures")
+
+    static var aparConfig: MessengerConfig { config("config-v2-apar.json") }
+    static var minimalConfig: MessengerConfig { config("config-v2-minimal.json") }
+
+    static func config(_ name: String) -> MessengerConfig {
+        ProtocolJSON.parseConfig((try? Data(contentsOf: configDirectory.appendingPathComponent(name))) ?? Data())!
+    }
 
     /// A conversation whose last message is the fixture `message` (created at 2026-10-01T10:30Z, or `at`).
     static func conversation(_ id: String, message: String?, unread: Int = 0, assignee: String? = nil,
@@ -50,15 +58,20 @@ final class PresenterTests: XCTestCase {
         let header = presenter().home(snapshot()).header
         XCTAssertEqual(header.brandName, "Apar")
         XCTAssertEqual(header.brandInitial, "A")
-        XCTAssertEqual(header.logoUrl?.absoluteString, "https://app.clomni.ai/a/apar.png")
+        XCTAssertEqual(header.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/apar-logo")
+        XCTAssertEqual(header.logoDarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/apar-logo-dark")
+        XCTAssertEqual(header.style, .gradient)
+        XCTAssertFalse(header.glow)
         XCTAssertEqual(header.teamAvatars.count, 3)
-        XCTAssertEqual(header.greeting, "Salam, Aysel 👋")
+        // {name} is the whole name (APPEARANCE-CONTRACT § 1).
+        XCTAssertEqual(header.greeting, "Salam, Aysel Məmmədova 👋")
         XCTAssertEqual(header.title, "Necə kömək edə bilərik?")
         XCTAssertEqual(header.closeLabel, "Bağla")
 
         XCTAssertEqual(presenter().home(snapshot(user: nil)).header.greeting, "Salam 👋")
         XCTAssertEqual(presenter().home(snapshot(user: "   ")).header.greeting, "Salam 👋")
         XCTAssertEqual(presenter("en").home(snapshot(user: "Aysel")).header.greeting, "Hi, Aysel 👋")
+        XCTAssertEqual(presenter("ru").home(snapshot(user: nil)).header.greeting, "Здравствуйте 👋")
 
         let minimal = presenter(config: Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig)).header
         XCTAssertEqual(minimal.title, "Necə kömək edə bilərik?", "the SDK's text when the config has none")
@@ -97,11 +110,55 @@ final class PresenterTests: XCTestCase {
             {"brand":{"name":"Apar","primary_color":"#1F9D63"},"home":{"channels":[\##(channels)]}}
             """##.utf8)))
         let card = try XCTUnwrap(presenter(config: config).home(snapshot(config)).channels)
-        XCTAssertEqual(card.rows().map(\.count), [7, 2])
-        XCTAssertEqual(card.rows(of: 4).map(\.count), [4, 4, 1])
+        XCTAssertEqual(card.items.map(\.url.host), ["instagram.com", "whatsapp.com", "telegram.com", "facebook.com", "messenger.com"],
+                       "at most five, in the panel's order")
+        XCTAssertEqual(card.rows().map(\.count), [5])
+        XCTAssertEqual(card.rows(of: 4).map(\.count), [4, 1])
         XCTAssertEqual(card.rows().flatMap { $0 }, card.items, "in their order")
-        XCTAssertEqual(card.rows(of: 0).count, 9, "never zero per row")
+        XCTAssertEqual(card.rows(of: 0).count, 5, "never zero per row")
         XCTAssertEqual(HomeScreen.ChannelsCard(label: "x", items: []).rows(), [])
+    }
+
+    /// Config v2: what the panel publishes reaches Home (APPEARANCE-CONTRACT § 1, § 4).
+    func testAppearanceFromThePanel() throws {
+        let apar = presenter().home(snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
+        XCTAssertEqual(apar.order, [.send, .recent, .channels])
+        XCTAssertEqual(apar.poweredBy, "Powered by Clomni")
+
+        let json = ##"""
+            {"brand":{"name":"Apar","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",
+                      "header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/head","glow":true},
+             "team":{"show":false,"avatars":["https://app.clomni.ai/a/leyla.png"],"reply_time":"Tez",
+                     "reply_time_offline":"Səhər cavab veririk","office_hours":{"open_now":false}},
+             "bot":{"name":"Clomni","avatar_url":null},
+             "home":{"cards":["channels","recent","send"],"channels":[{"type":"instagram","url":"https://instagram.com/apar.az"}]},
+             "strings":{"greeting_line1":"Xoş gəldin, {first_name}!","greeting_line2":"Sualınız var?",
+                        "send_card_title":"Yazın"},
+             "powered_by":false}
+            """##
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(json.utf8)))
+        let home = presenter(config: config).home(snapshot(config, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
+        XCTAssertEqual(home.order, [.channels, .recent, .send], "the panel's order")
+        XCTAssertNil(home.poweredBy, "the plan turned it off")
+        XCTAssertEqual(home.header.style, .image(URL(string: "https://app.clomni.ai/v1/images/head")!))
+        XCTAssertTrue(home.header.glow)
+        XCTAssertEqual(home.header.teamAvatars, [], "team.show false")
+        XCTAssertEqual(home.header.greeting, "Xoş gəldin, Aysel!")
+        XCTAssertEqual(home.header.title, "Sualınız var?")
+        XCTAssertEqual(home.newConversation?.title, "Yazın")
+        XCTAssertEqual(home.newConversation?.subtitle, "Səhər cavab veririk", "the office is closed")
+        XCTAssertEqual(config.botAvatarUrl?.absoluteString, "https://app.clomni.ai/v1/images/logo",
+                       "no bot picture: the brand's logo")
+
+        // Without a recent conversation or channels, those cards are not in the order at all.
+        let bare = presenter(config: config).home(snapshot(config))
+        XCTAssertEqual(presenter(config: config).home(snapshot(config, [])).order, [.channels, .send])
+        XCTAssertNil(bare.recent)
+        // An image style without its picture is the gradient.
+        let noPicture = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"header_style":"image"}}"#.utf8)))
+        XCTAssertEqual(presenter(config: noPicture).home(snapshot(noPicture)).header.style, .gradient)
+        let solid = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"header_style":"solid"}}"#.utf8)))
+        XCTAssertEqual(presenter(config: solid).home(snapshot(solid)).header.style, .solid)
     }
 
     func testRecentMessageIsHiddenWithoutAConversation() {

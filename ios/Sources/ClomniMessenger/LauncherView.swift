@@ -68,11 +68,10 @@ struct LauncherButton: View {
     let typeface: Typeface?
     let tap: () -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
 
     private var theme: ClomniTheme {
-        let brand = config?.brand
-        let dark = ClomniTheme.isDark(brand?.theme, systemIsDark: colorScheme == .dark)
-        return ClomniTheme.make(brand: brand, dark: dark)
+        ClomniTheme.make(config: config, systemIsDark: colorScheme == .dark, override: themeOverride)
     }
 
     var body: some View {
