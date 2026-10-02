@@ -48,17 +48,19 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
             tap(id)
         }
     }
+    // Pills a row apart are 16 dp apart: their 48 dp targets meet without covering each other (brief 7.6).
     val gap = Arrangement.spacedBy(ClomniTheme.Space.xs.dp, Alignment.End)
+    val rows = Arrangement.spacedBy(16.dp)
     val buttons = block.buttons + listOfNotNull(block.back)
     val modifier = Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.s.dp).alpha(opacity)
     Box(modifier, Alignment.CenterEnd) {
         val inner = Modifier.widthIn(max = 240.dp)
         if (block.layout == MessageContent.QuickRepliesLayout.CHIPS) {
-            FlowRow(inner, horizontalArrangement = gap, verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xs.dp)) {
+            FlowRow(inner, horizontalArrangement = gap, verticalArrangement = rows) {
                 for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
             }
         } else {
-            Column(inner, verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xs.dp), horizontalAlignment = Alignment.End) {
+            Column(inner, verticalArrangement = rows, horizontalAlignment = Alignment.End) {
                 for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
             }
         }

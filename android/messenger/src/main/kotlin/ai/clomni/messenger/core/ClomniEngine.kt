@@ -24,6 +24,7 @@ import ai.clomni.messenger.protocol.RealtimeEvent
 import ai.clomni.messenger.protocol.SenderType
 import ai.clomni.messenger.protocol.UploadedFile
 import ai.clomni.messenger.realtime.RealtimeClient
+import ai.clomni.messenger.store.Drafts
 import ai.clomni.messenger.store.MessageStore
 import ai.clomni.messenger.store.PendingMessage
 import ai.clomni.messenger.store.PendingUpload
@@ -225,11 +226,25 @@ internal class ClomniEngine(
 
     /** The conversation from the server, e.g. one opened from a push before the list knew it. */
     override fun refreshConversation(id: String): Future<Unit> = submit {
+        if (Drafts.isDraft(id)) return@submit
         store.putConversation(authed { api.getConversation(id) })
     }
 
+    /**
+     * A new conversation to write in, created on the server only by its first message ([Drafts]): opening the
+     * messenger and closing it again leaves nothing behind. Touches nothing; any thread.
+     */
+    override fun draft(openedFrom: String?): String = Drafts.new().also { if (openedFrom != null) draftSources[it] = openedFrom }
+
+    private val draftSources = ConcurrentHashMap<String, String>()
+
+    /** Drafts already created, for a message sent to one before its screen moved on: it goes to the same conversation. */
+    private val createdDrafts = ConcurrentHashMap<String, String>()
+
+    private fun target(conversationId: String) = createdDrafts[conversationId] ?: conversationId
+
     /** Starts the inbox's new-conversation flow; its first messages come with it. */
-    override fun startConversation(openedFrom: String?): Future<Conversation> = submit {
+    fun startConversation(openedFrom: String?): Future<Conversation> = submit {
         val created = authed { api.createConversation(openedFrom) }
         apply(created)
         created.conversation
@@ -240,6 +255,7 @@ internal class ClomniEngine(
 
     /** One page further back; false when the beginning is reached. */
     override fun loadOlder(conversationId: String): Future<Boolean> = submit {
+        if (Drafts.isDraft(conversationId)) return@submit false
         val oldest = store.messages(conversationId).firstOrNull()?.seq
         when {
             oldest == null -> {
@@ -271,6 +287,7 @@ internal class ClomniEngine(
 
     /** `on` at most every 3 seconds while typing, `off` once when the user stops. */
     override fun setTyping(isTyping: Boolean, conversationId: String): Future<Unit> = submit {
+        if (Drafts.isDraft(conversationId)) return@submit
         if (isTyping) {
             val last = typingSentAt[conversationId]
             if (last != null && clock() - last < TYPING_INTERVAL_MS) return@submit
@@ -344,7 +361,7 @@ internal class ClomniEngine(
         val message = ClientMessage.Attachment(uploadId = "", caption = caption)
         val stored = store.outbox.stage(message.clientId, data) ?: throw ClomniError.Rejected("file not stored")
         val upload = PendingUpload(fileName, mime, data.size.toLong(), stored)
-        val entry = PendingMessage(conversationId, message, caption, clock(), upload = upload)
+        val entry = PendingMessage(target(conversationId), message, caption, clock(), upload = upload, openedFrom = draftSources[conversationId])
         store.outbox.add(entry)
         store.changed(ClomniChange.Messages(conversationId))
         executor.execute(::deliver)
@@ -554,6 +571,7 @@ internal class ClomniEngine(
     }
 
     private fun update(conversationId: String) {
+        if (Drafts.isDraft(conversationId)) return
         if (store.conversation(conversationId) == null) {
             store.putConversation(authed { api.getConversation(conversationId) })
         }
@@ -599,7 +617,7 @@ internal class ClomniEngine(
     }
 
     private fun enqueue(message: ClientMessage, conversationId: String, preview: String?): PendingMessage {
-        val entry = PendingMessage(conversationId, message, preview, clock())
+        val entry = PendingMessage(target(conversationId), message, preview, clock(), openedFrom = draftSources[conversationId])
         store.outbox.add(entry)
         store.changed(ClomniChange.Messages(conversationId))
         // The bubble shows first; the sending follows on the worker.
@@ -621,7 +639,7 @@ internal class ClomniEngine(
     private fun attempt(entry: PendingMessage): Boolean {
         store.changed(ClomniChange.Messages(entry.conversationId))
         val status = try {
-            val ready = uploaded(entry) ?: return true
+            val ready = uploaded(started(entry)) ?: return true
             val message = authed { api.sendMessage(ready.conversationId, ready.message) }
             store.outbox.remove(entry.id)
             receive(message)
@@ -651,6 +669,23 @@ internal class ClomniEngine(
         ClomniLog.info { "send ${entry.id}: attempt ${failed.attempts} failed${status?.let { " ($it)" }.orEmpty()}" }
         nextAttempt = executor.schedule(::deliver, outboxRetryMs(failed.attempts), TimeUnit.MILLISECONDS)
         return false
+    }
+
+    /**
+     * The entry in a real conversation: a draft's first message creates it (POST /conversations, once: the outbox keeps
+     * the new id before anything else is sent), and every message of the draft moves there.
+     */
+    private fun started(entry: PendingMessage): PendingMessage {
+        val draft = entry.conversationId
+        if (!Drafts.isDraft(draft)) return entry
+        val created = authed { api.createConversation(entry.openedFrom) }
+        store.outbox.moveConversation(draft, created.conversation.id)
+        createdDrafts[draft] = created.conversation.id
+        apply(created)
+        draftSources.remove(draft)
+        store.changed(ClomniChange.Started(draft, created.conversation.id))
+        store.changed(ClomniChange.Messages(draft))
+        return store.outbox.entry(entry.id) ?: entry.copy(conversationId = created.conversation.id)
     }
 
     /**

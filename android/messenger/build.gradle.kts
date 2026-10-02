@@ -9,10 +9,13 @@ plugins {
     alias(libs.plugins.kover)
     alias(libs.plugins.paparazzi)
     alias(libs.plugins.binary.compatibility.validator)
+    `maven-publish`
+    signing
 }
 
 group = "ai.clomni"
-version = "1.0.0-SNAPSHOT"
+// The release workflow passes the tag's version (-Pclomni.version=1.0.0); anything else is a snapshot.
+version = providers.gradleProperty("clomni.version").getOrElse("1.0.0-SNAPSHOT")
 
 // The JSON Schemas and fixtures shared with the server and the iOS SDK (repo root, not under android/).
 val protocolDir: File = rootProject.file("../protocol")
@@ -35,6 +38,14 @@ android {
 
     // Library resources merge into the app's: ours all start with clomni_.
     resourcePrefix = "clomni_"
+
+    // Maven Central asks for sources and javadoc next to the AAR.
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -128,5 +139,56 @@ val checkAarSize by tasks.registering {
         val limit = 1_500_000L
         logger.lifecycle("messenger-release.aar: $bytes bytes (limit $limit)")
         check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over the brief's 1.5 MB" }
+    }
+}
+
+
+// CM-078: ai.clomni:messenger for Maven Central. `publishReleasePublicationToCentralBundleRepository` writes the
+// release (AAR, POM, sources, javadoc, checksums, and .asc signatures when a key is given) to build/central-bundle,
+// which .github/workflows/android-release.yml zips and uploads to the Central Portal. Without a key it is a dry run.
+publishing {
+    publications {
+        register<MavenPublication>("release") {
+            artifactId = "messenger"
+            afterEvaluate { from(components["release"]) }
+            pom {
+                name.set("Clomni Messenger")
+                description.set("Clomni's in-app messenger for Android: conversations with a brand's support team and its bots.")
+                url.set("https://clomni.ai")
+                licenses {
+                    license {
+                        name.set("Commercial")
+                        url.set("https://clomni.ai/terms")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("clomni")
+                        name.set("Clomni")
+                        email.set("support@clomni.ai")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/rzayevkenann/clomni-mobile-sdk")
+                    connection.set("scm:git:https://github.com/rzayevkenann/clomni-mobile-sdk.git")
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "centralBundle"
+            url = uri(layout.buildDirectory.dir("central-bundle"))
+        }
+    }
+}
+
+// The key and its password come from the environment (CI secrets); with none, nothing is signed.
+val signingKey = providers.environmentVariable("CLOMNI_SIGNING_KEY")
+signing {
+    isRequired = signingKey.isPresent
+    if (signingKey.isPresent) {
+        useInMemoryPgpKeys(signingKey.get(), providers.environmentVariable("CLOMNI_SIGNING_PASSWORD").getOrElse(""))
+        sign(publishing.publications)
     }
 }

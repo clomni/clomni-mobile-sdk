@@ -395,6 +395,41 @@ class ApiClientTest {
         assertEquals("st_2", credentials.session?.sessionToken)
     }
 
+    /**
+     * The next address when one cannot be reached (CI's "localhost" is IPv6 first, a phone's IPv6 route can be broken),
+     * yet a request that was sent is never repeated by OkHttp: one dropped send is one request at the server.
+     */
+    @Test
+    fun anUnreachableAddressIsSkippedButASentRequestIsNotRepeated() {
+        val ipv4 = MockWebServer().apply { start(java.net.InetAddress.getByName("127.0.0.1"), 0) }
+        try {
+            val both = ApiClient.defaultClient().newBuilder()
+                .dns(object : okhttp3.Dns { override fun lookup(hostname: String) = listOf(java.net.InetAddress.getByName("::1"), java.net.InetAddress.getByName("127.0.0.1")) })
+                .build()
+            val dualStack = ApiClient(
+                ApiConfiguration("app_8x2k", "android_sdk-3f9", "http://clomni.test:${ipv4.port}/v1", "1.0.0"),
+                credentials,
+                ProtocolJson(),
+                { device },
+                lazyOf(both),
+                sleep = {},
+            )
+            loggedIn()
+            ipv4.enqueue(json("""{"id":"msg_1"}""", 201))
+            runCatching { dualStack.sendMessage("conv_1", ClientMessage.Text("a")) }
+            assertEquals("reached over IPv4", 1, ipv4.requestCount)
+            ipv4.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
+            try {
+                dualStack.sendMessage("conv_1", ClientMessage.Text("b"))
+                fail()
+            } catch (e: ClomniError.Network) {
+                assertEquals("sent once, not repeated", 2, ipv4.requestCount)
+            }
+        } finally {
+            ipv4.shutdown()
+        }
+    }
+
     @Test
     fun noAnswerIsANetworkError() {
         loggedIn()

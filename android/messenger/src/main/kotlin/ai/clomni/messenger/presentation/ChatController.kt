@@ -220,24 +220,18 @@ internal class ChatController(
         }
     }
 
-    /** "Yeni söhbət başlat": this screen moves to a new conversation; [done] hears its id, or null when it failed. */
-    fun startNewConversation(done: (String?) -> Unit = {}) {
+    /**
+     * "Yeni söhbət başlat": this screen moves to a new, empty conversation, which the server gets with its first
+     * message ([ChatDataSource.draft]). On [main].
+     */
+    fun startNewConversation() {
         val previous = conversationId
-        worker.execute {
-            val conversation = runCatching { source.startConversation(null).get() }.getOrNull()
-            if (conversation != null) source.setTyping(false, previous)
-            main.execute {
-                if (conversation != null) {
-                    hideTyping?.invoke()
-                    hideTyping = null
-                    conversationId = conversation.id
-                    snapshot = ChatSnapshot(known = snapshot.known)
-                    render()
-                    load()
-                }
-                done(conversation?.id)
-            }
-        }
+        worker.execute { source.setTyping(false, previous) }
+        hideTyping?.invoke()
+        hideTyping = null
+        conversationId = source.draft(null)
+        snapshot = ChatSnapshot(config = snapshot.config, known = snapshot.known, load = MessengerSnapshot.Load.LOADED)
+        render()
     }
 
     // The engine's changes (on its thread)
@@ -269,6 +263,15 @@ internal class ChatController(
             is ClomniChange.Read -> if (change.conversationId == id) worker.execute { publish(read(id)) }
             ClomniChange.Conversations, ClomniChange.Config, ClomniChange.Session -> worker.execute { publish(read(id)) }
             is ClomniChange.Unread -> Unit
+            // This screen's draft is a conversation now: it follows it there.
+            is ClomniChange.Started -> if (change.draftId == id) {
+                main.execute {
+                    if (conversationId == change.draftId) {
+                        conversationId = change.conversationId
+                        load()
+                    }
+                }
+            }
         }
     }
 

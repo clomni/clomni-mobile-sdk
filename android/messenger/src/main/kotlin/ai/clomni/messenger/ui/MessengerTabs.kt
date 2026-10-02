@@ -56,9 +56,9 @@ internal class MessengerActions(
 internal enum class MessengerTab { HOME, MESSAGES }
 
 /**
- * The messenger's first screen, kept current by [controller]: Home and Messages with the tab bar under them. Starting
- * a conversation ([openedFrom] goes with it, [conversationStarted] hears it), opening one and closing the messenger
- * come out as callbacks; MessengerRoot puts them on the messenger's route.
+ * The messenger's first screen, kept current by [controller]: Home and Messages with the tab bar under them. Opening a
+ * conversation (a new one is a draft with [openedFrom], created by its first message) and closing the messenger come
+ * out as callbacks; MessengerRoot puts them on the messenger's route.
  */
 @Composable
 internal fun ClomniMessenger(
@@ -66,7 +66,6 @@ internal fun ClomniMessenger(
     openedFrom: String?,
     close: () -> Unit,
     openConversation: (String) -> Unit,
-    conversationStarted: (String) -> Unit = {},
 ) {
     var screens by remember { mutableStateOf(Screens(controller.home, controller.messages, controller.config)) }
     DisposableEffect(controller) {
@@ -78,17 +77,10 @@ internal fun ClomniMessenger(
         }
     }
     val theme = rememberTheme(screens.config)
-    val actions = remember(controller, openedFrom, close, openConversation, conversationStarted) {
+    val actions = remember(controller, openedFrom, close, openConversation) {
         MessengerActions(
             close = close,
-            newConversation = {
-                controller.startConversation(openedFrom) { id ->
-                    if (id != null) {
-                        conversationStarted(id)
-                        openConversation(id)
-                    }
-                }
-            },
+            newConversation = { openConversation(controller.newConversation(openedFrom)) },
             openConversation = openConversation,
             retry = controller::retry,
         )

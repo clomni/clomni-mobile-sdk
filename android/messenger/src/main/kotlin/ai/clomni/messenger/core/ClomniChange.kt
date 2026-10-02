@@ -18,4 +18,7 @@ internal sealed interface ClomniChange {
     data class Typing(val conversationId: String, val sender: Sender, val isTyping: Boolean) : ClomniChange
 
     data class Read(val conversationId: String, val upToSeq: Long) : ClomniChange
+
+    /** The first message of draft [draftId] created conversation [conversationId] on the server. */
+    data class Started(val draftId: String, val conversationId: String) : ClomniChange
 }

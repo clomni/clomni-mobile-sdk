@@ -14,6 +14,18 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.io.File
 
+/**
+ * A conversation the user is writing in that the server does not have yet (brief: no empty conversations): its id
+ * stands in for the real one until the first message goes, which creates it.
+ */
+internal object Drafts {
+    private const val PREFIX = "draft_"
+
+    fun new(): String = PREFIX + java.util.UUID.randomUUID()
+
+    fun isDraft(conversationId: String): Boolean = conversationId.startsWith(PREFIX)
+}
+
 /** A message on its way to the server, shown as the user's bubble until the server's copy replaces it. */
 internal data class PendingMessage(
     val conversationId: String,
@@ -28,6 +40,8 @@ internal data class PendingMessage(
     val fields: Map<String, String> = emptyMap(),
     /** A file the user attached: kept on this device until the server has the message. */
     val upload: PendingUpload? = null,
+    /** Where in the app the messenger was opened, for the conversation a draft's first message creates. */
+    val openedFrom: String? = null,
 ) {
     val id: String get() = message.clientId
 
@@ -93,6 +107,14 @@ internal class Outbox(
             save()
             removed.upload?.let { stagedFile(it)?.delete() }
         }
+    }
+
+    /** The draft [from] became conversation [to] on the server: its messages go there (and survive a restart so). */
+    @Synchronized
+    fun moveConversation(from: String, to: String) {
+        if (entries.none { it.conversationId == from }) return
+        entries.replaceAll { if (it.conversationId == from) it.copy(conversationId = to) else it }
+        save()
     }
 
     /** Keeps an attachment's bytes until it is sent; the name it is stored under, or null when it could not be. */
@@ -189,6 +211,7 @@ internal class Outbox(
         put("state", entry.state.name.lowercase())
         put("attempts", entry.attempts)
         put("error_code", entry.errorCode)
+        put("opened_from", entry.openedFrom)
         put("fields", JsonObject(entry.fields.mapValues { JsonPrimitive(it.value) }))
         entry.upload?.let { upload ->
             put(
@@ -215,6 +238,7 @@ internal class Outbox(
             state = if (o.text("state") == "failed") PendingMessage.State.FAILED else PendingMessage.State.SENDING,
             attempts = (o["attempts"] as? JsonPrimitive)?.intOrNull ?: 0,
             errorCode = o.text("error_code"),
+            openedFrom = o.text("opened_from"),
             fields = (o["fields"] as? JsonObject).orEmpty().mapNotNull { (key, value) ->
                 (value as? JsonPrimitive)?.takeIf { it.isString }?.let { key to it.content }
             }.toMap(),

@@ -49,7 +49,8 @@ internal interface ChatDataSource {
 
     fun retry(clientId: String): Future<Unit>
 
-    fun startConversation(openedFrom: String?): Future<Conversation>
+    /** A new conversation to write in; the server has it only once its first message goes (`ClomniChange.Started`). */
+    fun draft(openedFrom: String?): String
 
     fun observe(handler: (ClomniChange) -> Unit): UUID
 

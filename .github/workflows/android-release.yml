@@ -1,0 +1,81 @@
+name: Android release
+
+# ai.clomni:messenger to Maven Central (Central Portal). A tag android-v1.2.3 releases 1.2.3; "Run workflow" with a
+# version does the same by hand. Without the secrets below it is a dry run: everything is built, tested and bundled,
+# the unsigned bundle is kept as an artifact, and nothing is uploaded.
+#
+# Secrets: CLOMNI_SIGNING_KEY (ASCII-armoured private PGP key), CLOMNI_SIGNING_PASSWORD, CENTRAL_USERNAME and
+# CENTRAL_PASSWORD (a Central Portal user token for the verified namespace ai.clomni).
+on:
+  push:
+    tags: ['android-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 1.0.0'
+        required: true
+      upload:
+        description: 'Upload to the Central Portal (needs the secrets)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: android
+    env:
+      CLOMNI_SIGNING_KEY: ${{ secrets.CLOMNI_SIGNING_KEY }}
+      CLOMNI_SIGNING_PASSWORD: ${{ secrets.CLOMNI_SIGNING_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then v="${GITHUB_REF_NAME#android-v}"; else v="${{ inputs.version }}"; fi
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "not a version: $v"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [ -n "$CLOMNI_SIGNING_KEY" ] && [ -n "${{ secrets.CENTRAL_USERNAME }}" ] && { [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.upload }}" = "true" ]; }; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dry run: no signing key or Central credentials (or upload not asked); nothing is uploaded."
+          fi
+      # The same checks as every pull request, then the bundle (signed when the key is there).
+      - run: >-
+          ./gradlew --no-daemon -Pclomni.version=${{ steps.version.outputs.version }}
+          :messenger:testDebugUnitTest :messenger:verifyPaparazziDebug :messenger:apiCheck :messenger:checkAarSize
+          :messenger:publishReleasePublicationToCentralBundleRepository
+      - name: Bundle
+        run: |
+          cd messenger/build/central-bundle
+          # Central takes the version's files; the folder-level maven-metadata is the repository's, not the release's.
+          zip -r ../central-bundle.zip ai -x '*/maven-metadata.xml*'
+          unzip -l ../central-bundle.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: central-bundle-${{ steps.version.outputs.version }}
+          path: android/messenger/build/central-bundle.zip
+      - name: Upload to the Central Portal
+        if: steps.version.outputs.upload == 'true'
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          token=$(printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 -w0)
+          # USER_MANAGED: the deployment waits in the Portal for a person to press "Publish".
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $token" \
+            -F "bundle=@messenger/build/central-bundle.zip" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=messenger-${{ steps.version.outputs.version }}&publishingType=USER_MANAGED"

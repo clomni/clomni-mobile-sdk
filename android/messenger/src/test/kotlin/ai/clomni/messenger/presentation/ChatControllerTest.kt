@@ -33,7 +33,6 @@ private class FakeChat : ChatDataSource {
     val outbox = mutableListOf<PendingMessage>()
     var answerable = mutableSetOf<String>()
     var loadFails = false
-    var startFails = false
     val calls = mutableListOf<String>()
     val typingStates = mutableListOf<Boolean>()
     val observers = LinkedHashMap<UUID, (ClomniChange) -> Unit>()
@@ -132,12 +131,9 @@ private class FakeChat : ChatDataSource {
         return done(Unit)
     }
 
-    override fun startConversation(openedFrom: String?): Future<Conversation> {
-        calls += "start"
-        if (startFails) return failed(ClomniError.Network("offline"))
-        val conversation = ChatFixture.conversation("bot", id = "conv_new")
-        conversations[conversation.id] = conversation
-        return done(conversation)
+    override fun draft(openedFrom: String?): String {
+        calls += "draft"
+        return "draft_new"
     }
 
     override fun observe(handler: (ClomniChange) -> Unit): UUID = UUID.randomUUID().also { observers[it] = handler }
@@ -344,39 +340,26 @@ class ChatControllerTest {
         assertTrue("the typing timer is cancelled", timers.pending.isEmpty())
     }
 
+    /** "Yeni söhbət başlat": the screen moves to an empty draft at once; its first message creates it. */
     @Test
     fun startingANewConversationInPlace() {
         source.set(listOf(ChatFixture.message("24-system-conversation-closed.json")))
         val chat = controller()
         chat.load()
-        val ids = mutableListOf<String?>()
-        source.startFails = true
-        chat.startNewConversation { ids += it }
-        assertEquals("conv_5521", chat.conversationId)
-        source.startFails = false
         source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.BOT), true))
-        chat.startNewConversation { ids += it }
-        assertEquals(listOf(null, "conv_new"), ids)
-        assertEquals("conv_new", chat.conversationId)
-        assertTrue("load conv_new" in source.calls)
+        chat.startNewConversation()
+        assertEquals("draft_new", chat.conversationId)
         assertTrue(chat.screen.items.isEmpty())
         assertTrue(timers.pending.isEmpty())
         assertEquals(false, source.typingStates.last())
         source.push(ClomniChange.Messages("conv_5521"))
         assertTrue("the old conversation is not this screen's any more", chat.screen.items.isEmpty())
-    }
 
-    /** What was read for the conversation the screen has just left does not reach it. */
-    @Test
-    fun aStaleReadIsDropped() {
-        val worker = Queue()
-        source.set(listOf(ChatFixture.message("01-text-bot.json")))
+        // Its first message created conversation conv_new: the screen goes on there.
         source.set(listOf(ChatFixture.message("03-text-user.json")), id = "conv_new")
-        val chat = controller(worker = worker)
-        chat.load()
-        chat.startNewConversation()
-        worker.drain()
+        source.push(ClomniChange.Started("draft_new", "conv_new"))
         assertEquals("conv_new", chat.conversationId)
+        assertTrue("load conv_new" in source.calls)
         assertEquals(listOf("Gedişim bitmədi, pul çıxılmağa davam edir"), bubbleTexts(chat))
     }
 

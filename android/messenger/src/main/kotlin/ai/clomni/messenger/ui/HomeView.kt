@@ -75,7 +75,8 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
                 // 62 = the 40 the cards ride up + 22 of air above them.
                 .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.xxl.dp, bottom = 62.dp),
         ) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+            // 48: the buttons' targets stay inside the row, whatever is above it.
+            Row(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp), verticalAlignment = Alignment.CenterVertically) {
                 BrandMark(header, theme)
                 Spacer(Modifier.weight(1f))
                 TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
