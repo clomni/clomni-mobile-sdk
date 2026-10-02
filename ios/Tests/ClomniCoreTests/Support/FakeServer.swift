@@ -41,6 +41,8 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     private var anonymousDevice: [String: String] = [:]
     private var conversations: [String: Conversation] = [:]
     private var byClientId: [String: JSONValue] = [:]
+    /// POST /conversations' client_id, per user, to the conversation it started.
+    private var starts: [String: String] = [:]
     /// The APNs token pushes go to, per user: "token environment".
     private var pushTargets: [String: String] = [:]
     private var counter = 0
@@ -229,7 +231,12 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
             let list = conversations.values.filter { $0.user == user }.sorted { $0.id > $1.id }
             return Self.json(200, ["conversations": .array(list.map(conversationJSON)), "next_cursor": nil])
         case ("POST", ["conversations"]):
+            let clientId = body["client_id"]?.stringValue
+            if let clientId, let id = starts["\(user) \(clientId)"], let started = conversations[id] {
+                return Self.json(200, ["conversation": conversationJSON(started), "messages": .array(started.messages)])
+            }
             let created = startConversation(for: user)
+            if let clientId { starts["\(user) \(clientId)"] = created.id }
             return Self.json(201, ["conversation": conversationJSON(created), "messages": .array(created.messages)])
         case ("GET", let path) where path.count == 2 && path[0] == "conversations":
             guard let conversation = conversations[path[1]], conversation.user == user else {

@@ -75,6 +75,29 @@ final class DraftConversationTests: EngineTestCase {
         XCTAssertEqual(userMessages(id).first?["client_id"]?.stringValue, pending.id)
     }
 
+    /// The server started the conversation but its answer was lost: the retry carries the same client_id (the
+    /// draft's UUID), the server answers 200 with that conversation, and there is one conversation, not two.
+    func testALostAnswerStartsOneConversation() async throws {
+        let phone = await device()
+        try await phone.engine.loginUnidentifiedUser()
+        server.inject(.lostResponse, "POST", "/conversations")
+        let draft = await phone.engine.draftConversation(openedFrom: "help")
+        try await phone.engine.sendText("Salam", in: draft)
+        let sent = await drive(time) {
+            let id = await phone.engine.resolved(draft)
+            return id != draft && self.userMessages(id).count == 1
+        }
+        XCTAssertTrue(sent)
+        let creates = server.requests("POST", "/conversations")
+        XCTAssertEqual(creates.count, 2)
+        let clientIds = creates.map { self.body($0)?["client_id"]?.stringValue }
+        XCTAssertEqual(clientIds, Array(repeating: String(draft.dropFirst(ClomniEngine.draftPrefix.count)), count: 2))
+        try await phone.engine.refreshConversations()
+        let conversations = await phone.engine.conversations()
+        let id = await phone.engine.resolved(draft)
+        XCTAssertEqual(conversations.map(\.id), [id], "one conversation")
+    }
+
     /// The draft's message is on disk: the next launch creates the conversation with its `opened_from`, then sends.
     func testADraftsMessageSurvivesARestart() async throws {
         let frozen = TestTime()

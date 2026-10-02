@@ -250,6 +250,12 @@ final class ApiClientTests: XCTestCase {
         let id = created.conversation.id
         XCTAssertEqual(body(server.requests.last), ["opened_from": "profile_support"])
         XCTAssertEqual(created.messages.first?.type, "quick_replies")
+        // With a client_id: 201 the first time, 200 with the same conversation after that; both are answers.
+        let first = try await api.createConversation(openedFrom: nil, clientId: "3b7e0c1a-5f2d-4c8e-9a6b-2d1f0e9c8b7a")
+        XCTAssertEqual(body(server.requests.last), ["client_id": "3b7e0c1a-5f2d-4c8e-9a6b-2d1f0e9c8b7a"])
+        let again = try await api.createConversation(openedFrom: nil, clientId: "3b7e0c1a-5f2d-4c8e-9a6b-2d1f0e9c8b7a")
+        XCTAssertEqual(again.conversation.id, first.conversation.id)
+        XCTAssertNotEqual(first.conversation.id, id)
 
         let page = try await api.messages(in: id, afterSeq: 0, limit: 10)
         XCTAssertEqual(server.requests.last?.url.query, "after_seq=0&limit=10")

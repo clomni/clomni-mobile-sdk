@@ -226,8 +226,13 @@ actor ApiClient {
                  ProtocolJSON.parseConversationPage)
     }
 
-    func createConversation(openedFrom: String?) async throws -> ConversationWithMessages {
-        let body: JSONValue = openedFrom.map { ["opened_from": .string($0)] } ?? [:]
+    /// With a `clientId` the server starts one conversation for it however often it is asked (201, then 200 with
+    /// the same conversation): a retry after a lost answer makes no second one.
+    func createConversation(openedFrom: String?, clientId: String? = nil) async throws -> ConversationWithMessages {
+        var fields: [String: JSONValue] = [:]
+        if let openedFrom { fields["opened_from"] = .string(openedFrom) }
+        if let clientId { fields["client_id"] = .string(clientId) }
+        let body = JSONValue.object(fields)
         return try read(try await request("POST", "/conversations", json: body), ProtocolJSON.parseConversationWithMessages)
     }
 

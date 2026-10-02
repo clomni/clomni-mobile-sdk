@@ -582,9 +582,12 @@ package actor ClomniEngine {
     }
 
     /// The draft's first message is on its way: the server creates the conversation, once (the draft's messages
-    /// move to its id at once and on disk), and the message follows with its own client id.
+    /// move to its id at once and on disk), and the message follows with its own client id. The draft's UUID, on
+    /// disk with its messages, is the start's `client_id`: a retry after a lost answer, or after a restart, gets the
+    /// conversation the first request made.
     private func create(_ draft: String, openedFrom: String?) async throws {
-        let id = try await startConversation(openedFrom: openedFrom).id
+        let id = try await startConversation(openedFrom: openedFrom,
+                                              clientId: String(draft.dropFirst(Self.draftPrefix.count))).id
         createdDrafts[draft] = id
         drafts[draft] = nil
         outbox.retarget(draft, to: id)
@@ -594,8 +597,8 @@ package actor ClomniEngine {
 
     /// Creates a conversation on the server, which starts the inbox's new-conversation flow; its first messages come
     /// with it. Only through a draft's first message (and tests).
-    func startConversation(openedFrom: String?) async throws -> Conversation {
-        let created = try await api.createConversation(openedFrom: openedFrom)
+    func startConversation(openedFrom: String?, clientId: String? = nil) async throws -> Conversation {
+        let created = try await api.createConversation(openedFrom: openedFrom, clientId: clientId)
         apply(created)
         return created.conversation
     }
