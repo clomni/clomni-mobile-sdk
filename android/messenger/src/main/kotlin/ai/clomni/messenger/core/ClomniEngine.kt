@@ -446,7 +446,7 @@ internal class ClomniEngine(
                     if (!store.apply(data.update)) store.putConversation(authed { api.getConversation(data.update.id) })
                 is RealtimeEvent.Payload.UnreadChanged -> store.setUnreadTotal(data.total)
                 is RealtimeEvent.Payload.ConfigChanged -> loadConfig(null)
-                is RealtimeEvent.Payload.Unknown -> Unit
+                is RealtimeEvent.Payload.Unknown, RealtimeEvent.Payload.Ping -> Unit
             }
         } catch (e: Exception) {
             ClomniLog.warning { "${event.event}: ${e.message}" }

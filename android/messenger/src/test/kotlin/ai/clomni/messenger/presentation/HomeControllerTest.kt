@@ -86,7 +86,7 @@ class HomeControllerTest {
         val home = controller()
         assertEquals(HomeScreen.Phase.LOADING, home.home.phase)
         assertEquals(HomeScreen.Phase.LOADING, home.messages.phase)
-        assertEquals("Salam, Aysel 👋", home.home.header.greeting)
+        assertEquals("Salam, Aysel", home.home.header.greeting)
     }
 
     @Test
@@ -155,9 +155,9 @@ class HomeControllerTest {
     @Test
     fun nameAndConnectivityRedraw() {
         val home = controller(user = null)
-        assertEquals("Salam 👋", home.home.header.greeting)
+        assertEquals("Salam", home.home.header.greeting)
         home.userName = "Leyla Əliyeva"
-        assertEquals("Salam, Leyla 👋", home.home.header.greeting)
+        assertEquals("Salam, Leyla", home.home.header.greeting)
         home.isOffline = true
         assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", home.home.offline)
         assertEquals(2, renders)

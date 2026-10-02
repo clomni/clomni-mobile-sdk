@@ -87,9 +87,18 @@ internal data class MessengerConfig(
         val cards: List<HomeCard>,
         /** At most five, in the panel's order. */
         val channels: List<Channel>,
+        /** The greeting's size, chosen in the panel. */
+        val titleSize: TitleSize = TitleSize.M,
     )
 
     enum class HomeCard { SEND, RECENT, CHANNELS }
+
+    /** `home.title_size`: the greeting's two lines, sp (first line normal, second semibold). Unknown: [M]. */
+    enum class TitleSize(val firstLine: Float, val secondLine: Float) {
+        S(15f, 20f),
+        M(17f, 24f),
+        L(19f, 28f),
+    }
 
     /** A social channel icon on Home; [type] is open-ended (instagram, whatsapp, linkedin, email, …). */
     data class Channel(val type: String, val url: String)

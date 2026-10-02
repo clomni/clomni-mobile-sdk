@@ -59,7 +59,7 @@ class MessengerConfigTest {
             config.theme,
         )
         assertEquals(MessengerConfig.Composer(attachments = true, emoji = true), config.composer)
-        assertEquals("Salam, {first_name} 👋", config.strings["greeting_line1"])
+        assertEquals("Salam, {first_name}", config.strings["greeting_line1"])
         assertEquals("the panel's own", "Bizdən nəsə soruşun", config.strings["greeting_line2"])
         assertEquals(MessengerConfig.Limits(10, 25, 4000), config.limits)
         assertTrue(config.poweredBy)
@@ -128,6 +128,19 @@ class MessengerConfigTest {
         assertFalse(config.theme.launcher.enabled)
         assertEquals(listOf("az"), config.languages)
         assertTrue(config.poweredBy)
+    }
+
+    /** home.title_size: s, m, l; absent or unknown is m. */
+    @Test
+    fun theGreetingsSize() {
+        fun size(json: String) = config("""{"home":$json}""").home.titleSize
+        assertEquals(MessengerConfig.TitleSize.S, size("""{"title_size":"s"}"""))
+        assertEquals(MessengerConfig.TitleSize.L, size("""{"title_size":"l"}"""))
+        assertEquals(MessengerConfig.TitleSize.M, size("""{"title_size":"xl"}"""))
+        assertEquals(MessengerConfig.TitleSize.M, size("{}"))
+        assertEquals(MessengerConfig.TitleSize.M, config(apar).home.titleSize)
+        assertEquals(MessengerConfig.TitleSize.L, config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).home.titleSize)
+        assertEquals(listOf(15f, 20f, 17f, 24f, 19f, 28f), MessengerConfig.TitleSize.entries.flatMap { listOf(it.firstLine, it.secondLine) })
     }
 
     @Test

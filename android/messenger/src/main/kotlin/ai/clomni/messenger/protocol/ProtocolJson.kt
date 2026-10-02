@@ -392,6 +392,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 d.int("total") ?: throw ProtocolException("total: expected an integer"),
             )
             "config.changed" -> RealtimeEvent.Payload.ConfigChanged(d.requireString("etag"))
+            "ping" -> RealtimeEvent.Payload.Ping
             else -> {
                 logger("unknown event \"$name\" ignored")
                 RealtimeEvent.Payload.Unknown(name)
@@ -497,6 +498,11 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                     val type = channel.string("type") ?: return@mapNotNull null
                     channel.string("url")?.let { MessengerConfig.Channel(type, it) }
                 }.take(MessengerConfig.MAX_CHANNELS),
+                titleSize = when (home.string("title_size")) {
+                    "s" -> MessengerConfig.TitleSize.S
+                    "l" -> MessengerConfig.TitleSize.L
+                    else -> MessengerConfig.TitleSize.M
+                },
             ),
             theme = MessengerConfig.ThemeSettings(
                 mode = when (theme.string("mode")) {

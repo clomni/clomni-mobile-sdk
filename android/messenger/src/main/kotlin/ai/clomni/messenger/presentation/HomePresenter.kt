@@ -49,10 +49,12 @@ internal data class HomeScreen(
         val brandInitial: String,
         /** Up to three, overlapping. */
         val teamAvatars: List<String>,
-        /** "Salam, Aysel 👋", smaller than [title] and in the same colour. */
+        /** "Salam, Aysel", smaller than [title] and in the same colour. */
         val greeting: String,
         /** "Necə kömək edə bilərik?" */
         val title: String,
+        /** The panel's size for the two lines. */
+        val titleSize: MessengerConfig.TitleSize = MessengerConfig.TitleSize.M,
         val closeLabel: String,
     )
 
@@ -231,6 +233,7 @@ internal class HomePresenter(
             teamAvatars = if (config?.team?.show == false) emptyList() else config?.team?.avatars.orEmpty().take(3),
             greeting = strings.greeting(snapshot.userName),
             title = strings[Key.GREETING_LINE2],
+            titleSize = config?.home?.titleSize ?: MessengerConfig.TitleSize.M,
             closeLabel = strings[Key.CLOSE],
         )
     }

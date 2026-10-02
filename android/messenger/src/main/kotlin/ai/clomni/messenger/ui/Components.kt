@@ -137,12 +137,12 @@ internal fun FailureView(failure: HomeScreen.Failure, theme: ClomniTheme, retry:
 }
 
 /**
- * ✕: a small glyph in a 48 dp target that lays out at the glyph's size. [endRoom] is the space between it and the
+ * ✕: a 28 dp glyph in a 48 dp target that lays out at the glyph's size. [endRoom] is the space between it and the
  * screen's edge: the target reaches no further that way (a target cut by the edge is a smaller target).
  */
 @Composable
 internal fun CloseButton(label: String, color: RgbColor, close: () -> Unit, endRoom: Dp = target) {
-    val glyph = 17.dp
+    val glyph = 28.dp
     val inset = (target - glyph) / 2
     val end = minOf(inset, endRoom)
     Box(Modifier.bleed(start = inset * 2 - end, top = inset, end = end, bottom = inset).size(target).button(label, close)) {

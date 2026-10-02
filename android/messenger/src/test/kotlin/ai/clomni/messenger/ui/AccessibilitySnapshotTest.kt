@@ -135,7 +135,7 @@ class AccessibilitySnapshotTest {
             listOf(
                 "Apar",
                 "Bağla [Button]",
-                "Salam, Aysel 👋 Bizdən nəsə soruşun [heading]",
+                "Salam, Aysel Bizdən nəsə soruşun [heading]",
                 "Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk [Button]",
                 "Son mesaj. Leyla, 2 dəq: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər. Oxunmamış [Button]",
                 "Bizi izləyin [heading]",

@@ -139,7 +139,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         val FALLBACKS: Map<String, Map<Key, String>> = mapOf(
             "az" to mapOf(
                 Key.TODAY to "Bu gün", Key.YESTERDAY to "Dünən", Key.TOMORROW to "sabah", Key.SEND to "Göndər",
-                Key.SEND_CARD_TITLE to "Bizə mesaj göndərin", Key.GREETING_LINE1 to "Salam, {first_name} 👋", Key.GREETING_LINE1_ANONYMOUS to "Salam 👋",
+                Key.SEND_CARD_TITLE to "Bizə mesaj göndərin", Key.GREETING_LINE1 to "Salam, {first_name}", Key.GREETING_LINE1_ANONYMOUS to "Salam",
                 Key.GREETING_LINE2 to "Necə kömək edə bilərik?", Key.RECENT_MESSAGE to "Son mesaj",
                 Key.FOLLOW_US to "Bizi izləyin", Key.TAB_HOME to "Ana səhifə", Key.TAB_MESSAGES to "Mesajlar",
                 Key.EMPTY_LIST to "Hələ söhbət yoxdur", Key.ERROR to "Nəsə səhv getdi",
@@ -161,7 +161,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
             ),
             "en" to mapOf(
                 Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
-                Key.SEND_CARD_TITLE to "Send us a message", Key.GREETING_LINE1 to "Hi, {first_name} 👋", Key.GREETING_LINE1_ANONYMOUS to "Hi 👋",
+                Key.SEND_CARD_TITLE to "Send us a message", Key.GREETING_LINE1 to "Hi, {first_name}", Key.GREETING_LINE1_ANONYMOUS to "Hi",
                 Key.GREETING_LINE2 to "How can we help?", Key.RECENT_MESSAGE to "Recent message",
                 Key.FOLLOW_US to "Follow us", Key.TAB_HOME to "Home", Key.TAB_MESSAGES to "Messages",
                 Key.EMPTY_LIST to "No conversations yet", Key.ERROR to "Something went wrong",
@@ -185,7 +185,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
             ),
             "ru" to mapOf(
                 Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
-                Key.SEND_CARD_TITLE to "Напишите нам", Key.GREETING_LINE1 to "Здравствуйте, {first_name} 👋", Key.GREETING_LINE1_ANONYMOUS to "Здравствуйте 👋",
+                Key.SEND_CARD_TITLE to "Напишите нам", Key.GREETING_LINE1 to "Здравствуйте, {first_name}", Key.GREETING_LINE1_ANONYMOUS to "Здравствуйте",
                 Key.GREETING_LINE2 to "Чем можем помочь?", Key.RECENT_MESSAGE to "Последнее сообщение",
                 Key.FOLLOW_US to "Мы в соцсетях", Key.TAB_HOME to "Главная", Key.TAB_MESSAGES to "Сообщения",
                 Key.EMPTY_LIST to "Пока нет переписки", Key.ERROR to "Что-то пошло не так",

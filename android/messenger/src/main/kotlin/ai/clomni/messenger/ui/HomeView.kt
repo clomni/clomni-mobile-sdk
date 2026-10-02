@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** The Home tab (brief 8·7.3): the brand header with the greeting, and the cards riding up over it by 40. */
@@ -73,27 +74,24 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
             Modifier.fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.statusBars)
                 // 62 = the 40 the cards ride up + 22 of air above them.
-                .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.xxl.dp, bottom = 62.dp),
+                .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.l.dp, bottom = 62.dp),
         ) {
             // 48: the buttons' targets stay inside the row, whatever is above it.
             Row(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp), verticalAlignment = Alignment.CenterVertically) {
-                BrandMark(header, theme)
-                Spacer(Modifier.weight(1f))
+                // The brand gives way (its name ends in "…"); the avatars and ✕ keep their size.
+                BrandMark(header, theme, Modifier.weight(1f))
+                Spacer(Modifier.width(ClomniTheme.Space.l.dp))
                 TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
                 if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
-                CloseButton(header.closeLabel, text, close)
+                // 12 dp from the screen's edge, like the avatars' row (the row's end padding).
+                CloseButton(header.closeLabel, text, close, endRoom = ClomniTheme.Space.l.dp)
             }
             Column(Modifier.padding(top = 20.dp).semantics(mergeDescendants = true) { heading() }) {
-                // The first line in the header's full colour, set apart by size and weight rather than a 62% fade,
-                // which read at about 2.2:1 on Apar's green (BRIEF-DEVIATIONS 18).
-                BasicText(
-                    header.greeting,
-                    style = clomniText(ClomniTheme.FontSize.greetingFirstLine, text, lineHeight = 1.3f, letterSpacing = -0.2f),
-                )
-                BasicText(
-                    header.title,
-                    style = clomniText(ClomniTheme.FontSize.greeting, text, FontWeight.SemiBold, lineHeight = 1.22f, letterSpacing = -0.4f),
-                )
+                // Both lines in the header's full colour, set apart by size and weight (BRIEF-DEVIATIONS 18), at the
+                // panel's title_size; sp, so the user's font size goes on top, and long text wraps.
+                val size = header.titleSize
+                BasicText(header.greeting, style = clomniText(size.firstLine, text, lineHeight = 1.25f))
+                BasicText(header.title, style = clomniText(size.secondLine, text, FontWeight.SemiBold, lineHeight = 1.25f, letterSpacing = -0.3f))
             }
         }
     }
@@ -138,48 +136,39 @@ private fun HeaderBackground(header: HomeScreen.Header, theme: ClomniTheme, modi
 private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
 
-/** The 22 dp white square with the logo (the dark-mode one in dark mode) or the brand's initial, and the brand name 17/700. */
+/**
+ * The logo as it was uploaded, 32 dp with 8 dp corners and nothing around it (the dark-mode one in dark mode); without
+ * one the brand's initial on a 32 dp circle of its soft tone. The name 17 semibold 10 dp away, both centred on one line.
+ */
 @Composable
-private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier.size(ClomniTheme.Size.logo.dp)
-                .clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp))
-                .background(Color.White)
-                .clearAndSetSemantics {},
-            Alignment.Center,
-        ) {
-            val logo = (if (theme.isDark) header.logoDarkUrl else null) ?: header.logoUrl
-            if (logo != null) {
-                RemoteImage(
-                    logo,
-                    ImageSizing.Kind.ICON,
-                    ClomniTheme.Size.logo,
-                    theme.colors.primarySoft.color,
-                    Modifier.fillMaxSize().padding(3.dp),
-                    fit = true,
-                )
-            } else {
-                val size = with(LocalDensity.current) { 13.dp.toSp() }
+private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        val logo = (if (theme.isDark) header.logoDarkUrl else null) ?: header.logoUrl
+        val size = ClomniTheme.Size.logo
+        if (logo != null) {
+            RemoteImage(
+                logo,
+                ImageSizing.Kind.ICON,
+                size,
+                theme.colors.primarySoft.color,
+                Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).clearAndSetSemantics {},
+            )
+        } else {
+            Box(Modifier.size(size.dp).clip(CircleShape).background(theme.colors.primarySoft.color).clearAndSetSemantics {}, Alignment.Center) {
+                val letter = with(LocalDensity.current) { 15.dp.toSp() }
                 BasicText(
                     header.brandInitial,
-                    // On the white square in dark mode too, where the lighter primary would not read.
-                    style = clomniText(13f, theme.colors.primary.readableOn(listOf(RgbColor.WHITE)), FontWeight.Bold)
-                        .copy(fontSize = size, lineHeight = size),
+                    style = clomniText(15f, theme.colors.primaryText, FontWeight.SemiBold).copy(fontSize = letter, lineHeight = letter),
                 )
             }
         }
-        Spacer(Modifier.width(7.dp))
+        Spacer(Modifier.width(10.dp))
         BasicText(
             header.brandName,
-            style = clomniText(
-                ClomniTheme.FontSize.brand,
-                theme.colors.headerText,
-                FontWeight.Bold,
-                lineHeight = 1.2f,
-                letterSpacing = -0.2f,
-            ),
+            Modifier.weight(1f, fill = false),
+            style = clomniText(ClomniTheme.FontSize.brand, theme.colors.headerText, FontWeight.SemiBold, lineHeight = 1.25f),
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

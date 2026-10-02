@@ -47,6 +47,8 @@ class ProtocolFixturesTest(path: String) {
             schema == "appearance.json" -> Json.parseToJsonElement(json)
             // A request body the SDK writes (ApiClient.createConversation); checked against what it writes there.
             schema == "conversation-start.json" -> Json.parseToJsonElement(json)
+            // What the app says over the socket: only the pong (RealtimeClient); typing goes over REST.
+            schema == "realtime-client.json" -> Json.parseToJsonElement(json)
             schema == "client-message.json" -> {
                 // Built the way the SDK builds it, the message encodes to the fixture, and the fixture reads back to it.
                 val built = ClientMessageFixtures.all[entry.path]
@@ -111,6 +113,12 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/39-event-unread-changed.json" to RealtimeEvent.Payload.UnreadChanged::class,
             "fixtures/40-event-config-changed.json" to RealtimeEvent.Payload.ConfigChanged::class,
             "fixtures/41-event-unknown.json" to RealtimeEvent.Payload.Unknown::class,
+            "fixtures/55-event-ping.json" to RealtimeEvent.Payload.Ping::class,
+            "fixtures/56-client-pong.json" to JsonObject::class,
+            "fixtures/57-client-typing.json" to JsonObject::class,
+            "fixtures/58-config-apar-en.json" to MessengerConfig::class,
+            "fixtures/59-config-wordmark.json" to MessengerConfig::class,
+            "fixtures/84-invalid-client-message-over-socket.json" to JsonObject::class,
             "fixtures/42-config-apar.json" to MessengerConfig::class,
             "fixtures/43-config-minimal.json" to MessengerConfig::class,
             "fixtures/44-push-message.json" to PushPayload::class,

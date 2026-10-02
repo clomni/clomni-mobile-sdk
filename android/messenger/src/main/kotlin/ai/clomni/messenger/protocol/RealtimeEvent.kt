@@ -31,6 +31,9 @@ internal data class RealtimeEvent(
         /** Reload the config (GET /mobile/config with If-None-Match). */
         data class ConfigChanged(val etag: String) : Payload
 
+        /** The server's heartbeat; RealtimeClient answers it with a pong before it gets here. */
+        data object Ping : Payload
+
         data class Unknown(val name: String) : Payload
     }
 

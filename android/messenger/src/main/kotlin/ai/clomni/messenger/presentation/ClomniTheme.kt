@@ -52,15 +52,12 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val pill = 18f
         val card = 12f
         val input = 20f
-        val logo = 6f
+        val logo = 8f
         val channel = 8f
     }
 
     object FontSize {
         val greeting = 22f
-
-        /** "Salam, Aysel 👋" over the greeting, at full colour (BRIEF-DEVIATIONS 18). */
-        val greetingFirstLine = 17f
         val brand = 17f
         val title = 14.5f
         val text = 14f
@@ -81,7 +78,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     }
 
     object Size {
-        val logo = 22f
+        val logo = 32f
         val headerAvatar = 24f
 
         /** Header avatars overlap by this much. */
