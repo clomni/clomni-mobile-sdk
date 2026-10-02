@@ -108,13 +108,12 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(config.composer, MessengerConfig.Composer(attachments: true, emoji: true))
         XCTAssertEqual(config.languages, ["az", "en", "ru"])
         XCTAssertEqual(config.strings["send_card_title"], "Bizə mesaj göndərin")
-        XCTAssertEqual(config.strings["greeting_line1"], "Salam, {first_name} 👋")
+        XCTAssertEqual(config.strings["greeting_line1"], "Salam, {first_name}")
         XCTAssertEqual(config.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 25, textChars: 4000))
         XCTAssertTrue(config.poweredBy)
     }
 
-    /// APPEARANCE-CONTRACT § 4a and DESIGN-PASS: the full logo and the greeting's size. Fixtures 58/59 come with the
-    /// next protocol sync; until then the shapes from the contract.
+    /// APPEARANCE-CONTRACT § 4a and DESIGN-PASS: the full logo and the greeting's size.
     func testWordmarkAndTitleSize() throws {
         let wordmark = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"name":"Clomni","logo_style":"wordmark","wordmark_url":"https://app.clomni.ai/v1/images/img_w",
@@ -136,10 +135,21 @@ final class MessengerConfigTests: ProtocolTestCase {
         let neon = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
             #"{"brand":{"logo_style":"neon","wordmark_url":"https://a.az/w.png"}}"#.utf8)))
         XCTAssertEqual(neon.brand.logoStyle, .mark)
-        // A server that does not send the fields.
-        let older = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("42-config-apar.json")))
+        // The server's fixtures: 59 with a wordmark and the large greeting, 42 and 58 without.
+        let fixture = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("59-config-wordmark.json")))
+        XCTAssertEqual(fixture.brand.logoStyle, .wordmark)
+        XCTAssertEqual(fixture.brand.wordmarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Wm7Qk2Lx9PzR4sTv8NcY")
+        XCTAssertNil(fixture.brand.wordmarkDarkUrl)
+        XCTAssertEqual(fixture.home.titleSize, .l)
+        for name in ["42-config-apar.json", "58-config-apar-en.json"] {
+            let apar = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data(name)))
+            XCTAssertEqual(apar.brand.logoStyle, .mark, name)
+            XCTAssertNil(apar.brand.wordmarkUrl, name)
+            XCTAssertEqual(apar.home.titleSize, .m, name)
+        }
+        // A server that does not send the fields at all.
+        let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Apar"},"home":{}}"#.utf8)))
         XCTAssertEqual(older.brand.logoStyle, .mark)
-        XCTAssertNil(older.brand.wordmarkUrl)
         XCTAssertEqual(older.home.titleSize, .m)
     }
 

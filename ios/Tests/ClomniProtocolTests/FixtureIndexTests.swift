@@ -76,6 +76,16 @@ final class FixtureIndexTests: ProtocolTestCase {
             let fits = Set(body?.keys.map { $0 } ?? []).isSubset(of: ["opened_from", "client_id"])
                 && (body?["client_id"] == nil || clientId.map { (1...64).contains($0.count) } == true)
             XCTAssertEqual(fits, entry.isValid, label)
+        case ("realtime-client.json", nil):
+            // What the app may send on the socket: pong (RealtimeClient answers every ping, RealtimeTests), and
+            // typing, which this SDK sends over REST instead. Anything else is not the app's to send.
+            let frame = ProtocolJSON.decode(data)?.objectValue
+            let event = frame?["event"]?.stringValue
+            let typing = frame?["data"]?.objectValue
+            let fits = event == "pong"
+                || event == "typing" && typing?["conversation_id"]?.stringValue?.hasPrefix("conv_") == true
+                && ["on", "off"].contains(typing?["state"]?.stringValue ?? "")
+            XCTAssertEqual(fits, entry.isValid, label)
         case ("appearance.json", nil):
             // The panel's document; the SDK reads only what the server makes of it, config.json.
             XCTAssertNotNil(ProtocolJSON.decode(data), label)

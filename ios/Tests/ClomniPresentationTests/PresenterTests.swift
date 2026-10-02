@@ -59,14 +59,14 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(.m))
         XCTAssertEqual(header.teamAvatars.count, 3)
         // The default greets by the first name; the panel can choose {name}, the whole name.
-        XCTAssertEqual(header.greeting, "Salam, Aysel 👋")
+        XCTAssertEqual(header.greeting, "Salam, Aysel")
         let whole = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"strings":{"greeting_line1":"Salam, {name}!"}}"#.utf8)))
         XCTAssertEqual(presenter(config: whole).home(snapshot(whole)).header.greeting, "Salam, Aysel Məmmədova!")
         XCTAssertEqual(header.title, "Bizdən nəsə soruşun", "the panel's text")
         XCTAssertEqual(header.closeLabel, "Bağla")
 
-        XCTAssertEqual(presenter().home(snapshot(user: nil)).header.greeting, "Salam 👋")
-        XCTAssertEqual(presenter().home(snapshot(user: "   ")).header.greeting, "Salam 👋")
+        XCTAssertEqual(presenter().home(snapshot(user: nil)).header.greeting, "Salam")
+        XCTAssertEqual(presenter().home(snapshot(user: "   ")).header.greeting, "Salam")
         // The server sends strings in one language (fixture 42: az); with none, the SDK's own in the user's.
         let none = Fixture.minimalConfig
         // The SDK's own texts have no emoji (DESIGN-PASS 3).
