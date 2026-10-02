@@ -18,13 +18,22 @@ import kotlinx.serialization.json.JsonPrimitive
 /**
  * The app's user, for [Clomni.loginUser]. Clomni knows the user by [userId], else by [email]; [phone] and [name] are
  * shown to the operators and fill the messenger's forms.
+ *
+ * A plain class, not a data class, so a later field can be added without breaking apps built against this one.
  */
-public data class ClomniUser @JvmOverloads constructor(
-    val userId: String? = null,
-    val email: String? = null,
-    val phone: String? = null,
-    val name: String? = null,
-)
+public class ClomniUser @JvmOverloads constructor(
+    public val userId: String? = null,
+    public val email: String? = null,
+    public val phone: String? = null,
+    public val name: String? = null,
+) {
+    override fun equals(other: Any?): Boolean =
+        other is ClomniUser && userId == other.userId && email == other.email && phone == other.phone && name == other.name
+
+    override fun hashCode(): Int = listOf(userId, email, phone, name).hashCode()
+
+    override fun toString(): String = "ClomniUser(userId=$userId, email=$email, phone=$phone, name=$name)"
+}
 
 /**
  * The Clomni Messenger SDK (brief 8·9): everything the app calls is here, with the same names as on iOS.
