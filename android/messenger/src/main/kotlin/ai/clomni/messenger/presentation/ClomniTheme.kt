@@ -67,14 +67,15 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val meta = 11f
     }
 
+    /** Multiples of 4 only: 4 · 8 · 12 · 16 · 20 · 24 · 32 (coordinator's scale, the same on iOS). */
     object Space {
-        val xxs = 3f
-        val xs = 6f
+        val xxs = 4f
+        val xs = 8f
         val s = 8f
-        val m = 10f
+        val m = 12f
         val l = 12f
-        val xl = 14f
-        val xxl = 18f
+        val xl = 16f
+        val xxl = 20f
     }
 
     object Size {

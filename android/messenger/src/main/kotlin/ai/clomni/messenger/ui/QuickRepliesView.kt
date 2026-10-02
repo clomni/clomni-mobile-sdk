@@ -84,7 +84,7 @@ private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabl
             Modifier.clip(shape)
                 .background(theme.colors.background.color)
                 .border(1.dp, if (isBack) theme.colors.border.color else theme.colors.primaryLine.color, shape)
-                .padding(vertical = 7.dp, horizontal = 13.dp),
+                .padding(vertical = 8.dp, horizontal = 12.dp),
             style = clomniText(
                 ClomniTheme.FontSize.text,
                 if (isBack) theme.colors.textSecondary else theme.colors.primaryText,

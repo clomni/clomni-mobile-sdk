@@ -217,7 +217,7 @@ internal fun ConversationRowView(row: ConversationRow, theme: ClomniTheme) {
     }
 }
 
-/** "Bizi izləyin": 30 dp squares (radius 8) in each platform's colour, 48 dp targets 8 dp apart. */
+/** "Bizi izləyin": 30 dp squares (radius 8) in each platform's colour, 20 dp apart in 48 dp targets. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme) {
@@ -228,9 +228,9 @@ internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme)
             Modifier.padding(bottom = ClomniTheme.Space.s.dp).semantics { heading() },
             style = clomniText(ClomniTheme.FontSize.label, theme.colors.textPrimary, FontWeight.SemiBold),
         )
-        // 48 dp targets side by side, none covering its neighbour: the 30 dp squares are 18 apart; a long list wraps.
+        // The 30 dp squares 20 apart: their 48 dp targets side by side, none covering its neighbour; a long list wraps.
         val bleed = (target - ClomniTheme.Size.channel.dp) / 2
-        val gap = Arrangement.spacedBy(0.dp)
+        val gap = Arrangement.spacedBy(ClomniTheme.Space.xxl.dp - bleed * 2)
         FlowRow(Modifier.bleed(bleed, bleed), horizontalArrangement = gap, verticalArrangement = gap) {
             for (item in card.items) {
                 ChannelButton(item, theme) { runCatching { uriHandler.openUri(item.url) } }

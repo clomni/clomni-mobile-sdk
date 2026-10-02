@@ -73,8 +73,8 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
         Column(
             Modifier.fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.statusBars)
-                // 62 = the 40 the cards ride up + 22 of air above them.
-                .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.l.dp, bottom = 62.dp),
+                // 64 = the 40 the cards ride up + 24 of air above them.
+                .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.l.dp, bottom = 64.dp),
         ) {
             // 48: the buttons' targets stay inside the row, whatever is above it.
             Row(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -162,7 +162,7 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme, modifier: M
                 )
             }
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(ClomniTheme.Space.l.dp))
         BasicText(
             header.brandName,
             Modifier.weight(1f, fill = false),

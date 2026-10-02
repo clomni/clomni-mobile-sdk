@@ -80,10 +80,10 @@ internal fun ComposerView(
             when (val mode = composer.mode) {
                 is ChatComposer.Mode.Locked -> BasicText(
                     mode.text,
-                    Modifier.fillMaxWidth().heightIn(min = 38.dp)
+                    Modifier.fillMaxWidth().heightIn(min = 40.dp)
                         .clip(RoundedCornerShape(ClomniTheme.Radius.input.dp))
                         .background(theme.colors.surface.color)
-                        .padding(horizontal = ClomniTheme.Space.l.dp, vertical = 10.dp),
+                        .padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.m.dp),
                     style = clomniText(13f, theme.colors.textSecondary).copy(textAlign = TextAlign.Center),
                 )
                 is ChatComposer.Mode.Closed -> if (writeAnyway) {
@@ -130,9 +130,9 @@ private fun Field(
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val canSend = ChatPresenter.canSend(text, composer.limit)
-    // The field is the 38 dp grey box, but takes taps (and TalkBack's frame) over 48: 5 dp of it above and below the
+    // The field is the 40 dp grey box, but takes taps (and TalkBack's frame) over 48: 4 dp of it above and below the
     // box lay out over the bar's own padding.
-    val slack = (ClomniTheme.Size.touchTarget.dp - 38.dp) / 2
+    val slack = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
     Row(verticalAlignment = Alignment.Bottom) {
         BasicTextField(
             text,
@@ -145,7 +145,7 @@ private fun Field(
             cursorBrush = SolidColor(theme.colors.primary.color),
             decorationBox = { inner ->
                 Row(
-                    Modifier.padding(vertical = slack).heightIn(min = 38.dp)
+                    Modifier.padding(vertical = slack).heightIn(min = 40.dp)
                         .clip(RoundedCornerShape(ClomniTheme.Radius.input.dp))
                         .background(theme.colors.surface.color)
                         .padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.s.dp),
