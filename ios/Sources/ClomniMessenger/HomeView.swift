@@ -102,6 +102,13 @@ struct HomeHeaderView: View {
             }
             .ignoresSafeArea(edges: .top)
         }
+        // Pulled down past the top, the header's colour goes on above it instead of the page's grey.
+        .background(alignment: .top) {
+            theme.colors.headerFrom.color
+                .frame(height: 1000)
+                .offset(y: -1000)
+                .accessibilityHidden(true)
+        }
     }
 
     /// header_text: white over a picture (its dark veil), else white or near-black by the header's colours.
@@ -197,6 +204,8 @@ struct BrandMark: View {
             Text(header.brandName)
                 .clomniFont(ClomniTheme.FontSize.brand, .semibold, relativeTo: .headline)
                 .lineLimit(1)
+                // Next to a 32 pt logo the name grows no further than xxxLarge; the greeting and messages do.
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
     }
 }
