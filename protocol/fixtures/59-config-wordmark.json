@@ -1,12 +1,12 @@
 {
   "version": 12,
   "brand": {
-    "name": "Apar",
-    "initial": "A",
-    "logo_url": "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
+    "name": "Clomni",
+    "initial": "C",
+    "logo_url": "https://app.clomni.ai/v1/images/img_Ic5Hn3Bv8KqW2xZp6MtD",
     "logo_dark_url": null,
-    "logo_style": "mark",
-    "wordmark_url": null,
+    "logo_style": "wordmark",
+    "wordmark_url": "https://app.clomni.ai/v1/images/img_Wm7Qk2Lx9PzR4sTv8NcY",
     "wordmark_dark_url": null,
     "primary_color": "#1F9D63",
     "header_style": "gradient",
@@ -77,7 +77,7 @@
         "url": "mailto:support@apar.az"
       }
     ],
-    "title_size": "m"
+    "title_size": "l"
   },
   "theme": {
     "mode": "system",

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/realtime-client.json",
+  "title": "Frame from the app on the realtime socket",
+  "description": "What an app may send on wss://…/v1/realtime: pong (the answer to every ping) and typing (the user is typing in one of their conversations; POST /conversations/{id}/typing does the same over REST). Anything else is logged and ignored; a frame over 4 KB closes the socket with 1009.",
+  "type": "object",
+  "required": [
+    "event"
+  ],
+  "properties": {
+    "event": {
+      "enum": [
+        "pong",
+        "typing"
+      ]
+    },
+    "data": {},
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "typing"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/typing"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "typing": {
+      "type": "object",
+      "required": [
+        "conversation_id",
+        "state"
+      ],
+      "properties": {
+        "conversation_id": {
+          "type": "string",
+          "pattern": "^conv_.+"
+        },
+        "state": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        }
+      }
+    }
+  }
+}

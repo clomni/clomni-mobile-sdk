@@ -265,9 +265,45 @@
     "note": "Görünüş sənədi: veb chatı olmayan yeni kanalın default-u"
   },
   {
+    "file": "55-event-ping.json",
+    "schema": "event.json",
+    "note": "WS: server ping (hər heartbeat_sec), data yoxdur"
+  },
+  {
+    "file": "56-client-pong.json",
+    "schema": "realtime-client.json",
+    "note": "WS klient: ping-ə pong"
+  },
+  {
+    "file": "57-client-typing.json",
+    "schema": "realtime-client.json",
+    "note": "WS klient: istifadəçi yazır"
+  },
+  {
+    "file": "58-config-apar-en.json",
+    "schema": "config.json",
+    "note": "Config v2: Apar ingilis dilində (?lang=en), tam en strings"
+  },
+  {
+    "file": "59-config-wordmark.json",
+    "schema": "config.json",
+    "note": "Config v2: tam loqo (wordmark) — header-də ad yazılmır, wordmark_url göstərilir; tünd variant yoxdur, dark-da da wordmark_url"
+  },
+  {
+    "file": "60-conversation-start-client-id.json",
+    "schema": "conversation-start.json",
+    "note": "POST /conversations client_id ilə: eyni sessiyada təkrar sorğu yeni söhbət açmır, mövcudu 200 ilə qaytarır"
+  },
+  {
     "file": "49-client-attachment.json",
     "schema": "client-message.json",
     "note": "Klient: şəkil (əvvəl POST /v1/uploads)"
+  },
+  {
+    "file": "84-invalid-client-message-over-socket.json",
+    "schema": "realtime-client.json",
+    "note": "Səhv: socket üzərindən mesaj göndərilmir (REST)",
+    "valid": false
   },
   {
     "file": "85-invalid-appearance-text-too-long.json",
@@ -352,11 +388,6 @@
     "schema": "message.json#/$defs/card",
     "note": "Səhv: kart düyməsində həm payload, həm url",
     "valid": false
-  },
-  {
-    "file": "60-conversation-start-client-id.json",
-    "schema": "conversation-start.json",
-    "note": "POST /conversations client_id ilə: eyni sessiyada təkrar sorğu yeni söhbət açmır, mövcudu 200 ilə qaytarır"
   },
   {
     "file": "99-invalid-conversation-start-client-id-empty.json",

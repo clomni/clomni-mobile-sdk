@@ -1,0 +1,7 @@
+{
+  "event": "message.created",
+  "data": {
+    "text": "Salam"
+  },
+  "ts": "2026-10-01T10:30:27Z"
+}

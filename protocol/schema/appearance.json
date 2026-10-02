@@ -12,13 +12,19 @@
       "additionalProperties": false,
       "required": ["name", "primary_color", "header_style", "glow"],
       "properties": {
-        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 24 },
         "primary_color": { "$ref": "#/$defs/color" },
         "header_style": { "enum": ["gradient", "solid", "image"] },
         "glow": { "type": "boolean" },
         "logo": { "$ref": "#/$defs/image" },
         "logo_dark": { "$ref": "#/$defs/image" },
-        "header_image": { "$ref": "#/$defs/image" }
+        "header_image": { "$ref": "#/$defs/image" },
+        "logo_style": {
+          "enum": ["mark", "wordmark"],
+          "description": "mark (default): the square logo, or the initial, beside the name. wordmark: the full written logo instead of both."
+        },
+        "wordmark": { "$ref": "#/$defs/image", "description": "The full written logo, kind wordmark: transparent, 2:1 to 8:1." },
+        "wordmark_dark": { "$ref": "#/$defs/image", "description": "For dark mode; null: the wordmark." }
       }
     },
     "team": {
@@ -75,6 +81,10 @@
       "additionalProperties": false,
       "required": ["cards", "channels"],
       "properties": {
+        "title_size": {
+          "enum": ["s", "m", "l"],
+          "description": "The greeting's size on Home: s 15/20, m 17/24, l 19/28 (first line / second line); line height 1.25 times the size, the system font scale applied on top. Absent: m."
+        },
         "cards": {
           "type": "array",
           "description": "In the order shown; send is always there.",

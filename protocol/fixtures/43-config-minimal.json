@@ -2,6 +2,7 @@
   "version": 1,
   "brand": {
     "name": "Clomni, Inc.",
+    "initial": "C",
     "primary_color": "#10A670",
     "header_style": "solid",
     "glow": false,

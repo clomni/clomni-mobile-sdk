@@ -1,0 +1,8 @@
+{
+  "event": "typing",
+  "data": {
+    "conversation_id": "conv_42",
+    "state": "on"
+  },
+  "ts": "2026-10-01T10:30:27Z"
+}
