@@ -1,111 +1,53 @@
 package ai.clomni.messenger.sample
 
 import ai.clomni.messenger.Clomni
-import ai.clomni.messenger.ClomniPush
+import ai.clomni.messenger.ClomniUser
 import ai.clomni.messenger.UnreadCountListener
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 
-/**
- * The ways into the messenger of brief 8·7.2 on one plain screen (no Compose, no AppCompat): the app's own "Dəstək"
- * row with its unread badge, a contextual button, an automatic flow, the optional launcher, and closing from code.
- * The full sample is CM-076's.
- */
+/** The app's profile screen: its own "Dəstək" row is the way into the messenger. Clomni adds nothing here itself. */
 class MainActivity : Activity() {
-    private lateinit var badge: TextView
-    private lateinit var log: TextView
+    private lateinit var supportBadge: TextView
+    private lateinit var events: TextView
+
+    // The unread count on the app's own "Dəstək" row.
     private val unread = UnreadCountListener { count ->
-        badge.visibility = if (count > 0) View.VISIBLE else View.GONE
-        badge.text = if (count > 99) "99+" else count.toString()
+        supportBadge.visibility = if (count > 0) View.VISIBLE else View.GONE
+        supportBadge.text = count.toString()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val padding = (16 * resources.displayMetrics.density).toInt()
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, padding)
-        }
-        column.addView(TextView(this).apply {
-            setText(R.string.profile)
-            textSize = 28f
-        })
+        setContentView(R.layout.activity_main)
+        supportBadge = findViewById(R.id.support_badge)
+        events = findViewById(R.id.events)
 
-        // The app's own button and badge: Clomni adds nothing to this screen by itself.
-        val supportRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        supportRow.addView(button(R.string.support) { Clomni.present(source = "profile_support") })
-        badge = TextView(this).apply {
-            setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFFE5484D.toInt())
-            setPadding(padding / 2, 0, padding / 2, 0)
-            visibility = View.GONE
-        }
-        supportRow.addView(badge)
-        column.addView(supportRow)
+        // The app's own button opens the messenger; the source is stored with a conversation started there.
+        findViewById<View>(R.id.support).setOnClickListener { Clomni.present(source = "profile_support") }
 
-        column.addView(button(R.string.new_conversation) { Clomni.presentNewConversation(source = "profile_new") })
-        // Contextual: the conversation starts with the ride it is about.
-        column.addView(button(R.string.report_problem) {
+        // A contextual button: the conversation starts with the ride it is about.
+        findViewById<View>(R.id.report_problem).setOnClickListener {
             Clomni.startFlow("ride_problem", mapOf("ride_id" to "R-1923"), openMessenger = true, source = "ride_screen")
-        })
-        // Automatic: the app reacts to its own event; the flow decides what to say.
-        column.addView(button(R.string.payment_failed) {
-            Clomni.startFlow("payment_failed", mapOf("order_id" to "A-1042", "amount" to 2.4), openMessenger = true)
-        })
-        column.addView(Switch(this).apply {
-            setText(R.string.launcher)
-            setOnCheckedChangeListener { _, on -> Clomni.setLauncherVisible(on) }
-        })
-        // What the app's FirebaseMessagingService does (android/docs/push.md), with a payload made here: the sample
-        // has no Firebase.
-        column.addView(button(R.string.fake_push) {
-            ClomniPush.handle(
-                this,
-                mapOf(
-                    "clomni" to "1", "type" to "message", "conversation_id" to "conv_sample", "message_id" to "msg_1",
-                    "title" to "Leyla · Apar", "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
-                    "avatar_url" to "https://app.clomni.ai/a/leyla.png", "unread_total" to "1",
-                ),
-            )
-        })
-        column.addView(button(R.string.own_push) {
-            val handled = ClomniPush.handle(this, mapOf("order_id" to "A-1042", "title" to "Sifarişiniz yoldadır"))
-            note(if (handled) "Clomni push" else "the app's own push: ClomniPush.handle returned false")
-        })
-        column.addView(button(R.string.close_in_3) {
-            Clomni.present(source = "dismiss_demo")
-            Handler(Looper.getMainLooper()).postDelayed({ Clomni.dismiss() }, 3_000)
-        })
+        }
 
-        column.addView(TextView(this).apply {
-            setText(R.string.events)
-            setPadding(0, padding, 0, 0)
-        })
-        log = TextView(this)
-        column.addView(log)
-        setContentView(ScrollView(this).apply { addView(column) })
+        // The floating button is off unless the app (or the Clomni panel) turns it on.
+        findViewById<Switch>(R.id.launcher).setOnCheckedChangeListener { _, on -> Clomni.setLauncherVisible(on) }
 
-        Clomni.onMessengerOpened { source -> note("opened ($source)") }
-        Clomni.onMessengerClosed { note("closed") }
-        Clomni.onConversationStarted { id -> note("conversation $id") }
-        Clomni.onFlowCompleted { flow -> note("flow completed: $flow") }
+        findViewById<View>(R.id.login).setOnClickListener { logIn() }
+        findViewById<View>(R.id.logout).setOnClickListener { logOut() }
+        findViewById<View>(R.id.fake_push).setOnClickListener { FakePush.deliver(this) }
 
-        // Android 13+: notifications need the user's yes, asked by the app.
+        Clomni.onConversationStarted { id -> note("conversation $id started") }
+        Clomni.onMessengerClosed { note("messenger closed") }
+
+        // Android 13+: Clomni's notifications need the user's permission, which the app asks for.
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
@@ -121,12 +63,21 @@ class MainActivity : Activity() {
         super.onStop()
     }
 
-    private fun button(text: Int, action: () -> Unit) = Button(this).apply {
-        setText(text)
-        setOnClickListener { action() }
+    private fun logIn() {
+        // After the app's own login: its user, and the hash its server computed (DemoServer stands in for it).
+        val userId = "12345"
+        val user = ClomniUser(userId = userId, email = "aysel@example.com", name = "Aysel Məmmədova")
+        Clomni.loginUser(user, userHash = DemoServer.userHash(userId))
+        findViewById<TextView>(R.id.user).text = user.name
+    }
+
+    private fun logOut() {
+        // With the app's own logout: the next user must not see this one's conversations.
+        Clomni.logout()
+        findViewById<TextView>(R.id.user).text = ""
     }
 
     private fun note(line: String) {
-        log.append("$line\n")
+        events.append("$line\n")
     }
 }

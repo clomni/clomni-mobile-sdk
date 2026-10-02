@@ -43,6 +43,10 @@ android {
     testOptions {
         unitTests.all { test ->
             test.systemProperty("clomni.protocol.dir", protocolDir.absolutePath)
+            // DocsTest reads docs/integration.md and the sample it quotes.
+            test.systemProperty("clomni.android.dir", rootProject.projectDir.absolutePath)
+            test.inputs.dir(rootProject.file("docs")).withPropertyName("docs").withPathSensitivity(PathSensitivity.RELATIVE)
+            test.inputs.dir(rootProject.file("sample/src/main")).withPropertyName("sample").withPathSensitivity(PathSensitivity.RELATIVE)
             test.inputs.dir(protocolDir).withPropertyName("protocol").withPathSensitivity(PathSensitivity.RELATIVE)
         }
     }
