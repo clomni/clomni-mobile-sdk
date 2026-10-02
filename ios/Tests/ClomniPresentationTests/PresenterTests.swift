@@ -15,13 +15,14 @@ enum Fixture {
     static var aparConfig: MessengerConfig { ProtocolJSON.parseConfig(data("42-config-apar.json"))! }
     static var minimalConfig: MessengerConfig { ProtocolJSON.parseConfig(data("43-config-minimal.json"))! }
 
-    /// A conversation whose last message is the fixture `message` (created at 2026-10-01T10:30Z, or `at`).
+    /// A conversation whose last message is the fixture `message` (created at 2026-10-01T10:30Z, or `at`), its JSON
+    /// changed by `edit`.
     static func conversation(_ id: String, message: String?, unread: Int = 0, assignee: String? = nil,
-                             at: String = "2026-10-01T10:30:00Z") -> Conversation {
+                             at: String = "2026-10-01T10:30:00Z", edit: (String) -> String = { $0 }) -> Conversation {
         var last = "null"
         if let message {
-            last = String(decoding: data(message), as: UTF8.self)
-                .replacingOccurrences(of: #""created_at": "[^"]*""#, with: #""created_at": "\#(at)""#, options: .regularExpression)
+            last = edit(String(decoding: data(message), as: UTF8.self)
+                .replacingOccurrences(of: #""created_at": "[^"]*""#, with: #""created_at": "\#(at)""#, options: .regularExpression))
         }
         let person = assignee.map { #"{"name":"\#($0)","avatar_url":"https://app.clomni.ai/a/\#($0.lowercased()).png"}"# } ?? "null"
         let json = #"{"id":"\#(id)","status":"open","assignee":\#(person),"unread_count":\#(unread),"last_message":\#(last),"created_at":"2026-09-30T08:00:00Z"}"#
@@ -200,6 +201,40 @@ final class PresenterTests: XCTestCase {
             .row(Fixture.conversation("conv_4", message: "23-system-operator-joined.json"), config: Fixture.minimalConfig))
         XCTAssertEqual(system.detail, "Clomni, Inc. · 2 dəq")
         XCTAssertEqual(system.preview, "Leyla söhbətə qoşuldu")
+    }
+
+    /// A bot's last message shows the bot as the conversation does: the panel's bot picture, else the brand's logo,
+    /// else the initial. An operator's keeps the operator's own picture, whatever the bot's.
+    func testRecentRowAvatarOfTheBot() throws {
+        func config(bot: String?, logo: String?) throws -> MessengerConfig {
+            let picture = bot.map { #","avatar_url":"\#($0)""# } ?? ""
+            let logoUrl = logo.map { #","logo_url":"\#($0)""# } ?? ""
+            return try XCTUnwrap(ProtocolJSON.parseConfig(Data(
+                #"{"brand":{"name":"Apar"\#(logoUrl)},"bot":{"name":"Clomni"\#(picture)}}"#.utf8)))
+        }
+        func row(_ conversation: Conversation, _ config: MessengerConfig) throws -> ConversationRow {
+            try XCTUnwrap(presenter(config: config).row(conversation, config: config))
+        }
+        let panelBot = "https://app.clomni.ai/v1/images/bot", logo = "https://app.clomni.ai/v1/images/logo"
+        let fromBot = Fixture.conversation("conv_1", message: "01-text-bot.json")
+        let faceless = Fixture.conversation("conv_1", message: "01-text-bot.json") {
+            $0.replacingOccurrences(of: #""avatar_url": "https://app.clomni.ai/a/bot.png""#, with: #""avatar_url": null"#)
+        }
+        XCTAssertNil(faceless.lastMessage?.sender.avatarUrl)
+
+        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString, panelBot,
+                       "the panel's bot picture before the sender's own")
+        XCTAssertEqual(try row(faceless, config(bot: nil, logo: logo)).avatarUrl?.absoluteString, logo,
+                       "no bot picture: the brand's logo")
+        let neither = try row(faceless, config(bot: nil, logo: nil))
+        XCTAssertNil(neither.avatarUrl)
+        XCTAssertEqual(neither.initial, "C", "nor a logo: the bot's initial")
+        XCTAssertEqual(try row(fromBot, config(bot: nil, logo: logo)).avatarUrl?.absoluteString,
+                       "https://app.clomni.ai/a/bot.png", "as in the conversation: a picture the bot came with, then the logo")
+
+        let fromOperator = Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")
+        XCTAssertEqual(try row(fromOperator, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString,
+                       "https://app.clomni.ai/a/leyla.png")
     }
 
     func testMarkdownIsRemovedFromPreviews() {

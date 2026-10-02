@@ -218,11 +218,18 @@ package struct HomePresenter: Sendable {
         case .operator: name = message.sender.name ?? conversation.assignee?.name ?? config?.brand.name ?? ""
         case .system, .unknown: name = config?.brand.name ?? ""
         }
-        // The avatar is the other side's: the operator's, or the bot's.
-        let other: (name: String, avatar: URL?) = message.sender.type == .user || message.sender.type == .system
-            ? (conversation.assignee?.name ?? botName ?? config?.brand.name ?? "",
-               conversation.assignee?.avatarUrl ?? config?.botAvatarUrl)
-            : (name, message.sender.avatarUrl ?? (message.sender.type == .bot ? config?.botAvatarUrl : nil))
+        // The avatar is the other side's: the operator's own picture, or the bot's as in the conversation (the
+        // panel's bot picture first, then the brand's logo, then the initial).
+        let other: (name: String, avatar: URL?)
+        switch message.sender.type {
+        case .user, .system:
+            other = (conversation.assignee?.name ?? botName ?? config?.brand.name ?? "",
+                     conversation.assignee?.avatarUrl ?? config?.botAvatarUrl)
+        case .bot:
+            other = (name, config?.bot.avatarUrl ?? message.sender.avatarUrl ?? config?.brand.logoUrl)
+        case .operator, .unknown:
+            other = (name, message.sender.avatarUrl)
+        }
         let preview = Self.plainText(message)
         let ago = time.ago(message.createdAt, now: now)
         let unread = conversation.unreadCount > 0
