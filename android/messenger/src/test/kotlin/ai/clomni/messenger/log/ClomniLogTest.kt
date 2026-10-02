@@ -75,7 +75,7 @@ class ClomniLogTest {
                 Credentials(MemorySecureStore(), ProtocolJson()),
                 ProtocolJson(),
                 { DeviceInfo("d_1", "14", "1.0", "1.0.0", "az-AZ", "Asia/Baku", "Pixel") },
-                ApiClient.defaultClient(),
+                lazyOf(ApiClient.defaultClient()),
                 sleep = {},
             )
             fun error(status: Int, code: String) = MockResponse().setResponseCode(status)

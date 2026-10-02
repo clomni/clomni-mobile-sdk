@@ -30,7 +30,7 @@ class RealtimeClientTest {
     private val received = LinkedBlockingQueue<String>()
 
     private fun connection(secondMs: Long = 1_000) = RealtimeClient(
-        http = OkHttpClient(),
+        http = lazyOf(OkHttpClient()),
         protocol = ProtocolJson(),
         executor = executor,
         sdkHeader = "android/1.0.0",
@@ -179,7 +179,7 @@ class RealtimeClientTest {
         acceptSocket()
         acceptSocket()
         val connection = RealtimeClient(
-            OkHttpClient(),
+            lazyOf(OkHttpClient()),
             ProtocolJson(),
             executor,
             "android/1.0.0",

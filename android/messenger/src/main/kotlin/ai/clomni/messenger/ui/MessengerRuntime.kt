@@ -5,8 +5,8 @@ import ai.clomni.messenger.UnreadCountListener
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.core.AndroidMessenger
 import ai.clomni.messenger.core.ClomniEngine
-import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.core.NetworkMonitor
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.MessengerCoordinator
 import ai.clomni.messenger.presentation.MessengerEvents

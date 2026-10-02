@@ -1,6 +1,7 @@
 package ai.clomni.messenger.api
 
 import ai.clomni.messenger.BuildConfig
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.ConversationPage
@@ -11,7 +12,6 @@ import ai.clomni.messenger.protocol.MessagePage
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.MobileSession
 import ai.clomni.messenger.protocol.MobileUser
-import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.ServerError
 import ai.clomni.messenger.protocol.UploadedFile
@@ -77,7 +77,8 @@ internal class ApiClient(
     private val credentials: Credentials,
     private val protocol: ProtocolJson,
     private val device: () -> DeviceInfo,
-    private val http: OkHttpClient = defaultClient(),
+    /** Built on first use, on the SDK's worker: building one reads the system's certificates (disk). */
+    private val http: Lazy<OkHttpClient> = lazy(::defaultClient),
     private val sleep: (Long) -> Unit = Thread::sleep,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
@@ -272,7 +273,7 @@ internal class ApiClient(
                 headers.forEach { (name, value) -> if (value != null) header(name, value) }
             }.build()
             val response = try {
-                http.newCall(request).execute().use {
+                http.value.newCall(request).execute().use {
                     Response(it.code, it.body?.string().orEmpty(), it.header("ETag"), it.header("Retry-After"))
                 }
             } catch (e: IOException) {

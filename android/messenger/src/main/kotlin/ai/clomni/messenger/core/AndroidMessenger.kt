@@ -6,6 +6,7 @@ import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.KeystoreSecureStore
+import ai.clomni.messenger.api.SecureStore
 import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.ChatController
 import ai.clomni.messenger.presentation.HomeController
@@ -19,6 +20,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import okhttp3.OkHttpClient
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
@@ -28,6 +30,11 @@ import java.util.concurrent.Executors
 /** Builds the engine inside an app: Keystore-backed credentials, files in `noBackupFilesDir`, socket by foreground. */
 internal object AndroidMessenger {
 
+    /**
+     * Runs in `Clomni.initialize`, on the main thread: it touches neither the disk nor the network (brief 8·10,
+     * initialize ≤ 50 ms). The files are only named here; the previous run's cache, the Keystore and the HTTP client
+     * (which reads the system's certificates) are first used on the SDK's worker.
+     */
     fun create(
         context: Context,
         appId: String,
@@ -35,17 +42,32 @@ internal object AndroidMessenger {
         baseUrl: String = ApiConfiguration.DEFAULT_BASE_URL,
     ): ClomniEngine {
         val app = context.applicationContext as Application
-        val protocol = ProtocolJson(::protocolLog)
-        val credentials = Credentials(KeystoreSecureStore(app, appId), protocol)
-        val http = ApiClient.defaultClient()
-        val device = { deviceInfo(app, credentials.deviceId) }
-        val api = ApiClient(ApiConfiguration(appId, apiKey, baseUrl), credentials, protocol, device, http)
-        val store = MessageStore(File(app.noBackupFilesDir, "clomni/$appId/cache"), protocol)
-        val engine = ClomniEngine(api, credentials, store, protocol, http)
+        // Context.noBackupFilesDir without its mkdir, which would be a disk write on the main thread.
+        val noBackup = File(app.applicationInfo.dataDir, "no_backup/clomni/$appId")
+        val engine = engine(
+            ApiConfiguration(appId, apiKey, baseUrl),
+            KeystoreSecureStore(File(noBackup, "secure"), appId),
+            File(noBackup, "cache"),
+            lazy(ApiClient::defaultClient),
+        ) { deviceId -> deviceInfo(app, deviceId) }
         ForegroundTracker(app) { foreground ->
             if (foreground) engine.applicationWillEnterForeground() else engine.applicationDidEnterBackground()
         }
         return engine
+    }
+
+    /** The engine of [create] without Android's own pieces; what it does on the calling thread is tested on the JVM. */
+    fun engine(
+        configuration: ApiConfiguration,
+        secure: SecureStore,
+        cacheDir: File,
+        http: Lazy<OkHttpClient>,
+        device: (deviceId: String) -> DeviceInfo,
+    ): ClomniEngine {
+        val protocol = ProtocolJson(::protocolLog)
+        val credentials = Credentials(secure, protocol)
+        val api = ApiClient(configuration, credentials, protocol, { device(credentials.deviceId) }, http)
+        return ClomniEngine(api, credentials, MessageStore(cacheDir, protocol), protocol, http)
     }
 
     /**

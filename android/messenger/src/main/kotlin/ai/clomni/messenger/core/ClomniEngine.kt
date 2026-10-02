@@ -6,12 +6,12 @@ import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SessionIdentity
+import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.api.samePerson
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.ChatDataSource
 import ai.clomni.messenger.presentation.MessengerDataSource
 import ai.clomni.messenger.presentation.MessengerSession
-import ai.clomni.messenger.api.UserIdentity
-import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.ConversationWithMessages
@@ -60,7 +60,7 @@ internal class ClomniEngine(
     private val credentials: Credentials,
     private val store: MessageStore,
     protocol: ProtocolJson,
-    http: OkHttpClient,
+    http: Lazy<OkHttpClient>,
     private val executor: ScheduledExecutorService = newWorker(),
     timing: Timing = Timing(),
     private val clock: () -> Long = System::currentTimeMillis,

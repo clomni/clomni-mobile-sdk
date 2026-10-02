@@ -1,6 +1,5 @@
 package ai.clomni.messenger.api
 
-import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.io.File
@@ -36,8 +35,7 @@ internal class MemorySecureStore : SecureStore {
  * cannot be restored to another device, so neither are the files. A file that no longer decrypts (the key was
  * removed, say by a factory reset of the Keystore) reads as absent, and the SDK opens a new session.
  */
-internal class KeystoreSecureStore(context: Context, appId: String) : SecureStore {
-    private val dir = File(context.noBackupFilesDir, "clomni/$appId/secure")
+internal class KeystoreSecureStore(private val dir: File, appId: String) : SecureStore {
     private val alias = "ai.clomni.messenger.$appId"
 
     @Synchronized

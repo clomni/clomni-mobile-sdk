@@ -56,7 +56,7 @@ class ClomniEngineTest {
         val protocol = ProtocolJson()
         val credentials = Credentials(vault, protocol)
         // The SDK's own client: OkHttp does not repeat a request by itself, so every attempt is the outbox's.
-        private val http = ApiClient.defaultClient()
+        private val http = lazyOf(ApiClient.defaultClient())
         private val api = ApiClient(
             ApiConfiguration(FakeMobileServer.APP_ID, FakeMobileServer.API_KEY, fake.baseUrl, "1.0.0"),
             credentials,

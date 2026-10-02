@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit
  * Every method and every listener call runs on [executor], the SDK's own worker thread.
  */
 internal class RealtimeClient(
-    private val http: OkHttpClient,
+    private val http: Lazy<OkHttpClient>,
     private val protocol: ProtocolJson,
     private val executor: ScheduledExecutorService,
     private val sdkHeader: String,
@@ -111,7 +111,7 @@ internal class RealtimeClient(
         state = State.CONNECTING
         heartbeatSec = DEFAULT_HEARTBEAT_SEC
         val request = Request.Builder().url(url).header("X-Clomni-SDK", sdkHeader).build()
-        socket = http.newWebSocket(
+        socket = http.value.newWebSocket(
             request,
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) = post(gen) {
