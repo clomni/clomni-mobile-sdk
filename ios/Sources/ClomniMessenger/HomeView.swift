@@ -55,11 +55,14 @@ struct HomeHeaderView: View {
                 CloseButton(label: header.closeLabel, color: ink, action: close)
             }
             .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
-            VStack(alignment: .leading, spacing: 0) {
-                Text(header.greeting).opacity(0.62)
+            // The first line in the header's full colour, told apart by size and weight: at 62% opacity it fell
+            // below 3:1 on mid-tone brand colours (BRIEF-DEVIATIONS #18, same as Android).
+            VStack(alignment: .leading, spacing: 2) {
+                Text(header.greeting)
+                    .clomniFont(ClomniTheme.FontSize.brand, .regular, relativeTo: .headline)
                 Text(header.title)
+                    .clomniFont(ClomniTheme.FontSize.greeting, .semibold, relativeTo: .title2)
             }
-            .clomniFont(ClomniTheme.FontSize.greeting, .semibold, relativeTo: .title2)
             .padding(.top, 20)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
