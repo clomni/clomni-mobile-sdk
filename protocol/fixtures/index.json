@@ -202,7 +202,7 @@
   {
     "file": "40-event-config-changed.json",
     "schema": "event.json",
-    "note": "WS: config dəyişib"
+    "note": "WS: config dəyişib (dərc olunmuş versiya ilə)"
   },
   {
     "file": "41-event-unknown.json",
@@ -212,12 +212,12 @@
   {
     "file": "42-config-apar.json",
     "schema": "config.json",
-    "note": "Config: Apar, launcher söndürülüb, 4 kanal ikonu"
+    "note": "Config v2: Apar, versiya 12, server törəmə rəngləri, launcher söndürülüb, 4 kanal"
   },
   {
     "file": "43-config-minimal.json",
     "schema": "config.json",
-    "note": "Minimal config: kanal və komanda avatarı yoxdur, kartlar gizlənir; SDK default mətnləri"
+    "note": "Minimal config v2: solid header, komanda gizli, kanal yoxdur, yalnız send kartı; SDK default mətnləri"
   },
   {
     "file": "44-push-message.json",
@@ -255,9 +255,49 @@
     "note": "Klient: qiymət 5 + şərh"
   },
   {
+    "file": "53-appearance-apar.json",
+    "schema": "appearance.json",
+    "note": "Görünüş sənədi (panel): Apar, mətn override-ları, 5 kanaldan 4-ü açıq"
+  },
+  {
+    "file": "54-appearance-default.json",
+    "schema": "appearance.json",
+    "note": "Görünüş sənədi: veb chatı olmayan yeni kanalın default-u"
+  },
+  {
     "file": "49-client-attachment.json",
     "schema": "client-message.json",
     "note": "Klient: şəkil (əvvəl POST /v1/uploads)"
+  },
+  {
+    "file": "85-invalid-appearance-text-too-long.json",
+    "schema": "appearance.json",
+    "note": "Səhv: tab_home 16 simvoldan uzun",
+    "valid": false
+  },
+  {
+    "file": "86-invalid-appearance-whatsapp-url.json",
+    "schema": "appearance.json",
+    "note": "Səhv: WhatsApp linki https://wa.me/… deyil",
+    "valid": false
+  },
+  {
+    "file": "87-invalid-appearance-cards-without-send.json",
+    "schema": "appearance.json",
+    "note": "Səhv: kartlarda send yoxdur",
+    "valid": false
+  },
+  {
+    "file": "88-invalid-appearance-unknown-text.json",
+    "schema": "appearance.json",
+    "note": "Səhv: paneldən dəyişməyən mətn açarı",
+    "valid": false
+  },
+  {
+    "file": "89-invalid-appearance-custom-reply-time.json",
+    "schema": "appearance.json",
+    "note": "Səhv: custom cavab müddəti mətnsiz",
+    "valid": false
   },
   {
     "file": "90-invalid-quick-replies-empty.json",
@@ -298,7 +338,7 @@
   {
     "file": "96-invalid-config-color.json",
     "schema": "config.json",
-    "note": "Səhv: rəng #RRGGBB deyil",
+    "note": "Səhv: rəng #RRGGBB deyil (config v2)",
     "valid": false
   },
   {

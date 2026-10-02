@@ -1,0 +1,84 @@
+{
+  "brand": {
+    "name": "Apar",
+    "primary_color": "#1F9D63",
+    "header_style": "gradient",
+    "glow": false,
+    "logo": "img_Lq3T8vXw2KpA9mZc4RbN",
+    "logo_dark": null,
+    "header_image": null
+  },
+  "team": {
+    "show": true,
+    "mode": "auto",
+    "avatars": [],
+    "reply_time": {
+      "preset": "minutes"
+    },
+    "reply_time_offline": {
+      "az": "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik",
+      "en": "We are away now and will answer in the morning"
+    }
+  },
+  "bot": {
+    "name": "Clomni",
+    "avatar": null
+  },
+  "texts": {
+    "greeting_line1": {
+      "az": "Salam, {first_name} 👋"
+    },
+    "greeting_line2": {
+      "az": "Bizdən nəsə soruşun"
+    },
+    "tab_home": {
+      "ru": "Главная"
+    },
+    "error": {
+      "az": "Xəta"
+    }
+  },
+  "home": {
+    "cards": [
+      "send",
+      "recent",
+      "channels"
+    ],
+    "channels": [
+      {
+        "type": "instagram",
+        "url": "https://instagram.com/apar.az",
+        "enabled": true
+      },
+      {
+        "type": "whatsapp",
+        "url": "https://wa.me/994501234567",
+        "enabled": true
+      },
+      {
+        "type": "linkedin",
+        "url": "https://linkedin.com/company/apar",
+        "enabled": true
+      },
+      {
+        "type": "email",
+        "url": "mailto:support@apar.az",
+        "enabled": true
+      },
+      {
+        "type": "phone",
+        "url": "tel:+994501234567",
+        "enabled": false
+      }
+    ]
+  },
+  "theme": {
+    "mode": "system",
+    "launcher": {
+      "enabled": false,
+      "position": "right",
+      "bottom_padding": 20
+    }
+  },
+  "powered_by": true
+}

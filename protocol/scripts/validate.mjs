@@ -50,4 +50,27 @@ for (const folder of folders) {
   }
 }
 console.log(`${checked - failures}/${checked} files match their schema`);
-process.exit(failures ? 1 : 0);
+
+// strings.json: every language has the same keys, each a non-empty text with the same placeholders (%d, %@).
+const strings = JSON.parse(readFileSync(join(root, 'strings.json'), 'utf8'));
+const languages = ['az', 'en', 'ru'];
+const placeholders = text => (text.match(/%[d@]/g) || []).sort().join(' ');
+const reference = strings[languages[0]] || {};
+let stringFailures = 0;
+for (const language of languages) {
+  const table = strings[language] || {};
+  const keys = new Set([...Object.keys(reference), ...Object.keys(table)]);
+  for (const key of keys) {
+    const text = table[key];
+    let problem = null;
+    if (typeof text !== 'string' || text.trim() === '') problem = 'missing or empty';
+    else if (!(key in reference)) problem = `not in ${languages[0]}`;
+    else if (placeholders(text) !== placeholders(reference[key])) problem = `placeholders differ from ${languages[0]}`;
+    if (problem) {
+      stringFailures += 1;
+      console.error(`✗ strings.json ${language}.${key}: ${problem}`);
+    }
+  }
+}
+console.log(`strings.json: ${Object.keys(reference).length} keys in ${languages.join(', ')}${stringFailures ? `, ${stringFailures} problems` : ''}`);
+process.exit(failures || stringFailures ? 1 : 0);

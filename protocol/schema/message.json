@@ -94,7 +94,8 @@
         "url": { "type": "string", "format": "uri" },
         "name": { "type": "string", "minLength": 1 },
         "size": { "type": "integer", "minimum": 0 },
-        "mime": { "type": "string", "minLength": 1 }
+        "mime": { "type": "string", "minLength": 1 },
+        "caption": { "type": ["string", "null"], "description": "Text sent with the file, shown under it." }
       }
     },
     "form_field": {

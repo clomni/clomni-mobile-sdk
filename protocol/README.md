@@ -12,6 +12,7 @@ is [docs/audit.md](../docs/audit.md) (§15 maps Clomni messages to these types).
 | [schema/config.json](schema/config.json) | `GET /v1/mobile/config` |
 | [schema/push.json](schema/push.json) | Clomni keys of an FCM / APNs push |
 | [openapi.yaml](openapi.yaml) | Mobile API v1 (REST), OpenAPI 3.1; the realtime socket is described in its `info` |
+| [strings.json](strings.json) | the SDKs' UI texts in az, en and ru (see below) |
 
 Rules that the schemas encode:
 - Within v1 only additions: a new field, type or event. Removing a field, renaming it or changing its type is not allowed.
@@ -36,6 +37,21 @@ and on `main`.
 
 `examples/brief/` holds every JSON example of the brief; `fixtures/` (CM-011) the cases both SDKs render.
 Each folder's `index.json` names the schema a file must pass, or `"valid": false` for one that must fail.
+
+## UI texts (`strings.json`)
+
+Every text the SDKs show that does not come from a message: tabs, dates, statuses, form errors. Keys are the
+same in az, en and ru; `%d` stands for a number and `%@` for a text (a time, for `away_until`).
+
+- `GET /mobile/config` returns `strings` for one language: this file's set, with the inbox's own overrides
+  (`appearance.strings.<lang>`, set in the panel) on top.
+- Each SDK carries the same table built in, so a minimal config, or none yet, still reads well.
+- A new text is added here first, in all three languages, then to both SDKs. `npm run validate` fails if a
+  language misses a key, has an empty text, or its placeholders differ from az.
+
+Text on the brand colour (`brand.on_primary_color`) is always sent. When the inbox does not set it, the
+server picks white if white reaches a WCAG contrast of 4.5:1 on `primary_color`, otherwise black; the SDKs use
+the same rule for a config that lacks it.
 
 ## Fixtures
 

@@ -1,0 +1,5 @@
+# Warnings accepted on purpose (format of redocly lint --generate-ignore-file).
+# GET /images/{id} only ever redirects to the picture: it has no 2XX answer of its own.
+openapi.yaml:
+  operation-2xx-response:
+    - '#/paths/~1images~1{id}/get/responses'
