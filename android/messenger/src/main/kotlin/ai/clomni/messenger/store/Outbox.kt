@@ -24,6 +24,12 @@ internal object Drafts {
     fun new(): String = PREFIX + java.util.UUID.randomUUID()
 
     fun isDraft(conversationId: String): Boolean = conversationId.startsWith(PREFIX)
+
+    /**
+     * The `client_id` of the POST /conversations a draft's first message makes: made with the draft, kept on disk with
+     * its messages, so a retry after a lost answer (or the next run) asks for the same conversation, not a new one.
+     */
+    fun startId(draftId: String): String = draftId.removePrefix(PREFIX)
 }
 
 /** A message on its way to the server, shown as the user's bubble until the server's copy replaces it. */

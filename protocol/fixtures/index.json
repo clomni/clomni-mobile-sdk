@@ -352,5 +352,16 @@
     "schema": "message.json#/$defs/card",
     "note": "Səhv: kart düyməsində həm payload, həm url",
     "valid": false
+  },
+  {
+    "file": "60-conversation-start-client-id.json",
+    "schema": "conversation-start.json",
+    "note": "POST /conversations client_id ilə: eyni sessiyada təkrar sorğu yeni söhbət açmır, mövcudu 200 ilə qaytarır"
+  },
+  {
+    "file": "99-invalid-conversation-start-client-id-empty.json",
+    "schema": "conversation-start.json",
+    "note": "Səhv: boş client_id",
+    "valid": false
   }
 ]

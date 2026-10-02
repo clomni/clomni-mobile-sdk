@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/conversation-start.json",
+  "title": "Start a conversation",
+  "description": "Body of POST /v1/conversations. With a client_id it is idempotent within the session (its chain, which a refresh keeps): the same client_id again starts nothing new and is answered, with 200, the conversation the first request made. Without one every request starts a new conversation (201).",
+  "type": "object",
+  "properties": {
+    "opened_from": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "The source passed to Clomni.present(source) or startFlow; push when opened from a notification."
+    },
+    "client_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "The app's own id for this start (UUID v4), made once and kept with the first message queued for it, so a retry or an offline queue sends the same one."
+    }
+  }
+}
