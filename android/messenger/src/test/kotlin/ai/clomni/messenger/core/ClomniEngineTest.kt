@@ -25,6 +25,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -238,6 +239,30 @@ class ClomniEngineTest {
         phone.engine.sendText("Və bu", draft).await()
         eventually("the third") { fake.userMessages(conversation).size == 3 }
         assertEquals(1, creates())
+    }
+
+    /**
+     * The server made the conversation but its answer was lost: the next attempt sends the same client_id, and the
+     * server answers that conversation (200) instead of making a second one.
+     */
+    @Test
+    fun aLostStartAnswerIsRetriedWithTheSameClientId() {
+        val phone = Phone(retryMs = 50)
+        phone.engine.loginUnidentifiedUser().await()
+        phone.engine.connect().await()
+        phone.caughtUp()
+        val draft = phone.engine.draft("profile_support")
+        fake.dropCreateAnswers = 1
+        phone.engine.sendText("Salam", draft).await()
+        eventually("sent") { phone.engine.pending(draft).isEmpty() && fake.startIds.size == 2 }
+        phone.engine.awaitIdle()
+        val ids = fake.startIds.toList()
+        assertEquals("one id, twice", 1, ids.toSet().size)
+        assertNotNull(ids.first())
+        assertTrue("1-64 characters", ids.first()!!.length in 1..64)
+        phone.engine.refreshConversations().await()
+        val conversation = phone.engine.conversations().single().id
+        assertEquals(listOf("Salam"), fake.userMessages(conversation).map { it.getValue("content").jsonObject.getValue("text").jsonPrimitive.content })
     }
 
     /** Offline: the draft's message waits, fails, and on retry creates the conversation once. */

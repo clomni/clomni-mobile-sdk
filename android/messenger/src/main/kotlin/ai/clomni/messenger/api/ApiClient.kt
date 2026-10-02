@@ -144,8 +144,19 @@ internal class ApiClient(
         protocol::parseConversationPage,
     )
 
-    fun createConversation(openedFrom: String?): ConversationWithMessages = read(
-        call("POST", "conversations", buildJsonObject { openedFrom?.let { put("opened_from", it) } }),
+    /**
+     * A new conversation (201), or with a [clientId] already used in this session the one it made then (200): a retry
+     * never makes a second one.
+     */
+    fun createConversation(openedFrom: String?, clientId: String? = null): ConversationWithMessages = read(
+        call(
+            "POST",
+            "conversations",
+            buildJsonObject {
+                openedFrom?.let { put("opened_from", it) }
+                clientId?.let { put("client_id", it) }
+            },
+        ),
         protocol::parseConversationWithMessages,
     )
 

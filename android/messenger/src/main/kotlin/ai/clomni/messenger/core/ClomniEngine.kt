@@ -678,7 +678,7 @@ internal class ClomniEngine(
     private fun started(entry: PendingMessage): PendingMessage {
         val draft = entry.conversationId
         if (!Drafts.isDraft(draft)) return entry
-        val created = authed { api.createConversation(entry.openedFrom) }
+        val created = authed { api.createConversation(entry.openedFrom, Drafts.startId(draft)) }
         store.outbox.moveConversation(draft, created.conversation.id)
         createdDrafts[draft] = created.conversation.id
         apply(created)

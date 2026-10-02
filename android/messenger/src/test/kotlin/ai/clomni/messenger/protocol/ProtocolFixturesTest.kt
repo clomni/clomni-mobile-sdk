@@ -45,6 +45,8 @@ class ProtocolFixturesTest(path: String) {
             schema == "push.json" -> protocol.json.parsePush(json)
             // The panel's document; the SDK reads only what the server makes of it, config.json.
             schema == "appearance.json" -> Json.parseToJsonElement(json)
+            // A request body the SDK writes (ApiClient.createConversation); checked against what it writes there.
+            schema == "conversation-start.json" -> Json.parseToJsonElement(json)
             schema == "client-message.json" -> {
                 // Built the way the SDK builds it, the message encodes to the fixture, and the fixture reads back to it.
                 val built = ClientMessageFixtures.all[entry.path]
@@ -121,6 +123,8 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/52-client-rating.json" to ClientMessage.RatingSubmit::class,
             "fixtures/53-appearance-apar.json" to JsonObject::class,
             "fixtures/54-appearance-default.json" to JsonObject::class,
+            "fixtures/60-conversation-start-client-id.json" to JsonObject::class,
+            "fixtures/99-invalid-conversation-start-client-id-empty.json" to JsonObject::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
             "fixtures/86-invalid-appearance-whatsapp-url.json" to JsonObject::class,

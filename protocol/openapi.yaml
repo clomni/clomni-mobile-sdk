@@ -313,8 +313,14 @@ paths:
       tags: [Conversations]
       operationId: createConversation
       summary: Start a conversation
-      description: Starts the inbox's "new conversation" flow. Its first bot messages are in the response; the rest
-        arrive over the socket.
+      description: |
+        Starts the inbox's "new conversation" flow. Its first bot messages are in the response; the rest arrive over
+        the socket.
+
+        Idempotent with a `client_id` (the app's own id for this start, made once and kept with the queued first
+        message): the same session (its chain, which a refresh keeps) and the same `client_id` again - a retry after a
+        lost answer, or two requests at once - start nothing new and answer the conversation the first one made, with
+        200. Without a `client_id` every request starts a new conversation.
       parameters:
         - $ref: '#/components/parameters/Sdk'
       requestBody:
@@ -325,11 +331,23 @@ paths:
               properties:
                 opened_from:
                   $ref: '#/components/schemas/OpenedFrom'
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: Makes the request idempotent within the session. A UUID is a good one.
             example:
               opened_from: profile_support
+              client_id: 3b7e0c1a-5f2d-4c8e-9a6b-2d1f0e9c8b7a
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationWithMessages'
+        '200':
+          description: This session's client_id already started a conversation; it is answered again, nothing new is made
           content:
             application/json:
               schema:

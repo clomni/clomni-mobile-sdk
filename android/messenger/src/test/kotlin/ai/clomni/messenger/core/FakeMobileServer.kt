@@ -76,6 +76,15 @@ internal class FakeMobileServer : Dispatcher() {
     /** The next N sends are stored, but their answer never reaches the device. */
     @Volatile var dropAnswers = 0
 
+    /** The next N new conversations are made, but their answer never reaches the device. */
+    @Volatile var dropCreateAnswers = 0
+
+    /** The `client_id` of every POST /conversations, null for none. */
+    val startIds: MutableList<String?> = Collections.synchronizedList(mutableListOf())
+
+    /** (user, client_id) → the conversation it made: the server's idempotent start. */
+    private val starts = mutableMapOf<Pair<String, String>, String>()
+
     /** False: socket handshakes are refused (503). */
     @Volatile var acceptSockets = true
 
@@ -223,7 +232,7 @@ internal class FakeMobileServer : Dispatcher() {
                     put("next_cursor", JsonNull)
                 },
             )
-            path == "conversations" && method == "POST" -> createConversation(session)
+            path == "conversations" && method == "POST" -> createConversation(session, request)
             path == "uploads" -> json(
                 buildJsonObject {
                     put("upload_id", "upl_${++counter}")
@@ -343,9 +352,17 @@ internal class FakeMobileServer : Dispatcher() {
             .setHeader("ETag", etag)
     }
 
-    private fun createConversation(session: Session): MockResponse {
+    private fun createConversation(session: Session, request: RecordedRequest): MockResponse {
+        val body = request.body.readUtf8().takeIf { it.isNotBlank() }?.let { Json.parseToJsonElement(it).jsonObject }
+        val clientId = (body?.get("client_id") as? JsonPrimitive)?.content
+        startIds += clientId
+        clientId?.let { starts[session.userId to it] }?.let { known ->
+            val conv = conversations.getValue(known)
+            return json(buildJsonObject { put("conversation", conversation(conv)); put("messages", JsonArray(conv.messages.toList())) }, 200)
+        }
         val conv = Conv("conv_${++counter}", session.userId)
         conversations[conv.id] = conv
+        if (clientId != null) starts[session.userId to clientId] = conv.id
         val greeting = newMessage(
             conv,
             "bot",
@@ -366,6 +383,10 @@ internal class FakeMobileServer : Dispatcher() {
             "Salam!",
             interactive = true,
         )
+        if (dropCreateAnswers > 0) {
+            dropCreateAnswers--
+            return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+        }
         return json(buildJsonObject { put("conversation", conversation(conv)); put("messages", JsonArray(listOf(greeting))) }, 201)
     }
 
