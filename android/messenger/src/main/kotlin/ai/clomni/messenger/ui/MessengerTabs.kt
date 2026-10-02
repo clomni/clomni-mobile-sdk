@@ -6,9 +6,12 @@ import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.MessagesScreen
 import ai.clomni.messenger.protocol.MessengerConfig
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -105,7 +108,13 @@ internal fun MessengerTabs(
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     Column(Modifier.fillMaxSize().background(theme.colors.background.color)) {
-        Crossfade(tab, Modifier.weight(1f), animationSpec = tween(200), label = "tab") { selected ->
+        // Material 3's fade-through, 150 ms: the old tab fades out in the first third, the new one fades in after it.
+        AnimatedContent(
+            tab,
+            Modifier.weight(1f),
+            transitionSpec = { fadeIn(tween(100, delayMillis = 50)) togetherWith fadeOut(tween(50)) },
+            label = "tab",
+        ) { selected ->
             when (selected) {
                 MessengerTab.HOME -> HomeView(home, theme, actions)
                 MessengerTab.MESSAGES -> MessagesView(messages, theme, home.header.closeLabel, actions)

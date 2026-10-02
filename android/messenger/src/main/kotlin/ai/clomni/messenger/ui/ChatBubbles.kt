@@ -119,17 +119,13 @@ internal fun reduceMotion(): Boolean {
     return remember(context) { Motion.reduced(context) }
 }
 
-/** A new item comes in 6 dp from below while it fades in (220 ms, ease-out); with less motion it only fades. */
+/** A new item fades in (220 ms, ease-out), nothing moves (DESIGN-PASS 5: no flying elements). */
 @Composable
-internal fun Modifier.appearing(animate: Boolean, reduceMotion: Boolean): Modifier {
+internal fun Modifier.appearing(animate: Boolean): Modifier {
     if (!animate) return this
     val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) { progress.animateTo(1f, tween(220, easing = FastOutSlowInEasing)) }
-    val rise = with(LocalDensity.current) { 6.dp.toPx() }
-    return graphicsLayer {
-        alpha = progress.value
-        if (!reduceMotion) translationY = (1f - progress.value) * rise
-    }
+    return graphicsLayer { alpha = progress.value }
 }
 
 @Composable
