@@ -21,7 +21,7 @@ import java.util.TimeZone
 internal object Fixture {
     private val protocol = ProtocolJson()
 
-    val aparConfig: MessengerConfig get() = protocol.parseConfig(APAR_CONFIG_V2)!!
+    val aparConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
     val minimalConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/43-config-minimal.json"))!!
 
     /** A conversation whose last message is the fixture [message] (created at 2026-10-01T10:30Z, or [at]). */
@@ -68,10 +68,10 @@ class PresenterTest {
         val header = presenter().home(snapshot()).header
         assertEquals("Apar", header.brandName)
         assertEquals("A", header.brandInitial)
-        assertEquals("https://app.clomni.ai/a/apar.png", header.logoUrl)
+        assertEquals("https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN", header.logoUrl)
         assertEquals(3, header.teamAvatars.size)
         assertEquals("Salam, Aysel 👋", header.greeting)
-        assertEquals("Necə kömək edə bilərik?", header.title)
+        assertEquals("the panel's line", "Bizdən nəsə soruşun", header.title)
         assertEquals("Bağla", header.closeLabel)
 
         assertEquals("Salam 👋", presenter().home(snapshot(user = null)).header.greeting)
@@ -163,7 +163,7 @@ class PresenterTest {
     @Test
     fun theBotsPictureIsThePanels() {
         val bot = listOf(Fixture.conversation("conv_1", "01-text-bot.json"))
-        val panel = ProtocolJson().parseConfig(APAR_CONFIG_V2.replace("https://app.clomni.ai/a/bot.png", "https://app.clomni.ai/v1/images/bot"))!!
+        val panel = Fixture.aparConfig.let { it.copy(bot = it.bot.copy(avatarUrl = "https://app.clomni.ai/v1/images/bot")) }
         assertEquals("https://app.clomni.ai/v1/images/bot", presenter(config = panel).home(snapshot(panel, bot)).recent?.row?.avatarUrl)
         val none = ProtocolJson().parseConfig("""{"brand":{"name":"Apar","logo_url":"https://app.clomni.ai/v1/images/logo"}}""")!!
         assertEquals("the message's own", "https://app.clomni.ai/a/bot.png", presenter(config = none).home(snapshot(none, bot)).recent?.row?.avatarUrl)
@@ -288,7 +288,8 @@ class PresenterTest {
 
         val stale = snapshot(Fixture.aparConfig, list).copy(conversationsLoad = MessengerSnapshot.Load.FAILED)
         assertEquals("the cached list stays", HomeScreen.Phase.READY, presenter().messages(stale).phase)
-        assertEquals("Пока нет переписки", presenter("ru").messages(snapshot(Fixture.aparConfig, emptyList())).empty)
+        // The SDK's own Russian (fixture 42's texts are the Azerbaijani set the server sent).
+        assertEquals("Пока нет переписки", presenter("ru", config = null).messages(snapshot(Fixture.aparConfig, emptyList())).empty)
     }
 
     @Test

@@ -1,6 +1,5 @@
 package ai.clomni.messenger.protocol
 
-import ai.clomni.messenger.presentation.APAR_CONFIG_V2
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -13,14 +12,17 @@ class MessengerConfigTest {
 
     private fun config(json: String): MessengerConfig = protocol.json.parseConfig(json)!!
 
+    private val apar = ProtocolFiles.read("fixtures/42-config-apar.json")
+
+    /** The server's config v2 for Apar (protocol fixture 42), its colours taken as sent. */
     @Test
-    fun theContractsExample() {
-        val config = config(APAR_CONFIG_V2)
+    fun theServersAparConfig() {
+        val config = config(apar)
         assertEquals(12, config.version)
         assertEquals(
             MessengerConfig.Brand(
                 name = "Apar",
-                logoUrl = "https://app.clomni.ai/a/apar.png",
+                logoUrl = "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
                 logoDarkUrl = null,
                 primaryColor = "#1F9D63",
                 headerStyle = MessengerConfig.HeaderStyle.GRADIENT,
@@ -36,14 +38,14 @@ class MessengerConfigTest {
         assertEquals(
             MessengerConfig.Team(
                 show = true,
-                avatars = listOf("https://app.clomni.ai/a/leyla.png", "https://app.clomni.ai/a/rauf.png", "https://app.clomni.ai/a/nigar.png"),
+                avatars = listOf("leyla", "rauf", "nigar").map { "https://my.clomni.co/rails/active_storage/representations/redirect/$it.png" },
                 replyTime = "Adətən bir neçə dəqiqəyə cavab veririk",
                 replyTimeOffline = "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik",
                 officeHours = MessengerConfig.OfficeHours("Asia/Baku", openNow = true),
             ),
             config.team,
         )
-        assertEquals(MessengerConfig.Bot("Clomni", "https://app.clomni.ai/a/bot.png"), config.bot)
+        assertEquals("no bot picture: the SDK shows the logo", MessengerConfig.Bot("Clomni", null), config.bot)
         assertEquals(
             listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS),
             config.home.cards,
@@ -58,6 +60,7 @@ class MessengerConfigTest {
         )
         assertEquals(MessengerConfig.Composer(attachments = true, emoji = true), config.composer)
         assertEquals("Salam, {first_name} 👋", config.strings["greeting_line1"])
+        assertEquals("the panel's own", "Bizdən nəsə soruşun", config.strings["greeting_line2"])
         assertEquals(MessengerConfig.Limits(10, 25, 4000), config.limits)
         assertTrue(config.poweredBy)
         assertTrue(protocol.warnings.isEmpty())
@@ -102,11 +105,11 @@ class MessengerConfigTest {
         val missing = config("""{"brand":{"colors":{"light":{"primary":"#1F9D63"}}}}""")
         assertNull(missing.brand.colors)
         assertEquals("brand.colors incomplete; the SDK derives the colours", protocol.warnings.last())
-        val notHex = APAR_CONFIG_V2.replace("\"#0E482D\"", "\"dark green\"")
+        val notHex = apar.replace("\"#0E482D\"", "\"dark green\"")
         assertNull(config(notHex).brand.colors)
         assertNull(config("""{"brand":{}}""").brand.colors)
         // header_text came later: a server without it still sends usable colours, and the SDK works the text out.
-        val withoutText = config(APAR_CONFIG_V2.replace(", \"header_text\": \"#FFFFFF\"", ""))
+        val withoutText = config(apar.replace(Regex(""",\s*"header_text": "#FFFFFF""""), ""))
         assertEquals("#1F9D63", withoutText.brand.colors?.light?.headerFrom)
         assertNull(withoutText.brand.colors?.light?.headerText)
     }
@@ -125,21 +128,6 @@ class MessengerConfigTest {
         assertFalse(config.theme.launcher.enabled)
         assertEquals(listOf("az"), config.languages)
         assertTrue(config.poweredBy)
-    }
-
-    /** The server's own config v2 (protocol fixture 42): its colours are taken as sent. */
-    @Test
-    fun theServersAparConfig() {
-        val apar = protocol.json.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
-        assertEquals("Apar", apar.brand.name)
-        assertEquals("#177248", apar.brand.colors?.light?.headerTo)
-        assertEquals("#27C87E", apar.brand.colors?.dark?.primary)
-        assertFalse(apar.theme.launcher.enabled)
-        assertEquals(
-            listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS),
-            apar.home.cards,
-        )
-        assertTrue(protocol.warnings.isEmpty())
     }
 
     @Test

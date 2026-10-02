@@ -200,13 +200,18 @@ class AppearanceSnapshotTest {
         const val LEYLA = "https://app.clomni.ai/a/leyla.png"
         const val RAUF = "https://app.clomni.ai/a/rauf.png"
         const val NIGAR = "https://app.clomni.ai/a/nigar.png"
+        const val FIXTURE_TEAM = "https://my.clomni.co/rails/active_storage/representations/redirect"
         val BLUE = ai.clomni.messenger.presentation.RgbColor.parse("#0A66C2")
 
         /** Stand-ins for the panel's uploads: a logo mark, its dark-mode version, faces, a bot, a landscape. */
         val pictures: Map<String, ImageBitmap> by lazy {
             mapOf(
                 LOGO to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "A"),
-                "https://app.clomni.ai/a/apar.png" to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "A"),
+                // Protocol fixture 42's own pictures.
+                "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN" to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "A"),
+                "$FIXTURE_TEAM/leyla.png" to face(0xFFC2410C.toInt(), "L"),
+                "$FIXTURE_TEAM/rauf.png" to face(0xFF7C3AED.toInt(), "R"),
+                "$FIXTURE_TEAM/nigar.png" to face(0xFF0E7490.toInt(), "N"),
                 LOGO_DARK to mark(0xFF0B0C0E.toInt(), 0xFF34B57A.toInt(), "A"),
                 BOT to bot(),
                 "https://app.clomni.ai/a/bot.png" to bot(),
