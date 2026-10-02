@@ -122,7 +122,7 @@ extension View {
         accessibilityElement(children: .ignore).accessibilityLabel(Text(label))
     }
 
-    /// A Home card: background, radius 12, padding 12×14, soft shadow (a 1 pt border in dark mode).
+    /// A Home card: background, radius 12, padding 12×14, one soft shadow (a 1 pt border in dark mode).
     func clomniCard(_ theme: ClomniTheme) -> some View {
         modifier(CardStyle(theme: theme))
     }
@@ -133,7 +133,7 @@ struct CardStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous)
-        let shadows: [ClomniTheme.Shadow] = theme.isDark ? [] : ClomniTheme.Shadow.card
+        let shadow = ClomniTheme.Shadow.card
         return content
             .padding(.vertical, CGFloat(ClomniTheme.Space.l))
             .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
@@ -141,10 +141,8 @@ struct CardStyle: ViewModifier {
             .background(
                 shape
                     .fill(theme.colors.background.color)
-                    .shadow(color: Color.black.opacity(shadows.first?.opacity ?? 0),
-                            radius: CGFloat(shadows.first?.radius ?? 0) / 2, x: 0, y: CGFloat(shadows.first?.y ?? 0))
-                    .shadow(color: Color.black.opacity(shadows.last?.opacity ?? 0),
-                            radius: CGFloat(shadows.last?.radius ?? 0) / 2, x: 0, y: CGFloat(shadows.last?.y ?? 0))
+                    .shadow(color: Color.black.opacity(theme.isDark ? 0 : shadow.opacity),
+                            radius: CGFloat(shadow.radius) / 2, x: 0, y: CGFloat(shadow.y))
             )
             .overlay(shape.stroke(theme.isDark ? theme.colors.border.color : Color.clear, lineWidth: 1))
     }

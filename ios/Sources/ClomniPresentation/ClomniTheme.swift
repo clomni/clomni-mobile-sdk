@@ -95,13 +95,14 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let touchTarget: Double = 44
     }
 
-    /// shadow.card: two soft layers in light mode; dark mode draws a 1 pt border instead.
+    /// shadow.card: one soft shadow in light mode (DESIGN-PASS: no stacked layers); dark mode draws a 1 pt border
+    /// instead.
     package struct Shadow: Sendable, Equatable {
         package let opacity: Double
         package let radius: Double
         package let y: Double
 
-        package static let card = [Shadow(opacity: 0.06, radius: 2, y: 1), Shadow(opacity: 0.05, radius: 10, y: 2)]
+        package static let card = Shadow(opacity: 0.07, radius: 8, y: 2)
     }
 
     /// Clomni's own colour, for a config that has none.

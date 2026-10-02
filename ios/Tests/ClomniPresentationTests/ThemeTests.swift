@@ -166,7 +166,7 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(light.colors.canvas.contrast(with: light.colors.textSecondary), 4.32, accuracy: 0.01)
         XCTAssertEqual(ClomniTheme.Radius.card, 12)
         XCTAssertEqual(ClomniTheme.Size.cardOverlap, 40)
-        XCTAssertEqual(ClomniTheme.Shadow.card.map(\.radius), [2, 10])
+        XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.07, radius: 8, y: 2), "one layer")
     }
 
     /// onPrimary, where the SDK derives it: white or black by WCAG 4.5:1.
