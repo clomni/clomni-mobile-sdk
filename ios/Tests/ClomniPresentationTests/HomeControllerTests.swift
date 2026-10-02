@@ -144,7 +144,7 @@ final class HomeControllerTests: XCTestCase {
         home.userName = "Leyla Əliyeva"
         XCTAssertEqual(home.home.header.greeting, "Salam, Leyla")
         home.isOffline = true
-        XCTAssertEqual(home.home.offline, "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
+        XCTAssertEqual(home.home.offline, "İnternet yoxdur")
         XCTAssertEqual(renders, 2)
     }
 

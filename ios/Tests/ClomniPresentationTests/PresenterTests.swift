@@ -314,7 +314,7 @@ final class PresenterTests: XCTestCase {
         let home = presenter().home(cached)
         XCTAssertEqual(home.phase, .ready)
         XCTAssertNil(home.failure)
-        XCTAssertEqual(home.offline, "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
+        XCTAssertEqual(home.offline, "İnternet yoxdur")
         XCTAssertEqual(presenter().messages(cached).offline, home.offline)
     }
 

@@ -192,7 +192,7 @@ struct SkeletonBlock: View {
     }
 }
 
-/// The thin yellow strip: "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq".
+/// The thin yellow strip: "İnternet yoxdur".
 struct OfflineStrip: View {
     let text: String
     let theme: ClomniTheme

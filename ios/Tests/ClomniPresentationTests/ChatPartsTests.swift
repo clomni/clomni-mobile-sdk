@@ -66,7 +66,7 @@ final class FormInputTests: XCTestCase {
             "ride_count": "iki", "city": "london", "date": "1 oktyabr",
         ], strings: strings)
         XCTAssertEqual(wrong, ["details": "Ən çox 1000 simvol", "phone": "Telefon nömrəsi düzgün deyil",
-                               "email": "Email düzgün deyil", "ride_count": "Rəqəm yazın",
+                               "email": "E-poçt düzgün deyil", "ride_count": "Rəqəm yazın",
                                "city": "Variantlardan birini seçin", "date": "Bu sahəni doldurun"])
         let good = FormInput.errors(all, values: [
             "name": "Aysel", "phone": "050 123 45 67", "email": "aysel@example.com", "ride_count": "2,5",

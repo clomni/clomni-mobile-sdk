@@ -271,7 +271,7 @@ final class ChatControllerTests: XCTestCase {
         await chat.settled()
         XCTAssertEqual(renders, before + 2)
         chat.isOffline = true
-        XCTAssertEqual(chat.screen.offline, "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
+        XCTAssertEqual(chat.screen.offline, "İnternet yoxdur")
         let more = await chat.loadOlder()
         XCTAssertFalse(more)
         await chat.stop()

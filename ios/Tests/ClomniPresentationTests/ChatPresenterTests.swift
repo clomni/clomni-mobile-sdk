@@ -157,7 +157,7 @@ final class ChatPresenterTests: XCTestCase {
         let bot = screen([]).header
         XCTAssertEqual(bot.lead, .team(Fixture.aparConfig.team.avatars))
         XCTAssertEqual(bot.title, "Apar")
-        XCTAssertEqual(bot.subtitle, "Komanda da kömək edə bilər", "the config's header_subtitle, as it came")
+        XCTAssertEqual(bot.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk", "the config's header_subtitle, as it came")
         // Without one in the config, the SDK's own: the server's default, the minutes reply time.
         let plain = screen([]) { $0.config = Fixture.minimalConfig }.header
         XCTAssertEqual(plain.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk")
@@ -361,7 +361,7 @@ final class ChatPresenterTests: XCTestCase {
         let failed = presenter.screen(loading)
         XCTAssertEqual(failed.phase, .failed)
         XCTAssertEqual(failed.failure?.retry, "Yenidən cəhd et")
-        XCTAssertEqual(failed.offline, "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
+        XCTAssertEqual(failed.offline, "İnternet yoxdur")
     }
 
     /// Every message fixture, valid or not, reaches the screen as something: the Linux half of the snapshot tests.

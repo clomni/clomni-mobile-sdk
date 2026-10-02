@@ -27,7 +27,26 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(strings.format(.awayUntil, "09:00"), "Növbəti iş saatı: 09:00")
         XCTAssertEqual(ClomniStrings(language: "en").format(.awayUntil, "09:00"), "Next working hours: 09:00")
         XCTAssertEqual(ClomniStrings(language: "ru").format(.awayUntil, "09:00"), "Следующее рабочее время: 09:00")
-        XCTAssertEqual(ClomniStrings(language: "az")[.offline], "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
+        XCTAssertEqual(ClomniStrings(language: "az")[.offline], "İnternet yoxdur")
+    }
+
+    /// The SDK's built-in texts are protocol/strings.json's, the server's defaults: a key the server has and the SDK
+    /// uses must read the same before the config arrives as after.
+    func testTheBuiltInTextsAreTheServers() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("protocol/strings.json")
+        let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var compared = 0
+        for language in ["az", "en", "ru"] {
+            let server = try XCTUnwrap(json[language] as? [String: String], language)
+            let strings = ClomniStrings(language: language)
+            for (raw, text) in server {
+                guard let key = ClomniStrings.Key(rawValue: raw) else { continue }
+                XCTAssertEqual(strings[key], text, "\(language) \(raw)")
+                compared += 1
+            }
+        }
+        XCTAssertGreaterThan(compared, 100)
     }
 }
 
