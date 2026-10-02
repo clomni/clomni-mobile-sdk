@@ -65,7 +65,7 @@ internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel
 @Composable
 private fun TitleBar(title: String, closeLabel: String, theme: ClomniTheme, close: () -> Unit) {
     Column(Modifier.background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
-        Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = ClomniTheme.Space.xxl.dp)) {
+        Box(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(horizontal = ClomniTheme.Space.xxl.dp)) {
             BasicText(
                 title,
                 Modifier.align(Alignment.Center).semantics { heading() },

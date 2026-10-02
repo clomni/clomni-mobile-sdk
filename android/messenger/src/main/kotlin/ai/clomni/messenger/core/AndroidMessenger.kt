@@ -155,17 +155,23 @@ internal class ForegroundTracker(app: Application, private val onChange: (Boolea
     Application.ActivityLifecycleCallbacks {
     private var started = 0
 
+    /** The last started activity stopped only to be recreated (a rotation): its replacement is not a return. */
+    private var recreating = false
+
     init {
         app.registerActivityLifecycleCallbacks(this)
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (started++ == 0) onChange(true)
+        if (started++ == 0 && !recreating) onChange(true)
+        recreating = false
     }
 
     override fun onActivityStopped(activity: Activity) {
         // A configuration change stops the activity only to start its replacement: not a trip to the background.
-        if (--started == 0 && !activity.isChangingConfigurations) onChange(false)
+        if (--started == 0) {
+            if (activity.isChangingConfigurations) recreating = true else onChange(false)
+        }
         if (started < 0) started = 0
     }
 

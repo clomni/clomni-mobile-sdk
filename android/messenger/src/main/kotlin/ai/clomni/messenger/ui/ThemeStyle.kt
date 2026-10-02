@@ -99,6 +99,19 @@ internal fun Modifier.rise(by: Dp): Modifier = layout { measurable, constraints 
 }
 
 /**
+ * Like the symmetric [bleed], with each side its own: a target at a screen edge reaches inwards instead of past it.
+ * Start and end follow the layout direction.
+ */
+internal fun Modifier.bleed(start: Dp, top: Dp, end: Dp, bottom: Dp): Modifier = layout { measurable, constraints ->
+    val s = start.roundToPx()
+    val e = end.roundToPx()
+    val t = top.roundToPx()
+    val b = bottom.roundToPx()
+    val placeable = measurable.measure(constraints.offset(s + e, t + b))
+    layout((placeable.width - s - e).coerceAtLeast(0), (placeable.height - t - b).coerceAtLeast(0)) { placeable.placeRelative(-s, -t) }
+}
+
+/**
  * Takes [horizontal] and [vertical] less room on each side than the content measures: a 48 dp touch target that lays
  * out like the smaller thing it surrounds.
  */

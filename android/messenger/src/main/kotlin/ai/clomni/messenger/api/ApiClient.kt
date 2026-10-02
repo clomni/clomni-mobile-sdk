@@ -323,10 +323,27 @@ internal class ApiClient(
         }
     }
 
-    private fun requestBody(body: Any): RequestBody = when (body) {
-        is RequestBody -> body
-        is RawJson -> body.json.toRequestBody(JSON)
-        else -> body.toString().toRequestBody(JSON)
+    private fun requestBody(body: Any): RequestBody = OneShot(
+        when (body) {
+            is RequestBody -> body
+            is RawJson -> body.json.toRequestBody(JSON)
+            else -> body.toString().toRequestBody(JSON)
+        },
+    )
+
+    /**
+     * A body OkHttp sends at most once: it may still try the next address when a connection cannot be made (IPv6 to
+     * IPv4, a pooled connection gone stale before anything was sent), but never repeats a request the server may
+     * already have.
+     */
+    private class OneShot(private val body: RequestBody) : RequestBody() {
+        override fun contentType() = body.contentType()
+
+        override fun contentLength() = body.contentLength()
+
+        override fun isOneShot() = true
+
+        override fun writeTo(sink: okio.BufferedSink) = body.writeTo(sink)
     }
 
     private fun error(response: Response): ServerError? = protocol.parseServerError(response.body)
@@ -362,11 +379,13 @@ internal class ApiClient(
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         /**
-         * OkHttp's own repeat after a dropped connection is off: the SDK's rules above (and the outbox's
-         * `client_id`) are the only repeats, so a `POST /conversations` or `/flows/trigger` is never made twice.
+         * OkHttp moves on to the next address when one cannot be reached: a phone (or CI runner) whose IPv6 route
+         * fails reaches the server over IPv4. Off, the first request after every such failure was lost. A request
+         * that was sent is never repeated by OkHttp: every body is one-shot ([OneShot]), so the SDK's rules above
+         * (and the outbox's `client_id`) are the only repeats and a `POST /conversations` is never made twice.
          */
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .retryOnConnectionFailure(false)
+            .retryOnConnectionFailure(true)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)

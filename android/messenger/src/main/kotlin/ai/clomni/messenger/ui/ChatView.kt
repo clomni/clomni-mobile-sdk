@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -293,16 +294,21 @@ private fun Announcer(id: String?, text: String?) {
 internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: ChatActions) {
     Column(Modifier.fillMaxWidth().background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
         Row(
-            Modifier.fillMaxWidth().padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.m.dp),
+            Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp)
+                .padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.m.dp),
             horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val target = ClomniTheme.Size.touchTarget.dp
+            // The target reaches inwards from the screen's edge, the arrow where it was.
+            val edge = ClomniTheme.Space.xl.dp
+            val vertical = (target - 17.dp) / 2
             Box(
-                Modifier.bleed((target - 10.dp) / 2, (target - 17.dp) / 2).size(target).button(header.backLabel, actions.back),
-                Alignment.Center,
+                Modifier.bleed(start = edge, top = vertical, end = target - 10.dp - edge, bottom = vertical).size(target)
+                    .button(header.backLabel, actions.back),
+                Alignment.CenterStart,
             ) {
-                Icon(R.drawable.clomni_ic_back, theme.colors.primary, 10.dp, Modifier.size(10.dp, 17.dp))
+                Icon(R.drawable.clomni_ic_back, theme.colors.primary, 10.dp, Modifier.padding(start = edge).size(10.dp, 17.dp))
             }
             when (val lead = header.lead) {
                 is ChatHeader.Lead.Team -> TeamAvatars(lead.urls, theme.colors.background, theme)
@@ -333,7 +339,7 @@ internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: Cha
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            CloseButton(header.closeLabel, theme.colors.textSecondary, actions.close)
+            CloseButton(header.closeLabel, theme.colors.textSecondary, actions.close, endRoom = ClomniTheme.Space.xl.dp)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
     }
