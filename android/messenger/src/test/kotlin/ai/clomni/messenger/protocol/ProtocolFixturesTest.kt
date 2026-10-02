@@ -1,6 +1,7 @@
 package ai.clomni.messenger.protocol
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,6 +43,8 @@ class ProtocolFixturesTest(path: String) {
             schema == "event.json" -> protocol.json.parseEvent(json)?.data
             schema == "config.json" -> protocol.json.parseConfig(json)
             schema == "push.json" -> protocol.json.parsePush(json)
+            // The panel's document; the SDK reads only what the server makes of it, config.json.
+            schema == "appearance.json" -> Json.parseToJsonElement(json)
             schema == "client-message.json" -> {
                 // Built the way the SDK builds it, the message encodes to the fixture, and the fixture reads back to it.
                 val built = ClientMessageFixtures.all[entry.path]
@@ -116,7 +119,14 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/49-client-attachment.json" to ClientMessage.Attachment::class,
             "fixtures/51-client-button-end.json" to ClientMessage.ButtonReply::class,
             "fixtures/52-client-rating.json" to ClientMessage.RatingSubmit::class,
+            "fixtures/53-appearance-apar.json" to JsonObject::class,
+            "fixtures/54-appearance-default.json" to JsonObject::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
+            "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
+            "fixtures/86-invalid-appearance-whatsapp-url.json" to JsonObject::class,
+            "fixtures/87-invalid-appearance-cards-without-send.json" to JsonObject::class,
+            "fixtures/88-invalid-appearance-unknown-text.json" to JsonObject::class,
+            "fixtures/89-invalid-appearance-custom-reply-time.json" to JsonObject::class,
             "fixtures/90-invalid-quick-replies-empty.json" to MessageContent.Unknown::class,
             "fixtures/91-invalid-missing-seq.json" to null,
             "fixtures/92-invalid-push-body-too-long.json" to PushPayload::class,

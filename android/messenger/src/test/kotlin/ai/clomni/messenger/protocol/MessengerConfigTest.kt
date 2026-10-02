@@ -127,14 +127,19 @@ class MessengerConfigTest {
         assertTrue(config.poweredBy)
     }
 
-    /** The v1 fixtures (until the server's v2 ones arrive) still read: their old fields are ignored. */
+    /** The server's own config v2 (protocol fixture 42): its colours are taken as sent. */
     @Test
-    fun aVersionOneConfigReadsWithDefaults() {
-        val old = protocol.json.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
-        assertEquals("Apar", old.brand.name)
-        assertNull(old.brand.colors)
-        assertFalse("v1's launcher.visible is not v2's theme.launcher.enabled", old.theme.launcher.enabled)
-        assertEquals("unknown v1 card names: send only", listOf(MessengerConfig.HomeCard.SEND), old.home.cards)
+    fun theServersAparConfig() {
+        val apar = protocol.json.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
+        assertEquals("Apar", apar.brand.name)
+        assertEquals("#177248", apar.brand.colors?.light?.headerTo)
+        assertEquals("#27C87E", apar.brand.colors?.dark?.primary)
+        assertFalse(apar.theme.launcher.enabled)
+        assertEquals(
+            listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS),
+            apar.home.cards,
+        )
+        assertTrue(protocol.warnings.isEmpty())
     }
 
     @Test
