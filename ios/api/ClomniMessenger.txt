@@ -1,0 +1,42 @@
+Clomni: static func addUnreadCountListener(_ listener: @escaping @MainActor @Sendable (Int) -> Void) -> UUID
+Clomni: static func dismiss()
+Clomni: static func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool
+Clomni: static func initialize(appId: String, apiKey: String, region: String = "eu")
+Clomni: static func isClomniPush(_ userInfo: [AnyHashable: Any]) -> Bool
+Clomni: static func loginUnidentifiedUser()
+Clomni: static func loginUser(_ user: ClomniUser, userHash: String?)
+Clomni: static func logout()
+Clomni: static func present(source: String? = nil)
+Clomni: static func presentConversation(_ id: String)
+Clomni: static func presentNewConversation(source: String? = nil)
+Clomni: static func removeUnreadCountListener(_ token: UUID)
+Clomni: static func setBottomPadding(_ padding: Double)
+Clomni: static func setDeviceToken(_ token: Data)
+Clomni: static func setLauncherVisible(_ visible: Bool)
+Clomni: static func setLogLevel(_ level: ClomniLogLevel)
+Clomni: static func setTheme(primaryColor: String? = nil, typeface: String? = nil, mode: ClomniThemeMode? = nil)
+Clomni: static func setTypeface(_ familyName: String?)
+Clomni: static func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool
+Clomni: static func startFlow(_ event: String, data: [String: Any] = [:], openMessenger: Bool = false, source: String? = nil)
+Clomni: static func updateUser(name: String? = nil, language: String? = nil, customAttributes: [String: Any]? = nil)
+Clomni: static let version: String
+Clomni: static var onConversationStarted: (@MainActor @Sendable (String) -> Void)?
+Clomni: static var onFlowCompleted: (@MainActor @Sendable (String) -> Void)?
+Clomni: static var onMessengerClosed: (@MainActor @Sendable () -> Void)?
+Clomni: static var onMessengerOpened: (@MainActor @Sendable (String?) -> Void)?
+Clomni: static var onUnreadCountChanged: (@MainActor @Sendable (Int) -> Void)?
+ClomniLogLevel: case debug
+ClomniLogLevel: case error
+ClomniLogLevel: case info
+ClomniLogLevel: case none
+ClomniLogLevel: case warning
+ClomniThemeMode: case system, light, dark
+ClomniUser: init(userId: String? = nil, email: String? = nil, phone: String? = nil, name: String? = nil)
+ClomniUser: var email: String?
+ClomniUser: var name: String?
+ClomniUser: var phone: String?
+ClomniUser: var userId: String?
+enum Clomni
+enum ClomniLogLevel: Sendable, Equatable
+enum ClomniThemeMode: Sendable, Equatable
+struct ClomniUser: Sendable, Equatable

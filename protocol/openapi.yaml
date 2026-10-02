@@ -16,7 +16,13 @@ info:
       renamed or retyped. Clients skip unknown fields and show an unknown message type through its `fallback_text`.
       `/v1` is supported for at least 36 months; an endpoint due to go away answers with `Deprecation` and `Sunset`
       headers first.
-    - Errors share one body (`Error`). A `5xx` is retried with exponential backoff, at most 3 times.
+    - An SDK older than the oldest one still supported for its platform gets the same headers on every answer:
+      `Deprecation: true`, `Sunset: <HTTP date>` (RFC 8594) when the date is set, and
+      `Link: <https://…>; rel="deprecation"`. The SDK logs them for the developer; nothing changes for the user.
+    - Errors share one body (`Error`), every error of every endpoint, including an unknown path (`404 not_found`), a
+      method the path does not take (`405 method_not_allowed`, with `Allow`), a body over 1 MB outside `/uploads`
+      (`413 payload_too_large`) and a request that took too long (`503 internal`). `request_id` is the response's
+      `X-Request-Id`. A `5xx` is retried with exponential backoff, at most 3 times.
     - Limits: 30 messages and 10 uploads per minute per user, 600 new sessions per minute per app. Over the limit:
       `429 rate_limited` with `Retry-After`.
 
@@ -100,6 +106,7 @@ paths:
                     locale: az-AZ
                     timezone: Asia/Baku
                     model: SM-A546
+                    app_identifier: az.apar.app
               anonymous:
                 value:
                   device:
@@ -183,9 +190,12 @@ paths:
       operationId: getConfig
       summary: Messenger settings
       description: |
-        Colours, texts, team, channels and limits for the Messenger. The SDK keeps the last answer on disk, uses it at
-        once on the next launch and checks it in the background with `If-None-Match`. A `config.changed` event on the
-        socket means it is time to fetch again.
+        The Messenger's look as last published in the panel (`version`), in one language: brand and its colours for
+        light and dark mode (worked out by the server), images, team, Home cards and channels, all texts, limits. The
+        SDK keeps the last answer on disk, uses it at once on the next launch and checks it in the background with
+        `If-None-Match`; the ETag changes with the version, the language and what the server adds (team avatars,
+        `open_now`). A `config.changed` event on the socket (`{etag, version}`) means it is time to fetch again; the
+        panel's unpublished draft never reaches the apps.
       parameters:
         - $ref: '#/components/parameters/Sdk'
         - name: lang
@@ -214,6 +224,52 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /images/{id}:
+    get:
+      tags: [Config]
+      operationId: getImage
+      summary: An image of the config, in the size asked for
+      description: |
+        Every image URL in the config (logo, header picture, bot and team avatars) is this endpoint. It answers with a
+        redirect to the picture at the width asked for, in WebP or PNG; the SDK picks the nearest size not smaller than
+        it needs for the screen density (a 28 pt logo at @3x: 96). No session and no SDK header needed, so an image
+        loader can fetch it as is.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^img_[A-Za-z0-9]+$'
+        - name: w
+          in: query
+          description: 48, 96 or 144 for a logo or avatar; 360, 720 or 1080 for the header picture. The largest when left out.
+          schema:
+            type: integer
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [webp, png]
+            default: png
+      responses:
+        '302':
+          description: To the picture
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          description: No such image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /conversations:
     get:
@@ -249,6 +305,8 @@ paths:
                       $ref: '#/components/schemas/Conversation'
                   next_cursor:
                     type: [string, 'null']
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
@@ -276,6 +334,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConversationWithMessages'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -345,6 +405,8 @@ paths:
                       $ref: './schema/message.json'
                   has_more:
                     type: boolean
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -427,6 +489,8 @@ paths:
       responses:
         '204':
           description: Recorded
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -456,6 +520,8 @@ paths:
       responses:
         '204':
           description: Forwarded to the operator
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -771,6 +837,12 @@ components:
           type: string
         model:
           type: string
+        app_identifier:
+          type: string
+          maxLength: 255
+          description: The app's own id, read by the SDK at runtime - iOS `Bundle.main.bundleIdentifier`, Android
+            `packageName`. When the App SDK inbox has this platform's Bundle ID / package name set and this differs,
+            the session is refused with `401 invalid_api_key`, so keys copied into another app do not work there.
     SessionRequest:
       type: object
       required: [device]
@@ -891,6 +963,11 @@ components:
         created_at:
           type: string
           format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          description: When anything shown here last changed (status, assignee, a message). Of two copies of the same
+            conversation, e.g. a list page and a later `conversation.updated`, the client keeps the newer one.
       example:
         id: conv_5521
         status: bot
@@ -902,6 +979,7 @@ components:
           node_id: S
         opened_from: profile_support
         created_at: '2026-10-01T10:30:00Z'
+        updated_at: '2026-10-01T10:30:02.418Z'
     ConversationWithMessages:
       type: object
       required: [conversation, messages]
@@ -993,6 +1071,9 @@ components:
                 - file_too_large
                 - rate_limited
                 - internal
+                - not_found
+                - method_not_allowed
+                - payload_too_large
               description: New codes may be added within v1; a client treats an unknown code by its HTTP status.
             message:
               type: string

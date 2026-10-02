@@ -11,4 +11,6 @@ local.properties
 .build/
 .swiftpm/
 xcuserdata/
+# A snapshot that no longer matches its reference (see ChatSnapshotTests).
+*.failed.png
 DerivedData/

@@ -2,74 +2,99 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://app.clomni.ai/protocol/v1/config.json",
   "title": "Messenger configuration",
-  "description": "Body of GET /v1/mobile/config. The SDK keeps it on disk, uses it at once on the next launch and checks it in the background with If-None-Match.",
+  "description": "Body of GET /v1/mobile/config: the inbox's published appearance (appearance.json) in one language, with what the server works out around it. The SDK keeps it on disk, uses it at once on the next launch and checks it in the background with If-None-Match; config.changed says when to fetch it again.",
   "type": "object",
-  "required": ["brand", "launcher", "home", "team", "bot", "composer", "languages", "strings", "limits"],
+  "required": ["version", "brand", "team", "bot", "home", "theme", "composer", "languages", "strings", "limits", "powered_by"],
   "properties": {
+    "version": { "type": "integer", "minimum": 0, "description": "The published appearance version; every publish adds one." },
     "brand": {
       "type": "object",
-      "required": ["name", "primary_color"],
+      "required": ["name", "primary_color", "header_style", "glow", "colors"],
       "properties": {
         "name": { "type": "string" },
-        "logo_url": { "type": ["string", "null"], "format": "uri" },
+        "logo_url": { "$ref": "#/$defs/image_url" },
+        "logo_dark_url": { "$ref": "#/$defs/image_url", "description": "For dark mode; null: the logo." },
         "primary_color": { "$ref": "#/$defs/color" },
-        "on_primary_color": { "$ref": "#/$defs/color" },
-        "theme": { "enum": ["system", "light", "dark"], "default": "system" }
-      }
-    },
-    "launcher": {
-      "type": "object",
-      "required": ["visible"],
-      "properties": {
-        "visible": { "type": "boolean", "default": false, "description": "Off unless the customer turns it on." },
-        "position": { "enum": ["left", "right"], "default": "right" },
-        "bottom_padding": { "type": "integer", "minimum": 0 },
-        "icon": { "type": "string" }
-      }
-    },
-    "home": {
-      "type": "object",
-      "properties": {
-        "greeting_title": { "type": "string" },
-        "greeting_subtitle": { "type": "string" },
-        "show_team_avatars": { "type": "boolean" },
-        "channels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["type", "url"],
-            "properties": {
-              "type": { "type": "string", "description": "instagram, whatsapp, linkedin, email, facebook, tiktok, twitter …" },
-              "url": { "type": "string", "format": "uri" }
-            }
-          }
-        },
-        "cards": { "type": "array", "items": { "enum": ["recent_conversation", "new_conversation"] } }
+        "header_style": { "enum": ["gradient", "solid", "image"] },
+        "header_image_url": { "$ref": "#/$defs/image_url", "description": "header_style image: the SDK draws a dark overlay (black 35% to 55%, top to bottom) and white text on it." },
+        "glow": { "type": "boolean", "description": "A soft radial glow of the brand colour (25%) behind the header." },
+        "colors": {
+          "type": "object",
+          "description": "Worked out by the server from primary_color, so both SDKs show the same; an SDK's own math is only a fallback for when there is no config.",
+          "required": ["light", "dark"],
+          "properties": { "light": { "$ref": "#/$defs/palette" }, "dark": { "$ref": "#/$defs/palette" } }
+        }
       }
     },
     "team": {
       "type": "object",
+      "required": ["show", "mode", "avatars", "reply_time", "reply_time_offline", "office_hours"],
       "properties": {
-        "avatars": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "show": { "type": "boolean" },
+        "mode": { "enum": ["auto", "manual"], "description": "auto: the inbox's three most recently active agents; manual: pictures uploaded in the panel." },
+        "avatars": { "type": "array", "maxItems": 3, "items": { "type": "string", "format": "uri" } },
         "reply_time": { "type": "string" },
+        "reply_time_offline": { "type": "string", "description": "Shown instead of reply_time outside working hours." },
         "office_hours": {
           "type": "object",
-          "properties": { "tz": { "type": "string" }, "open_now": { "type": "boolean" } }
+          "properties": {
+            "tz": { "type": "string" },
+            "open_now": { "type": "boolean" },
+            "next_open_at": {
+              "type": ["string", "null"],
+              "format": "date-time",
+              "description": "UTC. Outside working hours, when they next begin (the SDK shows strings.away_until with the local time); null while open."
+            }
+          }
         }
       }
     },
     "bot": {
       "type": "object",
       "required": ["name"],
-      "properties": { "name": { "type": "string" }, "avatar_url": { "type": ["string", "null"], "format": "uri" } }
+      "properties": {
+        "name": { "type": "string" },
+        "avatar_url": { "$ref": "#/$defs/image_url", "description": "null: the brand logo, and without one the name's first letter." }
+      }
+    },
+    "home": {
+      "type": "object",
+      "required": ["cards", "channels"],
+      "properties": {
+        "cards": { "type": "array", "description": "In the order shown; send is always there.", "items": { "enum": ["send", "recent", "channels"] } },
+        "channels": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["type", "url"],
+            "properties": {
+              "type": { "type": "string", "description": "instagram, whatsapp, facebook, telegram, linkedin, tiktok, email, phone; an SDK skips a type it does not know." },
+              "url": { "type": "string", "format": "uri" }
+            }
+          }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "required": ["mode", "launcher"],
+      "properties": {
+        "mode": { "enum": ["system", "light", "dark"] },
+        "launcher": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean", "description": "Off unless the customer turns it on." },
+            "position": { "enum": ["left", "right"] },
+            "bottom_padding": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
     },
     "composer": {
       "type": "object",
-      "properties": {
-        "placeholder": { "type": "string" },
-        "attachments": { "type": "boolean" },
-        "emoji": { "type": "boolean" }
-      }
+      "properties": { "attachments": { "type": "boolean" }, "emoji": { "type": "boolean" } }
     },
     "languages": { "type": "array", "minItems": 1, "items": { "enum": ["az", "en", "ru"] } },
     "strings": { "type": "object", "additionalProperties": { "type": "string" } },
@@ -80,9 +105,28 @@
         "file_mb": { "type": "integer", "minimum": 1 },
         "text_chars": { "type": "integer", "minimum": 1 }
       }
-    }
+    },
+    "powered_by": { "type": "boolean", "description": "Show \"Powered by Clomni\" under Home; false only on a plan that allows it." }
   },
   "$defs": {
-    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "image_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Takes ?w= (48, 96 or 144 for a logo or avatar; 360, 720 or 1080 for the header picture; the largest when left out) and &format=webp|png (png when left out)."
+    },
+    "palette": {
+      "type": "object",
+      "required": ["primary", "on_primary", "primary_soft", "primary_line", "header_from", "header_to", "header_text"],
+      "properties": {
+        "primary": { "$ref": "#/$defs/color", "description": "Dark mode: one step (10 points of HSL lightness) lighter than the brand colour." },
+        "on_primary": { "$ref": "#/$defs/color", "description": "White when it reaches 4.5:1 on primary, otherwise black." },
+        "primary_soft": { "$ref": "#/$defs/color", "description": "primary at 10% over the background (#FFFFFF, dark #121316): soft fills, image placeholders." },
+        "primary_line": { "$ref": "#/$defs/color", "description": "primary at 22% over the background: pill borders." },
+        "header_from": { "$ref": "#/$defs/color", "description": "Top of the Home header." },
+        "header_to": { "$ref": "#/$defs/color", "description": "Bottom of the Home header." },
+        "header_text": { "$ref": "#/$defs/color", "description": "Text and icons on the header: white when it reaches 3:1 on both header_from and header_to (large text), otherwise #1B1D21; always white over a header picture. The greeting's first line is this at 62% opacity." }
+      }
+    }
   }
 }

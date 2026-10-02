@@ -1,21 +1,60 @@
 {
+  "version": 12,
   "brand": {
     "name": "Apar",
-    "logo_url": "https://app.clomni.ai/a/apar.png",
+    "logo_url": "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
+    "logo_dark_url": null,
     "primary_color": "#1F9D63",
-    "on_primary_color": "#FFFFFF",
-    "theme": "system"
+    "header_style": "gradient",
+    "header_image_url": null,
+    "glow": false,
+    "colors": {
+      "light": {
+        "primary": "#1F9D63",
+        "on_primary": "#000000",
+        "primary_soft": "#E9F5EF",
+        "primary_line": "#CEE9DD",
+        "header_from": "#1F9D63",
+        "header_to": "#177248",
+        "header_text": "#FFFFFF"
+      },
+      "dark": {
+        "primary": "#27C87E",
+        "on_primary": "#000000",
+        "primary_soft": "#142520",
+        "primary_line": "#173B2D",
+        "header_from": "#1F9D63",
+        "header_to": "#0E482D",
+        "header_text": "#FFFFFF"
+      }
+    }
   },
-  "launcher": {
-    "visible": false,
-    "position": "right",
-    "bottom_padding": 20,
-    "icon": "default"
+  "team": {
+    "show": true,
+    "mode": "auto",
+    "avatars": [
+      "https://my.clomni.co/rails/active_storage/representations/redirect/leyla.png",
+      "https://my.clomni.co/rails/active_storage/representations/redirect/rauf.png",
+      "https://my.clomni.co/rails/active_storage/representations/redirect/nigar.png"
+    ],
+    "reply_time": "Adətən bir neçə dəqiqəyə cavab veririk",
+    "reply_time_offline": "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik",
+    "office_hours": {
+      "tz": "Asia/Baku",
+      "open_now": true,
+      "next_open_at": null
+    }
+  },
+  "bot": {
+    "name": "Clomni",
+    "avatar_url": null
   },
   "home": {
-    "greeting_title": "Necə kömək edə bilərik?",
-    "greeting_subtitle": "Bizdən nəsə soruşun və ya fikrinizi bildirin",
-    "show_team_avatars": true,
+    "cards": [
+      "send",
+      "recent",
+      "channels"
+    ],
     "channels": [
       {
         "type": "instagram",
@@ -33,30 +72,17 @@
         "type": "email",
         "url": "mailto:support@apar.az"
       }
-    ],
-    "cards": [
-      "recent_conversation",
-      "new_conversation"
     ]
   },
-  "team": {
-    "avatars": [
-      "https://app.clomni.ai/a/leyla.png",
-      "https://app.clomni.ai/a/rauf.png",
-      "https://app.clomni.ai/a/nigar.png"
-    ],
-    "reply_time": "Adətən bir neçə dəqiqəyə cavab veririk",
-    "office_hours": {
-      "tz": "Asia/Baku",
-      "open_now": true
+  "theme": {
+    "mode": "system",
+    "launcher": {
+      "enabled": false,
+      "position": "right",
+      "bottom_padding": 20
     }
   },
-  "bot": {
-    "name": "Clomni",
-    "avatar_url": "https://app.clomni.ai/a/bot.png"
-  },
   "composer": {
-    "placeholder": "Mesaj yazın…",
     "attachments": true,
     "emoji": true
   },
@@ -69,14 +95,62 @@
     "today": "Bu gün",
     "yesterday": "Dünən",
     "send": "Göndər",
-    "new_conversation": "Bizə mesaj göndərin",
+    "send_card_title": "Bizə mesaj göndərin",
+    "greeting_line1": "Salam, {first_name} 👋",
+    "greeting_line1_anonymous": "Salam 👋",
+    "greeting_line2": "Bizdən nəsə soruşun",
+    "recent_message": "Son mesaj",
+    "follow_us": "Bizi izləyin",
+    "tab_home": "Ana səhifə",
+    "tab_messages": "Mesajlar",
+    "empty_list": "Hələ söhbət yoxdur",
+    "error": "Nəsə səhv getdi",
+    "retry": "Yenidən cəhd et",
+    "offline": "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq",
+    "now": "indi",
+    "you": "Siz",
+    "close": "Bağla",
+    "unread": "Oxunmamış",
+    "email": "E-poçt",
+    "phone": "Telefon",
+    "header_subtitle": "Komanda da kömək edə bilər",
+    "online": "onlayn",
+    "away": "Hazırda iş saatı deyil",
+    "composer_placeholder": "Mesaj yazın…",
+    "choose_above": "Yuxarıdakı variantlardan birini seçin",
+    "sending": "Göndərilir",
     "sent": "Göndərildi",
     "read": "Oxundu",
-    "choose_above": "Yuxarıdakı variantlardan birini seçin"
+    "failed": "Göndərilmədi",
+    "closed": "Söhbət bağlanıb",
+    "start_new_conversation": "Yeni söhbət başlat",
+    "back": "← Geri",
+    "go_back": "Geri",
+    "bot": "Bot",
+    "typing": "yazır",
+    "attach": "Fayl əlavə et",
+    "emoji": "Emoji",
+    "image": "Şəkil",
+    "file": "Fayl",
+    "field_required": "Bu sahəni doldurun",
+    "invalid_email": "Email düzgün deyil",
+    "invalid_phone": "Telefon nömrəsi düzgün deyil",
+    "invalid_number": "Rəqəm yazın",
+    "too_long": "Ən çox %d simvol",
+    "choose_option": "Variantlardan birini seçin",
+    "file_too_large": "Fayl çox böyükdür (maks. %d MB)",
+    "unread_messages": "Oxunmamış mesaj var",
+    "minutes_short": "%d dəq",
+    "hours_short": "%d saat",
+    "days_short": "%d gün",
+    "away_until": "Növbəti iş saatı: %@",
+    "tomorrow": "sabah",
+    "support_messages": "Dəstək mesajları"
   },
   "limits": {
     "image_mb": 10,
     "file_mb": 25,
     "text_chars": 4000
-  }
+  },
+  "powered_by": true
 }

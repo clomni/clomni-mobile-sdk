@@ -1,23 +1,38 @@
 {
-  "brand": { "name": "Apar", "logo_url": "https://...", "primary_color": "#1F9D63", "on_primary_color": "#FFFFFF", "theme": "system" },
-  "launcher": { "visible": false, "position": "right", "bottom_padding": 20, "icon": "default" },
-  "home": {
-    "greeting_title": "Xoş gəlmisiniz 👋",
-    "greeting_subtitle": "Bizdən nəsə soruşun və ya fikrinizi bildirin",
-        "show_team_avatars": true,
-    "channels": [
-      { "type": "instagram", "url": "https://instagram.com/..." },
-      { "type": "whatsapp",  "url": "https://wa.me/99450..." },
-      { "type": "linkedin",  "url": "https://linkedin.com/company/..." },
-      { "type": "email",     "url": "mailto:support@..." }
-    ],
-    "cards": ["recent_conversation", "new_conversation"]
+  "version": 12,
+  "brand": {
+    "name": "Apar",
+    "logo_url": "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
+    "logo_dark_url": null,
+    "primary_color": "#1F9D63",
+    "header_style": "gradient",
+    "header_image_url": null,
+    "glow": false,
+    "colors": {
+      "light": { "primary": "#1F9D63", "on_primary": "#000000", "primary_soft": "#E9F5EF", "primary_line": "#CEE9DD",
+                 "header_from": "#1F9D63", "header_to": "#177248", "header_text": "#FFFFFF" },
+      "dark":  { "primary": "#27C87E", "on_primary": "#000000", "primary_soft": "#142520", "primary_line": "#173B2D",
+                 "header_from": "#1F9D63", "header_to": "#0E482D", "header_text": "#FFFFFF" }
+    }
   },
-  "team": { "avatars": ["https://...","https://..."], "reply_time": "Adətən bir neçə dəqiqə ərzində cavab veririk",
-            "office_hours": { "tz": "Asia/Baku", "open_now": true } },
-  "bot": { "name": "Clomni", "avatar_url": "https://..." },
-  "composer": { "placeholder": "Mesajınızı daxil edin", "attachments": true, "emoji": true },
-  "languages": ["az","en","ru"],
-  "strings": { "today": "Bu gün", "yesterday": "Dün", "send": "Göndər", "new_conversation": "Bizə mesaj göndərin" },
-  "limits": { "image_mb": 10, "file_mb": 25, "text_chars": 4000 }
+  "team": {
+    "show": true,
+    "mode": "auto",
+    "avatars": ["https://app.clomni.ai/v1/images/img_Av1Leyla00000000000", "https://app.clomni.ai/v1/images/img_Av2Rauf000000000000"],
+    "reply_time": "Adətən bir neçə dəqiqəyə cavab veririk",
+    "reply_time_offline": "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik",
+    "office_hours": { "tz": "Asia/Baku", "open_now": true, "next_open_at": null }
+  },
+  "bot": { "name": "Clomni", "avatar_url": null },
+  "home": {
+    "cards": ["send", "recent", "channels"],
+    "channels": [ { "type": "instagram", "url": "https://instagram.com/apar.az" },
+                  { "type": "whatsapp", "url": "https://wa.me/994501234567" } ]
+  },
+  "theme": { "mode": "system", "launcher": { "enabled": false, "position": "right", "bottom_padding": 20 } },
+  "composer": { "attachments": true, "emoji": true },
+  "languages": ["az", "en", "ru"],
+  "strings": { "greeting_line1": "Salam, {first_name} 👋", "greeting_line1_anonymous": "Salam 👋", "greeting_line2": "Necə kömək edə bilərik?" },
+  "limits": { "image_mb": 10, "file_mb": 25, "text_chars": 4000 },
+  "powered_by": true
 }

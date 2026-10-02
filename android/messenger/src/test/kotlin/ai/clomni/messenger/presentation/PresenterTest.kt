@@ -103,10 +103,10 @@ class PresenterTest {
         assertNull(apar.offline)
         assertNull(apar.failure)
 
-        // Minimal config: only "new conversation"; no channels, so no "Bizi izləyin"; no reply time.
+        // Minimal config (fixture 43): only "new conversation"; no channels, so no "Bizi izləyin"; the team hidden.
         val minimal = presenter(config = Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig, listOf(operatorReply)))
         assertNotNull(minimal.newConversation)
-        assertNull(minimal.newConversation?.subtitle)
+        assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", minimal.newConversation?.subtitle)
         assertNull("the config does not list recent_conversation", minimal.recent)
         assertNull(minimal.channels)
         assertTrue(minimal.header.teamAvatars.isEmpty())

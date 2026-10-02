@@ -1,0 +1,41 @@
+{
+  "brand": {
+    "name": "Clomni, Inc.",
+    "primary_color": "#1F93FF",
+    "header_style": "gradient",
+    "glow": false,
+    "logo": null,
+    "logo_dark": null,
+    "header_image": null
+  },
+  "team": {
+    "show": true,
+    "mode": "auto",
+    "avatars": [],
+    "reply_time": {
+      "preset": "minutes"
+    }
+  },
+  "bot": {
+    "name": "",
+    "avatar": null
+  },
+  "texts": {},
+  "home": {
+    "cards": [
+      "send",
+      "recent",
+      "channels"
+    ],
+    "channels": []
+  },
+  "theme": {
+    "mode": "system",
+    "launcher": {
+      "enabled": false,
+      "position": "right",
+      "bottom_padding": 20
+    }
+  },
+  "powered_by": true
+}

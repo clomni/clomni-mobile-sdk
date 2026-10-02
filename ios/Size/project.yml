@@ -1,0 +1,22 @@
+# The SDK as one dynamic framework, the way a binary (XCFramework) release would ship it and CocoaPods builds it:
+# every file of ios/Sources in one module. Only for measuring its size: scripts/ios-framework-size.sh.
+name: ClomniSize
+options:
+  deploymentTarget:
+    iOS: "15.0"
+
+targets:
+  ClomniMessenger:
+    type: framework
+    platform: iOS
+    sources:
+      - path: ../Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.messenger
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        OTHER_SWIFT_FLAGS: "$(inherited) -package-name ClomniMessenger"
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: NO
+    scheme: {}

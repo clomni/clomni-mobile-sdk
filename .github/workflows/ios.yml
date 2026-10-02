@@ -1,0 +1,82 @@
+name: iOS
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'protocol/**'
+      - 'ClomniMessenger.podspec'
+      - 'Package.swift'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'protocol/**'
+      - 'ClomniMessenger.podspec'
+      - 'Package.swift'
+      - '.github/workflows/ios.yml'
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Xcode 16: Swift 6, so the Example's strict concurrency is checked by the compiler the apps will use.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      # The tests read protocol/fixtures from the checkout, so a fixture change runs them too.
+      - name: swift test
+        run: swift test --enable-code-coverage
+
+      # Linux has no UIKit or SwiftUI; this is where the UI code gets compiled.
+      - name: Build for the iOS Simulator
+        run: >
+          xcodebuild build
+          -scheme ClomniMessenger
+          -destination 'generic/platform=iOS Simulator'
+          -skipPackagePluginValidation
+          CODE_SIGNING_ALLOWED=NO
+
+      # The snapshot tests need UIKit. A run without references records them and passes; the pictures are in the
+      # "snapshots" artifact, to be checked and committed under ios/Tests/ClomniMessengerTests/__Snapshots__.
+      - name: Snapshot tests on the iOS Simulator
+        run: >
+          xcodebuild test
+          -scheme ClomniMessenger-Package
+          -destination 'platform=iOS Simulator,name=iPhone 16'
+          -only-testing:ClomniMessengerTests
+          -skipPackagePluginValidation
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Keep the snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: ios/Tests/ClomniMessengerTests/__Snapshots__
+          if-no-files-found: ignore
+
+      # The Example app and the Notification Service Extension: the integration code the customer docs show.
+      - name: Build the Example app
+        run: |
+          brew install xcodegen
+          xcodegen generate --spec ios/Example/project.yml
+          xcodebuild build \
+            -project ios/Example/ClomniExample.xcodeproj \
+            -scheme ClomniExample \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO
+
+      # DoD 11: the SDK as a Release arm64 framework is at most 3 MB; the step prints the sizes.
+      - name: Framework size
+        run: scripts/ios-framework-size.sh
+
+      # CocoaPods builds every target as one module; the podspec's -package-name keeps it building.
+      - name: pod lib lint
+        run: pod lib lint ClomniMessenger.podspec --platforms=ios
