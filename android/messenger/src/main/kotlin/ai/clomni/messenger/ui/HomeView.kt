@@ -31,10 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -65,7 +67,7 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
 private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () -> Unit) {
     // header_text: white on a dark header or a picture, dark on a light one; never on_primary.
     val text = theme.colors.headerText
-    Box(Modifier.fillMaxWidth()) {
+    Box(Modifier.fillMaxWidth().then(if (header.glow) Modifier.glow(theme) else Modifier)) {
         HeaderBackground(header, theme, Modifier.matchParentSize())
         Column(
             Modifier.fillMaxWidth()
@@ -96,14 +98,26 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
 }
 
 /**
+ * The glow (APPEARANCE-CONTRACT 1): a soft radial light of the brand colour at 25% behind the header, so it shows
+ * where it spills out under it, around the cards; as the panel's preview draws it: an ellipse 140% of the header's
+ * width and 260 dp tall, from 45% of the header's height down.
+ */
+private fun Modifier.glow(theme: ClomniTheme): Modifier = drawBehind {
+    val height = 260.dp.toPx()
+    val center = Offset(size.width / 2, size.height * 0.45f + height / 2)
+    val light = theme.colors.primary.color.copy(alpha = 0.25f)
+    withTransform({ scale(scaleX = size.width * 1.4f / height, scaleY = 1f, pivot = center) }) {
+        drawCircle(Brush.radialGradient(listOf(light, Color.Transparent), center, height / 2), height / 2, center)
+    }
+}
+
+/**
  * Behind the header and the status bar: the brand gradient (header_from at the top to header_to; one colour when
- * solid), or the panel's picture under a black veil, 35% at the top to 55% at the bottom; with the glow, a soft
- * radial light of the brand colour at 25% (APPEARANCE-CONTRACT 1).
+ * solid), or the panel's picture under a black veil, 35% at the top to 55% at the bottom.
  */
 @Composable
 private fun HeaderBackground(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier) {
     val picture = header.imageUrl.takeIf { header.style == MessengerConfig.HeaderStyle.IMAGE }
-    val glow = theme.colors.primary.color.copy(alpha = 0.25f)
     Box(
         modifier.clearAndSetSemantics {}.drawWithContent {
             if (picture == null) {
@@ -111,15 +125,6 @@ private fun HeaderBackground(header: HomeScreen.Header, theme: ClomniTheme, modi
             }
             drawContent()
             if (picture != null) drawRect(Brush.verticalGradient(listOf(VEIL_TOP, VEIL_BOTTOM)))
-            if (header.glow) {
-                drawRect(
-                    Brush.radialGradient(
-                        listOf(glow, Color.Transparent),
-                        center = Offset(size.width / 2, size.height),
-                        radius = 260.dp.toPx(),
-                    ),
-                )
-            }
         },
     ) {
         if (picture != null) {

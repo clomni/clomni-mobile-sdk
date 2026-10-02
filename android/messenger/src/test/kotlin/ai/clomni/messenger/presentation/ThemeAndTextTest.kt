@@ -53,7 +53,7 @@ class ThemeTest {
         val brand = Fixture.aparConfig.brand
         val light = ClomniTheme.make(brand, dark = false).colors
         assertEquals(
-            listOf("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A", "#FFFFFF"),
+            listOf("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#1F9D63", "#13734A", "#FFFFFF"),
             light.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo, headerText) }.map { it.hex },
         )
         val dark = ClomniTheme.make(brand, dark = true).colors
@@ -69,10 +69,14 @@ class ThemeTest {
      */
     @Test
     fun headerText() {
+        // Apar's green keeps the brief's white text: 3.46:1 at the top, more below.
         val derived = ClomniTheme.make(brand("#1F9D63"), dark = false).colors
-        assertEquals("#27C87E", derived.headerFrom.hex)
-        assertEquals(2.19, derived.headerFrom.contrast(RgbColor.WHITE), 0.01)
-        assertEquals("white is too light on Apar's light top", "#1B1D21", derived.headerText.hex)
+        assertEquals("#1F9D63", derived.headerFrom.hex)
+        assertEquals("#FFFFFF", derived.headerText.hex)
+        // A light green is too light for it: white is 2.18:1 on #27C87E.
+        val light = ClomniTheme.make(brand("#27C87E"), dark = false).colors
+        assertEquals(2.18, light.headerFrom.contrast(RgbColor.WHITE), 0.01)
+        assertEquals("#1B1D21", light.headerText.hex)
         assertEquals("#FFFFFF", ClomniTheme.make(brand("#1F9D63"), dark = true).colors.headerText.hex)
         assertEquals("#FFFFFF", ClomniTheme.make(brand("#0A66C2"), dark = false).colors.headerText.hex)
         assertEquals("#1B1D21", ClomniTheme.make(brand("#FFD400", style = "solid"), dark = false).colors.headerText.hex)
@@ -82,7 +86,9 @@ class ThemeTest {
         val picture = ProtocolJson()
             .parseConfig("""{"brand":{"primary_color":"#FFD400","header_style":"image","header_image_url":"https://x/h.png"}}""")!!
         assertEquals("#FFFFFF", ClomniTheme.make(picture.brand, dark = false).colors.headerText.hex)
-        val noText = Fixture.aparConfig.brand.let { b -> b.copy(colors = b.colors!!.copy(light = b.colors!!.light.copy(headerText = null))) }
+        val noText = Fixture.aparConfig.brand.let { b ->
+            b.copy(colors = b.colors!!.copy(light = b.colors!!.light.copy(headerFrom = "#3FB37C", headerText = null)))
+        }
         assertEquals("from the server's #3FB37C", "#1B1D21", ClomniTheme.make(noText, dark = false).colors.headerText.hex)
     }
 
@@ -102,7 +108,7 @@ class ThemeTest {
 
     /**
      * Without the server's colours the SDK derives them by the same rules, close to the contract's example: soft 10%
-     * and line 22% over the background, the header one step lighter to one step darker (dark: both a step darker).
+     * and line 22% over the background, the header from the brand to one step darker (dark: two steps).
      */
     @Test
     fun derivedColoursFollowTheContract() {
@@ -111,7 +117,7 @@ class ThemeTest {
         // The contract's example colours are hand-written; its rules decide (the server computes the same).
         assertEquals("#E9F5EF", light.primarySoft.hex)
         assertEquals("#CEE9DD", light.primaryLine.hex)
-        assertEquals(apar.steps(1), light.headerFrom)
+        assertEquals(apar, light.headerFrom)
         assertEquals(apar.steps(-1), light.headerTo)
         assertClose(light.headerTo, "#13734A", 5.0)
 

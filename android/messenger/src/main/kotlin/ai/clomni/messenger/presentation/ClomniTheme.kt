@@ -11,7 +11,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     data class Colors(
         /** User messages, pill text, send, active icons. One step lighter in dark mode. */
         val primary: RgbColor,
-        /** The Home header's top and bottom: light to dark (both [primary] for a solid header). */
+        /** The Home header's top and bottom: the brand to darker (both [primary] for a solid header). */
         val headerFrom: RgbColor,
         val headerTo: RgbColor,
         /** Text and icons on the header: white where it reaches 3:1 on both header colours, else dark; white on a picture. */
@@ -113,7 +113,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         /**
          * The server's colours for the brand when it sent them (APPEARANCE-CONTRACT 1), otherwise the same rules here:
          * the brand, one step lighter in dark mode; text on it white or black by contrast; soft 10% and line 22% over
-         * the background; the header light to dark ([primaryOverride] is always derived here).
+         * the background; the header from the brand to a step darker ([primaryOverride] is always derived here).
          */
         fun make(brand: MessengerConfig.Brand?, dark: Boolean, primaryOverride: RgbColor? = null): ClomniTheme {
             val background = if (dark) hex("#121316") else RgbColor.WHITE
@@ -166,15 +166,15 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         /** The server's rules (APPEARANCE-CONTRACT 1), for a config without colours or a colour set in the app. */
         fun derive(base: RgbColor, dark: Boolean, background: RgbColor): BrandColors {
             val primary = if (dark) base.steps(1) else base
-            // Light: one step lighter at the top, one darker at the bottom; dark: both one step darker than that.
-            val shade = if (dark) -1 else 0
             return BrandColors(
                 primary = primary,
                 onPrimary = readableText(primary),
                 primarySoft = primary.over(background, 0.10),
                 primaryLine = primary.over(background, 0.22),
-                headerFrom = base.steps(1 + shade),
-                headerTo = base.steps(-1 + shade),
+                // The brand colour at the top (not dark mode's lighter primary), one step darker at the bottom; two in
+                // dark mode.
+                headerFrom = base,
+                headerTo = base.steps(if (dark) -2 else -1),
             )
         }
 
