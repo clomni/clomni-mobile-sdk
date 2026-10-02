@@ -8,6 +8,7 @@ import java.util.Map;
 import ai.clomni.messenger.Clomni;
 import ai.clomni.messenger.ClomniLogLevel;
 import ai.clomni.messenger.ClomniPush;
+import ai.clomni.messenger.ClomniThemeMode;
 import ai.clomni.messenger.ClomniUser;
 import ai.clomni.messenger.UnreadCountListener;
 
@@ -38,6 +39,7 @@ final class JavaUsage {
 
         Clomni.setLauncherVisible(true);
         Clomni.setBottomPadding(64);
+        Clomni.setTheme("#0A66C2", null, ClomniThemeMode.DARK);
 
         Clomni.setDeviceToken("fcm-token");
         Clomni.setNotificationIcon(android.R.drawable.stat_notify_chat);

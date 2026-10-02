@@ -209,13 +209,18 @@ public object Clomni {
     @JvmStatic
     @JvmOverloads
     public fun setTheme(primaryColor: String? = null, typeface: Typeface? = null, mode: ClomniThemeMode? = null) {
+        typeface?.let(::setTypeface)
+        val override = themeOverride(primaryColor, mode)
+        onMain { MessengerRuntime.setTheme(override) }
+    }
+
+    /** [setTheme]'s colour and mode; a colour that is not #RRGGBB is logged and left to the panel. */
+    internal fun themeOverride(primaryColor: String?, mode: ClomniThemeMode?): ThemeOverride {
         val color = primaryColor?.let(RgbColor::parse)
         if (primaryColor != null && color == null) {
             ClomniLog.error { "setTheme: primaryColor \"$primaryColor\" is not #RRGGBB; the panel's colour stays" }
         }
-        typeface?.let(::setTypeface)
-        val override = ThemeOverride(color, mode?.mode)
-        onMain { MessengerRuntime.setTheme(override) }
+        return ThemeOverride(color, mode?.mode)
     }
 
     /** Lifts the launcher above the app's bottom navigation, in dp. */

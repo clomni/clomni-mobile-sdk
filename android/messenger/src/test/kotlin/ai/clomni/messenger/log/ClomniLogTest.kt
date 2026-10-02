@@ -2,6 +2,7 @@ package ai.clomni.messenger.log
 
 import ai.clomni.messenger.Clomni
 import ai.clomni.messenger.ClomniLogLevel
+import ai.clomni.messenger.ClomniThemeMode
 import ai.clomni.messenger.api.ApiClient
 import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.ClomniError
@@ -10,6 +11,9 @@ import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.MemorySecureStore
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.UserIdentity
+import ai.clomni.messenger.presentation.RgbColor
+import ai.clomni.messenger.presentation.ThemeOverride
+import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.ProtocolJson
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -46,6 +50,19 @@ class ClomniLogTest {
         Clomni.setLogLevel(ClomniLogLevel.NONE)
         ClomniLog.error { "e2" }
         assertEquals(listOf("error: e", "warning: w", "debug: d"), lines)
+    }
+
+    /** Clomni.setTheme: each call replaces the last; a colour that is not #RRGGBB is said and left to the panel. */
+    @Test
+    fun setThemesColourAndMode() {
+        assertEquals(
+            ThemeOverride(RgbColor.parse("#0A66C2"), MessengerConfig.ThemeMode.DARK),
+            Clomni.themeOverride("#0A66C2", ClomniThemeMode.DARK),
+        )
+        assertEquals("nothing given: the panel's", ThemeOverride(), Clomni.themeOverride(null, null))
+        assertEquals(ThemeOverride(mode = MessengerConfig.ThemeMode.SYSTEM), Clomni.themeOverride("blue", ClomniThemeMode.SYSTEM))
+        assertEquals(listOf("error: setTheme: primaryColor \"blue\" is not #RRGGBB; the panel's colour stays"), lines)
+        assertEquals(MessengerConfig.ThemeMode.LIGHT, ClomniThemeMode.LIGHT.mode)
     }
 
     /** Brief 8·6.6: the two mistakes of an integration, in the words the brief gives them. */
