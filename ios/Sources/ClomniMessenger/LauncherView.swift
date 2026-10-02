@@ -89,7 +89,7 @@ struct LauncherButton: View {
                         Text(badge)
                             .clomniFixedFont(11, .bold)
                             .foregroundStyle(Color.white)
-                            .padding(.horizontal, 5)
+                            .padding(.horizontal, CGFloat(ClomniTheme.Space.xxs))
                             .frame(minWidth: 18, minHeight: 18)
                             .background(Capsule().fill(theme.colors.unread.color))
                             .overlay(Capsule().stroke(theme.colors.background.color, lineWidth: 2))

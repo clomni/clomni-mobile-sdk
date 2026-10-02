@@ -60,7 +60,7 @@ struct QuickRepliesView: View {
     }
 }
 
-/// background, 1 pt primaryLine border, primary text 14/500, radius 18, padding 7×13; up to two lines, then "…".
+/// background, 1 pt primaryLine border, primary text 14/500, radius 18, padding 8×12; up to two lines, then "…".
 /// The tap target reaches 44 pt even where the pill is smaller.
 struct PillButton: View {
     let title: String
@@ -78,8 +78,8 @@ struct PillButton: View {
                 .multilineTextAlignment(.trailing)
                 .lineLimit(2)
                 .truncationMode(.tail)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 13)
+                .padding(.vertical, CGFloat(ClomniTheme.Space.s))
+                .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
                 .background(shape.fill(theme.colors.background.color))
                 .overlay(shape.stroke(isBack ? theme.colors.border.color : theme.colors.primaryLine.color, lineWidth: 1))
                 .padding(.vertical, 6)

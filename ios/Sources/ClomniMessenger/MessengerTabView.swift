@@ -108,7 +108,7 @@ struct TabBar: View {
                        selectedSymbol: "message.fill", isSelected: selected == .messages, showsDot: tabs.messagesUnread,
                        theme: theme) { selected = .messages }
         }
-        .padding(.top, 9)
+        .padding(.top, CGFloat(ClomniTheme.Space.s))
         .background(theme.colors.background.color.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) {
             Rectangle().fill(theme.colors.border.color).frame(height: 1)

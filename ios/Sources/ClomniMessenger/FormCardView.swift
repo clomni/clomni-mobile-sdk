@@ -29,7 +29,7 @@ struct FormCardView: View {
             }
             if card.readOnly && !card.submitted.isEmpty {
                 ForEach(card.submitted, id: \.label) { line in
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
                         Text(line.label)
                             .clomniFont(ClomniTheme.FontSize.label, .semibold, relativeTo: .caption)
                             .foregroundStyle(theme.colors.textSecondary.color)
@@ -64,7 +64,7 @@ struct FormCardView: View {
                 }
             }
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, CGFloat(ClomniTheme.Space.s))
         .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
         .onAppear {
             if values.isEmpty {

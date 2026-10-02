@@ -63,7 +63,7 @@ struct HomeHeaderView: View {
             .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
             // Both lines in the header's full colour, told apart by size and weight (BRIEF-DEVIATIONS #18), at the
             // panel's size (home.title_size). They wrap rather than shrink or cut off at large Dynamic Type sizes.
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
                 GreetingLine(text: header.greeting, size: header.titleSize.greeting, weight: .regular, style: .headline)
                 GreetingLine(text: header.title, size: header.titleSize.title, weight: .semibold, style: .title2)
             }
@@ -73,8 +73,8 @@ struct HomeHeaderView: View {
         }
         .foregroundStyle(ink.color)
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xxl))
-        // 62 = the 40 the cards ride up + 22 of air above them.
-        .padding(.bottom, 62)
+        // 64 = the 40 the cards ride up + 24 of air above them.
+        .padding(.bottom, 64)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(GeometryReader { proxy in
             Color.clear
@@ -341,7 +341,7 @@ struct NewConversationCardView: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: CGFloat(ClomniTheme.Space.l)) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
                     Text(card.title)
                         .clomniFont(ClomniTheme.FontSize.text, .semibold)
                         .foregroundStyle(theme.colors.textPrimary.color)
@@ -400,7 +400,7 @@ struct ConversationRowView: View {
     var body: some View {
         HStack(spacing: CGFloat(ClomniTheme.Space.m)) {
             AvatarView(url: row.avatarUrl, initial: row.initial, size: ClomniTheme.Size.avatar, theme: theme)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
                 Text(row.preview)
                     .clomniFont(ClomniTheme.FontSize.preview)
                     .foregroundStyle(theme.colors.textPrimary.color)
@@ -434,26 +434,31 @@ struct ChannelsCardView: View {
                 .foregroundStyle(theme.colors.textPrimary.color)
                 .accessibilityAddTraits(.isHeader)
             icons
-                .padding(.horizontal, -7)
-                .padding(.vertical, -7)
+                .padding(.horizontal, -Self.overhang)
+                .padding(.vertical, -Self.overhang)
         }
         .clomniCard(theme)
     }
 
-    /// 44 pt targets 6 pt into each other keep the squares 8 pt apart, across and between rows; a row that is full
+    /// How far a 44 pt target reaches past its 30 pt square.
+    private static let overhang = CGFloat(ClomniTheme.Size.touchTarget - ClomniTheme.Size.channel) / 2
+    /// Between two targets, for squares 20 pt apart.
+    private static let gap = CGFloat(ClomniTheme.Space.channelGap) - 2 * overhang
+
+    /// The squares 20 pt apart, across and between rows, so their 44 pt targets never overlap; a row that is full
     /// continues on the next line.
     @ViewBuilder
     private var icons: some View {
         if #available(iOS 16.0, *) {
-            WrapLayout(spacing: -6, leading: true) {
+            WrapLayout(spacing: Self.gap, leading: true) {
                 ForEach(card.items) { item in
                     ChannelButton(item: item, theme: theme) { openURL(item.url) }
                 }
             }
         } else {
-            VStack(alignment: .leading, spacing: -6) {
+            VStack(alignment: .leading, spacing: Self.gap) {
                 ForEach(Array(card.rows().enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: -6) {
+                    HStack(spacing: Self.gap) {
                         ForEach(row) { item in
                             ChannelButton(item: item, theme: theme) { openURL(item.url) }
                         }

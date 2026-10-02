@@ -65,14 +65,18 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let meta: Double = 11
     }
 
+    /// Multiples of 4 (DESIGN-PASS, the same on Android): 4 · 8 · 12 · 16 · 20 · 24 · 32.
     package enum Space {
-        package static let xxs: Double = 3
-        package static let xs: Double = 6
+        package static let xxs: Double = 4
+        package static let xs: Double = 8
         package static let s: Double = 8
-        package static let m: Double = 10
+        package static let m: Double = 12
         package static let l: Double = 12
-        package static let xl: Double = 14
-        package static let xxl: Double = 18
+        package static let xl: Double = 16
+        package static let xxl: Double = 20
+        package static let xxxl: Double = 24
+        /// Between the channel squares, so their 44 pt targets do not overlap.
+        package static let channelGap: Double = 20
     }
 
     package enum Size {

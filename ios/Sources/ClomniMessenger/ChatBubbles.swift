@@ -58,7 +58,7 @@ struct ChatTranscript: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 3) {
+        LazyVStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
             Color.clear
                 .frame(height: 1)
                 .onAppear(perform: reachedTop)
@@ -88,7 +88,7 @@ struct ChatItemView: View {
                 .clomniFont(11.5, relativeTo: .caption2)
                 .foregroundStyle(theme.colors.textSecondary.color)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 2)
+                .padding(.top, CGFloat(ClomniTheme.Space.xxs))
                 .padding(.bottom, CGFloat(ClomniTheme.Space.m))
         case .bubble(let bubble):
             BubbleRow(bubble: bubble, theme: theme, actions: actions)
@@ -134,7 +134,7 @@ struct BubbleRow: View {
     }
 
     var body: some View {
-        VStack(alignment: incoming ? .leading : .trailing, spacing: 2) {
+        VStack(alignment: incoming ? .leading : .trailing, spacing: CGFloat(ClomniTheme.Space.xxs)) {
             HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
                 if incoming {
                     avatarSlot
@@ -148,7 +148,8 @@ struct BubbleRow: View {
                 Text(meta)
                     .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
                     .foregroundStyle(theme.colors.textSecondary.color)
-                    .padding(.leading, 34)
+                    // Under the bubble, past the avatar's slot.
+                    .padding(.leading, CGFloat(ClomniTheme.Size.headerAvatar + ClomniTheme.Space.s))
                     .accessibilityHidden(true)
             }
             if let status = bubble.status {
@@ -191,7 +192,7 @@ struct BubbleBody: View {
                 .foregroundStyle(ink)
                 .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.vertical, 9)
+                .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
                 .background(shape.fill(fill))
                 .frame(maxWidth: incoming ? 222 : 210, alignment: incoming ? .leading : .trailing)
@@ -276,7 +277,7 @@ struct ImageBubble: View {
                     .clomniFont(ClomniTheme.FontSize.text)
                     .foregroundStyle(ink)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 9)
+                    .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                     .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
                     .frame(width: CGFloat(image.width), alignment: .leading)
                     .background(fill)
@@ -331,7 +332,7 @@ struct FileCard: View {
             Image(systemName: file.symbol)
                 .font(.system(size: 22))
                 .frame(width: 28)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
                 Text(file.name)
                     .clomniFont(ClomniTheme.FontSize.text, .medium)
                     .lineLimit(1)
@@ -425,8 +426,8 @@ struct TypingRow: View {
                         .opacity(pulse ? 0.9 : 0.5 + 0.2 * Double(index))
                 }
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 13)
+            .padding(.vertical, CGFloat(ClomniTheme.Space.l))
+            .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
             .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.message), style: .continuous)
                 .fill(theme.colors.surface.color))
         }

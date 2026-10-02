@@ -79,8 +79,9 @@ package struct HomeScreen: Sendable, Equatable {
     }
 
     package struct ChannelsCard: Sendable, Equatable {
-        /// Seven 30 pt icons with their 8 pt gaps fit the card on the narrowest iPhone.
-        package static let iconsPerRow = 7
+        /// Five 30 pt icons with their 20 pt gaps fit the card on the narrowest iPhone (230 of 264 pt); the panel
+        /// allows five.
+        package static let iconsPerRow = 5
 
         package let label: String
         package let items: [ChannelItem]
