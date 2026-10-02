@@ -34,8 +34,10 @@ import java.util.TimeZone
 class AppearanceSnapshotTest {
     private val reference = DeviceConfig.PIXEL_5.copy(screenWidth = 423, screenHeight = 903, xdpi = 240, ydpi = 240, density = Density.HIGH)
 
+    private val semantics = SemanticsCapture()
+
     @get:Rule
-    val paparazzi = Paparazzi(deviceConfig = reference, theme = "android:Theme.Material.Light.NoActionBar")
+    val paparazzi = Paparazzi(deviceConfig = reference, theme = "android:Theme.Material.Light.NoActionBar", renderExtensions = setOf(semantics))
 
     /** 2026-10-01T10:32Z: two minutes after the fixtures' messages. */
     private val now = 1_790_850_720_000L
@@ -80,6 +82,7 @@ class AppearanceSnapshotTest {
                 MessengerTabs(presenter.home(state), presenter.messages(state), theme, MessengerActions())
             }
         }
+        semantics.assertTouchTargets(name)
     }
 
     // Logo, bot picture, team

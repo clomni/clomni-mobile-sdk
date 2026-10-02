@@ -51,8 +51,8 @@ internal class ClomniMessengerActivity : ComponentActivity() {
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.clomni_slide_up, R.anim.clomni_stay)
-            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.clomni_stay, R.anim.clomni_slide_down)
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, Motion.open(this), R.anim.clomni_stay)
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.clomni_stay, Motion.close(this))
         }
         window.edgeToEdge()
         onBackPressedDispatcher.addCallback(
@@ -68,7 +68,7 @@ internal class ClomniMessengerActivity : ComponentActivity() {
         super.finish()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             @Suppress("DEPRECATION")
-            overridePendingTransition(R.anim.clomni_stay, R.anim.clomni_slide_down)
+            overridePendingTransition(R.anim.clomni_stay, Motion.close(this))
         }
     }
 

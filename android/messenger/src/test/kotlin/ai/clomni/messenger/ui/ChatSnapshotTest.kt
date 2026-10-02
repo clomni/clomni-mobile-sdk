@@ -44,11 +44,16 @@ private fun present(snapshot: ChatSnapshot, now: Long = NOW) =
  * conversation laid out (the picture is as tall as it is).
  */
 class ChatFixtureSnapshotTest {
+    private val semantics = SemanticsCapture()
+
+    // Shrunk to the content, from a screen tall enough for the longest form: on the phone's own height the composer
+    // was squeezed under it.
     @get:Rule
     val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.PIXEL_5,
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenHeight = 6000),
         theme = "android:Theme.Material.Light.NoActionBar",
         renderingMode = SessionParams.RenderingMode.SHRINK,
+        renderExtensions = setOf(semantics),
     )
 
     @Test
@@ -76,6 +81,7 @@ class ChatFixtureSnapshotTest {
                         ChatScreenView(screen, theme, ChatActions(), lazy = false)
                     }
                 }
+                semantics.assertTouchTargets(name)
             }
             rendered++
         }
@@ -85,8 +91,14 @@ class ChatFixtureSnapshotTest {
 
 /** The conversation screen's states on a phone, as the app lays them out (brief 8·7.4, 7.5). */
 class ChatSnapshotTest {
+    private val semantics = SemanticsCapture()
+
     @get:Rule
-    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, theme = "android:Theme.Material.Light.NoActionBar")
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5,
+        theme = "android:Theme.Material.Light.NoActionBar",
+        renderExtensions = setOf(semantics),
+    )
 
     private val protocol = ProtocolJson()
 
@@ -105,6 +117,7 @@ class ChatSnapshotTest {
                 Scene(theme, safeAreas) { ChatScreenView(screen, theme, ChatActions(), draft = draft) }
             }
         }
+        semantics.assertTouchTargets(name)
     }
 
     /**

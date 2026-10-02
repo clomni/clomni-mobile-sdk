@@ -161,7 +161,8 @@ private fun FormFieldView(
             else -> BasicTextField(
                 value,
                 { change(field.maxLength?.let { limit -> it.take(limit + 1) } ?: it) },
-                frame.then(described).padding(horizontal = ClomniTheme.Space.m.dp, vertical = ClomniTheme.Space.s.dp),
+                // The padding is inside the decoration, so the whole frame is the field: a 48 dp target.
+                frame.then(described),
                 enabled = !disabled,
                 textStyle = text,
                 singleLine = field.type != FormFieldType.TEXTAREA,
@@ -169,7 +170,10 @@ private fun FormFieldView(
                 keyboardOptions = keyboard(field),
                 cursorBrush = SolidColor(theme.colors.primary.color),
                 decorationBox = { inner ->
-                    Box(contentAlignment = if (field.type == FormFieldType.TEXTAREA) Alignment.TopStart else Alignment.CenterStart) {
+                    Box(
+                        Modifier.padding(horizontal = ClomniTheme.Space.m.dp, vertical = ClomniTheme.Space.s.dp),
+                        contentAlignment = if (field.type == FormFieldType.TEXTAREA) Alignment.TopStart else Alignment.CenterStart,
+                    ) {
                         if (value.isEmpty()) field.placeholder?.let { BasicText(it, style = hint, maxLines = 1) }
                         inner()
                     }

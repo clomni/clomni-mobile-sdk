@@ -241,7 +241,8 @@ private fun LazyTranscript(items: List<ChatItem>, theme: ClomniTheme, actions: C
     val still = reduceMotion()
     val lastId = items.lastOrNull()?.id
     LaunchedEffect(lastId) {
-        if (items.isNotEmpty()) state.animateScrollToItem(items.size - 1)
+        // Without motion the end is simply there.
+        if (items.isNotEmpty()) if (still) state.scrollToItem(items.size - 1) else state.animateScrollToItem(items.size - 1)
     }
     val reachedTop by rememberUpdatedState(actions.reachedTop)
     LaunchedEffect(state) {

@@ -20,8 +20,14 @@ import java.util.TimeZone
 
 /** Home and Messages as Paparazzi draws them (Roboto, the API 36 framework), from protocol fixtures 42 and 43. */
 class HomeSnapshotTest {
+    private val semantics = SemanticsCapture()
+
     @get:Rule
-    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, theme = "android:Theme.Material.Light.NoActionBar")
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5,
+        theme = "android:Theme.Material.Light.NoActionBar",
+        renderExtensions = setOf(semantics),
+    )
 
     /** 2026-10-01T10:32Z: two minutes after the fixtures' messages. */
     private val now = 1_790_850_720_000L
@@ -42,6 +48,7 @@ class HomeSnapshotTest {
                 MessengerTabs(presenter.home(state), presenter.messages(state), theme, MessengerActions(), tab)
             }
         }
+        semantics.assertTouchTargets(name)
     }
 
     private fun loaded(

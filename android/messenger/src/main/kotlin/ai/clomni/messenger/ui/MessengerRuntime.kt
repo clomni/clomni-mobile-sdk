@@ -248,7 +248,7 @@ internal object MessengerRuntime {
             (from ?: app).startActivity(intent)
             if (from != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 @Suppress("DEPRECATION")
-                from.overridePendingTransition(R.anim.clomni_slide_up, R.anim.clomni_stay)
+                from.overridePendingTransition(Motion.open(from), R.anim.clomni_stay)
             }
         } catch (e: RuntimeException) {
             opening = false

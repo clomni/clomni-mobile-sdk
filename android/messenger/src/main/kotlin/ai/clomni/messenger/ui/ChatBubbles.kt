@@ -116,15 +116,7 @@ internal fun attributedText(runs: List<TextRun>, linkColor: RgbColor): Annotated
 @Composable
 internal fun reduceMotion(): Boolean {
     val context = LocalContext.current
-    return remember(context) {
-        runCatching {
-            android.provider.Settings.Global.getFloat(
-                context.contentResolver,
-                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f,
-            ) == 0f
-        }.getOrDefault(false)
-    }
+    return remember(context) { Motion.reduced(context) }
 }
 
 /** A new item comes in 6 dp from below while it fades in (220 ms, ease-out); with less motion it only fades. */

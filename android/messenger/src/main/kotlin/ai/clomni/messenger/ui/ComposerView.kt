@@ -130,25 +130,29 @@ private fun Field(
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val canSend = ChatPresenter.canSend(text, composer.limit)
+    // The field is the 38 dp grey box, but takes taps (and TalkBack's frame) over 48: 5 dp of it above and below the
+    // box lay out over the bar's own padding.
+    val slack = (ClomniTheme.Size.touchTarget.dp - 38.dp) / 2
     Row(verticalAlignment = Alignment.Bottom) {
-        Row(
-            Modifier.weight(1f).heightIn(min = 38.dp)
-                .clip(RoundedCornerShape(ClomniTheme.Radius.input.dp))
-                .background(theme.colors.surface.color)
-                .padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.s.dp),
-            horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicTextField(
-                text,
-                changeText,
-                Modifier.weight(1f).focusRequester(focus).semantics { contentDescription = composer.placeholder },
-                textStyle = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary),
-                maxLines = 5,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                cursorBrush = SolidColor(theme.colors.primary.color),
-                decorationBox = { inner ->
-                    Box(contentAlignment = Alignment.CenterStart) {
+        BasicTextField(
+            text,
+            changeText,
+            Modifier.weight(1f).bleed(vertical = slack).heightIn(min = ClomniTheme.Size.touchTarget.dp)
+                .focusRequester(focus).semantics { contentDescription = composer.placeholder },
+            textStyle = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary),
+            maxLines = 5,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            cursorBrush = SolidColor(theme.colors.primary.color),
+            decorationBox = { inner ->
+                Row(
+                    Modifier.padding(vertical = slack).heightIn(min = 38.dp)
+                        .clip(RoundedCornerShape(ClomniTheme.Radius.input.dp))
+                        .background(theme.colors.surface.color)
+                        .padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.s.dp),
+                    horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                         if (text.isEmpty()) {
                             BasicText(
                                 composer.placeholder,
@@ -159,19 +163,19 @@ private fun Field(
                         }
                         inner()
                     }
-                },
-            )
-            if (text.isEmpty()) {
-                if (composer.showsEmoji) {
-                    IconButton(R.drawable.clomni_ic_emoji, composer.emojiLabel, theme) {
-                        // The keyboard's own emoji key does the rest.
-                        focus.requestFocus()
-                        keyboard?.show()
+                    if (text.isEmpty()) {
+                        if (composer.showsEmoji) {
+                            IconButton(R.drawable.clomni_ic_emoji, composer.emojiLabel, theme) {
+                                // The keyboard's own emoji key does the rest.
+                                focus.requestFocus()
+                                keyboard?.show()
+                            }
+                        }
+                        if (composer.showsAttach) AttachButton(composer, theme, actions)
                     }
                 }
-                if (composer.showsAttach) AttachButton(composer, theme, actions)
-            }
-        }
+            },
+        )
         AnimatedVisibility(canSend, enter = fadeIn(tween(200)), exit = fadeOut(tween(200))) {
             val inset = (ClomniTheme.Size.touchTarget.dp - 34.dp) / 2
             Box(

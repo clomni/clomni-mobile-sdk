@@ -5,6 +5,7 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.ThemeOverride
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.getValue
@@ -81,7 +82,8 @@ internal fun Modifier.clomniCard(theme: ClomniTheme, label: String = "", onClick
         shadow(2.dp, shape, ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.10f))
     }
     val clipped = outline.clip(shape)
-    return (if (onClick != null) clipped.button(label, onClick) else clipped)
+    // A tappable card is a 48 dp target even with one line in it.
+    return (if (onClick != null) clipped.heightIn(min = ClomniTheme.Size.touchTarget.dp).button(label, onClick) else clipped)
         .background(theme.colors.background.color)
         .padding(vertical = ClomniTheme.Space.l.dp, horizontal = ClomniTheme.Space.xl.dp)
 }
