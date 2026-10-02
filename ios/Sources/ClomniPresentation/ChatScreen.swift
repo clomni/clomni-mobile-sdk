@@ -36,7 +36,8 @@ package struct ChatHeader: Sendable, Equatable {
     package let lead: Lead
     /// The brand, or the operator's name.
     package let title: String
-    /// "Komanda da kömək edə bilər", the reply time while queued, "Apar · onlayn", or that it is after hours.
+    /// header_subtitle (the reply time unless the panel wrote its own), the reply time while queued, "Apar ·
+    /// onlayn", or that it is after hours.
     package let subtitle: String
     package let backLabel: String
     package let closeLabel: String

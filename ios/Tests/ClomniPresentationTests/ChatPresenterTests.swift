@@ -157,7 +157,12 @@ final class ChatPresenterTests: XCTestCase {
         let bot = screen([]).header
         XCTAssertEqual(bot.lead, .team(Fixture.aparConfig.team.avatars))
         XCTAssertEqual(bot.title, "Apar")
-        XCTAssertEqual(bot.subtitle, "Komanda da kömək edə bilər")
+        XCTAssertEqual(bot.subtitle, "Komanda da kömək edə bilər", "the config's header_subtitle, as it came")
+        // Without one in the config, the SDK's own: the server's default, the minutes reply time.
+        let plain = screen([]) { $0.config = Fixture.minimalConfig }.header
+        XCTAssertEqual(plain.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk")
+        XCTAssertEqual(["en", "ru"].map { ClomniStrings(language: $0)[.headerSubtitle] },
+                       ["Typically replies in a few minutes", "Обычно отвечаем в течение нескольких минут"])
         XCTAssertEqual(bot.backLabel, "Geri")
         XCTAssertEqual(bot.closeLabel, "Bağla")
 
