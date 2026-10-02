@@ -30,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -84,15 +83,16 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
                 CloseButton(header.closeLabel, text, close)
             }
             Column(Modifier.padding(top = 20.dp).semantics(mergeDescendants = true) { heading() }) {
-                val greeting = clomniText(
-                    ClomniTheme.FontSize.greeting,
-                    text,
-                    FontWeight.SemiBold,
-                    lineHeight = 1.22f,
-                    letterSpacing = -0.4f,
+                // The first line in the header's full colour, set apart by size and weight rather than a 62% fade,
+                // which read at about 2.2:1 on Apar's green (BRIEF-DEVIATIONS 18).
+                BasicText(
+                    header.greeting,
+                    style = clomniText(ClomniTheme.FontSize.greetingFirstLine, text, lineHeight = 1.3f, letterSpacing = -0.2f),
                 )
-                BasicText(header.greeting, Modifier.alpha(0.62f), style = greeting)
-                BasicText(header.title, style = greeting)
+                BasicText(
+                    header.title,
+                    style = clomniText(ClomniTheme.FontSize.greeting, text, FontWeight.SemiBold, lineHeight = 1.22f, letterSpacing = -0.4f),
+                )
             }
         }
     }

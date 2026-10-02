@@ -58,6 +58,9 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
 
     object FontSize {
         val greeting = 22f
+
+        /** "Salam, Aysel 👋" over the greeting, at full colour (BRIEF-DEVIATIONS 18). */
+        val greetingFirstLine = 17f
         val brand = 17f
         val title = 14.5f
         val text = 14f

@@ -49,7 +49,7 @@ internal data class HomeScreen(
         val brandInitial: String,
         /** Up to three, overlapping. */
         val teamAvatars: List<String>,
-        /** "Salam, Aysel 👋", drawn at 62% opacity. */
+        /** "Salam, Aysel 👋", smaller than [title] and in the same colour. */
         val greeting: String,
         /** "Necə kömək edə bilərik?" */
         val title: String,
