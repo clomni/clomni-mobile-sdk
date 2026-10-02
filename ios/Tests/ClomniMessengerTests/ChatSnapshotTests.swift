@@ -28,6 +28,15 @@ final class ChatSnapshotTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("protocol/fixtures")
     }
 
+    /// The renderer draws what it is given, and a blank picture is told apart: without this every snapshot was
+    /// recorded white and still passed.
+    func testTheRendererDraws() {
+        let text = Snapshot.render(Text("Salam").font(.title).padding(20).background(Color.white), width: 200, dark: false)
+        XCTAssertFalse(Snapshot.isBlank(text), "text on white is drawn")
+        let solid = Snapshot.render(Color.white.frame(width: 50, height: 50), width: 50, height: 50, dark: false)
+        XCTAssertTrue(Snapshot.isBlank(solid), "one colour is blank")
+    }
+
     func testEveryMessageFixture() throws {
         let index = try JSONDecoder().decode([[String: JSONValue]].self,
                                              from: Data(contentsOf: fixtures.appendingPathComponent("index.json")))
@@ -124,11 +133,18 @@ enum Snapshot {
         window.rootViewController = controller
         window.isHidden = false
         controller.view.frame = window.bounds
+        controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
+        // SwiftUI commits its drawing on the run loop; give it a turn, then flush the layer tree.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        controller.view.layoutIfNeeded()
+        CATransaction.flush()
         let format = UIGraphicsImageRendererFormat()
         format.scale = 2
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true)
+        // The layer tree itself: drawHierarchy needs a window on screen, which a package's test run (no app, no
+        // scene) does not have, and drew every snapshot blank.
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            controller.view.layer.render(in: context.cgContext)
         }
         window.isHidden = true
         return image
@@ -136,6 +152,10 @@ enum Snapshot {
 
     static func assert(_ image: UIImage, named name: String, file: StaticString = #filePath, line: UInt = #line) throws {
         guard let png = image.pngData() else { return XCTFail("\(name): no PNG", file: file, line: line) }
+        // A picture of one colour is a render that drew nothing, not a screen: never a reference.
+        guard !isBlank(image) else {
+            return XCTFail("\(name): the picture is one colour; nothing was drawn", file: file, line: line)
+        }
         let reference = directory.appendingPathComponent("\(name).png")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         if ProcessInfo.processInfo.environment["CLOMNI_RECORD_SNAPSHOTS"] == "1"
@@ -163,6 +183,13 @@ enum Snapshot {
             }
         }
         return Double(differing) <= 0.005 * Double(left.width * left.height)
+    }
+
+    /// Every pixel the same (or no pixels at all).
+    static func isBlank(_ image: UIImage) -> Bool {
+        guard let picture = pixels(image), picture.bytes.count >= 4 else { return true }
+        let first = picture.bytes[0..<4]
+        return stride(from: 4, to: picture.bytes.count, by: 4).allSatisfy { picture.bytes[$0..<$0 + 4] == first }
     }
 
     private static func pixels(_ image: UIImage) -> (width: Int, height: Int, bytes: [UInt8])? {
