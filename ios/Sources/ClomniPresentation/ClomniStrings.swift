@@ -108,7 +108,7 @@ package struct ClomniStrings: Sendable, Equatable {
     static let fallbacks: [String: [Key: String]] = [
         "az": [
             .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .sendCardTitle: "Bizə mesaj göndərin",
-            .greetingLine1: "Salam, {first_name} 👋", .greetingLine1Anonymous: "Salam 👋", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
+            .greetingLine1: "Salam, {first_name}", .greetingLine1Anonymous: "Salam", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
             .followUs: "Bizi izləyin", .tabHome: "Ana səhifə", .tabMessages: "Mesajlar",
             .emptyList: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
             .offline: "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", .now: "indi", .you: "Siz",
@@ -128,7 +128,7 @@ package struct ClomniStrings: Sendable, Equatable {
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
-            .greetingLine1: "Hi, {first_name} 👋", .greetingLine1Anonymous: "Hi 👋", .greetingLine2: "How can we help?", .recentMessage: "Recent message",
+            .greetingLine1: "Hi, {first_name}", .greetingLine1Anonymous: "Hi", .greetingLine2: "How can we help?", .recentMessage: "Recent message",
             .followUs: "Follow us", .tabHome: "Home", .tabMessages: "Messages",
             .emptyList: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
             .offline: "No internet. Messages will be delivered when you are back online", .now: "now", .you: "You",
@@ -149,7 +149,7 @@ package struct ClomniStrings: Sendable, Equatable {
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
-            .greetingLine1: "Здравствуйте, {first_name} 👋", .greetingLine1Anonymous: "Здравствуйте 👋", .greetingLine2: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
+            .greetingLine1: "Здравствуйте, {first_name}", .greetingLine1Anonymous: "Здравствуйте", .greetingLine2: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
             .followUs: "Мы в соцсетях", .tabHome: "Главная", .tabMessages: "Сообщения",
             .emptyList: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
             .offline: "Нет интернета, сообщения будут доставлены позже", .now: "сейчас", .you: "Вы",

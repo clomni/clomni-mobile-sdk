@@ -21,15 +21,42 @@ package struct HomeScreen: Sendable, Equatable {
         package let style: Style
         /// A soft glow of the brand colour behind the header.
         package let glow: Bool
-        /// Stands in the logo square while there is no logo.
+        /// Stands in for the logo while there is none.
         package let brandInitial: String
+        /// The full logo in place of the logo and the name (APPEARANCE-CONTRACT § 4a); nil: the logo and the name.
+        package let wordmark: Wordmark?
         /// Up to three, overlapping.
         package let teamAvatars: [URL]
-        /// "Salam, Aysel 👋", drawn at 62% opacity.
+        /// "Salam, Aysel".
         package let greeting: String
         /// "Necə kömək edə bilərik?"
         package let title: String
+        /// The panel's size for the two lines.
+        package let titleSize: TitleSize
         package let closeLabel: String
+    }
+
+    package struct Wordmark: Sendable, Equatable {
+        package let url: URL
+        /// In dark mode instead of `url`, when the panel has one.
+        package let darkUrl: URL?
+    }
+
+    /// The greeting's two lines, by `home.title_size` (DESIGN-PASS): the first regular, the second semibold; each
+    /// line 1.25 times its size apart. Dynamic Type scales them further.
+    package struct TitleSize: Sendable, Equatable {
+        package let greeting: Double
+        package let title: Double
+
+        package init(_ size: MessengerConfig.TitleSize) {
+            switch size {
+            case .s: (greeting, title) = (15, 20)
+            case .m: (greeting, title) = (17, 24)
+            case .l: (greeting, title) = (19, 28)
+            }
+        }
+
+        package static let lineHeight = 1.25
     }
 
     /// The header's background: the brand gradient (header_from → header_to), one colour, or a picture under a dark
@@ -253,9 +280,14 @@ package struct HomePresenter: Sendable {
             brandName: brand, logoUrl: config?.brand.logoUrl, logoDarkUrl: config?.brand.logoDarkUrl, style: style,
             glow: config?.brand.glow ?? false,
             brandInitial: brand.first.map { String($0).uppercased() } ?? "",
+            wordmark: config.flatMap { config in
+                guard config.brand.logoStyle == .wordmark, let url = config.brand.wordmarkUrl else { return nil }
+                return HomeScreen.Wordmark(url: url, darkUrl: config.brand.wordmarkDarkUrl)
+            },
             teamAvatars: config?.team.show == false ? [] : Array((config?.team.avatars ?? []).prefix(3)),
             greeting: greeting(snapshot.userName),
             title: strings[.greetingLine2],
+            titleSize: HomeScreen.TitleSize(config?.home.titleSize ?? .m),
             closeLabel: strings[.close])
     }
 

@@ -55,6 +55,8 @@ final class PresenterTests: XCTestCase {
         XCTAssertNil(header.logoDarkUrl, "dark mode keeps the logo")
         XCTAssertEqual(header.style, .gradient)
         XCTAssertFalse(header.glow)
+        XCTAssertNil(header.wordmark, "fixture 42 has no wordmark: the logo and the name")
+        XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(.m))
         XCTAssertEqual(header.teamAvatars.count, 3)
         // The default greets by the first name; the panel can choose {name}, the whole name.
         XCTAssertEqual(header.greeting, "Salam, Aysel 👋")
@@ -67,8 +69,17 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(presenter().home(snapshot(user: "   ")).header.greeting, "Salam 👋")
         // The server sends strings in one language (fixture 42: az); with none, the SDK's own in the user's.
         let none = Fixture.minimalConfig
-        XCTAssertEqual(presenter("en", config: none).home(snapshot(none, user: "Aysel")).header.greeting, "Hi, Aysel 👋")
-        XCTAssertEqual(presenter("ru", config: none).home(snapshot(none, user: nil)).header.greeting, "Здравствуйте 👋")
+        // The SDK's own texts have no emoji (DESIGN-PASS 3).
+        XCTAssertEqual(presenter("en", config: none).home(snapshot(none, user: "Aysel")).header.greeting, "Hi, Aysel")
+        XCTAssertEqual(presenter("ru", config: none).home(snapshot(none, user: nil)).header.greeting, "Здравствуйте")
+        XCTAssertEqual(presenter(config: none).home(snapshot(none, user: nil)).header.greeting, "Salam")
+        for language in ["az", "en", "ru"] {
+            let strings = ClomniStrings(language: language)
+            for key in ClomniStrings.Key.allCases {
+                XCTAssertFalse(strings[key].unicodeScalars.contains { $0.properties.isEmojiPresentation }, "\(language) \(key)")
+                XCTAssertFalse(strings[key].contains("—"), "\(language) \(key): no long dash")
+            }
+        }
 
         let minimal = presenter(config: Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig)).header
         XCTAssertEqual(minimal.title, "Necə kömək edə bilərik?", "the SDK's text when the config has none")
@@ -99,6 +110,22 @@ final class PresenterTests: XCTestCase {
         // No reply time at all: the card has no second line.
         let silent = ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Apar"}}"#.utf8))
         XCTAssertNil(presenter(config: silent).home(snapshot(silent)).newConversation?.subtitle)
+    }
+
+    /// home.title_size and the full logo (DESIGN-PASS; APPEARANCE-CONTRACT § 4a).
+    func testTitleSizeAndWordmark() throws {
+        XCTAssertEqual([MessengerConfig.TitleSize.s, .m, .l].map { HomeScreen.TitleSize($0) }.map { [$0.greeting, $0.title] },
+                       [[15, 20], [17, 24], [19, 28]])
+        let large = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
+            {"brand":{"name":"Clomni","logo_style":"wordmark","wordmark_url":"https://app.clomni.ai/v1/images/img_w"},
+             "home":{"title_size":"l"}}
+            """##.utf8)))
+        let header = presenter(config: large).home(snapshot(large)).header
+        XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(.l))
+        XCTAssertEqual(header.wordmark, HomeScreen.Wordmark(url: URL(string: "https://app.clomni.ai/v1/images/img_w")!,
+                                                            darkUrl: nil))
+        XCTAssertEqual(header.brandName, "Clomni", "for the fallback and VoiceOver")
+        XCTAssertNil(presenter(config: nil).home(snapshot(nil)).header.wordmark)
     }
 
     /// More channels than fit a row continue on the next one instead of running past the card.

@@ -76,7 +76,7 @@ final class HomeControllerTests: XCTestCase {
         let home = controller()
         XCTAssertEqual(home.home.phase, .loading)
         XCTAssertEqual(home.messages.phase, .loading)
-        XCTAssertEqual(home.home.header.greeting, "Salam, Aysel 👋")
+        XCTAssertEqual(home.home.header.greeting, "Salam, Aysel")
     }
 
     func testShowsTheCacheThenTheServersAnswer() async {
@@ -140,9 +140,9 @@ final class HomeControllerTests: XCTestCase {
 
     func testNameAndConnectivityRedraw() {
         let home = controller(user: nil)
-        XCTAssertEqual(home.home.header.greeting, "Salam 👋")
+        XCTAssertEqual(home.home.header.greeting, "Salam", "no emoji in the defaults")
         home.userName = "Leyla Əliyeva"
-        XCTAssertEqual(home.home.header.greeting, "Salam, Leyla 👋")
+        XCTAssertEqual(home.home.header.greeting, "Salam, Leyla")
         home.isOffline = true
         XCTAssertEqual(home.home.offline, "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq")
         XCTAssertEqual(renders, 2)
