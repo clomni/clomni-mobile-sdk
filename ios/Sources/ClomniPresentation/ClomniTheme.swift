@@ -171,14 +171,13 @@ package struct ClomniTheme: Sendable, Equatable {
 
     /// The server's rules, for when it sent no colours or the app chose its own: in dark mode the primary is one step
     /// lighter; on_primary is white unless white is under 4.5:1; soft and line are the primary at 10% and 22% over
-    /// the background; the header runs from one step lighter to one step darker than the brand colour, and in dark
-    /// mode from the brand colour to two steps darker (each one step darker than in light mode). A step is 10 points
-    /// of HSL lightness.
+    /// the background; the header runs from the brand colour to one step darker, in dark mode to two steps darker
+    /// (so the brand's own colour, with white text on it, stays at the top). A step is 10 points of HSL lightness.
     package static func derive(_ base: RGBColor, dark: Bool) -> Tokens {
         let background = dark ? hex("#121316") : .white
         let primary = dark ? base.steps(1) : base
-        let from = dark ? base : base.steps(1)
-        let to = dark ? base.steps(-2) : base.steps(-1)
+        let from = base
+        let to = base.steps(dark ? -2 : -1)
         return Tokens(primary: primary, onPrimary: readableText(on: primary),
                       primarySoft: primary.over(background, opacity: 0.10),
                       primaryLine: primary.over(background, opacity: 0.22),

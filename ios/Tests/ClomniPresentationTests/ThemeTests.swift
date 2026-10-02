@@ -39,15 +39,15 @@ final class ThemeTests: XCTestCase {
     }
 
     /// The contract's rules (APPEARANCE-CONTRACT § 1), for a config without the server's colours: soft 10% and line
-    /// 22% over the background; the header from one step lighter to one step darker, in dark mode from the brand
-    /// colour to two steps darker; dark mode's primary one step lighter.
+    /// 22% over the background; the header from the brand colour to one step darker (dark mode: two); dark mode's
+    /// primary one step lighter.
     func testDerivedTokensFollowTheContract() throws {
         let light = ClomniTheme.make(brand: try brand("#1F9D63"), dark: false).colors
         XCTAssertEqual(light.primary, apar)
         XCTAssertEqual([light.primarySoft, light.primaryLine, light.headerFrom, light.headerTo].map(\.hex),
-                       ["#E9F5EF", "#CEE9DD", "#27C87E", "#177248"])
+                       ["#E9F5EF", "#CEE9DD", "#1F9D63", "#177248"])
         XCTAssertEqual(light.primarySoft, apar.over(.white, opacity: 0.10))
-        XCTAssertEqual(light.headerFrom, apar.steps(1))
+        XCTAssertEqual(light.headerFrom, apar, "the brand colour itself at the top")
         XCTAssertEqual(light.headerTo, apar.steps(-1))
 
         let dark = ClomniTheme.make(brand: try brand("#1F9D63"), dark: true).colors
@@ -58,9 +58,9 @@ final class ThemeTests: XCTestCase {
         let solid = ClomniTheme.make(brand: try brand("#1F9D63", style: "solid"), dark: false).colors
         XCTAssertEqual([solid.headerFrom, solid.headerTo], [apar, apar], "one colour")
 
-        // header_text: white needs 3:1 on both header colours. White is 2.2:1 on Apar's light top (#27C87E), so the
-        // light header's text is near-black; dark mode's header (#1F9D63 → #0E482D) takes white, as the solid one does.
-        XCTAssertEqual(light.headerText.hex, "#1B1D21")
+        // header_text: white needs 3:1 on both header colours: 3.5:1 on Apar's #1F9D63, 5.9:1 on #177248, so the
+        // brief's green header keeps its white text; dark mode's (#1F9D63 → #0E482D) too, and the solid one.
+        XCTAssertEqual(light.headerText, .white)
         XCTAssertEqual(dark.headerText, .white)
         XCTAssertEqual(solid.headerText, .white)
         XCTAssertEqual(ClomniTheme.headerText(on: RGBColor(hex: "#FFD60A")!, RGBColor(hex: "#5A2D82")!).hex, "#1B1D21",
@@ -97,7 +97,8 @@ final class ThemeTests: XCTestCase {
         // Clomni.setTheme's colour wins over both: derived here from it.
         let own = ClomniTheme.make(brand: apar.brand, dark: false, primaryColor: "#0A66C2").colors
         XCTAssertEqual(own.primary.hex, "#0A66C2")
-        XCTAssertEqual(own.headerFrom, RGBColor(hex: "#0A66C2")!.steps(1))
+        XCTAssertEqual(own.headerFrom.hex, "#0A66C2")
+        XCTAssertEqual(own.headerTo, RGBColor(hex: "#0A66C2")!.steps(-1))
         XCTAssertEqual(ClomniTheme.make(brand: apar.brand, dark: false, primaryColor: "blue").colors.primary.hex,
                        "#1F9D63", "an unreadable colour is ignored")
 
