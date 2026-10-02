@@ -15,10 +15,10 @@ internal const val APAR_CONFIG_V2 = """{
     "header_image_url": null,
     "glow": false,
     "colors": {
-      "light": { "primary": "#1F9D63", "on_primary": "#FFFFFF", "primary_soft": "#E9F5EF", "primary_line": "#C6E6D5",
-                 "header_from": "#1F9D63", "header_to": "#13734A", "header_text": "#FFFFFF" },
-      "dark":  { "primary": "#34B57A", "on_primary": "#0B0C0E", "primary_soft": "#16241D", "primary_line": "#24503A",
-                 "header_from": "#1F9D63", "header_to": "#0E4F33", "header_text": "#FFFFFF" }
+      "light": { "primary": "#1F9D63", "on_primary": "#000000", "primary_soft": "#E9F5EF", "primary_line": "#CEE9DD",
+                 "header_from": "#1F9D63", "header_to": "#177248", "header_text": "#FFFFFF" },
+      "dark":  { "primary": "#27C87E", "on_primary": "#000000", "primary_soft": "#142520", "primary_line": "#173B2D",
+                 "header_from": "#1F9D63", "header_to": "#0E482D", "header_text": "#FFFFFF" }
     }
   },
   "team": {

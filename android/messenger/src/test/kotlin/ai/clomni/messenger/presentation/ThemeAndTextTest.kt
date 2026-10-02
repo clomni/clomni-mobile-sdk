@@ -10,17 +10,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.TimeZone
-import kotlin.math.abs
 
 class ThemeTest {
     private val apar = RgbColor.parse("#1F9D63")!!
-
-    /** Each channel of [actual] within [tolerance] (of 255) of the brief's example. */
-    private fun assertClose(actual: RgbColor, expected: String, tolerance: Double) {
-        val target = RgbColor.parse(expected)!!
-        val worst = listOf(actual.red - target.red, actual.green - target.green, actual.blue - target.blue).maxOf { abs(it) * 255 }
-        assertTrue("$actual vs $expected", worst <= tolerance)
-    }
 
     private fun brand(color: String, style: String = "gradient"): MessengerConfig.Brand =
         ProtocolJson().parseConfig("""{"brand":{"name":"Apar","primary_color":"$color","header_style":"$style"}}""")!!.brand
@@ -53,12 +45,12 @@ class ThemeTest {
         val brand = Fixture.aparConfig.brand
         val light = ClomniTheme.make(brand, dark = false).colors
         assertEquals(
-            listOf("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#1F9D63", "#13734A", "#FFFFFF"),
+            listOf("#1F9D63", "#000000", "#E9F5EF", "#CEE9DD", "#1F9D63", "#177248", "#FFFFFF"),
             light.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo, headerText) }.map { it.hex },
         )
         val dark = ClomniTheme.make(brand, dark = true).colors
         assertEquals(
-            listOf("#34B57A", "#0B0C0E", "#16241D", "#24503A", "#1F9D63", "#0E4F33", "#FFFFFF"),
+            listOf("#27C87E", "#000000", "#142520", "#173B2D", "#1F9D63", "#0E482D", "#FFFFFF"),
             dark.run { listOf(primary, onPrimary, primarySoft, primaryLine, headerFrom, headerTo, headerText) }.map { it.hex },
         )
     }
@@ -107,24 +99,24 @@ class ThemeTest {
     }
 
     /**
-     * Without the server's colours the SDK derives them by the same rules, close to the contract's example: soft 10%
-     * and line 22% over the background, the header from the brand to one step darker (dark: two steps).
+     * Without the server's colours the SDK derives them by the same rules, and to the same values as the server's
+     * (the contract's example, computed by AppSdk::Colors): soft 10% and line 22% over the background, the header from
+     * the brand to one step darker (dark: two steps).
      */
     @Test
-    fun derivedColoursFollowTheContract() {
+    fun derivedColoursAreTheServers() {
+        val server = Fixture.aparConfig.brand
+        for (dark in listOf(false, true)) {
+            // Compared as #RRGGBB: the server sends 8-bit channels.
+            assertEquals(ClomniTheme.make(server, dark).toString(), ClomniTheme.make(server.copy(colors = null), dark).toString())
+        }
         val light = ClomniTheme.make(brand("#1F9D63"), dark = false).colors
         assertEquals(apar, light.primary)
-        // The contract's example colours are hand-written; its rules decide (the server computes the same).
-        assertEquals("#E9F5EF", light.primarySoft.hex)
-        assertEquals("#CEE9DD", light.primaryLine.hex)
         assertEquals(apar, light.headerFrom)
         assertEquals(apar.steps(-1), light.headerTo)
-        assertClose(light.headerTo, "#13734A", 5.0)
 
         val dark = ClomniTheme.make(brand("#1F9D63"), dark = true).colors
-        val reference = RgbColor.parse("#34B57A")!!.hsl
-        assertEquals(reference.hue, dark.primary.hsl.hue, 1.0)
-        assertEquals(reference.lightness, dark.primary.hsl.lightness, 0.015)
+        assertEquals(apar.steps(1), dark.primary)
         assertEquals("the header's top is the brand colour itself in dark mode", apar.hex, dark.headerFrom.hex)
         assertEquals(apar.steps(-2), dark.headerTo)
         val night = RgbColor.parse("#121316")!!
@@ -144,7 +136,7 @@ class ThemeTest {
         assertEquals(RgbColor.parse("#0A66C2")!!.steps(1), theme.colors.primary)
         val panel = ClomniTheme.resolve(Fixture.aparConfig.let { it.copy(theme = it.theme.copy(mode = MessengerConfig.ThemeMode.DARK)) }, false)
         assertTrue("the panel's mode", panel.isDark)
-        assertEquals("#34B57A", panel.colors.primary.hex)
+        assertEquals("#27C87E", panel.colors.primary.hex)
     }
 
     @Test
