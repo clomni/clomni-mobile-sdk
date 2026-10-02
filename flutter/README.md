@@ -83,6 +83,7 @@ final show = await Clomni.shouldShowForeground(data);
 | `startFlow(event, {data, openMessenger = false, source})` | the flow bound to an app event |
 | `setLauncherVisible(visible)`, `setBottomPadding(padding)` | the optional floating button |
 | `setDeviceToken(token)`, `isClomniPush(data)`, `handlePush(data)`, `shouldShowForeground(data)` (iOS), `setNotificationIcon(name)` (Android) | push |
+| `setTheme({primaryColor, typeface, mode})` | the app's look over the panel's (below) |
 | `setLogLevel(ClomniLogLevel)`, `setTypeface(familyName)` | log and font (below) |
 | `unreadCountStream`, `onMessengerOpened`, `onMessengerClosed`, `onConversationStarted`, `onFlowCompleted` | events, as streams |
 
@@ -100,6 +101,16 @@ native screens by themselves.
 
 ```dart
 await Clomni.setTypeface(Platform.isIOS ? 'Montserrat' : 'montserrat');
+```
+
+### Look
+
+The colours, logo, header, Home cards and texts come from the panel and change without an app update. `setTheme`
+puts the app's own colour (`'#RRGGBB'`; the other brand colours are derived from it), font (as `setTypeface`) and
+mode over the panel's. Each call replaces the last; what is left out stays the panel's.
+
+```dart
+await Clomni.setTheme(primaryColor: '#0A66C2', mode: ClomniThemeMode.dark);
 ```
 
 ## Development

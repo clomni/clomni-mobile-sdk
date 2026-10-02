@@ -85,6 +85,13 @@ public final class ClomniFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHa
             Clomni.setLogLevel(level)
         case "setTypeface":
             Clomni.setTypeface(call.arguments as? String)
+        case "setTheme":
+            // The SDK checks the colour; the mode is one of Dart's enum's names.
+            let modes: [String: ClomniThemeMode] = ["system": .system, "light": .light, "dark": .dark]
+            let name = text("mode")
+            let mode = name.flatMap { modes[$0] }
+            if name != nil, mode == nil { return result(Self.badArguments(call)) }
+            Clomni.setTheme(primaryColor: text("primaryColor"), typeface: text("typeface"), mode: mode)
         case "present":
             Clomni.present(source: call.arguments as? String)
         case "presentNewConversation":

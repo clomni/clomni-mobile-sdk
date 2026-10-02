@@ -111,6 +111,41 @@ void main() {
     });
   });
 
+  group('setTheme', () {
+    test("passes the app's colour, font and mode; what is left out stays the panel's", () async {
+      await Clomni.setTheme(primaryColor: '#0A66C2', typeface: 'Montserrat', mode: ClomniThemeMode.dark);
+      await Clomni.setTheme(mode: ClomniThemeMode.system);
+      await Clomni.setTheme(primaryColor: '#0a66c2');
+      await Clomni.setTheme();
+      expect(sent(), [
+        ['setTheme', {'primaryColor': '#0A66C2', 'typeface': 'Montserrat', 'mode': 'dark'}],
+        ['setTheme', {'primaryColor': null, 'typeface': null, 'mode': 'system'}],
+        ['setTheme', {'primaryColor': '#0a66c2', 'typeface': null, 'mode': null}],
+        ['setTheme', {'primaryColor': null, 'typeface': null, 'mode': null}],
+      ]);
+      expect(logged, isEmpty);
+    });
+
+    test('refuses a colour that is not #RRGGBB, and keeps the rest', () async {
+      await Clomni.setTheme(primaryColor: 'blue', typeface: 'Montserrat', mode: ClomniThemeMode.light);
+      await Clomni.setTheme(primaryColor: '#0A66C');
+      await Clomni.setTheme(primaryColor: '#0A66C2FF');
+      await Clomni.setTheme(primaryColor: '0A66C2');
+      expect(sent(), [
+        ['setTheme', {'primaryColor': null, 'typeface': 'Montserrat', 'mode': 'light'}],
+        ['setTheme', {'primaryColor': null, 'typeface': null, 'mode': null}],
+        ['setTheme', {'primaryColor': null, 'typeface': null, 'mode': null}],
+        ['setTheme', {'primaryColor': null, 'typeface': null, 'mode': null}],
+      ]);
+      expect(logged, [
+        '[Clomni] setTheme: primaryColor "blue" is not #RRGGBB; the panel\'s colour stays',
+        '[Clomni] setTheme: primaryColor "#0A66C" is not #RRGGBB; the panel\'s colour stays',
+        '[Clomni] setTheme: primaryColor "#0A66C2FF" is not #RRGGBB; the panel\'s colour stays',
+        '[Clomni] setTheme: primaryColor "0A66C2" is not #RRGGBB; the panel\'s colour stays',
+      ]);
+    });
+  });
+
   group('push', () {
     const clomniPush = {'clomni': '1', 'type': 'message', 'conversation_id': 'conv_5521', 'unread_total': 2,
       'aps': {'alert': 'Salam'}};

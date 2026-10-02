@@ -3,6 +3,7 @@ package ai.clomni.flutter
 import ai.clomni.messenger.Clomni
 import ai.clomni.messenger.ClomniLogLevel
 import ai.clomni.messenger.ClomniPush
+import ai.clomni.messenger.ClomniThemeMode
 import ai.clomni.messenger.ClomniUser
 import ai.clomni.messenger.ConversationStartedListener
 import ai.clomni.messenger.FlowCompletedListener
@@ -101,6 +102,10 @@ class ClomniFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
             "logout" -> Clomni.logout()
             "setLogLevel" -> setLogLevel(call.arguments as String)
             "setTypeface" -> Clomni.setTypeface((call.arguments as String?)?.let(::typeface))
+            // The SDK checks the colour; the mode is one of Dart's enum's names.
+            "setTheme" -> Clomni.setTheme(call.argument<String>("primaryColor"),
+                call.argument<String>("typeface")?.let(::typeface),
+                call.argument<String>("mode")?.let { ClomniThemeMode.valueOf(it.uppercase()) })
             "present" -> Clomni.present(call.arguments as String?)
             "presentNewConversation" -> Clomni.presentNewConversation(call.arguments as String?)
             "presentConversation" -> Clomni.presentConversation(call.arguments as String)

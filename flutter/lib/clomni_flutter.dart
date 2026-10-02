@@ -28,6 +28,9 @@ class ClomniUser {
 /// How much the SDK writes to the system log; `none` writes nothing, the default is `warning`.
 enum ClomniLogLevel { none, error, warning, info, debug }
 
+/// For [Clomni.setTheme]: light, dark, or as the system is.
+enum ClomniThemeMode { system, light, dark }
+
 /// The Clomni Messenger. Every call goes to the native SDK of the platform.
 class Clomni {
   Clomni._();
@@ -76,6 +79,20 @@ class Clomni {
   /// A font family the platform knows (iOS: in UIAppFonts; Android: res/font) for the messenger's texts; null is the
   /// system font.
   static Future<void> setTypeface(String? familyName) => methods.invokeMethod('setTypeface', familyName);
+
+  /// The app's own look over the panel's: [primaryColor] "#RRGGBB" (the other brand colours are derived from it by the
+  /// panel's rules), [typeface] as for [setTypeface], [mode]. Each call replaces the last; what is left out stays the
+  /// panel's, and the font as it is. The open messenger and the launcher change at once.
+  static Future<void> setTheme({String? primaryColor, String? typeface, ClomniThemeMode? mode}) async {
+    var color = primaryColor;
+    if (color != null && !_hexColor.hasMatch(color)) {
+      _log('setTheme: primaryColor "$color" is not #RRGGBB; the panel\'s colour stays');
+      color = null;
+    }
+    await methods.invokeMethod('setTheme', {'primaryColor': color, 'typeface': typeface, 'mode': mode?.name});
+  }
+
+  static final _hexColor = RegExp(r'^#[0-9A-Fa-f]{6}$');
 
   /// Home. [source] says where in the app (for example "profile_support").
   static Future<void> present({String? source}) => methods.invokeMethod('present', source);
