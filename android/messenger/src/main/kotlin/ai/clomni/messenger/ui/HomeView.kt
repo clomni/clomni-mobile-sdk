@@ -191,8 +191,10 @@ private fun Wordmark(url: String, header: HomeScreen.Header, theme: ClomniTheme,
  */
 @Composable
 private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier = Modifier) {
+    val logo = (if (theme.isDark) header.logoDarkUrl else null) ?: header.logoUrl
+    // Before any config there is no brand yet: an empty circle would be a placeholder for nothing.
+    if (logo == null && header.brandName.isBlank()) return Spacer(modifier)
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        val logo = (if (theme.isDark) header.logoDarkUrl else null) ?: header.logoUrl
         val size = ClomniTheme.Size.logo
         if (logo != null) {
             RemoteImage(
