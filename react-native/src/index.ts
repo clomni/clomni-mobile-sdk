@@ -205,7 +205,11 @@ export const Clomni = {
     return data != null && typeof data === 'object' && data.clomni === '1';
   },
 
-  /** For a tap on a notification: a Clomni push opens its conversation. false for the app's own pushes. */
+  /**
+   * A Clomni push, as each platform delivers it. iOS: a tap on its notification opens the conversation. Android: the
+   * FCM data message as it arrives (onMessage, setBackgroundMessageHandler); the SDK shows it as a notification
+   * whose tap opens the conversation. false for the app's own pushes, which stay the app's.
+   */
   handlePush(data: ClomniPushData | null | undefined): boolean {
     if (!Clomni.isClomniPush(data)) return false;
     native().handlePush(data as object);

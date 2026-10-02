@@ -20,13 +20,14 @@ class ClomniModule(context: ReactApplicationContext) : NativeClomniSpec(context)
 
     override fun loginUnidentifiedUser() = impl.loginUnidentifiedUser()
 
-    override fun updateUser(name: String?, language: String?, customAttributes: ReadableMap?) = impl.updateUser()
+    override fun updateUser(name: String?, language: String?, customAttributes: ReadableMap?) =
+        impl.updateUser(name, language, customAttributes)
 
     override fun logout() = impl.logout()
 
-    override fun setLogLevel(level: String) = impl.setLogLevel()
+    override fun setLogLevel(level: String) = impl.setLogLevel(level)
 
-    override fun setTypeface(familyName: String?) = impl.setTypeface()
+    override fun setTypeface(familyName: String?) = impl.setTypeface(familyName)
 
     override fun present(source: String?) = impl.present(source)
 
@@ -43,13 +44,13 @@ class ClomniModule(context: ReactApplicationContext) : NativeClomniSpec(context)
 
     override fun setBottomPadding(padding: Double) = impl.setBottomPadding(padding)
 
-    override fun setDeviceToken(token: String) = impl.setDeviceToken()
+    override fun setDeviceToken(token: String) = impl.setDeviceToken(token)
 
     override fun handlePush(data: ReadableMap) = impl.handlePush(data)
 
     override fun shouldShowForeground(data: ReadableMap): Boolean = impl.shouldShowForeground()
 
-    override fun setNotificationIcon(name: String) = impl.setNotificationIcon()
+    override fun setNotificationIcon(name: String) = impl.setNotificationIcon(name)
 
     override fun getUnreadCount(promise: Promise) = impl.getUnreadCount(promise)
 

@@ -1,14 +1,22 @@
 package ai.clomni.reactnative
 
 import ai.clomni.messenger.Clomni
+import ai.clomni.messenger.ClomniLogLevel
+import ai.clomni.messenger.ClomniPush
 import ai.clomni.messenger.ClomniUser
+import ai.clomni.messenger.ConversationStartedListener
+import ai.clomni.messenger.FlowCompletedListener
+import ai.clomni.messenger.MessengerClosedListener
+import ai.clomni.messenger.MessengerOpenedListener
 import ai.clomni.messenger.UnreadCountListener
+import android.graphics.Typeface
 import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
+import com.facebook.react.common.assets.ReactFontManager
 import kotlin.math.roundToInt
 
 /**
@@ -29,19 +37,19 @@ internal class ClomniModuleImpl(
 
     init {
         // The app's JS hears these; native code of the app should not set them as well.
-        Clomni.onMessengerOpened = { source -> emit(event("messengerOpened", text = source)) }
-        Clomni.onMessengerClosed = { emit(event("messengerClosed")) }
-        Clomni.onConversationStarted = { id -> emit(event("conversationStarted", text = id)) }
-        Clomni.onFlowCompleted = { flowId -> emit(event("flowCompleted", text = flowId)) }
+        Clomni.onMessengerOpened(MessengerOpenedListener { source -> emit(event("messengerOpened", text = source)) })
+        Clomni.onMessengerClosed(MessengerClosedListener { emit(event("messengerClosed")) })
+        Clomni.onConversationStarted(ConversationStartedListener { id -> emit(event("conversationStarted", text = id)) })
+        Clomni.onFlowCompleted(FlowCompletedListener { flowId -> emit(event("flowCompleted", text = flowId)) })
         Clomni.addUnreadCountListener(unreadListener)
     }
 
     fun invalidate() {
         Clomni.removeUnreadCountListener(unreadListener)
-        Clomni.onMessengerOpened = null
-        Clomni.onMessengerClosed = null
-        Clomni.onConversationStarted = null
-        Clomni.onFlowCompleted = null
+        Clomni.onMessengerOpened(null)
+        Clomni.onMessengerClosed(null)
+        Clomni.onConversationStarted(null)
+        Clomni.onFlowCompleted(null)
     }
 
     fun setup(appId: String, apiKey: String, region: String) {
@@ -57,6 +65,44 @@ internal class ClomniModuleImpl(
     }
 
     fun loginUnidentifiedUser() = Clomni.loginUnidentifiedUser()
+
+    fun updateUser(name: String?, language: String?, customAttributes: ReadableMap?) {
+        Clomni.updateUser(name, language, customAttributes?.toHashMap())
+    }
+
+    fun setLogLevel(level: String) {
+        val known = ClomniLogLevel.values().firstOrNull { it.name.equals(level, ignoreCase = true) }
+        if (known == null) {
+            Log.w(TAG, "setLogLevel: unknown level \"$level\"")
+            return
+        }
+        Clomni.setLogLevel(known)
+    }
+
+    /**
+     * A font family by the name React Native's own text uses (fonts in assets/fonts or registered with
+     * ReactFontManager); null is the system font.
+     */
+    fun setTypeface(familyName: String?) {
+        val typeface = familyName?.let {
+            ReactFontManager.getInstance().getTypeface(it, Typeface.NORMAL, context.assets)
+        }
+        Clomni.setTypeface(typeface)
+    }
+
+    fun setDeviceToken(token: String) = Clomni.setDeviceToken(token)
+
+    /** A drawable's name (res/drawable or res/mipmap), for Clomni's notifications. */
+    fun setNotificationIcon(name: String) {
+        val resources = context.resources
+        val id = resources.getIdentifier(name, "drawable", context.packageName).takeIf { it != 0 }
+            ?: resources.getIdentifier(name, "mipmap", context.packageName)
+        if (id == 0) {
+            Log.w(TAG, "setNotificationIcon: no drawable \"$name\" in the app; the app's icon stays")
+            return
+        }
+        Clomni.setNotificationIcon(id)
+    }
 
     fun logout() = Clomni.logout()
 
@@ -76,32 +122,19 @@ internal class ClomniModuleImpl(
 
     fun setBottomPadding(padding: Double) = Clomni.setBottomPadding(padding.roundToInt())
 
-    /** A tap on a Clomni notification: its conversation opens. */
+    /**
+     * An FCM data message (RemoteMessage.data): the SDK shows Clomni's as a notification, whose tap opens the
+     * conversation with opened_from "push".
+     */
     fun handlePush(data: ReadableMap) {
-        val conversationId = data.text("conversation_id")
-        if (data.text("clomni") != "1" || conversationId == null) return
-        Clomni.presentConversation(conversationId)
+        val values = data.toHashMap().mapNotNull { (key, value) -> value?.let { key to it.toString() } }.toMap()
+        ClomniPush.handle(context, values)
     }
 
     /** Android shows or hides its own notifications; the JS layer does not ask here. */
     fun shouldShowForeground(): Boolean = true
 
     fun getUnreadCount(promise: Promise) = promise.resolve(unreadCount)
-
-    // Not in the Android SDK's facade yet (push registration and display: CM-075; the rest: CM-076).
-    fun updateUser() = notYet("updateUser")
-
-    fun setLogLevel() = notYet("setLogLevel")
-
-    fun setTypeface() = notYet("setTypeface")
-
-    fun setDeviceToken() = notYet("setDeviceToken")
-
-    fun setNotificationIcon() = notYet("setNotificationIcon")
-
-    private fun notYet(call: String) {
-        Log.w(TAG, "$call: not in this version of the Android SDK yet; nothing done")
-    }
 
     private fun ReadableMap.text(key: String): String? =
         if (hasKey(key) && !isNull(key)) getString(key) else null

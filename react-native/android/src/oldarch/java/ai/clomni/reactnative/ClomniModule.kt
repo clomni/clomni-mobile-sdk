@@ -33,16 +33,17 @@ class ClomniModule(context: ReactApplicationContext) : ReactContextBaseJavaModul
     fun loginUnidentifiedUser() = impl.loginUnidentifiedUser()
 
     @ReactMethod
-    fun updateUser(name: String?, language: String?, customAttributes: ReadableMap?) = impl.updateUser()
+    fun updateUser(name: String?, language: String?, customAttributes: ReadableMap?) =
+        impl.updateUser(name, language, customAttributes)
 
     @ReactMethod
     fun logout() = impl.logout()
 
     @ReactMethod
-    fun setLogLevel(level: String) = impl.setLogLevel()
+    fun setLogLevel(level: String) = impl.setLogLevel(level)
 
     @ReactMethod
-    fun setTypeface(familyName: String?) = impl.setTypeface()
+    fun setTypeface(familyName: String?) = impl.setTypeface(familyName)
 
     @ReactMethod
     fun present(source: String?) = impl.present(source)
@@ -67,7 +68,7 @@ class ClomniModule(context: ReactApplicationContext) : ReactContextBaseJavaModul
     fun setBottomPadding(padding: Double) = impl.setBottomPadding(padding)
 
     @ReactMethod
-    fun setDeviceToken(token: String) = impl.setDeviceToken()
+    fun setDeviceToken(token: String) = impl.setDeviceToken(token)
 
     @ReactMethod
     fun handlePush(data: ReadableMap) = impl.handlePush(data)
@@ -76,7 +77,7 @@ class ClomniModule(context: ReactApplicationContext) : ReactContextBaseJavaModul
     fun shouldShowForeground(data: ReadableMap): Boolean = impl.shouldShowForeground()
 
     @ReactMethod
-    fun setNotificationIcon(name: String) = impl.setNotificationIcon()
+    fun setNotificationIcon(name: String) = impl.setNotificationIcon(name)
 
     @ReactMethod
     fun getUnreadCount(promise: Promise) = impl.getUnreadCount(promise)

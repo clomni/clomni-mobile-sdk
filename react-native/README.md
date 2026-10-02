@@ -62,7 +62,8 @@ Pass the token and the notifications from the app's push library:
 ```ts
 Clomni.setDeviceToken(token); // iOS: the APNs device token as hex; Android: the FCM token
 
-// A tap on a notification (data: APNs userInfo or FCM data)
+// iOS: a tap on a notification (data: its userInfo).
+// Android: an FCM data message as it arrives (data: RemoteMessage.data); the SDK shows the notification.
 if (!Clomni.handlePush(data)) {
   // the app's own push
 }
