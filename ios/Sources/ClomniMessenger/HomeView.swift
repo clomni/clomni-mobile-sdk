@@ -23,9 +23,18 @@ struct HomeView: View {
     let actions: MessengerActions
 
     var body: some View {
+        // The header's colour runs up under the status bar; its content stays below it. The scroll view reaches the
+        // top edge, and the header pads its content by the safe area it now covers.
+        GeometryReader { proxy in
+            content(topInset: proxy.safeAreaInsets.top)
+        }
+        .background(theme.colors.canvas.color.ignoresSafeArea())
+    }
+
+    private func content(topInset: CGFloat) -> some View {
         ScrollView {
             VStack(spacing: 0) {
-                HomeHeaderView(header: screen.header, theme: theme, close: actions.close)
+                HomeHeaderView(header: screen.header, theme: theme, close: actions.close, topInset: topInset)
                 if let offline = screen.offline {
                     OfflineStrip(text: offline, theme: theme)
                 }
@@ -37,7 +46,7 @@ struct HomeView: View {
                     .padding(.bottom, CGFloat(ClomniTheme.Space.xxl))
             }
         }
-        .background(theme.colors.canvas.color.ignoresSafeArea())
+        .ignoresSafeArea(.container, edges: .top)
     }
 }
 
@@ -45,6 +54,8 @@ struct HomeHeaderView: View {
     let header: HomeScreen.Header
     let theme: ClomniTheme
     let close: () -> Void
+    /// The status bar's height: the background covers it, the content starts below it.
+    var topInset: CGFloat = 0
     /// The header's width, for the full logo's 60%; a typical phone's until measured.
     @State private var width: CGFloat = 390
 
@@ -75,6 +86,7 @@ struct HomeHeaderView: View {
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xxl))
         // 64 = the 40 the cards ride up + 24 of air above them.
         .padding(.bottom, 64)
+        .padding(.top, topInset)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(GeometryReader { proxy in
             Color.clear
@@ -172,7 +184,7 @@ struct BrandMark: View {
                 if let logo = (theme.isDark ? header.logoDarkUrl : nil) ?? header.logoUrl {
                     RemoteImage(url: logo, kind: .icon, points: ClomniTheme.Size.logo, theme: theme, fit: true)
                         .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.logo), style: .continuous))
-                } else {
+                } else if !header.brandInitial.isEmpty {
                     Text(header.brandInitial)
                         .clomniFixedFont(15, .semibold)
                         .foregroundStyle(theme.colors.primary.color)

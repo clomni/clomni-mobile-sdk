@@ -72,11 +72,19 @@ final class ChatSnapshotTests: XCTestCase {
         ]
         for (name, screen) in screens {
             for variant in Variant.all {
-                let view = HomeView(screen: screen, theme: PreviewData.theme(dark: variant.dark), actions: MessengerActions())
+                // Before the config arrives the messenger draws in the neutral theme, as MessengerRootView does.
+                let theme = name == "home" ? PreviewData.theme(dark: variant.dark)
+                    : ClomniTheme.make(config: nil, systemIsDark: variant.dark)
+                let view = HomeView(screen: screen, theme: theme, actions: MessengerActions())
                     .environment(\.clomniLoadsRemoteImages, false)
                     .environment(\.colorScheme, variant.dark ? .dark : .light)
                     .dynamicTypeSize(variant.size)
                 let image = Snapshot.render(view, width: 390, height: 844, dark: variant.dark)
+                // The header's colour runs up under the status bar: the top row is the header's, not the page's.
+                let top = Snapshot.pixel(image, x: 4, y: 4) ?? []
+                let header = Snapshot.rgb(theme.colors.headerFrom)
+                XCTAssertTrue(top.count == 3 && zip(top, header).allSatisfy { abs($0 - $1) <= 6 },
+                              "\(name + variant.suffix): the status bar's strip is \(top), the header \(header)")
                 try Snapshot.assert(image, named: name + variant.suffix)
             }
         }
@@ -183,6 +191,17 @@ enum Snapshot {
             }
         }
         return Double(differing) <= 0.005 * Double(left.width * left.height)
+    }
+
+    /// One pixel (at the picture's scale), red, green, blue; nil outside it.
+    static func pixel(_ image: UIImage, x: Int, y: Int) -> [Int]? {
+        guard let picture = pixels(image), x < picture.width, y < picture.height else { return nil }
+        let offset = (y * picture.width + x) * 4
+        return picture.bytes[offset..<offset + 3].map(Int.init)
+    }
+
+    static func rgb(_ color: RGBColor) -> [Int] {
+        [color.red, color.green, color.blue].map { Int(($0 * 255).rounded()) }
     }
 
     /// Every pixel the same (or no pixels at all).
