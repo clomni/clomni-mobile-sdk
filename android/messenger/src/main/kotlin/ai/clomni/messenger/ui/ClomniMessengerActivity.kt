@@ -54,6 +54,8 @@ internal class ClomniMessengerActivity : ComponentActivity() {
             overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, Motion.open(this), R.anim.clomni_stay)
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.clomni_stay, Motion.close(this))
         }
+        // The look the previous run kept, before anything is drawn (no default colour first).
+        MessengerRuntime.coordinator?.firstFrame()
         window.edgeToEdge()
         onBackPressedDispatcher.addCallback(
             this,

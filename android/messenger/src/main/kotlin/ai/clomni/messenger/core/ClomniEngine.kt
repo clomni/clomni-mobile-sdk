@@ -193,6 +193,9 @@ internal class ClomniEngine(
 
     override val config: MessengerConfig? get() = store.config
 
+    /** [config], read from disk on the calling thread if the worker has not got to it yet: for the first frame. */
+    override fun cachedConfig(): MessengerConfig? = store.cachedConfig()
+
     override val unreadTotal: Int get() = store.unreadTotal
 
     override fun conversations(): List<Conversation> = store.conversations()

@@ -38,6 +38,18 @@ internal data class MessengerConfig(
         val colors: Colors?,
     ) {
         companion object {
+            /** For [ai.clomni.messenger.presentation.ClomniTheme]'s grey before any config: the secondary text grey. */
+            internal val neutral = Brand(
+                name = "",
+                logoUrl = null,
+                logoDarkUrl = null,
+                primaryColor = "#6A6E7A",
+                headerStyle = HeaderStyle.SOLID,
+                headerImageUrl = null,
+                glow = false,
+                colors = null,
+            )
+
             /** Clomni green, used when the config has no valid brand colour. */
             const val DEFAULT_PRIMARY_COLOR: String = "#10A670"
         }

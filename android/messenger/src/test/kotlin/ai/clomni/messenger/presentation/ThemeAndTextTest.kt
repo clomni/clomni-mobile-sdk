@@ -153,7 +153,10 @@ class ThemeTest {
             listOf("#121316", "#0B0C0E", "#22242A", "#F2F3F5", "#9A9DA6", "#2A2C32", "#E5484D", "#3D3415", "#F2DC8B"),
             dark.colors.run { listOf(background, canvas, surface, textPrimary, textSecondary, border, unread, warning, onWarning) }.map { it.hex },
         )
-        assertEquals("Clomni's colour without a config", "#10A670", light.colors.primary.hex)
+        // No config yet: grey, the header too; no brand colour that is not the app's.
+        assertEquals("#6A6E7A", light.colors.primary.hex)
+        assertEquals(listOf(light.colors.surface, light.colors.surface, light.colors.textPrimary), light.colors.run { listOf(headerFrom, headerTo, headerText) })
+        assertEquals("setTheme's colour from the first frame", "#0A66C2", ClomniTheme.make(null, false, RgbColor.parse("#0A66C2")).colors.primary.hex)
         for (theme in listOf(light, dark)) {
             assertTrue(theme.colors.warning.contrast(theme.colors.onWarning) >= 4.5)
             assertTrue(theme.colors.background.contrast(theme.colors.textPrimary) >= 4.5)

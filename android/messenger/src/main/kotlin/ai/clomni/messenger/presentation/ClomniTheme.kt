@@ -123,6 +123,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
          * the background; the header from the brand to a step darker ([primaryOverride] is always derived here).
          */
         fun make(brand: MessengerConfig.Brand?, dark: Boolean, primaryOverride: RgbColor? = null): ClomniTheme {
+            if (brand == null && primaryOverride == null) return neutral(dark)
             val background = if (dark) hex("#121316") else RgbColor.WHITE
             val palette = if (primaryOverride == null) brand?.colors?.let { if (dark) it.dark else it.light } else null
             val brandColors = palette?.let(::fromPalette)
@@ -164,6 +165,16 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                 onWarning = hex(if (dark) "#F2DC8B" else "#5C4400"),
             )
             return ClomniTheme(colors, dark)
+        }
+
+        /**
+         * No config yet and no `setTheme` colour: grey, never a brand colour that is not the app's. The skeleton
+         * shows in it until the config arrives.
+         */
+        private fun neutral(dark: Boolean): ClomniTheme {
+            val grey = make(MessengerConfig.Brand.neutral, dark)
+            val c = grey.colors
+            return grey.copy(colors = c.copy(headerFrom = c.surface, headerTo = c.surface, headerText = c.textPrimary))
         }
 
         /** The brand's own colours, from the server or derived here. */

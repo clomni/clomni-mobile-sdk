@@ -183,6 +183,7 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
 
     @Synchronized
     fun setConfig(config: MessengerConfig, body: String, etag: String?) {
+        configRead = true
         this.config = config
         configBody = body
         configEtag = etag
@@ -204,6 +205,29 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     }
 
     // Disk
+
+    /** The config.json [readConfig] read, or the server's since: [cachedConfig] does not read it again. */
+    private var configRead = false
+
+    /**
+     * The look the previous run kept, read from disk now if [load] has not run yet (a small file): the messenger's
+     * first frame is in the brand's colours, never in a default that changes a moment later.
+     */
+    @Synchronized
+    fun cachedConfig(): MessengerConfig? {
+        if (!configRead) readConfig()
+        return config
+    }
+
+    private fun readConfig() {
+        configRead = true
+        val cachedConfig = configFile?.read() as? JsonObject
+        (cachedConfig?.get("body") as? JsonPrimitive)?.contentOrNull?.let { body ->
+            config = protocol.parseConfig(body)
+            configBody = body.takeIf { config != null }
+            configEtag = (cachedConfig["etag"] as? JsonPrimitive)?.contentOrNull.takeIf { config != null }
+        }
+    }
 
     /** The state the previous run left, shown before the network answers. */
     @Synchronized
@@ -229,12 +253,7 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
             }
             (page["synced_seq"] as? JsonPrimitive)?.longOrNull?.let { synced[conversationId] = it }
         }
-        val cachedConfig = configFile?.read() as? JsonObject
-        (cachedConfig?.get("body") as? JsonPrimitive)?.contentOrNull?.let { body ->
-            config = protocol.parseConfig(body)
-            configBody = body.takeIf { config != null }
-            configEtag = (cachedConfig["etag"] as? JsonPrimitive)?.contentOrNull.takeIf { config != null }
-        }
+        if (!configRead) readConfig()
         outbox.load()
         changes += listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(unreadTotal))
     }
@@ -250,6 +269,7 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         config = null
         configBody = null
         configEtag = null
+        configRead = true
         unreadTotal = 0
         conversationsDirty = false
         configDirty = false

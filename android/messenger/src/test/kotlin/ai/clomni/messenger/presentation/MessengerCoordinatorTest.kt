@@ -28,6 +28,11 @@ private class FakeSession : MessengerSession {
     var loginFails = false
     var unread = 0
     var cachedConfig: MessengerConfig? = null
+
+    /** What the disk cache holds before the worker has read it. */
+    var diskConfig: MessengerConfig? = null
+
+    override fun cachedConfig(): MessengerConfig? = cachedConfig ?: diskConfig
     var freshConfig: MessengerConfig? = Fixture.aparConfig
     var drafts = 0
     var flowBound = true
@@ -285,6 +290,22 @@ class MessengerCoordinatorTest {
         session.push(ClomniChange.Started("draft_2", "conv_6000"))
         assertNull(messenger.route)
         assertEquals(listOf("conv_5521", "conv_6000"), started)
+    }
+
+    /** The messenger's first frame has the look the previous run kept, not a default that changes to it. */
+    @Test
+    fun theFirstFrameHasTheCachedLook() {
+        val blue = ChatFixture.config("""{"brand":{"name":"A","primary_color":"#0A66C2"}}""")
+        session.diskConfig = blue
+        val messenger = coordinator()
+        assertNull(messenger.config)
+        var changes = 0
+        messenger.onChange = { changes++ }
+        messenger.firstFrame()
+        assertEquals(blue, messenger.config)
+        assertEquals(1, changes)
+        messenger.firstFrame()
+        assertEquals("read once", 1, changes)
     }
 
     @Test
