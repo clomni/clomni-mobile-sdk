@@ -54,7 +54,7 @@ final class PresenterTests: XCTestCase {
         return snapshot
     }
 
-    func testHeader() {
+    func testHeader() throws {
         let header = presenter().home(snapshot()).header
         XCTAssertEqual(header.brandName, "Apar")
         XCTAssertEqual(header.brandInitial, "A")
@@ -63,8 +63,10 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(header.style, .gradient)
         XCTAssertFalse(header.glow)
         XCTAssertEqual(header.teamAvatars.count, 3)
-        // {name} is the whole name (APPEARANCE-CONTRACT § 1).
-        XCTAssertEqual(header.greeting, "Salam, Aysel Məmmədova 👋")
+        // The default greets by the first name; the panel can choose {name}, the whole name.
+        XCTAssertEqual(header.greeting, "Salam, Aysel 👋")
+        let whole = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"strings":{"greeting_line1":"Salam, {name}!"}}"#.utf8)))
+        XCTAssertEqual(presenter(config: whole).home(snapshot(whole)).header.greeting, "Salam, Aysel Məmmədova!")
         XCTAssertEqual(header.title, "Necə kömək edə bilərik?")
         XCTAssertEqual(header.closeLabel, "Bağla")
 
