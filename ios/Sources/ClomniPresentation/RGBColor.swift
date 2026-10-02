@@ -13,12 +13,16 @@ package struct RGBColor: Sendable, Hashable, CustomStringConvertible {
         self.blue = min(1, max(0, blue))
     }
 
-    /// "#RRGGBB".
+    /// "#RRGGBB" exactly: ASCII hex digits only (Int(_:radix:) alone takes a sign, "#+12345").
     package init?(hex: String) {
-        guard hex.count == 7, hex.first == "#", let value = Int(hex.dropFirst(), radix: 16) else { return nil }
+        let bytes = Array(hex.utf8)
+        guard bytes.count == 7, bytes[0] == UInt8(ascii: "#"), bytes.dropFirst().allSatisfy(Self.hexDigits.contains),
+              let value = Int(hex.dropFirst(), radix: 16) else { return nil }
         self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255,
                   blue: Double(value & 0xFF) / 255)
     }
+
+    private static let hexDigits = Set("0123456789abcdefABCDEF".utf8)
 
     package static let white = RGBColor(red: 1, green: 1, blue: 1)
     package static let black = RGBColor(red: 0, green: 0, blue: 0)

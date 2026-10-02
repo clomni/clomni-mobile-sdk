@@ -23,7 +23,10 @@ final class ThemeTests: XCTestCase {
     func testHexAndArithmetic() {
         XCTAssertEqual(apar.hex, "#1F9D63")
         XCTAssertEqual(apar.description, "#1F9D63")
-        for bad in ["1F9D63", "#1F9D6", "#1F9D6Z", "#1F9D6300"] { XCTAssertNil(RGBColor(hex: bad), bad) }
+        for bad in ["1F9D63", "#1F9D6", "#1F9D6Z", "#1F9D6300", "#+12345", "#-12345", "# 12345", "#１Ｆ９Ｄ６３", "#1F9D6\n", ""] {
+            XCTAssertNil(RGBColor(hex: bad), bad)
+        }
+        XCTAssertEqual(RGBColor(hex: "#0a66c2")?.hex, "#0A66C2", "lower case is hex too")
         XCTAssertEqual(RGBColor(red: 2, green: -1, blue: 0.5).hex, "#FF0080", "channels are clamped")
         XCTAssertEqual(RGBColor.white.contrast(with: .black), 21, accuracy: 0.001)
         XCTAssertEqual(apar.contrast(with: apar), 1, accuracy: 0.001)

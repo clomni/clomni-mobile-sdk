@@ -157,6 +157,10 @@ final class MessengerConfigTests: ProtocolTestCase {
          "powered_by":false}
         """##.utf8)))
         XCTAssertEqual(odd.brand.primaryColor, MessengerConfig.Brand.defaultPrimaryColor)
+        for bad in ["#+12345", "#１Ｆ９Ｄ６３", "#1F9D6Z", "1F9D63A"] {
+            let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"primary_color":"\#(bad)"}}"#.utf8)))
+            XCTAssertEqual(config.brand.primaryColor, MessengerConfig.Brand.defaultPrimaryColor, bad)
+        }
         XCTAssertEqual(odd.brand.headerStyle, .gradient)
         XCTAssertFalse(odd.brand.glow)
         XCTAssertNil(odd.brand.colors, "an incomplete set is no set")

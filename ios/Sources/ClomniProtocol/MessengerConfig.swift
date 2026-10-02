@@ -224,11 +224,11 @@ extension MessengerConfig {
                        headerTo: to, headerText: color("header_text"))
     }
 
-    /// "#RRGGBB", or nil for anything else.
+    /// "#RRGGBB" with ASCII hex digits (Character.isHexDigit also takes fullwidth ones), or nil for anything else.
     static func hexColor(_ value: String?) -> String? {
-        guard let value, value.count == 7, value.first == "#", value.dropFirst().allSatisfy(\.isHexDigit) else {
-            return nil
-        }
+        let digits = Set("0123456789abcdefABCDEF".utf8)
+        guard let value, value.utf8.count == 7, value.first == "#",
+              value.utf8.dropFirst().allSatisfy(digits.contains) else { return nil }
         return value
     }
 }
