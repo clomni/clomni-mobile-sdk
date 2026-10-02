@@ -83,11 +83,14 @@ That app already sets both Info.plist texts, `aps-environment: production`, `UIB
    Clomni.setNotificationIcon('clomni_notification_icon');               // Android
    const token = Platform.OS === 'ios' ? await messaging().getAPNSToken() : await messaging().getToken();
    if (token) Clomni.setDeviceToken(token);
-   // Android: Clomni's data messages, in the foreground and in the background
-   messaging().onMessage((message) => { Clomni.handlePush(message.data ?? {}); });
-   messaging().setBackgroundMessageHandler(async (message) => { Clomni.handlePush(message.data ?? {}); });
-   // iOS: a tap on a notification
-   messaging().onNotificationOpenedApp((message) => { Clomni.handlePush(message.data ?? {}); });
+   if (Platform.OS === 'android') {
+     // Clomni's data messages, in the foreground and in the background: the SDK shows the notification.
+     messaging().onMessage((message) => { Clomni.handlePush(message.data ?? {}); });
+     messaging().setBackgroundMessageHandler(async (message) => { Clomni.handlePush(message.data ?? {}); });
+   } else {
+     // A tap on a notification opens its conversation.
+     messaging().onNotificationOpenedApp((message) => { Clomni.handlePush(message.data ?? {}); });
+   }
    ```
 
 ## Use
