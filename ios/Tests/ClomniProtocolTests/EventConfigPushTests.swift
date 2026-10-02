@@ -113,6 +113,36 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertTrue(config.poweredBy)
     }
 
+    /// APPEARANCE-CONTRACT § 4a and DESIGN-PASS: the full logo and the greeting's size. Fixtures 58/59 come with the
+    /// next protocol sync; until then the shapes from the contract.
+    func testWordmarkAndTitleSize() throws {
+        let wordmark = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
+            {"brand":{"name":"Clomni","logo_style":"wordmark","wordmark_url":"https://app.clomni.ai/v1/images/img_w",
+                      "wordmark_dark_url":"https://app.clomni.ai/v1/images/img_wd"},
+             "home":{"title_size":"l"}}
+            """##.utf8)))
+        XCTAssertEqual(wordmark.brand.logoStyle, .wordmark)
+        XCTAssertEqual(wordmark.brand.wordmarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_w")
+        XCTAssertEqual(wordmark.brand.wordmarkDarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_wd")
+        XCTAssertEqual(wordmark.home.titleSize, .l)
+
+        let small = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"home":{"title_size":"s"}}"#.utf8)))
+        XCTAssertEqual(small.home.titleSize, .s)
+        // Without a wordmark there is nothing to show: mark. Unknown values take the defaults.
+        let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
+            #"{"brand":{"logo_style":"wordmark","wordmark_url":null},"home":{"title_size":"xl"}}"#.utf8)))
+        XCTAssertEqual(odd.brand.logoStyle, .mark)
+        XCTAssertEqual(odd.home.titleSize, .m)
+        let neon = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
+            #"{"brand":{"logo_style":"neon","wordmark_url":"https://a.az/w.png"}}"#.utf8)))
+        XCTAssertEqual(neon.brand.logoStyle, .mark)
+        // A server that does not send the fields.
+        let older = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("42-config-apar.json")))
+        XCTAssertEqual(older.brand.logoStyle, .mark)
+        XCTAssertNil(older.brand.wordmarkUrl)
+        XCTAssertEqual(older.home.titleSize, .m)
+    }
+
     func testMinimalConfigTakesDefaults() throws {
         let config = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("43-config-minimal.json")))
         XCTAssertEqual(config.version, 1)

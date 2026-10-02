@@ -35,6 +35,12 @@ package struct MessengerConfig: Sendable, Equatable {
         /// The tokens the server derived from `primaryColor`, so that Android and iOS show the same; nil when the
         /// server sent none (or an incomplete set): the SDK then derives them itself, by the same rules.
         package let colors: Colors?
+        /// `wordmark`: Home's header shows the full logo (`wordmarkUrl`) in place of the logo and the name. The server
+        /// sends it only with a wordmark; without one it is `mark`, as for a server that does not know the field.
+        package let logoStyle: LogoStyle
+        package let wordmarkUrl: URL?
+        /// For dark mode; nil uses `wordmarkUrl` there too.
+        package let wordmarkDarkUrl: URL?
 
         /// Clomni's own colour, used when the config has none or an invalid one.
         package static let defaultPrimaryColor = "#10A670"
@@ -42,6 +48,18 @@ package struct MessengerConfig: Sendable, Equatable {
 
     package enum HeaderStyle: String, Sendable, Equatable {
         case gradient, solid, image
+    }
+
+    package enum LogoStyle: String, Sendable, Equatable {
+        /// The square logo (or the initial) and the brand's name.
+        case mark
+        /// The full logo, on Home's header only.
+        case wordmark
+    }
+
+    /// The size of Home's greeting, chosen in the panel.
+    package enum TitleSize: String, Sendable, Equatable {
+        case s, m, l
     }
 
     package struct Colors: Sendable, Equatable {
@@ -91,6 +109,8 @@ package struct MessengerConfig: Sendable, Equatable {
         package let cards: [HomeCard]
         /// At most five, in the panel's order.
         package let channels: [Channel]
+        /// `m` when the server sends none or one this SDK does not know.
+        package let titleSize: TitleSize
     }
 
     package enum HomeCard: String, Sendable, Equatable {
@@ -157,7 +177,11 @@ extension MessengerConfig {
                 guard let light = colors.optionalObject("light").flatMap(Self.palette),
                       let dark = colors.optionalObject("dark").flatMap(Self.palette) else { return nil }
                 return Colors(light: light, dark: dark)
-            })
+            },
+            logoStyle: brand.optionalURL("wordmark_url") == nil ? .mark
+                : brand.optionalString("logo_style").flatMap(LogoStyle.init(rawValue:)) ?? .mark,
+            wordmarkUrl: brand.optionalURL("wordmark_url"),
+            wordmarkDarkUrl: brand.optionalURL("wordmark_dark_url"))
 
         let team = section(f, "team")
         self.team = Team(
@@ -187,7 +211,8 @@ extension MessengerConfig {
                 guard let type = item["type"]?.stringValue, let url = item["url"]?.stringValue.flatMap(URL.init(string:))
                 else { return nil }
                 return Channel(type: type, url: url)
-            }.prefix(Self.maxChannels)))
+            }.prefix(Self.maxChannels)),
+            titleSize: home.optionalString("title_size").flatMap(TitleSize.init(rawValue:)) ?? .m)
 
         let theme = section(f, "theme")
         let launcher = section(theme, "launcher")
