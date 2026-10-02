@@ -159,7 +159,7 @@ class HomeControllerTest {
         home.userName = "Leyla Əliyeva"
         assertEquals("Salam, Leyla", home.home.header.greeting)
         home.isOffline = true
-        assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", home.home.offline)
+        assertEquals("İnternet yoxdur", home.home.offline)
         assertEquals(2, renders)
         assertEquals("Leyla Əliyeva", home.userName)
         assertTrue(home.isOffline)

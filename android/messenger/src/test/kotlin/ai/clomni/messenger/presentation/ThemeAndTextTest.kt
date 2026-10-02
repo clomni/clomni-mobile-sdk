@@ -216,7 +216,7 @@ class StringsTest {
         assertEquals("Dün", strings[Key.YESTERDAY])
         assertEquals("Göndər", strings[Key.SEND])
         assertEquals("2 dəq", strings.format(Key.MINUTES_SHORT, 2))
-        assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", ClomniStrings("az")[Key.OFFLINE])
+        assertEquals("İnternet yoxdur", ClomniStrings("az")[Key.OFFLINE])
     }
 }
 

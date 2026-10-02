@@ -30,7 +30,7 @@ internal data class ChatHeader(
     val lead: Lead,
     /** The brand, or the operator's name. */
     val title: String,
-    /** "Komanda da kömək edə bilər", the reply time while queued, "Apar · onlayn", or when the team is back. */
+    /** "Adətən bir neçə dəqiqəyə cavab veririk", the reply time while queued, "Apar · onlayn", or when the team is back. */
     val subtitle: String,
     val backLabel: String,
     val closeLabel: String,

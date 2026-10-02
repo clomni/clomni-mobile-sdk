@@ -104,7 +104,7 @@ class FormInputTest {
         )
         assertEquals(
             mapOf(
-                "details" to "Ən çox 1000 simvol", "phone" to "Telefon nömrəsi düzgün deyil", "email" to "Email düzgün deyil",
+                "details" to "Ən çox 1000 simvol", "phone" to "Telefon nömrəsi düzgün deyil", "email" to "E-poçt düzgün deyil",
                 "ride_count" to "Rəqəm yazın", "city" to "Variantlardan birini seçin", "date" to "Bu sahəni doldurun",
             ),
             wrong,

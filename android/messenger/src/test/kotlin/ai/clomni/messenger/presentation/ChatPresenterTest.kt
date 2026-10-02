@@ -190,7 +190,7 @@ class ChatPresenterTest {
         val bot = screen(emptyList()).header
         assertEquals(ChatHeader.Lead.Team(Fixture.aparConfig.team.avatars), bot.lead)
         assertEquals("Apar", bot.title)
-        assertEquals("Komanda da kömək edə bilər", bot.subtitle)
+        assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", bot.subtitle)
         assertEquals("Geri", bot.backLabel)
         assertEquals("Bağla", bot.closeLabel)
 
@@ -409,7 +409,7 @@ class ChatPresenterTest {
         val failed = presenter.screen(ChatSnapshot(load = MessengerSnapshot.Load.FAILED, isOffline = true))
         assertEquals(HomeScreen.Phase.FAILED, failed.phase)
         assertEquals("Yenidən cəhd et", failed.failure?.retry)
-        assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", failed.offline)
+        assertEquals("İnternet yoxdur", failed.offline)
         val cached = presenter.screen(ChatSnapshot(messages = listOf(ChatFixture.message("01-text-bot.json"))))
         assertEquals("what is cached shows while loading", HomeScreen.Phase.READY, cached.phase)
     }

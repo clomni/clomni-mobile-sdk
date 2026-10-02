@@ -329,7 +329,7 @@ class ChatControllerTest {
         source.push(ClomniChange.Session)
         assertEquals(before + 4, renders)
         chat.isOffline = true
-        assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", chat.screen.offline)
+        assertEquals("İnternet yoxdur", chat.screen.offline)
         val older = mutableListOf<Boolean>()
         chat.loadOlder { older += it }
         assertEquals(listOf(false), older)
