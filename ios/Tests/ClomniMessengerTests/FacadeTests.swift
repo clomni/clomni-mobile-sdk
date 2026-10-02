@@ -334,6 +334,8 @@ final class FacadeTests: XCTestCase {
     func testCallsFromAnotherThread() async {
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
         let done = expectation(description: "calls made")
+        // The listener hears again on every change (the push below changes the count): only the first one counts.
+        done.assertForOverFulfill = false
         DispatchQueue.global().async {
             XCTAssertFalse(Thread.isMainThread)
             Clomni.present(source: "first")
