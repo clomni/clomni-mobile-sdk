@@ -352,7 +352,7 @@ class ApiClientTest {
         api.setTyping("conv_1", true)
         assertEquals("Aysel", api.updateUser(Json.parseToJsonElement("""{"name":"Aysel"}""").jsonObject).name)
         api.registerDevice("tok")
-        api.deleteDevice("tok/1")
+        runCatching { api.getConversation("conv/1") }
         assertEquals(false, api.triggerFlow("payment_failed", null, openMessenger = true, openedFrom = "checkout").started)
         api.trackEvent("ride_finished", null)
         val file = File.createTempFile("upload", ".jpg").apply { writeText("abc") }
@@ -369,7 +369,7 @@ class ApiClientTest {
                 "POST /v1/conversations/conv_1/typing",
                 "PATCH /v1/users/me",
                 "POST /v1/devices",
-                "DELETE /v1/devices/tok%2F1",
+                "GET /v1/conversations/conv%2F1",
                 "POST /v1/flows/trigger",
                 "POST /v1/events",
                 "POST /v1/uploads",

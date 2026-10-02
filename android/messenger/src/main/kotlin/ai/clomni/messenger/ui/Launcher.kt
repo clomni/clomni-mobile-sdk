@@ -148,6 +148,7 @@ internal class LauncherView(context: Context) : View(context) {
         ringPaint.color = theme.colors.background.argb
         textPaint.color = 0xFFFFFFFF.toInt()
         icon?.colorFilter = PorterDuffColorFilter(theme.colors.onPrimary.argb, PorterDuff.Mode.SRC_IN)
+        textPaint.typeface = Typeface.create(ClomniFonts.typeface ?: Typeface.DEFAULT, Typeface.BOLD)
         contentDescription = state.accessibilityLabel
         setOnClickListener { tap() }
         place()

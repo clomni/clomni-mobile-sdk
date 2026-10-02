@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/profile"
+            android:textSize="28sp" />
+
+        <TextView
+            android:id="@+id/user"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp" />
+
+        <Button
+            android:id="@+id/login"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/login" />
+
+        <Button
+            android:id="@+id/logout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/logout" />
+
+        <LinearLayout
+            android:id="@+id/support"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/support"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/support_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#E5484D"
+                android:paddingHorizontal="8dp"
+                android:textColor="#FFFFFF"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/report_problem"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/report_problem" />
+
+        <Switch
+            android:id="@+id/launcher"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/launcher" />
+
+        <Button
+            android:id="@+id/fake_push"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/fake_push" />
+
+        <TextView
+            android:id="@+id/events"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp" />
+    </LinearLayout>
+</ScrollView>

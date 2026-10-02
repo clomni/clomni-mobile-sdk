@@ -4,12 +4,14 @@ import ai.clomni.messenger.api.ApiClient
 import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
+import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.samePerson
 import ai.clomni.messenger.presentation.ChatDataSource
 import ai.clomni.messenger.presentation.MessengerDataSource
 import ai.clomni.messenger.presentation.MessengerSession
 import ai.clomni.messenger.api.UserIdentity
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.ConversationWithMessages
@@ -61,7 +63,6 @@ internal class ClomniEngine(
     http: OkHttpClient,
     private val executor: ScheduledExecutorService = newWorker(),
     timing: Timing = Timing(),
-    private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) : RealtimeClient.Listener, MessengerDataSource, ChatDataSource, MessengerSession {
 
@@ -138,6 +139,7 @@ internal class ClomniEngine(
             // Another identified user's conversations are not this one's.
             if (previous != null && !previous.anonymous && previous.userId != session.userId) clearLocalData()
         }
+        registerPush()
         notify(ClomniChange.Session)
         if (wantsSocket && inForeground) {
             realtime.stop()
@@ -152,6 +154,8 @@ internal class ClomniEngine(
         realtime.stop()
         nextAttempt?.cancel(false)
         api.logout()
+        // The server dropped this device's token with the session; the next login registers it again.
+        credentials.pushRegistration?.let { credentials.pushRegistration = it.copy(registeredFor = null) }
         clearLocalData()
         notify(ClomniChange.Session)
     }
@@ -163,6 +167,7 @@ internal class ClomniEngine(
         wantsSocket = true
         if (inForeground) realtime.start(::endpoint)
         deliver()
+        registerPush()
     }
 
     fun disconnect(): Future<Unit> = submit {
@@ -180,6 +185,7 @@ internal class ClomniEngine(
         inForeground = true
         if (wantsSocket) realtime.start(::endpoint)
         deliver()
+        registerPush()
     }
 
     // Reading (from the store, at once)
@@ -275,7 +281,7 @@ internal class ClomniEngine(
         try {
             authed { api.setTyping(conversationId, isTyping) }
         } catch (e: ClomniError) {
-            log("typing: ${e.message}")
+            ClomniLog.debug { "typing: ${e.message}" }
         }
     }
 
@@ -371,10 +377,17 @@ internal class ClomniEngine(
     /** Only the fields given change; `custom_attributes` are merged on the server. */
     fun updateUser(fields: JsonObject): Future<MobileUser> = submit { authed { api.updateUser(fields) } }
 
-    fun registerPushToken(token: String): Future<Unit> = submit { authed { api.registerDevice(token) } }
-
-    fun unregisterPushToken(token: String): Future<Unit> = submit { authed { api.deleteDevice(token) } }
-
+    /**
+     * `Clomni.setDeviceToken`: the FCM token (FirebaseMessagingService.onNewToken). It is kept on this device and
+     * registered for whoever is logged in: now, at the next login, and again when another user logs in. A new token
+     * replaces the old one. A registration that fails is repeated at the next connect or return to the foreground.
+     * Calls run one at a time on the worker, so a token or a logout that comes while a registration is out waits for
+     * it and then wins.
+     */
+    fun setDeviceToken(token: String): Future<Unit> = submit {
+        if (credentials.pushRegistration?.token != token) credentials.pushRegistration = PushRegistration(token)
+        registerPush()
+    }
     /** `Clomni.startFlow`: the flow bound to an app event, in a new conversation; null when none is bound. */
     override fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String?): Future<Conversation?> = submit {
         val created = authed { api.triggerFlow(event, data, openMessenger, openedFrom) }.conversation ?: return@submit null
@@ -419,7 +432,7 @@ internal class ClomniEngine(
                 is RealtimeEvent.Payload.Unknown -> Unit
             }
         } catch (e: Exception) {
-            log("${event.event}: ${e.message}")
+            ClomniLog.warning { "${event.event}: ${e.message}" }
         }
         publish()
     }
@@ -430,7 +443,7 @@ internal class ClomniEngine(
         } catch (e: ClomniError.Server) {
             relogin()
         } catch (e: ClomniError) {
-            log("refresh: ${e.message}")
+            ClomniLog.info { "refresh: ${e.message}" }
         }
     }
 
@@ -458,7 +471,7 @@ internal class ClomniEngine(
             try {
                 observer(change)
             } catch (e: Exception) {
-                log("observer: ${e.message}")
+                ClomniLog.warning { "a screen's change handler failed: ${e.message}" }
             }
         }
     }
@@ -481,7 +494,7 @@ internal class ClomniEngine(
             true
         } catch (e: ClomniError) {
             noteDisabled(e)
-            log("login again failed: ${e.message}")
+            ClomniLog.warning { "login again failed: ${e.message}" }
             false
         }
     }
@@ -506,7 +519,7 @@ internal class ClomniEngine(
         try {
             loadConversations()
         } catch (e: ClomniError) {
-            log("conversations: ${e.message}")
+            ClomniLog.info { "conversations not refreshed: ${e.message}" }
         }
         for (conversation in store.conversations()) {
             val synced = store.syncedSeq(conversation.id) ?: continue
@@ -514,7 +527,7 @@ internal class ClomniEngine(
             try {
                 fetchAfter(conversation.id, synced)
             } catch (e: ClomniError) {
-                log("catch up ${conversation.id}: ${e.message}")
+                ClomniLog.info { "catch up ${conversation.id}: ${e.message}" }
             }
         }
         deliver()
@@ -527,7 +540,7 @@ internal class ClomniEngine(
                 is ConfigResponse.Changed -> store.setConfig(response.config, response.body, response.etag)
             }
         } catch (e: ClomniError) {
-            log("config not refreshed: ${e.message}")
+            ClomniLog.info { "config not refreshed: ${e.message}" }
         }
     }
 
@@ -614,7 +627,7 @@ internal class ClomniEngine(
                     // already_answered / stale_interaction: the server has moved on; show its copy of the message.
                     store.outbox.remove(entry.id)
                     entry.message.replyTo?.let(::reloadAnswered)
-                    log("${entry.id}: ${e.code ?: "409"}, dropped")
+                    ClomniLog.info { "${entry.id}: ${e.code ?: "409"}, dropped" }
                     return true
                 }
                 e.status in 400..499 && e.status != 401 && e.status != 429 -> {
@@ -624,13 +637,13 @@ internal class ClomniEngine(
                 else -> e.status
             }
         } catch (e: Exception) {
-            log("send ${entry.id}: ${e.message}")
+            ClomniLog.debug { "send ${entry.id}: ${e.message}" }
             null
         }
         // No answer (or a 5xx, 401, 429 the client already repeated): another attempt after a pause.
         val failed = store.outbox.recordFailure(entry.id) ?: return true
         if (failed.state == PendingMessage.State.FAILED) return true
-        log("send ${entry.id}: attempt ${failed.attempts} failed${status?.let { " ($it)" }.orEmpty()}")
+        ClomniLog.info { "send ${entry.id}: attempt ${failed.attempts} failed${status?.let { " ($it)" }.orEmpty()}" }
         nextAttempt = executor.schedule(::deliver, outboxRetryMs(failed.attempts), TimeUnit.MILLISECONDS)
         return false
     }
@@ -644,11 +657,26 @@ internal class ClomniEngine(
         val file = store.outbox.stagedFile(upload)?.takeIf { it.isFile }
         if (file == null) {
             store.outbox.fail(entry.id, "file_missing")
-            log("${entry.id}: its file is gone")
+            ClomniLog.warning { "${entry.id}: its file is gone, the message is not sent" }
             return null
         }
         val uploadId = authed { api.upload(file, upload.fileName, upload.mime) }.uploadId
         return store.outbox.uploaded(entry.id, uploadId)
+    }
+
+    /** Sends the kept token unless the server already has it for the logged-in user. On the worker. */
+    private fun registerPush() {
+        val registration = credentials.pushRegistration ?: return
+        val user = credentials.session?.userId ?: return
+        if (registration.registeredFor == user) return
+        try {
+            authed { api.registerDevice(registration.token) }
+        } catch (e: ClomniError) {
+            // Repeated at the next connect or foreground.
+            return ClomniLog.warning { "push token not registered: ${e.message}" }
+        }
+        // A login again inside authed may have made the session someone else's.
+        if (credentials.session?.userId == user) credentials.pushRegistration = registration.copy(registeredFor = user)
     }
 
     private fun reloadAnswered(messageId: String) {
@@ -657,7 +685,7 @@ internal class ClomniEngine(
         try {
             fetchAfter(message.conversationId, maxOf(0, message.seq - 1))
         } catch (e: ClomniError) {
-            log("reload $messageId: ${e.message}")
+            ClomniLog.debug { "reload $messageId: ${e.message}" }
         }
     }
 

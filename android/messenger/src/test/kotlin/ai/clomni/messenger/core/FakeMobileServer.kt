@@ -52,6 +52,24 @@ internal class FakeMobileServer : Dispatcher() {
     /** "METHOD /path" → how many more of those requests the network loses (the connection drops once read). */
     val drops = ConcurrentHashMap<String, Int>()
 
+    /** "METHOD /path" → the status the next such request is refused with (once). */
+    val refusals = ConcurrentHashMap<String, Int>()
+
+    /** While set, POST /devices waits for it before answering: a registration that is still out. */
+    @Volatile var holdDevices: java.util.concurrent.CountDownLatch? = null
+
+    private class PushToken(val token: String, val userId: String, val session: String)
+
+    /** Device → its push token and whom it is registered for: one token per device, as on the server. */
+    private val pushTokens = mutableMapOf<String, PushToken>()
+
+    /** The token registered for [userId], or null. */
+    @Synchronized
+    fun pushTarget(userId: String): String? = pushTokens.values.firstOrNull { it.userId == userId }?.token
+
+    /** The body of every POST /devices, in order. */
+    val sentDeviceBodies: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
     /** The body of every message sent, in order. */
     val sentBodies: MutableList<JsonObject> = Collections.synchronizedList(mutableListOf())
 
@@ -66,7 +84,7 @@ internal class FakeMobileServer : Dispatcher() {
 
     private class User(val id: String, val anonymous: Boolean, val userId: String?, val email: String?, val deviceId: String?)
 
-    private class Session(val token: String, val refresh: String, val userId: String) {
+    private class Session(val token: String, val refresh: String, val userId: String, val deviceId: String) {
         var expired = false
     }
 
@@ -153,9 +171,12 @@ internal class FakeMobileServer : Dispatcher() {
     override fun dispatch(request: RecordedRequest): MockResponse {
         log += "${request.method} ${request.path}"
         calls += request.getHeader("Authorization")?.removePrefix("Bearer ") to "${request.method} ${request.path}"
-        if (offline || drop("${request.method} ${request.requestUrl?.encodedPath}")) {
+        val line = "${request.method} ${request.requestUrl?.encodedPath}"
+        if (offline || drop(line)) {
             return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
         }
+        refusals.remove(line)?.let { return error(it, "validation_failed") }
+        if (line == "POST /v1/devices") holdDevices?.await(10, java.util.concurrent.TimeUnit.SECONDS)
         return synchronized(this) { route(request) }
     }
 
@@ -181,6 +202,8 @@ internal class FakeMobileServer : Dispatcher() {
         val parts = path.split("/")
         return when {
             path == "mobile/sessions" && method == "DELETE" -> {
+                // The server drops this device's push token with the session.
+                pushTokens.values.removeAll { it.session == session.token }
                 sessions.remove(session.token)
                 sockets.filter { it.token == session.token }.forEach { it.socket.close(1000, null) }
                 sockets.removeAll { it.token == session.token }
@@ -207,7 +230,13 @@ internal class FakeMobileServer : Dispatcher() {
             path == "flows/trigger" -> json(buildJsonObject { put("started", false); put("conversation", JsonNull) })
             path == "users/me" -> json(buildJsonObject { put("id", session.userId); put("anonymous", false); put("name", "Aysel") })
             path == "events" -> MockResponse().setResponseCode(202)
-            parts[0] == "devices" -> MockResponse().setResponseCode(204)
+            path == "devices" && method == "POST" -> {
+                val text = request.body.readUtf8()
+                sentDeviceBodies += text
+                val body = Json.parseToJsonElement(text).jsonObject
+                pushTokens[session.deviceId] = PushToken(body.getValue("token").jsonPrimitive.content, session.userId, session.token)
+                MockResponse().setResponseCode(204)
+            }
             parts[0] == "conversations" -> {
                 val conv = conversations[parts[1]]?.takeIf { it.userId == session.userId }
                     ?: return error(404, "conversation_not_found")
@@ -244,19 +273,19 @@ internal class FakeMobileServer : Dispatcher() {
             users.firstOrNull { it.anonymous && it.id == anonymousId && it.deviceId == deviceId }
                 ?: User("usr_${++counter}", true, null, null, deviceId).also { users += it }
         }
-        return issue(user.id, user.anonymous)
+        return issue(user.id, user.anonymous, deviceId)
     }
 
     private fun refresh(request: RecordedRequest): MockResponse {
         val refreshToken = Json.parseToJsonElement(request.body.readUtf8()).jsonObject.getValue("refresh_token").jsonPrimitive.content
         val token = refreshTokens.remove(refreshToken) ?: return error(401, "invalid_token")
         val old = sessions.remove(token) ?: return error(401, "invalid_token")
-        return issue(old.userId, users.first { it.id == old.userId }.anonymous)
+        return issue(old.userId, users.first { it.id == old.userId }.anonymous, old.deviceId)
     }
 
-    private fun issue(userId: String, anonymous: Boolean): MockResponse {
+    private fun issue(userId: String, anonymous: Boolean, deviceId: String): MockResponse {
         val n = ++counter
-        val session = Session("st_$n", "rt_$n", userId)
+        val session = Session("st_$n", "rt_$n", userId, deviceId)
         sessions[session.token] = session
         refreshTokens[session.refresh] = session.token
         return json(

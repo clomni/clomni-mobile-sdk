@@ -59,6 +59,12 @@ internal sealed class ClomniError(message: String) : Exception(message) {
 }
 
 /**
+ * The FCM token the app gave ([token]), and the user the server has it for ([registeredFor]): null until it has, and
+ * after logout, which removes it there. The server keeps one token per device.
+ */
+internal data class PushRegistration(val token: String, val registeredFor: String? = null)
+
+/**
  * What the SDK keeps about its login, in a [SecureStore]: the session (with the single-use refresh token), the
  * identity to log in again with, the anonymous user to resume or merge, and the device id.
  */
@@ -96,7 +102,19 @@ internal class Credentials(private val store: SecureStore, private val protocol:
     val deviceId: String
         get() = store.read(DEVICE_ID) ?: "d_${UUID.randomUUID()}".also { store.write(DEVICE_ID, it) }
 
-    /** Logout: everything but the device id. */
+    /** Kept next to the session (a cache may be cleared): the token outlives logouts, its registration does not. */
+    var pushRegistration: PushRegistration?
+        get() = store.read(PUSH)?.let { json ->
+            val o = runCatching { Json.parseToJsonElement(json) as JsonObject }.getOrNull() ?: return null
+            fun field(key: String) = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            PushRegistration(field("token") ?: return null, field("registered_for"))
+        }
+        set(value) = store.write(
+            PUSH,
+            value?.let { buildJsonObject { put("token", it.token); put("registered_for", it.registeredFor) }.toString() },
+        )
+
+    /** Logout: everything but the device id and the push token. */
     @Synchronized
     fun clear() {
         session = null
@@ -136,5 +154,6 @@ internal class Credentials(private val store: SecureStore, private val protocol:
         const val IDENTITY = "identity"
         const val ANONYMOUS_ID = "anonymous_id"
         const val DEVICE_ID = "device_id"
+        const val PUSH = "push_registration"
     }
 }

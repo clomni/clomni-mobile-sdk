@@ -4,6 +4,7 @@ import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.PushPayload
 import kotlinx.serialization.json.JsonObject
 import java.util.UUID
 import java.util.concurrent.Executor
@@ -62,14 +63,19 @@ internal data class LauncherState(
 
 /** The app's callbacks (brief 8·9). */
 internal class MessengerEvents {
+    // Set from any thread, called on the UI thread.
+
     /** With the `source` the app passed to `present`. */
-    var messengerOpened: ((String?) -> Unit)? = null
-    var messengerClosed: (() -> Unit)? = null
-    var conversationStarted: ((String) -> Unit)? = null
-    var unreadCountChanged: ((Int) -> Unit)? = null
+    @Volatile var messengerOpened: ((String?) -> Unit)? = null
+
+    @Volatile var messengerClosed: (() -> Unit)? = null
+
+    @Volatile var conversationStarted: ((String) -> Unit)? = null
+
+    @Volatile var unreadCountChanged: ((Int) -> Unit)? = null
 
     /** A flow reached its END node, with the flow's id. */
-    var flowCompleted: ((String) -> Unit)? = null
+    @Volatile var flowCompleted: ((String) -> Unit)? = null
 }
 
 /**
@@ -100,7 +106,8 @@ internal class MessengerCoordinator(
     var readiness: Readiness = Readiness.NOT_READY
         private set
 
-    /** Null while the messenger is closed. */
+    /** Null while the messenger is closed. Read by push handling on FCM's thread too. */
+    @Volatile
     var route: MessengerRoute? = null
         private set
 
@@ -342,6 +349,31 @@ internal class MessengerCoordinator(
         }
         changed()
         return true
+    }
+
+    // Push
+
+    /**
+     * A Clomni push arrived (FCM, on its own thread): its unread count reaches the listeners, and it is shown only
+     * while the messenger is closed. Open on any screen, it shows the conversation's news itself.
+     */
+    fun received(push: PushPayload?): Boolean {
+        push?.unreadTotal?.let { total -> main.execute { takeUnread(total) } }
+        return route == null
+    }
+
+    /**
+     * A tap on a Clomni notification: its conversation ("push" opened it), or Home for one this SDK could not read.
+     * The count came with the push already.
+     */
+    fun openFromPush(conversationId: String?): Boolean =
+        if (conversationId != null) presentConversation(conversationId, "push") else present("push")
+
+    /** The server's count when it sent the push; the socket's next count replaces it. */
+    private fun takeUnread(total: Int) {
+        if (total == unreadTotal) return
+        updateUnread(total)
+        changed()
     }
 
     // Launcher

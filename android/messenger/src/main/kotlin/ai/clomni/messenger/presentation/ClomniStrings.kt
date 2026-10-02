@@ -51,7 +51,6 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         BACK("back"),
         GO_BACK("go_back"),
         BOT("bot"),
-        BUTTON("button"),
         TYPING("typing"),
         ATTACH("attach"),
         EMOJI("emoji"),
@@ -64,6 +63,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         TOO_LONG("too_long"),
         CHOOSE_OPTION("choose_option"),
         FILE_TOO_LARGE("file_too_large"),
+
+        // Push (CM-075): the Android notification channel's name.
+        SUPPORT_MESSAGES("support_messages"),
     }
 
     /** az, en or ru; anything else reads as az. */
@@ -78,11 +80,14 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
     /** A text with one word in it ("Növbəti iş saatı: %@"; protocol/strings.json's placeholder). */
     fun format(key: Key, text: String): String = get(key).replace("%@", text)
 
-    /** TalkBack for a flow button: "Düymə, Azərbaycan dili, 1-ci, cəmi 3". */
+    /**
+     * TalkBack for a flow button: "Azərbaycan dili, 1-ci, cəmi 3". The button role is read by the system itself, in
+     * the system's language, so the text does not say "Düymə" again.
+     */
     fun buttonPosition(title: String, index: Int, count: Int): String = when (language) {
-        "en" -> "${get(Key.BUTTON)}, $title, $index of $count"
-        "ru" -> "${get(Key.BUTTON)}, $title, $index из $count"
-        else -> "${get(Key.BUTTON)}, $title, $index-${azerbaijaniOrdinalSuffix(index)}, cəmi $count"
+        "en" -> "$title, $index of $count"
+        "ru" -> "$title, $index из $count"
+        else -> "$title, $index-${azerbaijaniOrdinalSuffix(index)}, cəmi $count"
     }
 
     /** Month names as they stand before or after a day ("1 oktyabr", "1 октября", "October 1"). */
@@ -133,12 +138,12 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.MESSAGE_PLACEHOLDER to "Mesaj yazın…", Key.CHOOSE_ABOVE to "Yuxarıdakı variantlardan birini seçin",
                 Key.SENDING to "Göndərilir", Key.SENT to "Göndərildi", Key.READ to "Oxundu", Key.FAILED to "Göndərilmədi",
                 Key.CONVERSATION_CLOSED to "Söhbət bağlanıb", Key.START_NEW_CONVERSATION to "Yeni söhbət başlat",
-                Key.BACK to "← Geri", Key.GO_BACK to "Geri", Key.BOT to "Bot", Key.BUTTON to "Düymə", Key.TYPING to "yazır",
+                Key.BACK to "← Geri", Key.GO_BACK to "Geri", Key.BOT to "Bot", Key.TYPING to "yazır",
                 Key.ATTACH to "Fayl əlavə et", Key.EMOJI to "Emoji", Key.IMAGE to "Şəkil", Key.FILE to "Fayl",
                 Key.FIELD_REQUIRED to "Bu sahəni doldurun", Key.INVALID_EMAIL to "Email düzgün deyil",
                 Key.INVALID_PHONE to "Telefon nömrəsi düzgün deyil", Key.INVALID_NUMBER to "Rəqəm yazın",
                 Key.TOO_LONG to "Ən çox %d simvol", Key.CHOOSE_OPTION to "Variantlardan birini seçin",
-                Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)",
+                Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)", Key.SUPPORT_MESSAGES to "Dəstək mesajları",
             ),
             "en" to mapOf(
                 Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
@@ -156,12 +161,12 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.MESSAGE_PLACEHOLDER to "Write a message…", Key.CHOOSE_ABOVE to "Choose one of the options above",
                 Key.SENDING to "Sending", Key.SENT to "Sent", Key.READ to "Read", Key.FAILED to "Not sent",
                 Key.CONVERSATION_CLOSED to "Conversation closed", Key.START_NEW_CONVERSATION to "Start a new conversation",
-                Key.BACK to "← Back", Key.GO_BACK to "Back", Key.BOT to "Bot", Key.BUTTON to "Button",
+                Key.BACK to "← Back", Key.GO_BACK to "Back", Key.BOT to "Bot",
                 Key.TYPING to "is typing", Key.ATTACH to "Attach a file", Key.EMOJI to "Emoji", Key.IMAGE to "Image",
                 Key.FILE to "File", Key.FIELD_REQUIRED to "Fill in this field", Key.INVALID_EMAIL to "Enter a valid email",
                 Key.INVALID_PHONE to "Enter a valid phone number", Key.INVALID_NUMBER to "Enter a number",
                 Key.TOO_LONG to "At most %d characters", Key.CHOOSE_OPTION to "Choose one of the options",
-                Key.FILE_TOO_LARGE to "The file is too large (max %d MB)",
+                Key.FILE_TOO_LARGE to "The file is too large (max %d MB)", Key.SUPPORT_MESSAGES to "Support messages",
             ),
             "ru" to mapOf(
                 Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
@@ -179,12 +184,12 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.SENDING to "Отправляется", Key.SENT to "Отправлено", Key.READ to "Прочитано",
                 Key.FAILED to "Не отправлено", Key.CONVERSATION_CLOSED to "Диалог закрыт",
                 Key.START_NEW_CONVERSATION to "Начать новый диалог", Key.BACK to "← Назад", Key.GO_BACK to "Назад",
-                Key.BOT to "Бот", Key.BUTTON to "Кнопка", Key.TYPING to "печатает", Key.ATTACH to "Прикрепить файл",
+                Key.BOT to "Бот", Key.TYPING to "печатает", Key.ATTACH to "Прикрепить файл",
                 Key.EMOJI to "Эмодзи", Key.IMAGE to "Изображение", Key.FILE to "Файл",
                 Key.FIELD_REQUIRED to "Заполните это поле", Key.INVALID_EMAIL to "Неверный email",
                 Key.INVALID_PHONE to "Неверный номер телефона", Key.INVALID_NUMBER to "Введите число",
                 Key.TOO_LONG to "Не больше %d символов", Key.CHOOSE_OPTION to "Выберите вариант",
-                Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)",
+                Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)", Key.SUPPORT_MESSAGES to "Сообщения поддержки",
             ),
         )
     }

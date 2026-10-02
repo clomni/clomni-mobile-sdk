@@ -6,6 +6,7 @@ import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.ProtocolJson
+import ai.clomni.messenger.protocol.PushPayload
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
@@ -370,6 +371,71 @@ class MessengerCoordinatorTest {
         assertEquals(listOf(4, 0), unread)
         assertEquals(1, closed)
         assertFalse(messenger.wantsAnyView)
+    }
+
+    // Push
+
+    private fun push(conversation: String = "conv_5521", unread: Int? = 2) = PushPayload(
+        "message", conversation, "msg_f02", "Leyla · Apar", "Balansınıza 2 AZN qaytarıldı.", "https://app.clomni.ai/a/leyla.png", unread,
+    )
+
+    @Test
+    fun aTapOnAPushOpensItsConversation() {
+        session.loggedIn = true
+        val messenger = coordinator()
+        messenger.start()
+        val counts = mutableListOf<Int>()
+        messenger.addUnreadCountListener { counts += it }
+        assertTrue(messenger.received(push()))
+        assertTrue(messenger.openFromPush("conv_5521"))
+        assertEquals(MessengerRoute.Conversation("conv_5521"), messenger.route)
+        assertEquals("push", messenger.source)
+        assertEquals(listOf<String?>("push"), opened)
+        assertEquals(listOf(0, 2), counts)
+        assertEquals(listOf(2), unread)
+
+        // Already open: the messenger moves to the push's conversation, still opened once.
+        messenger.navigate(MessengerRoute.Home)
+        messenger.received(push("conv_7", unread = null))
+        assertTrue(messenger.openFromPush("conv_7"))
+        assertEquals(MessengerRoute.Conversation("conv_7"), messenger.route)
+        assertEquals(listOf<String?>("push"), opened)
+        assertEquals("no count in the push, no change", listOf(0, 2), counts)
+
+        // One this SDK could not read opens Home.
+        messenger.dismiss()
+        assertTrue(messenger.openFromPush(null))
+        assertEquals(MessengerRoute.Home, messenger.route)
+    }
+
+    /** A Clomni push shows only while the messenger is closed; open on any screen, it is held back. */
+    @Test
+    fun aPushShowsOnlyWhileTheMessengerIsClosed() {
+        session.loggedIn = true
+        val messenger = coordinator()
+        messenger.start()
+        assertTrue("closed", messenger.received(push(unread = 3)))
+        assertEquals("the count reaches the app either way", listOf(3), unread)
+        messenger.present()
+        assertFalse("Home", messenger.received(push(unread = 4)))
+        messenger.navigate(MessengerRoute.Conversation("conv_7"))
+        assertFalse("another conversation", messenger.received(push(unread = 4)))
+        messenger.navigate(MessengerRoute.StartingConversation)
+        assertFalse(messenger.received(push(unread = 4)))
+        messenger.dismiss()
+        assertTrue(messenger.received(null))
+        assertEquals(listOf(3, 4), unread)
+    }
+
+    @Test
+    fun aSwitchedOffInboxOpensNothingFromAPush() {
+        session.loggedIn = true
+        session.disabled = true
+        val messenger = coordinator()
+        messenger.start()
+        assertFalse(messenger.openFromPush("conv_5521"))
+        assertNull(messenger.route)
+        assertTrue(opened.isEmpty())
     }
 
     @Test

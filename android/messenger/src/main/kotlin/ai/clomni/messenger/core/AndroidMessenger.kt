@@ -6,6 +6,7 @@ import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.Credentials
 import ai.clomni.messenger.api.DeviceInfo
 import ai.clomni.messenger.api.KeystoreSecureStore
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.ChatController
 import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.Scheduler
@@ -18,7 +19,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
@@ -27,7 +27,6 @@ import java.util.concurrent.Executors
 
 /** Builds the engine inside an app: Keystore-backed credentials, files in `noBackupFilesDir`, socket by foreground. */
 internal object AndroidMessenger {
-    private const val TAG = "Clomni"
 
     fun create(
         context: Context,
@@ -36,14 +35,13 @@ internal object AndroidMessenger {
         baseUrl: String = ApiConfiguration.DEFAULT_BASE_URL,
     ): ClomniEngine {
         val app = context.applicationContext as Application
-        val log: (String) -> Unit = { Log.d(TAG, it) }
-        val protocol = ProtocolJson(log)
+        val protocol = ProtocolJson(::protocolLog)
         val credentials = Credentials(KeystoreSecureStore(app, appId), protocol)
         val http = ApiClient.defaultClient()
         val device = { deviceInfo(app, credentials.deviceId) }
         val api = ApiClient(ApiConfiguration(appId, apiKey, baseUrl), credentials, protocol, device, http)
         val store = MessageStore(File(app.noBackupFilesDir, "clomni/$appId/cache"), protocol)
-        val engine = ClomniEngine(api, credentials, store, protocol, http, log = log)
+        val engine = ClomniEngine(api, credentials, store, protocol, http)
         ForegroundTracker(app) { foreground ->
             if (foreground) engine.applicationWillEnterForeground() else engine.applicationDidEnterBackground()
         }
@@ -80,6 +78,11 @@ internal object AndroidMessenger {
             return@Scheduler { ui.removeCallbacks(runnable) }
         }
         return ChatController(engine, conversationId, language, worker, main = { ui.post(it) }, scheduler, known)
+    }
+
+    /** What the parser dropped is a warning; what it showed as its fallback (a newer server), information. */
+    fun protocolLog(line: String) {
+        if (line.endsWith("dropped")) ClomniLog.warning { line } else ClomniLog.info { line }
     }
 
     fun deviceInfo(context: Context, deviceId: String): DeviceInfo = DeviceInfo(

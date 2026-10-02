@@ -5,11 +5,16 @@ import ai.clomni.messenger.UnreadCountListener
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.core.AndroidMessenger
 import ai.clomni.messenger.core.ClomniEngine
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.core.NetworkMonitor
+import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.MessengerCoordinator
 import ai.clomni.messenger.presentation.MessengerEvents
 import ai.clomni.messenger.presentation.MessengerRoute
+import ai.clomni.messenger.presentation.PushNotification
+import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.ProtocolJson
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -18,11 +23,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.lang.ref.WeakReference
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -44,7 +49,6 @@ internal class RootState {
  * closed it touches no activity at all. Everything here runs on the UI thread.
  */
 internal object MessengerRuntime {
-    private const val TAG = "Clomni"
     private val main = Handler(Looper.getMainLooper())
     private val waits = Executors.newCachedThreadPool { Thread(it, "clomni-runtime").apply { isDaemon = true } }
 
@@ -63,6 +67,14 @@ internal object MessengerRuntime {
     var identity: UserIdentity? = null
         private set
 
+    /** `Clomni.setNotificationIcon`; 0 is the app's own icon. */
+    @Volatile
+    var notificationIcon: Int = 0
+
+    /** A token the app gave before `initialize`. */
+    private var pendingToken: String? = null
+    private val protocol = ProtocolJson(AndroidMessenger::protocolLog)
+
     private var launcherVisible: Boolean? = null
     private var bottomPadding: Int? = null
     private val pendingListeners = LinkedHashSet<UnreadCountListener>()
@@ -72,15 +84,11 @@ internal object MessengerRuntime {
     private var messenger: WeakReference<ClomniMessengerActivity>? = null
     private var opening = false
 
-    fun log(line: String) {
-        Log.i(TAG, line)
-    }
-
     fun initialize(context: Context, appId: String, apiKey: String, baseUrl: String) {
-        if (engine != null) return log("initialize was called before; the first call stays")
+        if (engine != null) return ClomniLog.warning { "initialize was called before; the first call stays" }
         val app = context.applicationContext as Application
         val engine = AndroidMessenger.create(app, appId, apiKey, baseUrl)
-        val coordinator = MessengerCoordinator(engine, null, waits, { main.post(it) }, ::log, events)
+        val coordinator = MessengerCoordinator(engine, null, waits, { main.post(it) }, { line -> ClomniLog.warning { line } }, events)
         coordinator.onChange = ::render
         launcherVisible?.let(coordinator::setLauncherVisible)
         bottomPadding?.let(coordinator::setBottomPadding)
@@ -94,16 +102,25 @@ internal object MessengerRuntime {
         this.engine = engine
         this.coordinator = coordinator
         this.network = network
+        pendingToken?.let(engine::setDeviceToken)
+        pendingToken = null
         coordinator.start()
     }
 
     /** Runs [action] (a login) off the UI thread, then gets the messenger ready for the new session. */
     fun login(identity: UserIdentity?, action: (ClomniEngine) -> Future<Unit>) {
-        val engine = engine ?: return log("call Clomni.initialize first")
+        val engine = engine ?: return ClomniLog.error { "call Clomni.initialize first" }
         this.identity = identity
         waits.execute {
-            runCatching { action(engine).get() }.onFailure { log("login failed: ${it.cause ?: it}") }
+            runCatching { action(engine).get() }.onFailure { ClomniLog.error { "login failed: ${it.cause ?: it}" } }
             main.post { coordinator?.start() }
+        }
+    }
+
+    fun updateUser(fields: kotlinx.serialization.json.JsonObject) {
+        val engine = engine ?: return ClomniLog.error { "call Clomni.initialize first" }
+        waits.execute {
+            runCatching { engine.updateUser(fields).get() }.onFailure { ClomniLog.error { "updateUser failed: ${it.cause ?: it}" } }
         }
     }
 
@@ -112,6 +129,31 @@ internal object MessengerRuntime {
         identity = null
         coordinator?.loggedOut()
         engine.logout()
+    }
+
+    fun setDeviceToken(token: String) {
+        engine?.setDeviceToken(token) ?: run { pendingToken = token }
+    }
+
+    /**
+     * A Clomni push (on FCM's thread): its count to the listeners, and a notification unless the messenger is open.
+     * One this SDK cannot read is logged and still shown.
+     */
+    fun pushReceived(context: Context, data: Map<String, String>) {
+        val push = protocol.parsePush(data)
+        if (coordinator?.received(push) == false) return
+        val config = coordinator?.config
+        val strings = ClomniStrings(config?.languages?.firstOrNull() ?: Locale.getDefault().language, config?.strings.orEmpty())
+        val label = context.applicationInfo.loadLabel(context.packageManager).toString()
+        val notification = PushNotification.of(push, data, strings, label)
+        val color = config?.brand?.primaryColor?.let(RgbColor::parse)?.argb
+        val post = { PushNotifier.post(context, notification, notificationIcon, color) }
+        if (Looper.myLooper() == Looper.getMainLooper()) waits.execute(post) else post()
+    }
+
+    /** A tap on a Clomni notification, in the messenger's activity. */
+    fun openFromPush(conversationId: String?) {
+        coordinator?.openFromPush(conversationId) ?: ClomniLog.error { "call Clomni.initialize first" }
     }
 
     fun setLauncherVisible(visible: Boolean) {
@@ -150,6 +192,11 @@ internal object MessengerRuntime {
     // The messenger's activity
 
     fun attach(activity: ClomniMessengerActivity) {
+        // A notification tapped while the messenger was open behind the app: the new one takes over.
+        messenger?.get()?.takeIf { it !== activity && !it.isFinishing }?.let {
+            it.replaced = true
+            it.finish()
+        }
         messenger = WeakReference(activity)
         opening = false
     }
@@ -157,7 +204,7 @@ internal object MessengerRuntime {
     /** It is gone; when the user closed it (system back, swipe), the messenger is closed. */
     fun detach(activity: ClomniMessengerActivity, closedByUser: Boolean) {
         if (messenger?.get() === activity) messenger = null
-        if (closedByUser) coordinator?.dismiss()
+        if (closedByUser && !activity.replaced) coordinator?.dismiss()
     }
 
     /** Back: from a conversation to Home, from Home out. */
@@ -174,6 +221,7 @@ internal object MessengerRuntime {
         root.failed = coordinator.prepareFailed
         root.config = coordinator.config
         root.source = coordinator.source
+        (coordinator.route as? MessengerRoute.Conversation)?.let { open -> app?.let { PushNotifier.cancel(it, open.id) } }
         val shown = messenger?.get()
         if (coordinator.route != null && shown == null && !opening) {
             open()
@@ -197,7 +245,7 @@ internal object MessengerRuntime {
             }
         } catch (e: RuntimeException) {
             opening = false
-            log("the messenger cannot open: ${e.message}")
+            ClomniLog.error { "the messenger cannot open: ${e.message}" }
         }
     }
 

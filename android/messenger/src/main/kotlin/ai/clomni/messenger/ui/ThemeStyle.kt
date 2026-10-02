@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
@@ -20,6 +21,23 @@ import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 
 internal val RgbColor.color: Color get() = Color(argb)
+
+/**
+ * The app's own font (`Clomni.setTypeface`) for every text of the messenger; null is the platform's. A weight the
+ * family lacks takes its nearest face: Android picks it from the family (API 28+), or bold for 600 and heavier.
+ */
+internal object ClomniFonts {
+    @Volatile
+    var typeface: android.graphics.Typeface? = null
+        set(value) {
+            field = value
+            family = value?.let { FontFamily(it) }
+        }
+
+    @Volatile
+    var family: FontFamily? = null
+        private set
+}
 
 /**
  * Roboto (the platform's font) at a token size in sp, so it follows the user's font scale; [lineHeight] is a multiple
@@ -36,6 +54,7 @@ internal fun clomniText(
     fontSize = size.sp,
     fontWeight = weight,
     lineHeight = (size * lineHeight).sp,
+    fontFamily = ClomniFonts.family,
     letterSpacing = letterSpacing.sp,
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )

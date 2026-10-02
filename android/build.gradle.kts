@@ -5,4 +5,5 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.paparazzi) apply false
     alias(libs.plugins.kover) apply false
+    alias(libs.plugins.binary.compatibility.validator) apply false
 }

@@ -26,55 +26,55 @@ import kotlin.math.abs
  *
  * Whatever is dropped or downgraded is reported to [logger], meant for the debug log.
  */
-public class ProtocolJson(private val logger: (String) -> Unit = {}) {
+internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
 
     /** A message as REST or the socket sends it; null when its envelope is unusable. */
-    public fun parseMessage(json: String): Message? = guard("message") { message(json.toJsonObject()) }
+    fun parseMessage(json: String): Message? = guard("message") { message(json.toJsonObject()) }
 
     /** The same, for a message inside a larger body that was already parsed (a page of messages). */
-    public fun parseMessage(element: JsonElement): Message? = guard("message") { message(element.asObject("message")) }
+    fun parseMessage(element: JsonElement): Message? = guard("message") { message(element.asObject("message")) }
 
     /** A text WebSocket frame; null only when it is not JSON or has no event name. */
-    public fun parseEvent(json: String): RealtimeEvent? = guard("event") { event(json.toJsonObject()) }
+    fun parseEvent(json: String): RealtimeEvent? = guard("event") { event(json.toJsonObject()) }
 
     /** Null only when the body is not a JSON object; every missing or broken field takes its default. */
-    public fun parseConfig(json: String): MessengerConfig? = guard("config") { config(json.toJsonObject()) }
+    fun parseConfig(json: String): MessengerConfig? = guard("config") { config(json.toJsonObject()) }
 
     /** Null when the payload is not a Clomni push (`"clomni": "1"`) or lacks a required key. */
-    public fun parsePush(json: String): PushPayload? = guard("push") { push(json.toJsonObject()) }
+    fun parsePush(json: String): PushPayload? = guard("push") { push(json.toJsonObject()) }
 
     /** An FCM data message (`RemoteMessage.data`), where every value is a string. */
-    public fun parsePush(data: Map<String, String>): PushPayload? =
+    fun parsePush(data: Map<String, String>): PushPayload? =
         guard("push") { push(JsonObject(data.mapValues { JsonPrimitive(it.value) })) }
 
     /** A client message read back, e.g. one the outbox kept on disk. */
-    public fun parseClientMessage(json: String): ClientMessage? =
+    fun parseClientMessage(json: String): ClientMessage? =
         guard("client message") { clientMessage(json.toJsonObject()) }
 
     /** POST /mobile/sessions and /mobile/sessions/refresh. */
-    public fun parseSession(json: String): MobileSession? = guard("session") { session(json.toJsonObject()) }
+    fun parseSession(json: String): MobileSession? = guard("session") { session(json.toJsonObject()) }
 
-    public fun parseConversation(json: String): Conversation? =
+    fun parseConversation(json: String): Conversation? =
         guard("conversation") { conversation(json.toJsonObject()) }
 
     /** GET /conversations. */
-    public fun parseConversationPage(json: String): ConversationPage? = guard("conversations") {
+    fun parseConversationPage(json: String): ConversationPage? = guard("conversations") {
         val o = json.toJsonObject()
         ConversationPage(o.items("conversations", ::conversation), o.string("next_cursor"))
     }
 
     /** GET /conversations/{id}/messages. */
-    public fun parseMessagePage(json: String): MessagePage? = guard("messages") {
+    fun parseMessagePage(json: String): MessagePage? = guard("messages") {
         val o = json.toJsonObject()
         MessagePage(o.items("messages", ::message), o.boolean("has_more") ?: false)
     }
 
     /** POST /conversations. */
-    public fun parseConversationWithMessages(json: String): ConversationWithMessages? =
+    fun parseConversationWithMessages(json: String): ConversationWithMessages? =
         guard("conversation") { conversationWithMessages(json.toJsonObject()) }
 
     /** POST /flows/trigger. */
-    public fun parseFlowTrigger(json: String): FlowTriggerResult? = guard("flow trigger") {
+    fun parseFlowTrigger(json: String): FlowTriggerResult? = guard("flow trigger") {
         val o = json.toJsonObject()
         FlowTriggerResult(
             started = o.boolean("started") ?: throw ProtocolException("started: expected a boolean"),
@@ -82,7 +82,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
         )
     }
 
-    public fun parseUser(json: String): MobileUser? = guard("user") {
+    fun parseUser(json: String): MobileUser? = guard("user") {
         val o = json.toJsonObject()
         MobileUser(
             id = o.requireString("id"),
@@ -95,7 +95,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
         )
     }
 
-    public fun parseUpload(json: String): UploadedFile? = guard("upload") {
+    fun parseUpload(json: String): UploadedFile? = guard("upload") {
         val o = json.toJsonObject()
         UploadedFile(
             uploadId = o.requireString("upload_id"),
@@ -107,7 +107,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
     }
 
     /** Null for a body that is not an `Error` (a proxy's HTML page, say); the status then says what happened. */
-    public fun parseServerError(json: String): ServerError? = try {
+    fun parseServerError(json: String): ServerError? = try {
         val error = json.toJsonObject().requireObject("error")
         ServerError(
             code = error.requireString("code"),
@@ -122,7 +122,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
     }
 
     /** The request body for POST /v1/conversations/{id}/messages. */
-    public fun encode(message: ClientMessage): String = buildJsonObject {
+    fun encode(message: ClientMessage): String = buildJsonObject {
         put("client_id", message.clientId)
         put("type", message.type)
         putJsonObject("content") {
@@ -152,7 +152,7 @@ public class ProtocolJson(private val logger: (String) -> Unit = {}) {
     }.toString()
 
     /** [content] read as the content of a message of [type]: a known content, or [MessageContent.Unknown]. */
-    public fun parseContent(type: String, content: JsonElement): MessageContent = content(type, content, null)
+    fun parseContent(type: String, content: JsonElement): MessageContent = content(type, content, null)
 
     private inline fun <T : Any> guard(what: String, parse: () -> T?): T? = try {
         parse()

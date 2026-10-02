@@ -11,6 +11,7 @@ import ai.clomni.messenger.protocol.MessagePage
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.MobileSession
 import ai.clomni.messenger.protocol.MobileUser
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.ServerError
 import ai.clomni.messenger.protocol.UploadedFile
@@ -214,10 +215,6 @@ internal class ApiClient(
         )
     }
 
-    fun deleteDevice(token: String) {
-        call("DELETE", "devices", segments = listOf(token))
-    }
-
     /** [openedFrom] (additive, as for POST /conversations): where in the app the flow was started. */
     fun triggerFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String? = null): FlowTriggerResult = read(
         call(
@@ -296,7 +293,7 @@ internal class ApiClient(
                     sleep(1_000L shl serverErrors)
                     serverErrors++
                 }
-                else -> throw ClomniError.Server(status, error(response))
+                else -> throw ClomniError.Server(status, error(response).also(::report))
             }
         }
     }
@@ -332,6 +329,15 @@ internal class ApiClient(
     }
 
     private fun error(response: Response): ServerError? = protocol.parseServerError(response.body)
+
+    /** The integration's own mistakes, as brief 8·6.6 words them for the developer. */
+    private fun report(error: ServerError?) {
+        when (error?.code) {
+            "invalid_api_key" -> ClomniLog.error { "api_key səhvdir və ya bu platforma üçün deyil" }
+            "identity_verification_failed" -> ClomniLog.error { "user_hash səhvdir. identity_secret və user_id-ni yoxlayın" }
+            "app_disabled" -> ClomniLog.warning { "this App SDK inbox is switched off in Clomni: the messenger does not open" }
+        }
+    }
 
     /** A success whose body does not parse: the caller may repeat it, as after no answer. */
     private fun <T> read(response: Response, parse: (String) -> T?): T =

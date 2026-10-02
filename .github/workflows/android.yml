@@ -32,8 +32,9 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       # Unit tests against protocol/fixtures, the Paparazzi screenshots against src/test/snapshots, Protocol and Store
-      # coverage of at least 80% (lines and branches), and the sample.
-      - run: ./gradlew --no-daemon :messenger:verifyPaparazziDebug :messenger:koverVerifyDebug :messenger:koverXmlReportDebug :sample:assembleDebug
+      # coverage of at least 80% (lines and branches), the public API against messenger/api/messenger.api, and the
+      # sample.
+      - run: ./gradlew --no-daemon :messenger:verifyPaparazziDebug :messenger:koverVerifyDebug :messenger:koverXmlReportDebug :messenger:apiCheck :sample:assembleDebug
       - if: always()
         uses: actions/upload-artifact@v4
         with:

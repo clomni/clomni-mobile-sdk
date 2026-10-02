@@ -4,7 +4,7 @@ package ai.clomni.messenger.protocol
  * The Clomni keys of a push (`protocol/schema/push.json`): an FCM data message, or the keys next to `aps` on APNs.
  * Only payloads with `"clomni": "1"` are Clomni pushes.
  */
-public data class PushPayload(
+internal data class PushPayload(
     /** `message` in v1. */
     val type: String,
     val conversationId: String,

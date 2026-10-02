@@ -35,8 +35,16 @@ import androidx.compose.ui.platform.LocalContext
  * and the keyboard. It is only ever started by [MessengerRuntime] while the messenger is open.
  */
 internal class ClomniMessengerActivity : ComponentActivity() {
+    /** Another instance took over (a notification tapped while this one was open behind the app). */
+    var replaced = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MessengerRuntime.attach(this)
+        // A tap on a Clomni notification opens its conversation, the first time only (not after a rotation).
+        if (savedInstanceState == null && intent.getBooleanExtra(PushNotifier.EXTRA_PUSH, false)) {
+            MessengerRuntime.openFromPush(intent.getStringExtra(PushNotifier.EXTRA_CONVERSATION))
+        }
         // Recreated after the process was gone, or closed before it got here: back to the app.
         if (MessengerRuntime.coordinator?.route == null) {
             finish()
@@ -47,7 +55,6 @@ internal class ClomniMessengerActivity : ComponentActivity() {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.clomni_stay, R.anim.clomni_slide_down)
         }
         window.edgeToEdge()
-        MessengerRuntime.attach(this)
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
