@@ -52,7 +52,9 @@ final class AppearanceSnapshotTests: XCTestCase {
         try render("solid", config(["brand": ["header_style": "solid", "colors": nil]]))
         try render("image", config(["brand": ["header_style": "image",
                                               "header_image_url": "https://app.clomni.ai/v1/images/header"]]))
+        // The glow is behind the header: it shows where it spills out under it, around the cards, solid or not.
         try render("glow", config(["brand": ["glow": true]]))
+        try render("glow-solid", config(["brand": ["glow": true, "header_style": "solid", "colors": nil]]))
         try render("derived-colours", config(["brand": ["primary_color": "#0A66C2", "colors": nil]]))
     }
 
@@ -74,7 +76,8 @@ final class AppearanceSnapshotTests: XCTestCase {
     }
 
     func testDarkMode() throws {
-        try render("dark", config([:]), dark: true)
+        try render("dark", config(["brand": ["logo_dark_url": "https://app.clomni.ai/v1/images/apar-logo-dark"]]), dark: true)
+        try render("glow-dark", config(["brand": ["glow": true]]), dark: true)
         try render("dark-without-dark-logo", config(["brand": ["logo_dark_url": nil]]), dark: true)
     }
 }

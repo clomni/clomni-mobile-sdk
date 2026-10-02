@@ -70,8 +70,13 @@ struct HomeHeaderView: View {
         .padding(.bottom, 62)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            HeaderBackground(style: header.style, glow: header.glow, theme: theme)
-                .ignoresSafeArea(edges: .top)
+            ZStack {
+                if header.glow {
+                    HeaderGlow(color: theme.colors.primary)
+                }
+                HeaderBackground(style: header.style, theme: theme)
+            }
+            .ignoresSafeArea(edges: .top)
         }
     }
 
@@ -82,12 +87,28 @@ struct HomeHeaderView: View {
     }
 }
 
+/// The glow (APPEARANCE-CONTRACT 1): a soft radial light of the brand colour at 25% behind the header, so it shows
+/// where it spills out under it, around the cards, whatever the header's style; as the panel's preview and Android
+/// draw it: an ellipse 140% of the header's width and 260 pt tall, from 45% of the header's height down.
+struct HeaderGlow: View {
+    let color: RGBColor
+
+    var body: some View {
+        GeometryReader { proxy in
+            EllipticalGradient(gradient: Gradient(colors: [color.color.opacity(0.25), .clear]),
+                               center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5)
+                .frame(width: proxy.size.width * 1.4, height: 260)
+                .position(x: proxy.size.width / 2, y: proxy.size.height * 0.45 + 130)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Behind the header and the status bar: the brand gradient (header_from at the top to header_to; one colour when
-/// solid) or the panel's picture under a black veil, 35% at the top to 55% at the bottom; with the glow, a soft radial
-/// light of the brand colour at 25%.
+/// solid) or the panel's picture under a black veil, 35% at the top to 55% at the bottom.
 struct HeaderBackground: View {
     let style: HomeScreen.Style
-    let glow: Bool
     let theme: ClomniTheme
 
     var body: some View {
@@ -104,10 +125,6 @@ struct HeaderBackground: View {
                 }
                 LinearGradient(gradient: Gradient(colors: [Color.black.opacity(0.35), Color.black.opacity(0.55)]),
                                startPoint: .top, endPoint: .bottom)
-            }
-            if glow {
-                RadialGradient(gradient: Gradient(colors: [theme.colors.primary.color.opacity(0.25), .clear]),
-                               center: .bottom, startRadius: 0, endRadius: 260)
             }
         }
         .accessibilityHidden(true)
