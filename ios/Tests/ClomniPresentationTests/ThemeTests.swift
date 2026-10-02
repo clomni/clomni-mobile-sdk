@@ -73,16 +73,19 @@ final class ThemeTests: XCTestCase {
 
     /// The server's colours win over the SDK's own arithmetic, so Android and iOS show the same.
     func testTheServersColoursWin() throws {
+        // Fixture 42: the server's own palette for Apar.
         let apar = Fixture.aparConfig
         let light = ClomniTheme.make(brand: apar.brand, dark: false).colors
         XCTAssertEqual([light.primary, light.onPrimary, light.primarySoft, light.primaryLine, light.headerFrom,
-                        light.headerTo].map(\.hex),
-                       ["#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#3FB37C", "#13734A"])
+                        light.headerTo, light.headerText].map(\.hex),
+                       ["#1F9D63", "#000000", "#E9F5EF", "#CEE9DD", "#1F9D63", "#177248", "#FFFFFF"])
         let dark = ClomniTheme.make(brand: apar.brand, dark: true).colors
-        XCTAssertEqual([dark.primary, dark.onPrimary, dark.headerFrom, dark.headerTo, dark.headerText].map(\.hex),
-                       ["#34B57A", "#0B0C0E", "#1F9D63", "#0E4F33", "#FFFFFF"],
+        XCTAssertEqual([dark.primary, dark.onPrimary, dark.primarySoft, dark.primaryLine, dark.headerFrom, dark.headerTo,
+                        dark.headerText].map(\.hex),
+                       ["#27C87E", "#000000", "#142520", "#173B2D", "#1F9D63", "#0E482D", "#FFFFFF"],
                        "the dark header's text is not on_primary's black")
-        // A server that sends no header_text yet: worked out from its header colours.
+        // Colours the SDK would never work out itself, and no header_text (a server older than it):
+        // every one is taken as sent, header_text worked out from the header colours.
         let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"primary_color":"#1F9D63","colors":{
               "light":{"primary":"#1F9D63","on_primary":"#FFFFFF","primary_soft":"#E9F5EF","primary_line":"#C6E6D5",
@@ -91,6 +94,11 @@ final class ThemeTests: XCTestCase {
                       "header_from":"#1F9D63","header_to":"#0E4F33"}}}}
             """##.utf8)))
         XCTAssertNil(older.brand.colors?.light.headerText)
+        let olderLight = ClomniTheme.make(brand: older.brand, dark: false).colors
+        XCTAssertEqual([olderLight.onPrimary, olderLight.primaryLine, olderLight.headerFrom, olderLight.headerTo].map(\.hex),
+                       ["#FFFFFF", "#C6E6D5", "#3FB37C", "#13734A"])
+        let olderDark = ClomniTheme.make(brand: older.brand, dark: true).colors
+        XCTAssertEqual([olderDark.primary, olderDark.onPrimary, olderDark.headerTo].map(\.hex), ["#34B57A", "#0B0C0E", "#0E4F33"])
         XCTAssertEqual(ClomniTheme.make(brand: older.brand, dark: false).colors.headerText.hex, "#1B1D21")
         XCTAssertEqual(ClomniTheme.make(brand: older.brand, dark: true).colors.headerText, .white)
 

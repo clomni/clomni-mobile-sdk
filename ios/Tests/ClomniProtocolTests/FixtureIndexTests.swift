@@ -67,6 +67,9 @@ final class FixtureIndexTests: ProtocolTestCase {
         case ("config.json", nil):
             let config = ProtocolJSON.parseConfig(data)
             if entry.isValid { XCTAssertNotNil(config, label) }
+        case ("appearance.json", nil):
+            // The panel's document; the SDK reads only what the server makes of it, config.json.
+            XCTAssertNotNil(ProtocolJSON.decode(data), label)
         case ("push.json", nil):
             let push = ProtocolJSON.parsePush(data)
             if entry.isValid { XCTAssertNotNil(push, label) }

@@ -15,10 +15,10 @@ import ClomniPresentation
 final class AppearanceSnapshotTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_790_850_720)
 
-    /// The Apar config v2 with `changes` merged into its sections (`[:]` empties one).
+    /// The Apar config (protocol fixture 42) with `changes` merged into its sections (`[:]` empties one).
     private func config(_ changes: [String: JSONValue]) throws -> MessengerConfig {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/config-v2-apar.json")
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("protocol/fixtures/42-config-apar.json")
         guard case .object(var json)? = ProtocolJSON.decode(try Data(contentsOf: url)) else { throw XCTSkip("fixture") }
         for (key, value) in changes {
             // An empty object replaces the section; any other object is merged into it.

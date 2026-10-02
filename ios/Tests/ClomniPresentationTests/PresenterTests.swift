@@ -12,16 +12,8 @@ enum Fixture {
         (try? Data(contentsOf: directory.appendingPathComponent(name))) ?? Data()
     }
 
-    /// Config v2, from ios/Tests/Fixtures until protocol/fixtures has it.
-    static let configDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        .appendingPathComponent("Fixtures")
-
-    static var aparConfig: MessengerConfig { config("config-v2-apar.json") }
-    static var minimalConfig: MessengerConfig { config("config-v2-minimal.json") }
-
-    static func config(_ name: String) -> MessengerConfig {
-        ProtocolJSON.parseConfig((try? Data(contentsOf: configDirectory.appendingPathComponent(name))) ?? Data())!
-    }
+    static var aparConfig: MessengerConfig { ProtocolJSON.parseConfig(data("42-config-apar.json"))! }
+    static var minimalConfig: MessengerConfig { ProtocolJSON.parseConfig(data("43-config-minimal.json"))! }
 
     /// A conversation whose last message is the fixture `message` (created at 2026-10-01T10:30Z, or `at`).
     static func conversation(_ id: String, message: String?, unread: Int = 0, assignee: String? = nil,
@@ -58,8 +50,8 @@ final class PresenterTests: XCTestCase {
         let header = presenter().home(snapshot()).header
         XCTAssertEqual(header.brandName, "Apar")
         XCTAssertEqual(header.brandInitial, "A")
-        XCTAssertEqual(header.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/apar-logo")
-        XCTAssertEqual(header.logoDarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/apar-logo-dark")
+        XCTAssertEqual(header.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
+        XCTAssertNil(header.logoDarkUrl, "dark mode keeps the logo")
         XCTAssertEqual(header.style, .gradient)
         XCTAssertFalse(header.glow)
         XCTAssertEqual(header.teamAvatars.count, 3)
@@ -67,13 +59,15 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(header.greeting, "Salam, Aysel 👋")
         let whole = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"strings":{"greeting_line1":"Salam, {name}!"}}"#.utf8)))
         XCTAssertEqual(presenter(config: whole).home(snapshot(whole)).header.greeting, "Salam, Aysel Məmmədova!")
-        XCTAssertEqual(header.title, "Necə kömək edə bilərik?")
+        XCTAssertEqual(header.title, "Bizdən nəsə soruşun", "the panel's text")
         XCTAssertEqual(header.closeLabel, "Bağla")
 
         XCTAssertEqual(presenter().home(snapshot(user: nil)).header.greeting, "Salam 👋")
         XCTAssertEqual(presenter().home(snapshot(user: "   ")).header.greeting, "Salam 👋")
-        XCTAssertEqual(presenter("en").home(snapshot(user: "Aysel")).header.greeting, "Hi, Aysel 👋")
-        XCTAssertEqual(presenter("ru").home(snapshot(user: nil)).header.greeting, "Здравствуйте 👋")
+        // The server sends strings in one language (fixture 42: az); with none, the SDK's own in the user's.
+        let none = Fixture.minimalConfig
+        XCTAssertEqual(presenter("en", config: none).home(snapshot(none, user: "Aysel")).header.greeting, "Hi, Aysel 👋")
+        XCTAssertEqual(presenter("ru", config: none).home(snapshot(none, user: nil)).header.greeting, "Здравствуйте 👋")
 
         let minimal = presenter(config: Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig)).header
         XCTAssertEqual(minimal.title, "Necə kömək edə bilərik?", "the SDK's text when the config has none")
@@ -95,13 +89,15 @@ final class PresenterTests: XCTestCase {
         XCTAssertNil(apar.offline)
         XCTAssertNil(apar.failure)
 
-        // Minimal config: only "new conversation"; no channels, so no "Bizi izləyin"; no reply time.
+        // Minimal config: only "new conversation"; no channels, so no "Bizi izləyin"; the team hidden.
         let minimal = presenter(config: Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig, [operatorReply]))
-        XCTAssertNotNil(minimal.newConversation)
-        XCTAssertNil(minimal.newConversation?.subtitle)
+        XCTAssertEqual(minimal.newConversation?.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk")
         XCTAssertNil(minimal.recent, "the config does not list recent_conversation")
         XCTAssertNil(minimal.channels)
         XCTAssertTrue(minimal.header.teamAvatars.isEmpty)
+        // No reply time at all: the card has no second line.
+        let silent = ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Apar"}}"#.utf8))
+        XCTAssertNil(presenter(config: silent).home(snapshot(silent)).newConversation?.subtitle)
     }
 
     /// More channels than fit a row continue on the next one instead of running past the card.
@@ -279,6 +275,7 @@ final class PresenterTests: XCTestCase {
         var stale = snapshot(Fixture.aparConfig, list)
         stale.conversationsLoad = .failed
         XCTAssertEqual(presenter().messages(stale).phase, .ready, "the cached list stays")
-        XCTAssertEqual(presenter("ru").messages(snapshot(Fixture.aparConfig, [])).empty, "Пока нет переписки")
+        XCTAssertEqual(presenter("ru", config: Fixture.minimalConfig).messages(snapshot(Fixture.minimalConfig, [])).empty,
+                       "Пока нет переписки")
     }
 }

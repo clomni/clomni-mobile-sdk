@@ -31,9 +31,7 @@ final class ChatSnapshotTests: XCTestCase {
     func testEveryMessageFixture() throws {
         let index = try JSONDecoder().decode([[String: JSONValue]].self,
                                              from: Data(contentsOf: fixtures.appendingPathComponent("index.json")))
-        // Config v2 from ios/Tests/Fixtures until protocol/fixtures has it.
-        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.deletingLastPathComponent()
-            .appendingPathComponent("ios/Tests/Fixtures/config-v2-apar.json"))))
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
         var rendered = 0
         for entry in index where entry["schema"]?.stringValue == "message.json" {
             let file = try XCTUnwrap(entry["file"]?.stringValue)
