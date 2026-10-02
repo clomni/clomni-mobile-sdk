@@ -30,6 +30,66 @@ Until the native SDKs are published, point both to a checkout of this repository
   }
   ```
 
+## Expo
+
+Expo SDK 50 or later, in a development build: the package's config plugin writes what the native projects need, and
+`npx expo prebuild` (or an EAS build) applies it. Expo Go cannot load the native modules.
+
+```ts
+// app.config.ts
+plugins: [
+  [
+    '@clomni/react-native',
+    {
+      photoLibraryPermission: 'Dəstəyə şəkil göndərmək üçün',   // iOS; a default otherwise
+      cameraPermission: 'Dəstəyə şəkil çəkib göndərmək üçün',     // iOS; a default otherwise
+      push: true,                                                // default
+      apsEnvironment: 'production',                              // iOS; development when the app has none
+      notificationIcon: './assets/notification-icon.png',        // Android, a white silhouette PNG
+    },
+  ],
+],
+```
+
+| Option | Writes |
+|---|---|
+| `photoLibraryPermission`, `cameraPermission` | iOS `NSPhotoLibraryUsageDescription`, `NSCameraUsageDescription` |
+| `push` (default `true`) | iOS `aps-environment` and `UIBackgroundModes: remote-notification`; Android `POST_NOTIFICATIONS` (Android 13+; the app asks the user for it) |
+| `apsEnvironment` | iOS `aps-environment`, when the app should not keep its own |
+| `notificationIcon` | Android `res/drawable/clomni_notification_icon.png`: then call `Clomni.setNotificationIcon('clomni_notification_icon')` |
+| `localSdk` | until the native SDKs are published: a checkout of this repository, whose `ClomniMessenger` pod and Android build replace the published ones |
+
+What the app already has stays: a text, an entitlement, a background mode or a permission is only added where it is
+missing, unless an option names it. MainActivity is not changed; React Native needs nothing there.
+
+### Adding it to an app like the Clomni mobile app (Expo 57, RN 0.86)
+
+That app already sets both Info.plist texts, `aps-environment: production`, `UIBackgroundModes` with
+`remote-notification`, and `POST_NOTIFICATIONS`, and uses `@react-native-firebase/messaging`:
+
+1. `pnpm add @clomni/react-native` (before publishing: `"@clomni/react-native": "file:../clomni-mobile-sdk/react-native"`).
+2. In `app.config.ts`, after `'@react-native-firebase/messaging'`:
+
+   ```ts
+   ['@clomni/react-native', { notificationIcon: './src/assets/images/notification-icon.png', localSdk: '../clomni-mobile-sdk' }],
+   ```
+
+   The plugin keeps the app's texts and its production entitlement; `localSdk` only until the SDKs are published.
+3. `npx expo prebuild --clean`, then `npx expo run:ios` / `run:android` or an EAS build.
+4. In JS, next to the app's own Firebase handlers:
+
+   ```ts
+   Clomni.initialize('app_…', Platform.OS === 'ios' ? 'ios_…' : 'android_…');
+   Clomni.setNotificationIcon('clomni_notification_icon');               // Android
+   const token = Platform.OS === 'ios' ? await messaging().getAPNSToken() : await messaging().getToken();
+   if (token) Clomni.setDeviceToken(token);
+   // Android: Clomni's data messages, in the foreground and in the background
+   messaging().onMessage((message) => { Clomni.handlePush(message.data ?? {}); });
+   messaging().setBackgroundMessageHandler(async (message) => { Clomni.handlePush(message.data ?? {}); });
+   // iOS: a tap on a notification
+   messaging().onNotificationOpenedApp((message) => { Clomni.handlePush(message.data ?? {}); });
+   ```
+
 ## Use
 
 ```ts
