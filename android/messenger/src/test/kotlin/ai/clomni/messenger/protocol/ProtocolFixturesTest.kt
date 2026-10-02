@@ -14,7 +14,8 @@ import kotlin.reflect.KClass
  * A valid file must land on the type below; a `"valid": false` one must not crash the SDK.
  */
 @RunWith(Parameterized::class)
-class ProtocolFixturesTest(private val entry: ProtocolFiles.Entry) {
+class ProtocolFixturesTest(path: String) {
+    private val entry = ProtocolFiles.entries().first { it.path == path }
 
     private val protocol = RecordingProtocol()
 
@@ -56,7 +57,7 @@ class ProtocolFixturesTest(private val entry: ProtocolFiles.Entry) {
     companion object {
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")
-        fun entries(): List<ProtocolFiles.Entry> = ProtocolFiles.entries()
+        fun entries(): List<String> = ProtocolFiles.entries().map { it.path }
 
         /** Valid files that are still reported to the debug log: unknown on purpose. */
         val loggedWhenValid = setOf("fixtures/29-unknown-type.json", "fixtures/41-event-unknown.json")

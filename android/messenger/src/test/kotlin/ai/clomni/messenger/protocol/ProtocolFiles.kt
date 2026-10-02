@@ -9,7 +9,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
 /** The repo's `protocol/` directory, passed in by Gradle (`clomni.protocol.dir`). */
-object ProtocolFiles {
+internal object ProtocolFiles {
     /** The folders with an `index.json`, as the server's validator reads them. */
     val folders = listOf("fixtures", "examples/brief")
 
@@ -38,7 +38,7 @@ object ProtocolFiles {
 }
 
 /** A [ProtocolJson] whose debug log is kept for assertions. */
-class RecordingProtocol {
+internal class RecordingProtocol {
     val warnings = mutableListOf<String>()
     val json = ProtocolJson { warnings += it }
 }

@@ -3,7 +3,7 @@ package ai.clomni.messenger.protocol
 import kotlinx.serialization.json.JsonPrimitive
 
 /** The client-message fixtures, built the way the SDK builds them; each must encode to its file. */
-object ClientMessageFixtures {
+internal object ClientMessageFixtures {
     val all: Map<String, ClientMessage> = mapOf(
         "fixtures/45-client-text.json" to ClientMessage.Text(
             text = "Gedişim bitmədi, pul çıxılmağa davam edir",
