@@ -345,7 +345,7 @@ private fun FullScreenImage(url: String, closeLabel: String, close: () -> Unit) 
     Dialog(close, DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             if (!LocalInspectionMode.current) {
-                AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                AsyncImage(url, null, ClomniImages.loader(LocalContext.current), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             }
             Box(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).padding(ClomniTheme.Space.xl.dp)) {
                 CloseButton(closeLabel, ai.clomni.messenger.presentation.RgbColor.WHITE, close)

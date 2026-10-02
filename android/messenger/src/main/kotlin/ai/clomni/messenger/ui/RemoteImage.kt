@@ -20,11 +20,15 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import java.io.File
 
 /** Pictures by their URL instead of the network, for screenshot tests (which load nothing). */
 internal val LocalPreviewImages = staticCompositionLocalOf<Map<String, ImageBitmap>> { emptyMap() }
 
-/** The messenger's own image loader: a memory cache and a disk cache of its own, not the app's. */
+/**
+ * The messenger's own image loader, for the panel's pictures and the conversation's: a memory cache and a disk cache
+ * of its own, not the app's, emptied on logout.
+ */
 internal object ClomniImages {
     @Volatile
     private var loader: ImageLoader? = null
@@ -33,10 +37,21 @@ internal object ClomniImages {
         loader ?: context.applicationContext.let { app ->
             ImageLoader.Builder(app)
                 .memoryCache { MemoryCache.Builder(app).maxSizePercent(0.10).build() }
-                .diskCache { DiskCache.Builder().directory(app.cacheDir.resolve("clomni_images")).maxSizeBytes(50L * 1024 * 1024).build() }
+                .diskCache { DiskCache.Builder().directory(directory(app)).maxSizeBytes(50L * 1024 * 1024).build() }
                 .crossfade(200)
                 .build()
         }.also { loader = it }
+    }
+
+    fun directory(context: Context): File = context.cacheDir.resolve("clomni_images")
+
+    /** Logout: the next user sees none of this one's pictures. Disk work: not on the main thread. */
+    fun clear(context: Context) = clear(loader, directory(context))
+
+    fun clear(loader: ImageLoader?, directory: File) {
+        loader?.memoryCache?.clear()
+        // The cache's own clear while it is in use; otherwise the folder a previous run left.
+        loader?.diskCache?.clear() ?: directory.deleteRecursively()
     }
 }
 

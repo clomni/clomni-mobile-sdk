@@ -130,6 +130,7 @@ internal object MessengerRuntime {
         identity = null
         coordinator?.loggedOut()
         engine.logout()
+        app?.let { waits.execute { ClomniImages.clear(it) } }
     }
 
     fun setDeviceToken(token: String) {

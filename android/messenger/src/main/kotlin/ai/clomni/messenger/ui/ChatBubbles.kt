@@ -258,9 +258,10 @@ private fun ImageBubble(
     open: (String) -> Unit,
 ) {
     val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
+    // Previews and screenshot tests load nothing (and have no loader to load with).
     val model: Any? = if (LocalInspectionMode.current) null else image.localFile ?: image.url
-    val painter = rememberAsyncImagePainter(model)
-    val loaded = (painter.state as? AsyncImagePainter.State.Success)?.painter?.intrinsicSize
+    val painter = model?.let { rememberAsyncImagePainter(it, ClomniImages.loader(LocalContext.current)) }
+    val loaded = (painter?.state as? AsyncImagePainter.State.Success)?.painter?.intrinsicSize
     var width = image.width
     var height = image.height
     if (!image.sizeKnown && loaded != null && loaded.width > 0 && loaded.height > 0) {
@@ -277,8 +278,9 @@ private fun ImageBubble(
                 role = Role.Image
             },
     ) {
-        Box(Modifier.size(width.dp, height.dp).background(theme.colors.surface.color)) {
-            if (model != null) {
+        // primary_soft until the picture is here, as every placeholder (APPEARANCE-CONTRACT 4).
+        Box(Modifier.size(width.dp, height.dp).background(theme.colors.primarySoft.color)) {
+            if (painter != null) {
                 Image(painter, null, Modifier.size(width.dp, height.dp), contentScale = ContentScale.Crop)
             }
         }
