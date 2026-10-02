@@ -19,7 +19,8 @@ internal interface MessengerDataSource {
 
     fun refreshConversations(): Future<Unit>
 
-    fun startConversation(openedFrom: String?): Future<Conversation>
+    /** A new conversation to write in; the server has it only once its first message goes (`ClomniChange.Started`). */
+    fun draft(openedFrom: String?): String
 
     /** [handler] hears every change until [stopObserving] is called with the returned token. */
     fun observe(handler: (ClomniChange) -> Unit): UUID
@@ -43,7 +44,6 @@ internal class HomeController(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private var snapshot = MessengerSnapshot(userName = userName)
-    private var starting = false
 
     /** Touched on [worker] only. */
     private var observation: UUID? = null
@@ -116,22 +116,10 @@ internal class HomeController(
     }
 
     /**
-     * "Bizə mesaj göndərin": [done] gets the new conversation's id, or null when it failed. A second tap while the
-     * first is starting does nothing.
+     * "Bizə mesaj göndərin": the id of a new conversation to open, which the server gets with its first message;
+     * nothing is sent now (an opened and closed conversation leaves nothing in the panel).
      */
-    fun startConversation(openedFrom: String?, done: (String?) -> Unit) {
-        main.execute {
-            if (starting) return@execute
-            starting = true
-            worker.execute {
-                val conversation = runCatching { source.startConversation(openedFrom).get() }.getOrNull()
-                publish(state(), after = {
-                    starting = false
-                    done(conversation?.id)
-                })
-            }
-        }
-    }
+    fun newConversation(openedFrom: String?): String = source.draft(openedFrom)
 
     private fun changed(change: ClomniChange) {
         // Typing and read receipts are the conversation screen's business.

@@ -23,7 +23,8 @@ internal interface MessengerSession {
 
     fun connect(): Future<Unit>
 
-    fun startConversation(openedFrom: String?): Future<Conversation>
+    /** A new conversation to write in; the server has it only once its first message goes (`ClomniChange.Started`). */
+    fun draft(openedFrom: String?): String
 
     fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String?): Future<Conversation?>
 
@@ -38,9 +39,7 @@ internal interface MessengerSession {
 internal sealed interface MessengerRoute {
     data object Home : MessengerRoute
 
-    /** A conversation being created: a skeleton until the server answers. */
-    data object StartingConversation : MessengerRoute
-
+    /** A conversation, or a new one not yet on the server ([MessengerSession.draft]). */
     data class Conversation(val id: String) : MessengerRoute
 }
 
@@ -268,32 +267,14 @@ internal class MessengerCoordinator(
     fun presentConversation(id: String, source: String? = null): Boolean = open(MessengerRoute.Conversation(id), source)
 
     /**
-     * Starts the inbox's new-conversation flow and shows it; [done] hears its id, or null when it could not start
-     * (Home stays, with its retry).
+     * A new, empty conversation on screen; the server gets it with the user's first message, and the app's
+     * onConversationStarted hears it then. Opening and closing it sends nothing. [done] hears the draft's id, or null
+     * when the inbox is switched off.
      */
     fun presentNewConversation(source: String? = null, done: (String?) -> Unit = {}) {
-        if (!open(MessengerRoute.StartingConversation, source)) return done(null)
-        prepare { ready ->
-            if (!ready) {
-                if (route == MessengerRoute.StartingConversation) route = MessengerRoute.Home
-                changed()
-                return@prepare done(null)
-            }
-            val openedFrom = this.source
-            worker.execute {
-                val conversation = runCatching { session.startConversation(openedFrom).get() }.getOrNull()
-                main.execute {
-                    if (conversation == null) {
-                        if (route == MessengerRoute.StartingConversation) route = MessengerRoute.Home
-                    } else {
-                        conversationStarted(conversation.id)
-                        if (route != null) route = MessengerRoute.Conversation(conversation.id)
-                    }
-                    changed()
-                    done(conversation?.id)
-                }
-            }
-        }
+        val draft = session.draft(source)
+        if (!open(MessengerRoute.Conversation(draft), source)) return done(null)
+        done(draft)
     }
 
     /** `Clomni.startFlow`: the flow bound to an app event, in a new conversation, shown when [openMessenger]. */
@@ -334,6 +315,13 @@ internal class MessengerCoordinator(
     /** A conversation the user started (from Home, or "Yeni söhbət başlat"). */
     fun conversationStarted(id: String) {
         events.conversationStarted?.invoke(id)
+    }
+
+    /** A draft's first message created its conversation: the screen showing the draft now shows it. */
+    private fun started(draftId: String, conversationId: String) {
+        if (route == MessengerRoute.Conversation(draftId)) route = MessengerRoute.Conversation(conversationId)
+        conversationStarted(conversationId)
+        changed()
     }
 
     private fun open(to: MessengerRoute, source: String?): Boolean {
@@ -430,6 +418,7 @@ internal class MessengerCoordinator(
                     changed()
                 }
             }
+            is ClomniChange.Started -> main.execute { started(change.draftId, change.conversationId) }
             is ClomniChange.Messages -> worker.execute {
                 val messages = session.messages(change.conversationId)
                 main.execute { reportFinishedFlows(change.conversationId, messages) }

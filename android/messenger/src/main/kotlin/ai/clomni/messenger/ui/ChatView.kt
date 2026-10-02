@@ -84,7 +84,6 @@ internal fun ClomniChat(
     controller: ChatController,
     back: () -> Unit,
     close: () -> Unit,
-    conversationStarted: (String) -> Unit = {},
 ) {
     var screen by remember { mutableStateOf(controller.screen) }
     var config by remember { mutableStateOf(controller.config) }
@@ -125,7 +124,7 @@ internal fun ClomniChat(
         pickFile = { document?.launch(arrayOf("*/*")) },
         startNew = {
             writeAnyway = false
-            controller.startNewConversation { id -> id?.let(conversationStarted) }
+            controller.startNewConversation()
         },
         tap = controller::tap,
         submit = controller::submit,

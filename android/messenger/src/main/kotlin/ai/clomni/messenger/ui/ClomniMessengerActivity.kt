@@ -154,7 +154,6 @@ internal fun MessengerRoot(runtime: MessengerRuntime) {
                     chat,
                     back = { coordinator.navigate(MessengerRoute.Home) },
                     close = close,
-                    conversationStarted = coordinator::conversationStarted,
                 )
             }
             route == MessengerRoute.Home && state.ready -> {
@@ -168,11 +167,10 @@ internal fun MessengerRoot(runtime: MessengerRuntime) {
                     openedFrom = state.source,
                     close = close,
                     openConversation = { coordinator.navigate(MessengerRoute.Conversation(it)) },
-                    conversationStarted = coordinator::conversationStarted,
                 )
             }
             else -> {
-                // Not ready yet, or a conversation being started: grey blocks, ✕ still working.
+                // Not ready yet: grey blocks, ✕ still working.
                 val snapshot = if (state.failed) {
                     MessengerSnapshot(configLoad = MessengerSnapshot.Load.FAILED, isOffline = state.offline)
                 } else {

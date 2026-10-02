@@ -24,8 +24,7 @@ private class FakeSource : MessengerDataSource {
     var list = mutableListOf<Conversation>()
     var unread = 0
     var conversationsFail = false
-    var startFails = false
-    var starts = 0
+    var drafts = mutableListOf<String?>()
     val observers = LinkedHashMap<UUID, (ClomniChange) -> Unit>()
 
     override val config: MessengerConfig? get() = cached
@@ -42,12 +41,9 @@ private class FakeSource : MessengerDataSource {
         if (conversationsFail) CompletableFuture<Unit>().apply { completeExceptionally(ClomniError.Network("offline")) }
         else CompletableFuture.completedFuture(Unit)
 
-    override fun startConversation(openedFrom: String?): Future<Conversation> {
-        starts++
-        if (startFails) return CompletableFuture<Conversation>().apply { completeExceptionally(ClomniError.Network("offline")) }
-        val conversation = Fixture.conversation("conv_$starts", "09-apar-level1-A.json")
-        list.add(0, conversation)
-        return CompletableFuture.completedFuture(conversation)
+    override fun draft(openedFrom: String?): String {
+        drafts += openedFrom
+        return "draft_${drafts.size}"
     }
 
     override fun observe(handler: (ClomniChange) -> Unit): UUID = UUID.randomUUID().also { observers[it] = handler }
@@ -145,32 +141,15 @@ class HomeControllerTest {
         assertTrue(source.observers.isEmpty())
     }
 
+    /** "Bizə mesaj göndərin" opens a draft: nothing goes to the server until its first message. */
     @Test
     fun startingAConversation() {
-        source.fresh = Fixture.aparConfig
-        val main = Queue()
-        val worker = Queue()
-        val home = controller(worker = worker, main = main)
+        val home = controller()
         home.load()
-        worker.drain()
-        main.drain()
-        val ids = mutableListOf<String?>()
-        home.startConversation("home") { ids += it }
-        home.startConversation("home") { ids += it }
-        // Both taps reach the UI thread before the first conversation exists.
-        main.drain()
-        worker.drain()
-        main.drain()
-        assertEquals("a second tap while the first is starting does nothing", listOf<String?>("conv_1"), ids)
-        assertEquals(1, source.starts)
-        assertEquals("conv_1", home.messages.rows.first().id)
-
-        source.startFails = true
-        home.startConversation(null) { ids += it }
-        main.drain()
-        worker.drain()
-        main.drain()
-        assertNull(ids.last())
+        assertEquals("draft_1", home.newConversation("home"))
+        assertEquals("draft_2", home.newConversation(null))
+        assertEquals(listOf<String?>("home", null), source.drafts)
+        assertTrue("nothing in the list", home.messages.rows.isEmpty())
     }
 
     @Test

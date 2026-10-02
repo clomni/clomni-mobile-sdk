@@ -29,7 +29,7 @@ private class FakeSession : MessengerSession {
     var unread = 0
     var cachedConfig: MessengerConfig? = null
     var freshConfig: MessengerConfig? = Fixture.aparConfig
-    var startFails = false
+    var drafts = 0
     var flowBound = true
     val stored = mutableMapOf<String, List<Message>>()
     val calls = mutableListOf<String>()
@@ -66,9 +66,9 @@ private class FakeSession : MessengerSession {
         return done(Unit)
     }
 
-    override fun startConversation(openedFrom: String?): Future<Conversation> {
-        calls += "start ${openedFrom ?: "-"}"
-        return if (startFails) failed(ClomniError.Network("offline")) else done(ChatFixture.conversation("bot"))
+    override fun draft(openedFrom: String?): String {
+        calls += "draft ${openedFrom ?: "-"}"
+        return "draft_${++drafts}"
     }
 
     override fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean, openedFrom: String?): Future<Conversation?> {
@@ -257,38 +257,34 @@ class MessengerCoordinatorTest {
         assertFalse(coordinator.present())
     }
 
+    /** Brief: no empty conversations. A new one is a draft on screen until its first message creates it. */
     @Test
-    fun aNewConversationCarriesTheSource() {
+    fun aNewConversationIsADraftUntilItsFirstMessage() {
         session.loggedIn = true
         val messenger = coordinator()
+        messenger.start()
         val ids = mutableListOf<String?>()
         messenger.presentNewConversation("ride_screen") { ids += it }
-        assertEquals(listOf<String?>("conv_5521"), ids)
+        assertEquals(listOf<String?>("draft_1"), ids)
+        assertEquals(MessengerRoute.Conversation("draft_1"), messenger.route)
+        assertEquals(listOf<String?>("ride_screen"), opened)
+        assertTrue(session.calls.toString(), "draft ride_screen" in session.calls)
+        assertEquals("nothing started yet", emptyList<String>(), started)
+
+        // The first message created it: the screen follows it there, and the app hears of it.
+        session.push(ClomniChange.Started("draft_1", "conv_5521"))
         assertEquals(MessengerRoute.Conversation("conv_5521"), messenger.route)
         assertEquals(listOf("conv_5521"), started)
-        assertEquals(listOf<String?>("ride_screen"), opened)
-        assertTrue(session.calls.toString(), "start ride_screen" in session.calls)
 
+        // Opened and closed without a word: nothing reached the server, nothing reaches the app.
         messenger.dismiss()
-        session.startFails = true
         messenger.presentNewConversation { ids += it }
-        assertNull(ids.last())
-        assertEquals("Home, with its retry, instead of an endless skeleton", MessengerRoute.Home, messenger.route)
-        assertTrue("start -" in session.calls)
-        messenger.conversationStarted("conv_from_home")
-        assertEquals(listOf("conv_5521", "conv_from_home"), started)
-
-        // Closed while it was starting: it stays closed.
         messenger.dismiss()
-        session.startFails = false
-        val worker = Queue()
-        val slow = coordinator(worker = worker)
-        slow.presentNewConversation { ids += it }
-        assertEquals(MessengerRoute.StartingConversation, slow.route)
-        slow.dismiss()
-        worker.drain()
-        assertNull(slow.route)
-        assertEquals("conv_5521", ids.last())
+        assertEquals(listOf("conv_5521"), started)
+        // A draft created after the screen moved on is still the app's news.
+        session.push(ClomniChange.Started("draft_2", "conv_6000"))
+        assertNull(messenger.route)
+        assertEquals(listOf("conv_5521", "conv_6000"), started)
     }
 
     @Test
@@ -420,8 +416,6 @@ class MessengerCoordinatorTest {
         assertFalse("Home", messenger.received(push(unread = 4)))
         messenger.navigate(MessengerRoute.Conversation("conv_7"))
         assertFalse("another conversation", messenger.received(push(unread = 4)))
-        messenger.navigate(MessengerRoute.StartingConversation)
-        assertFalse(messenger.received(push(unread = 4)))
         messenger.dismiss()
         assertTrue(messenger.received(null))
         assertEquals(listOf(3, 4), unread)

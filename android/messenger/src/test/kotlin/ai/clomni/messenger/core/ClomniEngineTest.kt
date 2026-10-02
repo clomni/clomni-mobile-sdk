@@ -208,6 +208,58 @@ class ClomniEngineTest {
         assertTrue(phone.engine.canAnswer(phone.engine.messages(conversation).last()))
     }
 
+    /** Brief: no empty conversations. Opening a new one and leaving it sends nothing; its first message creates it. */
+    @Test
+    fun aNewConversationIsCreatedByItsFirstMessage() {
+        val phone = Phone()
+        phone.engine.loginUnidentifiedUser().await()
+        phone.engine.connect().await()
+        phone.caughtUp()
+        fun creates() = fake.log.count { it == "POST /v1/conversations" }
+        val left = phone.engine.draft("profile_support")
+        phone.engine.loadMessages(left).await()
+        phone.engine.refreshConversation(left).await()
+        phone.engine.setTyping(true, left).await()
+        phone.engine.markRead(left).await()
+        assertEquals("opened and left: nothing", 0, creates())
+        assertTrue(fake.log.toString(), fake.log.none { "draft_" in it })
+
+        val draft = phone.engine.draft("profile_support")
+        phone.changes.clear()
+        phone.engine.sendText("Salam", draft).await()
+        phone.engine.sendText("Gedişim bitmədi", draft).await()
+        eventually("both sent") { phone.engine.pending(draft).isEmpty() && creates() == 1 && phone.engine.conversations().isNotEmpty() }
+        phone.engine.awaitIdle()
+        val conversation = phone.engine.conversations().single().id
+        assertEquals("one create, then the messages", 1, creates())
+        assertEquals(listOf("Salam", "Gedişim bitmədi"), fake.userMessages(conversation).map { it.getValue("content").jsonObject.getValue("text").jsonPrimitive.content })
+        assertTrue(phone.changes.toString(), ClomniChange.Started(draft, conversation) in phone.changes)
+        // A message sent to the draft after it was created (its screen not moved yet) goes to the same conversation.
+        phone.engine.sendText("Və bu", draft).await()
+        eventually("the third") { fake.userMessages(conversation).size == 3 }
+        assertEquals(1, creates())
+    }
+
+    /** Offline: the draft's message waits, fails, and on retry creates the conversation once. */
+    @Test
+    fun aDraftsFirstMessageWaitsForTheNetwork() {
+        val phone = Phone()
+        phone.engine.loginUnidentifiedUser().await()
+        phone.engine.connect().await()
+        phone.caughtUp()
+        val draft = phone.engine.draft(null)
+        fake.offline = true
+        val sent = phone.engine.sendText("Salam", draft).await()
+        eventually("failed") { phone.engine.pending(draft).singleOrNull()?.state == PendingMessage.State.FAILED }
+        assertEquals("the message stays on the draft's screen", "Salam", phone.engine.pending(draft).single().preview)
+        fake.offline = false
+        phone.engine.retry(sent.id).await()
+        eventually("sent") { phone.engine.pending(draft).isEmpty() && phone.engine.conversations().isNotEmpty() }
+        phone.engine.refreshConversations().await()
+        val conversation = phone.engine.conversations().single().id
+        assertEquals(listOf("Salam"), fake.userMessages(conversation).map { it.getValue("content").jsonObject.getValue("text").jsonPrimitive.content })
+    }
+
     @Test
     fun threeFailedAttemptsMakeAMessageFailedUntilRetried() {
         val (phone, conversation) = ready()
