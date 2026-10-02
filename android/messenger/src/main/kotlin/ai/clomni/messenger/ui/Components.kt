@@ -66,7 +66,8 @@ internal fun Avatar(url: String?, initial: String, size: Float, theme: ClomniThe
     Box(modifier.size(size.dp).clip(CircleShape).background(circle.color), Alignment.Center) {
         // Sized with the circle, not with the user's font scale.
         val fontSize: TextUnit = with(LocalDensity.current) { (size * 0.41f).dp.toSp() }
-        val style = clomniText(0f, RgbColor.WHITE, FontWeight.SemiBold).copy(fontSize = fontSize, lineHeight = fontSize)
+        // White on the light theme's grey, black on the dark theme's lighter one: 4.5:1 either way.
+        val style = clomniText(0f, ClomniTheme.readableText(circle), FontWeight.SemiBold).copy(fontSize = fontSize, lineHeight = fontSize)
         BasicText(initial, style = style)
         if (url != null) RemoteImageFill(url, ImageSizing.Kind.ICON, size, Color.Transparent)
     }
@@ -129,7 +130,7 @@ internal fun FailureView(failure: HomeScreen.Failure, theme: ClomniTheme, retry:
             Modifier.heightIn(min = target).button(failure.retry, retry).padding(horizontal = ClomniTheme.Space.l.dp),
             Alignment.Center,
         ) {
-            val retryStyle = clomniText(ClomniTheme.FontSize.text, theme.colors.primary, FontWeight.SemiBold)
+            val retryStyle = clomniText(ClomniTheme.FontSize.text, theme.colors.primaryText, FontWeight.SemiBold)
             BasicText(failure.retry, style = retryStyle)
         }
     }

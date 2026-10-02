@@ -20,6 +20,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
@@ -67,6 +68,8 @@ internal fun clomniText(
     fontFamily = ClomniFonts.family,
     letterSpacing = letterSpacing.sp,
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+    // Each text runs the way its own words do: an Azerbaijani message stays left to right in a right-to-left app.
+    textDirection = TextDirection.Content,
 )
 
 /**

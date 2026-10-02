@@ -3,6 +3,7 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
+import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.protocol.MessengerConfig
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -161,7 +162,8 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme) {
                 val size = with(LocalDensity.current) { 13.dp.toSp() }
                 BasicText(
                     header.brandInitial,
-                    style = clomniText(13f, theme.colors.primary, FontWeight.Bold)
+                    // On the white square in dark mode too, where the lighter primary would not read.
+                    style = clomniText(13f, theme.colors.primary.readableOn(listOf(RgbColor.WHITE)), FontWeight.Bold)
                         .copy(fontSize = size, lineHeight = size),
                 )
             }

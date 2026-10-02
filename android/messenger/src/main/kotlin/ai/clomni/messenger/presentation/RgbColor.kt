@@ -49,6 +49,22 @@ internal class RgbColor(red: Double, green: Double, blue: Double) {
         return fromHsl(hue, saturation, lightness + 0.1 * count)
     }
 
+    /**
+     * This colour, or the nearest darker one (lighter on dark backgrounds) of its hue that reaches [minimum]:1 on every
+     * one of [backgrounds]: brand and alert colours used for text (brief 8·7.6, contrast 4.5:1).
+     */
+    fun readableOn(backgrounds: List<RgbColor>, minimum: Double = 4.5): RgbColor {
+        fun passes(color: RgbColor) = backgrounds.all { color.contrast(it) >= minimum }
+        if (passes(this)) return this
+        val darker = backgrounds.map { it.luminance }.average() > 0.18
+        val (hue, saturation, lightness) = hsl
+        for (step in 1..100) {
+            val candidate = fromHsl(hue, saturation, lightness + if (darker) -0.01 * step else 0.01 * step)
+            if (passes(candidate)) return candidate
+        }
+        return if (darker) BLACK else WHITE
+    }
+
     /** This colour at [opacity] over [background]. */
     fun over(background: RgbColor, opacity: Double) = RgbColor(
         red * opacity + background.red * (1 - opacity),

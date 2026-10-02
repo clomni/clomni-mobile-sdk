@@ -319,16 +319,17 @@ internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: Cha
                 }
             }
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+                // Two lines each before an ellipsis: at a large font size the subtitle wraps instead of being cut.
                 BasicText(
                     header.title,
                     style = clomniText(ClomniTheme.FontSize.title, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 BasicText(
                     header.subtitle,
                     style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -65,7 +66,13 @@ internal fun FormCardView(
         modifier.padding(vertical = 9.dp, horizontal = ClomniTheme.Space.l.dp),
         verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
     ) {
-        card.text?.let { BasicText(attributedText(it, theme.colors.primary), style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary)) }
+        card.text?.let {
+            BasicText(
+                attributedText(it, theme.colors.primaryText),
+                Modifier.clearAndSetSemantics { contentDescription = card.textAccessibilityLabel },
+                style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary),
+            )
+        }
         if (card.readOnly && card.submitted.isNotEmpty()) {
             for (line in card.submitted) {
                 Column(Modifier.semantics(mergeDescendants = true) {}) {
@@ -138,12 +145,14 @@ private fun FormFieldView(
     val text = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary)
     val hint = clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        // Read with the field itself ("Ad, soyad, məcburi"), not as a line of its own.
         BasicText(
             if (field.required) "${field.label} *" else field.label,
+            Modifier.clearAndSetSemantics {},
             style = clomniText(ClomniTheme.FontSize.label, theme.colors.textPrimary, FontWeight.SemiBold),
         )
         val described = Modifier.semantics {
-            contentDescription = field.label
+            contentDescription = field.accessibilityLabel
             if (error != null) error(error)
         }
         when (field.type) {
@@ -180,7 +189,7 @@ private fun FormFieldView(
                 },
             )
         }
-        error?.let { BasicText(it, style = clomniText(ClomniTheme.FontSize.label, theme.colors.unread)) }
+        error?.let { BasicText(it, style = clomniText(ClomniTheme.FontSize.label, theme.colors.errorText)) }
     }
 }
 

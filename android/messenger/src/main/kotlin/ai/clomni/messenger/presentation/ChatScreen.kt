@@ -150,6 +150,8 @@ internal data class TypingLine(val avatar: ChatAvatar, val accessibilityLabel: S
 internal data class FormCard(
     val messageId: String,
     val text: List<TextRun>?,
+    /** TalkBack's reading of [text], with who wrote it and when: "Clomni bot, 10:30: …". */
+    val textAccessibilityLabel: String,
     val fields: List<Field>,
     val submitTitle: String,
     val readOnly: Boolean,
@@ -163,6 +165,8 @@ internal data class FormCard(
         val type: MessageContent.FormFieldType,
         val label: String,
         val required: Boolean,
+        /** TalkBack's name of the field: the label, and "məcburi" for the "*". */
+        val accessibilityLabel: String,
         val placeholder: String?,
         val maxLength: Int?,
         val options: List<MessageContent.FormField.Option>,

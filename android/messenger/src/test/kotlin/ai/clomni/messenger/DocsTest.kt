@@ -31,15 +31,22 @@ class DocsTest {
 
     /** docs/screenshots/appearance/android are copies of AppearanceSnapshotTest's references, kept the same. */
     @Test
-    fun appearanceScreenshotsAreTheSnapshots() {
-        val docs = File(android, "../docs/screenshots/appearance/android")
-        val prefix = "ai.clomni.messenger.ui_AppearanceSnapshotTest_"
+    fun appearanceScreenshotsAreTheSnapshots() = assertCopies("AppearanceSnapshotTest", "appearance")
+
+    /** docs/screenshots/accessibility/android: AccessibilitySnapshotTest's (font 200%, TalkBack overlays, RTL). */
+    @Test
+    fun accessibilityScreenshotsAreTheSnapshots() = assertCopies("AccessibilitySnapshotTest", "accessibility")
+
+    private fun assertCopies(testClass: String, folder: String) {
+        val docs = File(android, "../docs/screenshots/$folder/android")
+        val prefix = "ai.clomni.messenger.ui_${testClass}_"
         val references = File(android, "messenger/src/test/snapshots/images").listFiles()!!
             .filter { it.name.startsWith(prefix) }
             .associateBy { it.name.removePrefix(prefix).substringAfter('_') }
+        assertTrue(references.isNotEmpty())
         assertEquals(references.keys.sorted(), docs.list()!!.sorted())
         for ((name, reference) in references) {
-            assertTrue("docs/screenshots/appearance/android/$name is not the snapshot", reference.readBytes().contentEquals(File(docs, name).readBytes()))
+            assertTrue("docs/screenshots/$folder/android/$name is not the snapshot", reference.readBytes().contentEquals(File(docs, name).readBytes()))
         }
     }
 }

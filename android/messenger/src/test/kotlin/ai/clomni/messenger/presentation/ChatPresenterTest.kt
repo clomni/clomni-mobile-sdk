@@ -284,6 +284,9 @@ class ChatPresenterTest {
         assertEquals("Göndər", card.submitTitle)
         assertNull(card.sentLabel)
         assertEquals("Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.text?.first()?.text)
+        // TalkBack: who asks and when, then each field once, "*" said as a word.
+        assertEquals("Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
+        assertEquals(listOf("Ad, soyad, məcburi", "Telefon, məcburi", "Email"), card.fields.map { it.accessibilityLabel })
 
         val sent = bubbles(screen(listOf(ChatFixture.message("21-form-submitted.json")))).first().body as FormCard
         assertTrue(sent.readOnly)

@@ -16,6 +16,8 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val headerTo: RgbColor,
         /** Text and icons on the header: white where it reaches 3:1 on both header colours, else dark; white on a picture. */
         val headerText: RgbColor,
+        /** [primary] as text (pills, links, "Yeni söhbət başlat"): itself, or as much darker as 4.5:1 needs. */
+        val primaryText: RgbColor,
         /** [primary] at 10% over the background: image placeholders, soft backgrounds. */
         val primarySoft: RgbColor,
         /** [primary] at 22% over the background: pill borders. */
@@ -31,6 +33,10 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val textSecondary: RgbColor,
         val border: RgbColor,
         val unread: RgbColor,
+        /** Errors as text ("Göndərilmədi", a form field's error): [unread], darker where 4.5:1 needs it. */
+        val errorText: RgbColor,
+        /** The launcher's count badge: [unread] dark enough for its white number. */
+        val badge: RgbColor,
         /** The operator's online dot in the conversation header. */
         val online: RgbColor,
         /** The thin yellow "no internet" strip (brief 8·7.5) and its text. */
@@ -124,8 +130,13 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             val headerFrom = if (solid) brandColors.primary else brandColors.headerFrom
             val headerTo = if (solid) brandColors.primary else brandColors.headerTo
             val picture = brand?.headerStyle == MessengerConfig.HeaderStyle.IMAGE && brand.headerImageUrl != null
+            val surface = hex(if (dark) "#22242A" else "#F1F2F4")
+            // Text sits on the background and in the grey bubbles; it has to read on both.
+            val behindText = listOf(background, surface)
+            val unread = hex("#E5484D")
             val colors = Colors(
                 primary = brandColors.primary,
+                primaryText = brandColors.primary.readableOn(behindText),
                 headerFrom = headerFrom,
                 headerTo = headerTo,
                 headerText = when {
@@ -138,12 +149,15 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                 onPrimary = brandColors.onPrimary,
                 background = background,
                 canvas = hex(if (dark) "#0B0C0E" else "#F5F6F8"),
-                surface = hex(if (dark) "#22242A" else "#F1F2F4"),
+                surface = surface,
                 textPrimary = hex(if (dark) "#F2F3F5" else "#1B1D21"),
-                // The brief's #737780 is 4.49:1 on white, just short of WCAG AA; #707480 reaches 4.67.
-                textSecondary = hex(if (dark) "#9A9DA6" else "#707480"),
+                // The brief's #737780 is 4.49:1 on white, and less on the grey canvas and bubbles where it also sits
+                // (the composer's placeholder, "Powered by Clomni"); #6A6E7A reaches 4.5 on all three.
+                textSecondary = hex(if (dark) "#9A9DA6" else "#6A6E7A"),
                 border = hex(if (dark) "#2A2C32" else "#E7E8EB"),
-                unread = hex("#E5484D"),
+                unread = unread,
+                errorText = unread.readableOn(behindText),
+                badge = unread.readableOn(listOf(RgbColor.WHITE)),
                 online = hex("#30C26B"),
                 warning = hex(if (dark) "#3D3415" else "#FFF4CC"),
                 onWarning = hex(if (dark) "#F2DC8B" else "#5C4400"),
@@ -228,6 +242,7 @@ internal fun ClomniTheme.toward(target: ClomniTheme, fraction: Double): ClomniTh
     return ClomniTheme(
         ClomniTheme.Colors(
             primary = mix(a.primary, b.primary),
+            primaryText = mix(a.primaryText, b.primaryText),
             headerFrom = mix(a.headerFrom, b.headerFrom),
             headerTo = mix(a.headerTo, b.headerTo),
             headerText = mix(a.headerText, b.headerText),
@@ -241,6 +256,8 @@ internal fun ClomniTheme.toward(target: ClomniTheme, fraction: Double): ClomniTh
             textSecondary = mix(a.textSecondary, b.textSecondary),
             border = mix(a.border, b.border),
             unread = mix(a.unread, b.unread),
+            errorText = mix(a.errorText, b.errorText),
+            badge = mix(a.badge, b.badge),
             online = mix(a.online, b.online),
             warning = mix(a.warning, b.warning),
             onWarning = mix(a.onWarning, b.onWarning),

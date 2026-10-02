@@ -126,6 +126,8 @@ internal class LauncherView(context: Context) : View(context) {
     private val badgeBox = RectF()
     private val ringBox = RectF()
     private var bottomInset = 0
+
+    /** The system bars' insets at the start and the end side (right first in a right-to-left layout). */
     private var sideInsets = 0 to 0
 
     /** The badge may stand out of the circle: the view is a little larger than it. */
@@ -149,7 +151,7 @@ internal class LauncherView(context: Context) : View(context) {
     fun bind(state: LauncherState, theme: ClomniTheme, tap: () -> Unit) {
         this.state = state
         circlePaint.color = theme.colors.primary.argb
-        badgePaint.color = theme.colors.unread.argb
+        badgePaint.color = theme.colors.badge.argb
         ringPaint.color = theme.colors.background.argb
         textPaint.color = 0xFFFFFFFF.toInt()
         icon?.colorFilter = PorterDuffColorFilter(theme.colors.onPrimary.argb, PorterDuff.Mode.SRC_IN)
@@ -166,7 +168,11 @@ internal class LauncherView(context: Context) : View(context) {
         @Suppress("DEPRECATION")
         bottomInset = insets.systemWindowInsetBottom
         @Suppress("DEPRECATION")
-        sideInsets = insets.systemWindowInsetLeft to insets.systemWindowInsetRight
+        val left = insets.systemWindowInsetLeft
+
+        @Suppress("DEPRECATION")
+        val right = insets.systemWindowInsetRight
+        sideInsets = if (layoutDirection == LAYOUT_DIRECTION_RTL) right to left else left to right
         place()
         return insets
     }
@@ -180,10 +186,11 @@ internal class LauncherView(context: Context) : View(context) {
         val state = state ?: return
         val params = layoutParams as? FrameLayout.LayoutParams ?: return
         val edge = (LauncherState.EDGE_PADDING * density - margin).toInt()
-        val left = state.side == MessengerConfig.LauncherPosition.LEFT
-        params.gravity = Gravity.BOTTOM or (if (left) Gravity.START else Gravity.END)
-        params.marginStart = edge + if (left) sideInsets.first else 0
-        params.marginEnd = edge + if (left) 0 else sideInsets.second
+        // The panel's "left" is the start side: mirrored in a right-to-left app, as the rest of the messenger is.
+        val start = state.side == MessengerConfig.LauncherPosition.LEFT
+        params.gravity = Gravity.BOTTOM or (if (start) Gravity.START else Gravity.END)
+        params.marginStart = edge + if (start) sideInsets.first else 0
+        params.marginEnd = edge + if (start) 0 else sideInsets.second
         params.bottomMargin = edge + bottomInset + (state.bottomPadding * density).toInt()
         layoutParams = params
     }
@@ -203,9 +210,14 @@ internal class LauncherView(context: Context) : View(context) {
         val textWidth = textPaint.measureText(badge)
         val width = maxOf(height, textWidth + 10 * density)
         // Its top-end corner over the circle's, ringed in the background colour.
-        val right = margin + circle + 4 * density
         val top = margin - 4 * density
-        val box = badgeBox.apply { set(right - width, top, right, top + height) }
+        val box = if (layoutDirection == LAYOUT_DIRECTION_RTL) {
+            val start = margin - 4 * density
+            badgeBox.apply { set(start, top, start + width, top + height) }
+        } else {
+            val end = margin + circle + 4 * density
+            badgeBox.apply { set(end - width, top, end, top + height) }
+        }
         val ring = 2 * density
         val outer = height / 2 + ring
         ringBox.set(box.left - ring, box.top - ring, box.right + ring, box.bottom + ring)

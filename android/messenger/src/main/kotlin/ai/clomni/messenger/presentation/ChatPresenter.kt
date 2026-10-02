@@ -295,7 +295,7 @@ internal class ChatPresenter(
             Media.fileIcon(content.mime),
             content.url,
         )
-        is MessageContent.Form -> card(message.id, content, snapshot)
+        is MessageContent.Form -> card(message, content, snapshot)
         is MessageContent.System -> null
         // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
         is MessageContent.Card, is MessageContent.Rating, is MessageContent.Unknown ->
@@ -355,18 +355,21 @@ internal class ChatPresenter(
         return QuickReplyBlock(messageId, replies.layout, buttons, back)
     }
 
-    private fun card(messageId: String, form: MessageContent.Form, snapshot: ChatSnapshot): FormCard {
+    private fun card(message: Message, form: MessageContent.Form, snapshot: ChatSnapshot): FormCard {
+        val messageId = message.id
         val prefill = FormInput.prefill(form, snapshot.known)
         val sent = form.submitted != null
         return FormCard(
             messageId = messageId,
             text = form.text?.let(LimitedMarkdown::parse),
+            textAccessibilityLabel = label(message, snapshot),
             fields = form.fields.map { field ->
                 FormCard.Field(
                     id = field.key,
                     type = field.type,
                     label = field.label,
                     required = field.required,
+                    accessibilityLabel = if (field.required) "${field.label}, ${strings[Key.REQUIRED]}" else field.label,
                     placeholder = field.placeholder,
                     maxLength = field.maxLength,
                     options = field.options,

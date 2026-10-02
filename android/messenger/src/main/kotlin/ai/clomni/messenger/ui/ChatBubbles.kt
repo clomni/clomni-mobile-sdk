@@ -212,7 +212,7 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
     val shape = bubble.shape()
     when (val body = bubble.body) {
         is Bubble.TextBody -> BasicText(
-            attributedText(body.runs, if (incoming) theme.colors.primary else theme.colors.onPrimary),
+            attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
             Modifier.widthIn(max = if (incoming) 222.dp else 210.dp)
                 .clip(shape)
                 .background(fill.color)
@@ -325,7 +325,7 @@ private fun FileCard(file: Bubble.FileBody, ink: RgbColor, modifier: Modifier) {
 /** "Göndərildi", "Oxundu"; a failure in red, which sends again when tapped. */
 @Composable
 private fun StatusLine(status: Bubble.Status, theme: ClomniTheme, retry: (String) -> Unit) {
-    val style = clomniText(ClomniTheme.FontSize.meta, if (status.isFailure) theme.colors.unread else theme.colors.textSecondary)
+    val style = clomniText(ClomniTheme.FontSize.meta, if (status.isFailure) theme.colors.errorText else theme.colors.textSecondary)
     val retryId = status.retryId
     if (retryId == null) {
         BasicText(status.text, Modifier.padding(top = 5.dp), style = style)

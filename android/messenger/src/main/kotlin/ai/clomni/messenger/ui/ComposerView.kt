@@ -114,7 +114,7 @@ private fun Closed(mode: ChatComposer.Mode.Closed, theme: ClomniTheme, startNew:
         }
         BasicText("·", Modifier.clearAndSetSemantics {}, style = clomniText(13f, theme.colors.textSecondary))
         Box(target.button(mode.action, startNew), Alignment.Center) {
-            BasicText(mode.action, style = clomniText(13f, theme.colors.primary, FontWeight.SemiBold))
+            BasicText(mode.action, style = clomniText(13f, theme.colors.primaryText, FontWeight.SemiBold))
         }
     }
 }

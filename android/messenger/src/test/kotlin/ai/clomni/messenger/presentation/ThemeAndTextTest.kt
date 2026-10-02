@@ -144,7 +144,7 @@ class ThemeTest {
         val light = ClomniTheme.make(null, dark = false)
         assertFalse(light.isDark)
         assertEquals(
-            listOf("#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#707480", "#E7E8EB", "#E5484D", "#FFF4CC", "#5C4400"),
+            listOf("#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#6A6E7A", "#E7E8EB", "#E5484D", "#FFF4CC", "#5C4400"),
             light.colors.run { listOf(background, canvas, surface, textPrimary, textSecondary, border, unread, warning, onWarning) }.map { it.hex },
         )
         val dark = ClomniTheme.make(null, dark = true)
@@ -157,7 +157,7 @@ class ThemeTest {
         for (theme in listOf(light, dark)) {
             assertTrue(theme.colors.warning.contrast(theme.colors.onWarning) >= 4.5)
             assertTrue(theme.colors.background.contrast(theme.colors.textPrimary) >= 4.5)
-            // #707480 instead of the brief's #737780 (4.49:1): secondary text reaches AA on the background too.
+            // #6A6E7A instead of the brief's #737780 (4.49:1 on white): secondary text reaches AA on every background.
             assertTrue(theme.colors.background.contrast(theme.colors.textSecondary) >= 4.5)
         }
         assertEquals(12f, ClomniTheme.Radius.card)
