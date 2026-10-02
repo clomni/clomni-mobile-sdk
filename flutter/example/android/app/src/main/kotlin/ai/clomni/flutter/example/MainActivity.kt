@@ -1,4 +1,4 @@
-package ai.clomni.clomni_flutter_example
+package ai.clomni.flutter.example
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

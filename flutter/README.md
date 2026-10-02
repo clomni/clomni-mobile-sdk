@@ -83,12 +83,30 @@ final show = await Clomni.shouldShowForeground(data);
 | `startFlow(event, {data, openMessenger = false, source})` | the flow bound to an app event |
 | `setLauncherVisible(visible)`, `setBottomPadding(padding)` | the optional floating button |
 | `setDeviceToken(token)`, `isClomniPush(data)`, `handlePush(data)`, `shouldShowForeground(data)` (iOS), `setNotificationIcon(name)` (Android) | push |
-| `setLogLevel(ClomniLogLevel)`, `setTypeface(familyName)` | log and font (a family the platform knows: iOS `UIAppFonts`, Android `res/font`) |
+| `setLogLevel(ClomniLogLevel)`, `setTypeface(familyName)` | log and font (below) |
 | `unreadCountStream`, `onMessengerOpened`, `onMessengerClosed`, `onConversationStarted`, `onFlowCompleted` | events, as streams |
 
 The plugin owns the SDK's native event callbacks; native code of the app should not set them as well.
 
+### Font
+
+`setTypeface` takes a font family as each platform knows it; the fonts in Flutter's `pubspec.yaml` do not reach the
+native screens by themselves.
+
+- iOS: the family name of a font in the app bundle, listed under `UIAppFonts` in `ios/Runner/Info.plist`
+  (`Montserrat-Regular.ttf` → `'Montserrat'`).
+- Android: a font resource, `android/app/src/main/res/font/montserrat.xml` (a family with its weights) or
+  `montserrat.ttf` → `'montserrat'`; otherwise a family the system has.
+
+```dart
+await Clomni.setTypeface(Platform.isIOS ? 'Montserrat' : 'montserrat');
+```
+
 ## Development
+
+Until `ai.clomni:messenger` is on Maven Central, the example (and any app) takes the Android SDK from the local Maven
+repository, published from this repository with `scripts/publish-sdk-locally.gradle` (see Install); with the SDK
+published, `mavenLocal()` and that step go.
 
 ```sh
 flutter test                      # the Dart layer, with mocked channels

@@ -1,4 +1,4 @@
-group = "ai.clomni.clomni_flutter"
+group = "ai.clomni.flutter"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -26,7 +26,7 @@ plugins {
 }
 
 android {
-    namespace = "ai.clomni.clomni_flutter"
+    namespace = "ai.clomni.flutter"
 
     compileSdk = 36
 

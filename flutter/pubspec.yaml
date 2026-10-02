@@ -23,7 +23,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: ai.clomni.clomni_flutter
+        package: ai.clomni.flutter
         pluginClass: ClomniFlutterPlugin
       ios:
         pluginClass: ClomniFlutterPlugin

@@ -1,4 +1,4 @@
-package ai.clomni.clomni_flutter
+package ai.clomni.flutter
 
 import ai.clomni.messenger.Clomni
 import ai.clomni.messenger.ClomniLogLevel
