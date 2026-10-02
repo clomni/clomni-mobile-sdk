@@ -43,12 +43,13 @@ jobs:
           -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO
 
+      # A package with one library gets one scheme, named after it, and it carries the test targets too.
       # The snapshot tests need UIKit. A run without references records them and passes; the pictures are in the
       # "snapshots" artifact, to be checked and committed under ios/Tests/ClomniMessengerTests/__Snapshots__.
       - name: Snapshot tests on the iOS Simulator
         run: >
           xcodebuild test
-          -scheme ClomniMessenger-Package
+          -scheme ClomniMessenger
           -destination 'platform=iOS Simulator,name=iPhone 16'
           -only-testing:ClomniMessengerTests
           -skipPackagePluginValidation
