@@ -67,6 +67,15 @@ final class FixtureIndexTests: ProtocolTestCase {
         case ("config.json", nil):
             let config = ProtocolJSON.parseConfig(data)
             if entry.isValid { XCTAssertNotNil(config, label) }
+        case ("conversation-start.json", nil):
+            // A body the SDK sends (ApiClient.createConversation, tested there): opened_from and a client_id of 1 to
+            // 64 characters, as the SDK builds it.
+            let body = ProtocolJSON.decode(data)?.objectValue
+            XCTAssertNotNil(body, label)
+            let clientId = body?["client_id"]?.stringValue
+            let fits = Set(body?.keys.map { $0 } ?? []).isSubset(of: ["opened_from", "client_id"])
+                && (body?["client_id"] == nil || clientId.map { (1...64).contains($0.count) } == true)
+            XCTAssertEqual(fits, entry.isValid, label)
         case ("appearance.json", nil):
             // The panel's document; the SDK reads only what the server makes of it, config.json.
             XCTAssertNotNil(ProtocolJSON.decode(data), label)

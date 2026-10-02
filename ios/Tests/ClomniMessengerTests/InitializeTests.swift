@@ -31,8 +31,9 @@ final class InitializeTests: XCTestCase {
         let milliseconds = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
         XCTAssertLessThan(milliseconds, 50)
 
-        // Getting ready reads the cache and the session, on the engine's thread.
-        for _ in 0..<500 where ClomniRuntime.shared.coordinator?.config == nil {
+        // Getting ready reads the cache and the session, on the engine's thread, in no fixed order.
+        for _ in 0..<2500 where ClomniRuntime.shared.coordinator?.config == nil
+            || !IOProbe.recorded.contains(where: { $0.what == "vault read session" }) {
             try await Task.sleep(nanoseconds: 2_000_000)
         }
         let accesses = IOProbe.stop()

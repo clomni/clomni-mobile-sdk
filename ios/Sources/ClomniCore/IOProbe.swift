@@ -17,6 +17,11 @@ enum IOProbe {
         accesses.write { $0 = [] }
     }
 
+    /// What was recorded since `start`, still recording.
+    static var recorded: [Access] {
+        accesses.read { $0 ?? [] }
+    }
+
     /// What was recorded since `start`; recording stops.
     static func stop() -> [Access] {
         accesses.write { recorded in
