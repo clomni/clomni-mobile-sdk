@@ -2,6 +2,7 @@ package ai.clomni.messenger
 
 import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.UserIdentity
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.ui.MessengerRuntime
 import android.content.Context
 import android.os.Handler
@@ -42,7 +43,7 @@ public object Clomni {
     public fun initialize(context: Context, appId: String, apiKey: String, region: String = "eu", baseUrl: String? = null) {
         val url = baseUrl ?: when (region.lowercase()) {
             "eu" -> ApiConfiguration.DEFAULT_BASE_URL
-            else -> ApiConfiguration.DEFAULT_BASE_URL.also { MessengerRuntime.log("unknown region \"$region\", using eu") }
+            else -> ApiConfiguration.DEFAULT_BASE_URL.also { ClomniLog.warning { "unknown region \"$region\", using eu" } }
         }
         onMain { MessengerRuntime.initialize(context, appId, apiKey, url) }
     }
@@ -72,6 +73,15 @@ public object Clomni {
     @JvmStatic
     public fun setNotificationIcon(icon: Int) {
         MessengerRuntime.notificationIcon = icon
+    }
+
+    /**
+     * How much the SDK writes to logcat (tag `Clomni`): [ClomniLogLevel.NONE] writes nothing, the default is
+     * [ClomniLogLevel.WARNING]; [ClomniLogLevel.DEBUG] while developing.
+     */
+    @JvmStatic
+    public fun setLogLevel(level: ClomniLogLevel) {
+        ClomniLog.level = level.level
     }
 
     /** Ends the session and deletes the messenger's data on this device. */
@@ -116,7 +126,7 @@ public object Clomni {
         val json = try {
             JsonObject(data.mapValues { json(it.value) })
         } catch (e: IllegalArgumentException) {
-            return MessengerRuntime.log("startFlow: ${e.message}")
+            return ClomniLog.error { "startFlow: ${e.message}" }
         }
         onMain {
             MessengerRuntime.coordinator?.startFlow(event, json.takeIf { it.isNotEmpty() }, openMessenger, source) ?: notReady()
@@ -183,7 +193,7 @@ public object Clomni {
             MessengerRuntime.events.flowCompleted = value
         }
 
-    private fun notReady() = MessengerRuntime.log("call Clomni.initialize first")
+    private fun notReady() = ClomniLog.error { "call Clomni.initialize first" }
 
     /** The app's own values as JSON; anything JSON cannot carry is refused. */
     internal fun json(value: Any?): JsonElement = when (value) {
@@ -196,6 +206,19 @@ public object Clomni {
         is Array<*> -> JsonArray(value.map(::json))
         else -> throw IllegalArgumentException("data holds a ${value::class.java.simpleName}, which JSON cannot carry")
     }
+}
+
+/** How much the SDK writes to logcat, for [Clomni.setLogLevel]. */
+public enum class ClomniLogLevel(internal val level: ClomniLog.Level?) {
+    NONE(null),
+
+    /** A wrong api key or user_hash, a call before initialize, or something the app asked for that failed. */
+    ERROR(ClomniLog.Level.ERROR),
+
+    /** Also what was dropped or could not be done. The default. */
+    WARNING(ClomniLog.Level.WARNING),
+    INFO(ClomniLog.Level.INFO),
+    DEBUG(ClomniLog.Level.DEBUG),
 }
 
 /** The unread count for the app's own badge ([Clomni.addUnreadCountListener]). */

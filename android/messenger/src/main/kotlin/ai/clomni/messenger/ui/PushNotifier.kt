@@ -1,5 +1,6 @@
 package ai.clomni.messenger.ui
 
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.PushNotification
 import android.app.Notification
 import android.app.NotificationChannel
@@ -34,7 +35,7 @@ internal object PushNotifier {
             manager.notify(notification.tag, notification.id, built)
         } catch (e: SecurityException) {
             // Android 13+ without POST_NOTIFICATIONS: the app asks for it, not the SDK.
-            MessengerRuntime.log("notification not shown: ${e.message}")
+            ClomniLog.warning { "notification not shown (POST_NOTIFICATIONS?): ${e.message}" }
         }
     }
 
