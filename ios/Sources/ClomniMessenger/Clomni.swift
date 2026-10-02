@@ -3,6 +3,9 @@ import Foundation
 import ClomniProtocol
 import ClomniCore
 #endif
+#if canImport(ClomniPresentation)
+import ClomniPresentation
+#endif
 
 /// The Clomni Messenger SDK. Everything the app calls is a static member of `Clomni` (brief 8 · 9).
 ///
@@ -113,6 +116,22 @@ public enum Clomni {
         MainThread.run { ClomniRuntime.shared.setTypeface(familyName) }
     }
 
+    /// The app's own look over the panel's (APPEARANCE-CONTRACT § 4). `primaryColor` "#RRGGBB": the other colours are
+    /// derived from it by the panel's rules. `mode`: light, dark or as the system is. Each call replaces the last;
+    /// nil leaves that value to the panel. `typeface` sets the font as `setTypeface` does; nil leaves it as it is.
+    public static func setTheme(primaryColor: String? = nil, typeface: String? = nil, mode: ClomniThemeMode? = nil) {
+        var color = primaryColor
+        if let primaryColor, RGBColor(hex: primaryColor) == nil {
+            ClomniLog.error("setTheme: primaryColor \"\(primaryColor)\" is not #RRGGBB; the panel's colour stays")
+            color = nil
+        }
+        let override = ThemeOverride(primaryColor: color, mode: mode?.mode)
+        MainThread.run {
+            ClomniRuntime.shared.setThemeOverride(override)
+            if let typeface { ClomniRuntime.shared.setTypeface(typeface) }
+        }
+    }
+
     /// Lifts the launcher above the app's tab bar, in points.
     public static func setBottomPadding(_ padding: Double) {
         MainThread.run { ClomniRuntime.shared.setBottomPadding(padding) }
@@ -216,6 +235,19 @@ public struct ClomniUser: Sendable, Equatable {
 
     var identity: UserIdentity {
         UserIdentity(userId: userId, email: email, phone: phone, name: name)
+    }
+}
+
+/// For `Clomni.setTheme`.
+public enum ClomniThemeMode: Sendable, Equatable {
+    case system, light, dark
+
+    var mode: MessengerConfig.Mode {
+        switch self {
+        case .system: return .system
+        case .light: return .light
+        case .dark: return .dark
+        }
     }
 }
 

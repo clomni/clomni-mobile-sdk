@@ -96,8 +96,10 @@ actor FakeBackend: ClomniBackend {
 final class Renders: MessengerRenderer {
     var count = 0
     var typefaces: [String?] = []
+    var overrides: [ThemeOverride] = []
     func render() { count += 1 }
     func setTypeface(_ family: String?) { typefaces.append(family) }
+    func setThemeOverride(_ override: ThemeOverride) { overrides.append(override) }
 }
 
 final class Lines: @unchecked Sendable {
@@ -298,6 +300,20 @@ final class FacadeTests: XCTestCase {
         XCTAssertEqual(renders.typefaces, ["Montserrat"])
         Clomni.setTypeface(nil)
         XCTAssertEqual(renders.typefaces, ["Montserrat", nil])
+    }
+
+    func testSetThemeOverridesThePanel() async {
+        Clomni.setTheme(primaryColor: "#0A66C2", mode: .dark)
+        XCTAssertEqual(renders.overrides, [], "no screens yet")
+        Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
+        XCTAssertEqual(renders.overrides, [ThemeOverride(primaryColor: "#0A66C2", mode: .dark)])
+        Clomni.setTheme(typeface: "Montserrat")
+        XCTAssertEqual(renders.overrides.last, ThemeOverride(), "each call replaces the last")
+        XCTAssertEqual(renders.typefaces, ["Montserrat"])
+        Clomni.setTheme(primaryColor: "blue", mode: .system)
+        XCTAssertEqual(renders.overrides.last, ThemeOverride(primaryColor: nil, mode: .system))
+        XCTAssertTrue(log.contains("[Clomni] error: setTheme: primaryColor \"blue\" is not #RRGGBB"))
+        XCTAssertEqual(ClomniThemeMode.light.mode, .light)
     }
 
     func testLauncher() async {

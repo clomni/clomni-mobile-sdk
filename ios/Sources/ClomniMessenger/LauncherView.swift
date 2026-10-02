@@ -16,11 +16,13 @@ import ClomniPresentation
 final class LauncherController {
     private var window: LauncherWindow?
 
-    func show(_ state: LauncherState, config: MessengerConfig?, typeface: Typeface?, tap: @escaping () -> Void) {
+    func show(_ state: LauncherState, config: MessengerConfig?, typeface: Typeface?, themeOverride: ThemeOverride,
+              tap: @escaping () -> Void) {
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
             .first(where: { $0.activationState == .foregroundActive }) else { return }
         let window = self.window ?? LauncherWindow(windowScene: scene)
-        let button = LauncherButton(state: state, config: config, typeface: typeface, tap: tap)
+        let button = LauncherButton(state: state, config: config, typeface: typeface, themeOverride: themeOverride,
+                                    tap: tap)
         if let host = window.rootViewController as? UIHostingController<LauncherButton> {
             host.rootView = button
         } else {
@@ -66,6 +68,7 @@ struct LauncherButton: View {
     let state: LauncherState
     let config: MessengerConfig?
     let typeface: Typeface?
+    let themeOverride: ThemeOverride
     let tap: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.clomniThemeOverride) private var themeOverride
@@ -99,6 +102,7 @@ struct LauncherButton: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(Text(state.accessibilityLabel))
         .environment(\.clomniTypeface, typeface)
+        .environment(\.clomniThemeOverride, themeOverride)
     }
 }
 #endif

@@ -32,8 +32,19 @@ struct MessengerRootView: View {
     var body: some View {
         content
             .environment(\.clomniTypeface, model.typeface)
+            .environment(\.clomniThemeOverride, model.themeOverride)
+            // The panel's (or the app's) light or dark mode for the system's controls too.
+            .preferredColorScheme(colorScheme(model.themeOverride.mode ?? model.config?.theme.mode))
             .configCrossfade(model.config)
             .task { await coordinator.prepare() }
+    }
+
+    private func colorScheme(_ mode: MessengerConfig.Mode?) -> ColorScheme? {
+        switch mode {
+        case .light?: return .light
+        case .dark?: return .dark
+        default: return nil
+        }
     }
 
     @ViewBuilder
