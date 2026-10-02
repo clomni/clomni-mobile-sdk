@@ -474,6 +474,8 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                     else -> MessengerConfig.HeaderStyle.GRADIENT
                 },
                 headerImageUrl = brand.string("header_image_url"),
+                wordmarkUrl = brand.string("wordmark_url").takeIf { brand.string("logo_style") == "wordmark" },
+                wordmarkDarkUrl = brand.string("wordmark_dark_url").takeIf { brand.string("logo_style") == "wordmark" },
                 glow = brand.boolean("glow") ?: false,
                 colors = colors(brand.section("colors")),
             ),

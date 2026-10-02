@@ -36,6 +36,13 @@ internal data class MessengerConfig(
         val glow: Boolean,
         /** The colours the server derived; null makes the SDK derive them by the same rules. */
         val colors: Colors?,
+        /**
+         * The full written logo for Home's header, in place of the logo and the name (`logo_style: "wordmark"`); null
+         * for the mark, also when the server sent the style without a picture.
+         */
+        val wordmarkUrl: String? = null,
+        /** For dark mode; [wordmarkUrl] when null. */
+        val wordmarkDarkUrl: String? = null,
     ) {
         companion object {
             /** For [ai.clomni.messenger.presentation.ClomniTheme]'s grey before any config: the secondary text grey. */

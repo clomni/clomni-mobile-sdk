@@ -40,6 +40,10 @@ internal data class HomeScreen(
         val logoUrl: String?,
         /** For dark mode; [logoUrl] when null. */
         val logoDarkUrl: String?,
+        /** The written logo in place of the logo and the name; null shows those. */
+        val wordmarkUrl: String? = null,
+        /** For dark mode; [wordmarkUrl] when null. */
+        val wordmarkDarkUrl: String? = null,
         val style: MessengerConfig.HeaderStyle,
         /** The photo of [MessengerConfig.HeaderStyle.IMAGE], under a dark veil. */
         val imageUrl: String?,
@@ -223,6 +227,8 @@ internal class HomePresenter(
             brandName = brand,
             logoUrl = config?.brand?.logoUrl,
             logoDarkUrl = config?.brand?.logoDarkUrl,
+            wordmarkUrl = config?.brand?.wordmarkUrl,
+            wordmarkDarkUrl = config?.brand?.wordmarkDarkUrl,
             // A picture style without its picture is the gradient.
             style = config?.brand?.headerStyle
                 ?.takeUnless { it == MessengerConfig.HeaderStyle.IMAGE && config.brand.headerImageUrl == null }

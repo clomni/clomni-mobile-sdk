@@ -7,6 +7,7 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.protocol.MessengerConfig
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,11 +17,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,6 +31,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,15 +44,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 
 /** The Home tab (brief 8·7.3): the brand header with the greeting, and the cards riding up over it by 40. */
 @Composable
@@ -79,7 +91,12 @@ private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () 
             // 48: the buttons' targets stay inside the row, whatever is above it.
             Row(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp), verticalAlignment = Alignment.CenterVertically) {
                 // The brand gives way (its name ends in "…"); the avatars and ✕ keep their size.
-                BrandMark(header, theme, Modifier.weight(1f))
+                val wordmark = (if (theme.isDark) header.wordmarkDarkUrl else null) ?: header.wordmarkUrl
+                if (wordmark != null) {
+                    Wordmark(wordmark, header, theme, Modifier.weight(1f))
+                } else {
+                    BrandMark(header, theme, Modifier.weight(1f))
+                }
                 Spacer(Modifier.width(ClomniTheme.Space.l.dp))
                 TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
                 if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
@@ -135,6 +152,38 @@ private fun HeaderBackground(header: HomeScreen.Header, theme: ClomniTheme, modi
 
 private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
+
+/**
+ * The written logo (APPEARANCE-CONTRACT 4a): 32 dp high, at most 60% of the header's width, fitted, never cut or
+ * stretched; its room is kept while it loads, and if it cannot load the logo and the name stand in. Read as the
+ * brand's name. Home's header only: the conversation keeps the logo and the name.
+ */
+@Composable
+private fun Wordmark(url: String, header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier) {
+    var failed by remember(url) { mutableStateOf(false) }
+    if (failed) return BrandMark(header, theme, modifier)
+    val width = LocalConfiguration.current.screenWidthDp * 0.6f
+    Box(modifier.semantics { contentDescription = header.brandName }, Alignment.CenterStart) {
+        val box = Modifier.height(32.dp).widthIn(max = width.dp).fillMaxWidth()
+        val preview = LocalPreviewImages.current[url]
+        when {
+            preview != null -> Image(preview, null, box, alignment = Alignment.CenterStart, contentScale = ContentScale.Fit)
+            LocalInspectionMode.current -> Box(box)
+            else -> {
+                val density = LocalDensity.current.density
+                AsyncImage(
+                    remember(url, density) { ImageSizing.url(url, ImageSizing.Kind.WORDMARK, width, density) },
+                    contentDescription = null,
+                    imageLoader = ClomniImages.loader(LocalContext.current),
+                    modifier = box,
+                    alignment = Alignment.CenterStart,
+                    contentScale = ContentScale.Fit,
+                    onError = { failed = true },
+                )
+            }
+        }
+    }
+}
 
 /**
  * The logo as it was uploaded, 32 dp with 8 dp corners and nothing around it (the dark-mode one in dark mode); without
