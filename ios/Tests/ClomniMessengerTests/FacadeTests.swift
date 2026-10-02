@@ -170,6 +170,17 @@ final class FacadeTests: XCTestCase {
         await backend?.calls ?? []
     }
 
+    /// Until the backend has been called with `call`: a detached task of utility priority makes it, which a busy
+    /// Simulator may run a good while later. Gives up after 15 s.
+    private func calls(including call: String) async -> [String] {
+        for _ in 0..<1500 {
+            let made = await calls()
+            if made.contains(call) { return made }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return await calls()
+    }
+
     /// Lets the SDK's own tasks run.
     private func settle() async {
         for _ in 0..<20 { await Task.yield() }
@@ -203,8 +214,7 @@ final class FacadeTests: XCTestCase {
         XCTAssertEqual(told.lines, [])
 
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
-        await settle()
-        let made = await calls()
+        let made = await calls(including: "setDeviceToken ab01 production")
         XCTAssertEqual(made, ["setDeviceToken ab01 production"])
         XCTAssertEqual(runtime.coordinator?.launcher?.bottomPadding, nil, "the launcher waits for the SDK to be ready")
         Clomni.loginUnidentifiedUser()
@@ -397,8 +407,7 @@ final class FacadeTests: XCTestCase {
         XCTAssertTrue(log.contains("[Clomni] warning: push"))
 
         Clomni.setDeviceToken(Data([0x00, 0xFF]))
-        await settle()
-        let made = await calls()
+        let made = await calls(including: "setDeviceToken 00ff production")
         XCTAssertTrue(made.contains("setDeviceToken 00ff production"))
     }
 
