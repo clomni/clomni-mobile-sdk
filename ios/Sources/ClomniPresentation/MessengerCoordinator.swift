@@ -10,6 +10,8 @@ package protocol MessengerSession: Sendable {
     var isAppDisabled: Bool { get async }
     var unreadTotal: Int { get async }
     var config: MessengerConfig? { get async }
+    /// The cached config, synchronously: for the first frame.
+    func cachedConfigFromDisk() -> MessengerConfig?
     func loginUnidentifiedUser() async throws
     func refreshConfig(language: String?) async -> MessengerConfig?
     func connect() async
@@ -250,6 +252,8 @@ package final class MessengerCoordinator {
             return false
         }
         let wasClosed = self.route == nil
+        // The first frame in the brand's colours: the cached config if the engine has not handed it over yet.
+        if config == nil { config = session.cachedConfigFromDisk() }
         self.route = route
         if wasClosed {
             self.source = source

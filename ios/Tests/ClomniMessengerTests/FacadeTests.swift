@@ -24,6 +24,7 @@ actor FakeBackend: ClomniBackend {
     var isAppDisabled: Bool { disabled }
     var unreadTotal: Int { unread }
     var config: MessengerConfig? { nil }
+    nonisolated func cachedConfigFromDisk() -> MessengerConfig? { nil }
 
     func fail(_ error: ClomniError?, disabled: Bool = false) {
         failLogin = error

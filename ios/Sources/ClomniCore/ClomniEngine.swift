@@ -79,6 +79,12 @@ package actor ClomniEngine {
         realtime = RealtimeClient(transport: socket, time: time, address: { try await api.socketURL() })
     }
 
+    /// The config cached at the last launch, read from disk on the caller's thread (a few KB): for the messenger's
+    /// first frame when this actor has not read it yet, so the brand's colours are there from the start.
+    package nonisolated func cachedConfigFromDisk() -> MessengerConfig? {
+        cache.read(Files.config).flatMap(ProtocolJSON.parseConfig)
+    }
+
     private enum Files {
         static let store = "store.json"
         static let outbox = "outbox.json"

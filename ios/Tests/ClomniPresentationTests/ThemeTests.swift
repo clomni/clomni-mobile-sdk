@@ -126,6 +126,22 @@ final class ThemeTests: XCTestCase {
                                         override: ThemeOverride(primaryColor: "#0A66C2")).colors.primary.hex, "#0A66C2")
     }
 
+    /// No config yet and no setTheme colour: grey, never Clomni's green (DESIGN-PASS A). With setTheme's colour, it.
+    func testNoConfigIsNeutral() {
+        for dark in [false, true] {
+            let theme = ClomniTheme.make(config: nil, systemIsDark: dark)
+            XCTAssertEqual(theme, ClomniTheme.neutral(dark: dark))
+            XCTAssertEqual(theme.colors.headerFrom, theme.colors.surface)
+            XCTAssertEqual(theme.colors.primary, theme.colors.textSecondary)
+            XCTAssertNotEqual(theme.colors.primary.hex, MessengerConfig.Brand.defaultPrimaryColor)
+            XCTAssertGreaterThanOrEqual(theme.colors.headerFrom.contrast(with: theme.colors.headerText), 4.5)
+        }
+        let own = ClomniTheme.make(config: nil, systemIsDark: false, override: ThemeOverride(primaryColor: "#0A66C2"))
+        XCTAssertEqual(own.colors.primary.hex, "#0A66C2", "setTheme's colour from the first frame")
+        let blue = ClomniTheme.make(config: nil, systemIsDark: false, override: ThemeOverride(primaryColor: "blue"))
+        XCTAssertEqual(blue, ClomniTheme.neutral(dark: false))
+    }
+
     func testNeutralTokens() {
         let light = ClomniTheme.make(brand: nil, dark: false)
         XCTAssertFalse(light.isDark)

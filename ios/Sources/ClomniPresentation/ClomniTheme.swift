@@ -156,11 +156,30 @@ package struct ClomniTheme: Sendable, Equatable {
         return ClomniTheme(colors: colors, isDark: dark)
     }
 
-    /// The theme the screens draw with: the config's, with the app's `Clomni.setTheme` over it.
+    /// The theme the screens draw with: the config's, with the app's `Clomni.setTheme` over it. Without either (a
+    /// first launch, before the config arrives) neutral grey: never a colour that is not the brand's.
     package static func make(config: MessengerConfig?, systemIsDark: Bool, override: ThemeOverride = ThemeOverride())
         -> ClomniTheme {
         let dark = isDark(override.mode ?? config?.theme.mode, systemIsDark: systemIsDark)
+        if config == nil, override.primaryColor.flatMap(RGBColor.init(hex:)) == nil {
+            return neutral(dark: dark)
+        }
         return make(brand: config?.brand, dark: dark, primaryColor: override.primaryColor)
+    }
+
+    /// No brand yet: the header in the surface grey with dark text, the accent the secondary text grey.
+    package static func neutral(dark: Bool) -> ClomniTheme {
+        let base = make(brand: nil, dark: dark).colors
+        let accent = base.textSecondary
+        let header = base.surface
+        let colors = Colors(
+            primary: accent, onPrimary: readableText(on: accent),
+            primarySoft: base.surface, primaryLine: base.border,
+            headerFrom: header, headerTo: header, headerText: base.textPrimary,
+            background: base.background, canvas: base.canvas, surface: base.surface, textPrimary: base.textPrimary,
+            textSecondary: base.textSecondary, border: base.border, unread: base.unread, online: base.online,
+            warning: base.warning, onWarning: base.onWarning)
+        return ClomniTheme(colors: colors, isDark: dark)
     }
 
     /// The brand's tokens.

@@ -22,6 +22,9 @@ actor FakeSession: MessengerSession {
     var isAppDisabled: Bool { disabled }
     var unreadTotal: Int { unread }
     var config: MessengerConfig? { cachedConfig }
+    /// What is on disk before the engine has read it.
+    let onDisk = Locked<MessengerConfig?>(nil)
+    nonisolated func cachedConfigFromDisk() -> MessengerConfig? { onDisk.read { $0 } }
 
     func set(loggedIn: Bool = false, disabled: Bool = false, disableOnLogin: Bool = false, unread: Int = 0,
              cached: MessengerConfig? = nil, fresh: MessengerConfig? = Fixture.aparConfig,
@@ -261,6 +264,16 @@ final class MessengerCoordinatorTests: XCTestCase {
 
     /// A new conversation is a draft until its first message: opening and closing asks the server for nothing, and
     /// the app hears onConversationStarted when the server has created it.
+    /// The first frame is in the brand's colours: opening before the engine handed over its cached config reads it
+    /// from disk at once.
+    func testOpeningReadsTheCachedConfigAtOnce() {
+        session.onDisk.write { $0 = Fixture.aparConfig }
+        let messenger = coordinator()
+        XCTAssertNil(messenger.config)
+        messenger.present()
+        XCTAssertEqual(messenger.config?.brand.name, "Apar", "before any await")
+    }
+
     func testANewConversationCarriesTheSource() async throws {
         await session.set(loggedIn: true)
         let messenger = coordinator()

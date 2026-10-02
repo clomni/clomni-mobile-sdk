@@ -16,7 +16,6 @@ struct MessengerRootView: View {
     let engine: ClomniEngine
     @StateObject private var home: MessengerModel
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.clomniThemeOverride) private var themeOverride
 
     init(model: MessengerRootModel, coordinator: MessengerCoordinator, engine: ClomniEngine) {
         self.model = model
@@ -25,8 +24,10 @@ struct MessengerRootView: View {
         _home = StateObject(wrappedValue: MessengerModel(engine: engine, language: nil, userName: nil))
     }
 
+    /// The app's setTheme from the first frame: this view sets the environment value for the screens under it, so it
+    /// reads the model's, not its own environment's.
     private var theme: ClomniTheme {
-        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: model.themeOverride)
     }
 
     var body: some View {
