@@ -28,6 +28,11 @@ public final class ai/clomni/messenger/Clomni {
 	public static final fun setLauncherVisible (Z)V
 	public static final fun setLogLevel (Lai/clomni/messenger/ClomniLogLevel;)V
 	public static final fun setNotificationIcon (I)V
+	public static final fun setTheme ()V
+	public static final fun setTheme (Ljava/lang/String;)V
+	public static final fun setTheme (Ljava/lang/String;Landroid/graphics/Typeface;)V
+	public static final fun setTheme (Ljava/lang/String;Landroid/graphics/Typeface;Lai/clomni/messenger/ClomniThemeMode;)V
+	public static synthetic fun setTheme$default (Ljava/lang/String;Landroid/graphics/Typeface;Lai/clomni/messenger/ClomniThemeMode;ILjava/lang/Object;)V
 	public static final fun setTypeface (Landroid/graphics/Typeface;)V
 	public static final fun startFlow (Ljava/lang/String;)V
 	public static final fun startFlow (Ljava/lang/String;Ljava/util/Map;)V
@@ -60,6 +65,15 @@ public final class ai/clomni/messenger/ClomniPush {
 	public static final fun isClomniPush (Ljava/util/Map;)Z
 }
 
+public final class ai/clomni/messenger/ClomniThemeMode : java/lang/Enum {
+	public static final field DARK Lai/clomni/messenger/ClomniThemeMode;
+	public static final field LIGHT Lai/clomni/messenger/ClomniThemeMode;
+	public static final field SYSTEM Lai/clomni/messenger/ClomniThemeMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lai/clomni/messenger/ClomniThemeMode;
+	public static fun values ()[Lai/clomni/messenger/ClomniThemeMode;
+}
+
 public final class ai/clomni/messenger/ClomniUser {
 	public static final field $stable I
 	public fun <init> ()V
@@ -68,12 +82,6 @@ public final class ai/clomni/messenger/ClomniUser {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()Ljava/lang/String;
-	public final fun component4 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lai/clomni/messenger/ClomniUser;
-	public static synthetic fun copy$default (Lai/clomni/messenger/ClomniUser;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lai/clomni/messenger/ClomniUser;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getEmail ()Ljava/lang/String;
 	public final fun getName ()Ljava/lang/String;

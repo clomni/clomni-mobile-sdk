@@ -131,6 +131,13 @@ internal class FakeMobileServer : Dispatcher() {
     @Synchronized
     fun hasSocket(token: String?): Boolean = sockets.any { it.token == token }
 
+    /** The panel published a new appearance: config.changed to every socket. */
+    @Synchronized
+    fun configChanged() {
+        val frame = frame("config.changed", buildJsonObject { put("etag", "\"v2\"") })
+        sockets.forEach { send(it.token, it.socket, frame) }
+    }
+
     /** A bot message; with [buttons] (id to title) it is quick replies waiting for an answer. */
     @Synchronized
     fun botSays(conversationId: String, text: String, buttons: List<Pair<String, String>> = emptyList()): JsonObject {

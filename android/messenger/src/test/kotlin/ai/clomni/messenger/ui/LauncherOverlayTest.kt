@@ -1,6 +1,7 @@
 package ai.clomni.messenger.ui
 
 import ai.clomni.messenger.presentation.LauncherState
+import ai.clomni.messenger.presentation.ThemeOverride
 import ai.clomni.messenger.protocol.MessengerConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -11,8 +12,8 @@ class LauncherOverlayTest {
     private val asked = mutableListOf<String>()
     private val overlay = LauncherOverlay(
         object : LauncherOverlay.Surface<String> {
-            override fun show(screen: String, state: LauncherState, config: MessengerConfig?, tap: () -> Unit) {
-                asked += "show $screen ${state.badge ?: "-"}"
+            override fun show(screen: String, state: LauncherState, config: MessengerConfig?, override: ThemeOverride, tap: () -> Unit) {
+                asked += "show $screen ${state.badge ?: "-"}" + (override.mode?.let { " $it" } ?: "")
             }
 
             override fun hide(screen: String) {
@@ -49,5 +50,15 @@ class LauncherOverlayTest {
             listOf("show profile 3", "show profile 99+", "hide profile", "show rides 99+", "hide rides", "show rides 3"),
             asked,
         )
+    }
+
+    /** Clomni.setTheme redraws the button; the same look again asks for nothing. */
+    @Test
+    fun theAppsThemeRedrawsIt() {
+        overlay.resumed("profile")
+        overlay.update(on, null) {}
+        overlay.update(on, null, ThemeOverride(mode = MessengerConfig.ThemeMode.DARK)) {}
+        overlay.update(on, null, ThemeOverride(mode = MessengerConfig.ThemeMode.DARK)) {}
+        assertEquals(listOf("show profile 3", "show profile 3 DARK"), asked)
     }
 }

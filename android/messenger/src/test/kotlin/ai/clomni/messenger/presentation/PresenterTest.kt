@@ -21,7 +21,7 @@ import java.util.TimeZone
 internal object Fixture {
     private val protocol = ProtocolJson()
 
-    val aparConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
+    val aparConfig: MessengerConfig get() = protocol.parseConfig(APAR_CONFIG_V2)!!
     val minimalConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/43-config-minimal.json"))!!
 
     /** A conversation whose last message is the fixture [message] (created at 2026-10-01T10:30Z, or [at]). */
@@ -76,7 +76,12 @@ class PresenterTest {
 
         assertEquals("Salam 👋", presenter().home(snapshot(user = null)).header.greeting)
         assertEquals("Salam 👋", presenter().home(snapshot(user = "   ")).header.greeting)
-        assertEquals("Hi, Aysel 👋", presenter("en").home(snapshot(user = "Aysel")).header.greeting)
+        // The SDK's own texts ({first_name}); the panel's come with the config in its language.
+        val english = HomePresenter(ClomniStrings("en"), utc, now)
+        assertEquals("Hi, Aysel 👋", english.home(snapshot(user = "Aysel Məmmədova")).header.greeting)
+        assertEquals("Hi 👋", english.home(snapshot(user = null)).header.greeting)
+        val fullName = ClomniStrings("az", mapOf("greeting_line1" to "Xoş gəldiniz, {name}!"))
+        assertEquals("Xoş gəldiniz, Aysel Məmmədova!", fullName.greeting("Aysel Məmmədova"))
 
         val minimal = presenter(config = Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig)).header
         assertEquals("the SDK's text when the config has none", "Necə kömək edə bilərik?", minimal.title)
@@ -109,6 +114,59 @@ class PresenterTest {
         val noCards = presenter(config = null).home(snapshot(null, listOf(operatorReply)))
         assertNotNull(noCards.newConversation)
         assertNotNull(noCards.recent)
+    }
+
+    /** APPEARANCE-CONTRACT 1 and 4: what the panel publishes reaches Home. */
+    @Test
+    fun appearanceFromThePanel() {
+        val withMessage = listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json"))
+        val apar = presenter().home(snapshot(Fixture.aparConfig, withMessage))
+        assertEquals(listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS), apar.order)
+        assertEquals("Powered by Clomni", apar.poweredBy)
+        assertEquals(MessengerConfig.HeaderStyle.GRADIENT, apar.header.style)
+
+        val config = ProtocolJson().parseConfig(
+            """{"brand":{"name":"Apar","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",
+                        "logo_dark_url":"https://app.clomni.ai/v1/images/logo-dark",
+                        "header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/head","glow":true},
+               "team":{"show":false,"avatars":["https://app.clomni.ai/a/leyla.png"],"reply_time":"Tez",
+                       "reply_time_offline":"Səhər cavab veririk","office_hours":{"open_now":false}},
+               "bot":{"name":"Clomni","avatar_url":null},
+               "home":{"cards":["channels","recent","send"],"channels":[{"type":"instagram","url":"https://instagram.com/apar.az"}]},
+               "strings":{"greeting_line1":"Xoş gəldin, {first_name}!","greeting_line2":"Sualınız var?","send_card_title":"Yazın"},
+               "powered_by":false}""",
+        )!!
+        val home = presenter(config = config).home(snapshot(config, withMessage))
+        assertEquals("the panel's order", listOf(MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND), home.order)
+        assertNull("the plan turned it off", home.poweredBy)
+        assertEquals(MessengerConfig.HeaderStyle.IMAGE, home.header.style)
+        assertEquals("https://app.clomni.ai/v1/images/head", home.header.imageUrl)
+        assertTrue(home.header.glow)
+        assertEquals("https://app.clomni.ai/v1/images/logo-dark", home.header.logoDarkUrl)
+        assertEquals("team.show false", emptyList<String>(), home.header.teamAvatars)
+        assertEquals("Xoş gəldin, Aysel!", home.header.greeting)
+        assertEquals("Sualınız var?", home.header.title)
+        assertEquals("Yazın", home.newConversation?.title)
+        assertEquals("the office is closed", "Səhər cavab veririk", home.newConversation?.subtitle)
+        assertEquals("no bot picture: the brand's logo", "https://app.clomni.ai/v1/images/logo", HomePresenter.botAvatar(config))
+
+        // Without a recent conversation, that card is not in the order at all.
+        assertEquals(listOf(MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.SEND), presenter(config = config).home(snapshot(config)).order)
+        // A picture style without its picture is the gradient; solid stays solid.
+        val noPicture = ProtocolJson().parseConfig("""{"brand":{"header_style":"image"}}""")!!
+        assertEquals(MessengerConfig.HeaderStyle.GRADIENT, presenter(config = noPicture).home(snapshot(noPicture)).header.style)
+        val solid = ProtocolJson().parseConfig("""{"brand":{"header_style":"solid"}}""")!!
+        assertEquals(MessengerConfig.HeaderStyle.SOLID, presenter(config = solid).home(snapshot(solid)).header.style)
+    }
+
+    /** A bot's message on Home shows the panel's bot picture, as the conversation does. */
+    @Test
+    fun theBotsPictureIsThePanels() {
+        val bot = listOf(Fixture.conversation("conv_1", "01-text-bot.json"))
+        val panel = ProtocolJson().parseConfig(APAR_CONFIG_V2.replace("https://app.clomni.ai/a/bot.png", "https://app.clomni.ai/v1/images/bot"))!!
+        assertEquals("https://app.clomni.ai/v1/images/bot", presenter(config = panel).home(snapshot(panel, bot)).recent?.row?.avatarUrl)
+        val none = ProtocolJson().parseConfig("""{"brand":{"name":"Apar","logo_url":"https://app.clomni.ai/v1/images/logo"}}""")!!
+        assertEquals("the message's own", "https://app.clomni.ai/a/bot.png", presenter(config = none).home(snapshot(none, bot)).recent?.row?.avatarUrl)
     }
 
     @Test

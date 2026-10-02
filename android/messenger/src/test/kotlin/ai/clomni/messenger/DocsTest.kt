@@ -28,4 +28,18 @@ class DocsTest {
             assertEquals("$path#L$first-L$last", lines.joinToString("\n") { it.drop(indent) }, text)
         }
     }
+
+    /** docs/screenshots/appearance/android are copies of AppearanceSnapshotTest's references, kept the same. */
+    @Test
+    fun appearanceScreenshotsAreTheSnapshots() {
+        val docs = File(android, "../docs/screenshots/appearance/android")
+        val prefix = "ai.clomni.messenger.ui_AppearanceSnapshotTest_"
+        val references = File(android, "messenger/src/test/snapshots/images").listFiles()!!
+            .filter { it.name.startsWith(prefix) }
+            .associateBy { it.name.removePrefix(prefix).substringAfter('_') }
+        assertEquals(references.keys.sorted(), docs.list()!!.sorted())
+        for ((name, reference) in references) {
+            assertTrue("docs/screenshots/appearance/android/$name is not the snapshot", reference.readBytes().contentEquals(File(docs, name).readBytes()))
+        }
+    }
 }

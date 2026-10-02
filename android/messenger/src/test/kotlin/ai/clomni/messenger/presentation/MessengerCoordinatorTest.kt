@@ -148,7 +148,7 @@ class MessengerCoordinatorTest {
 
         // The panel can turn it on, on the left; the app's choice wins over the panel's.
         val panelOn = ProtocolJson().parseConfig(
-            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},"launcher":{"visible":true,"position":"left","bottom_padding":0}}""",
+            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},"theme":{"launcher":{"enabled":true,"position":"left","bottom_padding":0}}}""",
         )!!
         session.cachedConfig = panelOn
         session.freshConfig = panelOn

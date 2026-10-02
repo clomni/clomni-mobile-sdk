@@ -13,6 +13,7 @@ import ai.clomni.messenger.presentation.MessengerEvents
 import ai.clomni.messenger.presentation.MessengerRoute
 import ai.clomni.messenger.presentation.PushNotification
 import ai.clomni.messenger.presentation.RgbColor
+import ai.clomni.messenger.presentation.ThemeOverride
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.ProtocolJson
 import android.app.Activity
@@ -146,7 +147,7 @@ internal object MessengerRuntime {
         val strings = ClomniStrings(config?.languages?.firstOrNull() ?: Locale.getDefault().language, config?.strings.orEmpty())
         val label = context.applicationInfo.loadLabel(context.packageManager).toString()
         val notification = PushNotification.of(push, data, strings, label)
-        val color = config?.brand?.primaryColor?.let(RgbColor::parse)?.argb
+        val color = (AppTheme.override.primaryColor ?: config?.brand?.primaryColor?.let(RgbColor::parse))?.argb
         val post = { PushNotifier.post(context, notification, notificationIcon, color) }
         if (Looper.myLooper() == Looper.getMainLooper()) waits.execute(post) else post()
     }
@@ -159,6 +160,12 @@ internal object MessengerRuntime {
     fun setLauncherVisible(visible: Boolean) {
         launcherVisible = visible
         coordinator?.setLauncherVisible(visible)
+    }
+
+    /** `Clomni.setTheme`: the open screens redraw by themselves (it is Compose state); the launcher is told here. */
+    fun setTheme(override: ThemeOverride) {
+        AppTheme.override = override
+        render()
     }
 
     fun setBottomPadding(padding: Int) {
@@ -228,7 +235,7 @@ internal object MessengerRuntime {
         } else if (coordinator.route == null && shown != null && !shown.isFinishing) {
             shown.finish()
         }
-        overlay.update(coordinator.launcher, coordinator.config) { coordinator.present("launcher") }
+        overlay.update(coordinator.launcher, coordinator.config, AppTheme.override) { coordinator.present("launcher") }
     }
 
     private fun open() {

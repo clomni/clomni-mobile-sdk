@@ -151,17 +151,17 @@ internal class MessengerCoordinator(
     val launcher: LauncherState?
         get() {
             if (readiness != Readiness.READY || route != null) return null
-            if (!(launcherOverride ?: config?.launcher?.visible ?: false)) return null
+            if (!(launcherOverride ?: config?.theme?.launcher?.enabled ?: false)) return null
             val badge = when {
                 unreadTotal > 99 -> "99+"
                 unreadTotal > 0 -> unreadTotal.toString()
                 else -> null
             }
-            val label = strings[ClomniStrings.Key.NEW_CONVERSATION] +
+            val label = strings[ClomniStrings.Key.SEND_CARD_TITLE] +
                 if (unreadTotal > 0) ", ${strings[ClomniStrings.Key.UNREAD_MESSAGES]}" else ""
             return LauncherState(
-                side = config?.launcher?.position ?: MessengerConfig.LauncherPosition.RIGHT,
-                bottomPadding = bottomPaddingOverride ?: config?.launcher?.bottomPadding ?: 20,
+                side = config?.theme?.launcher?.position ?: MessengerConfig.LauncherPosition.RIGHT,
+                bottomPadding = bottomPaddingOverride ?: config?.theme?.launcher?.bottomPadding ?: 20,
                 badge = badge,
                 accessibilityLabel = label,
             )

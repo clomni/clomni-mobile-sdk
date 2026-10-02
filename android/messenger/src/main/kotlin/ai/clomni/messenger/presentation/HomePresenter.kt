@@ -17,7 +17,11 @@ internal data class HomeScreen(
     val newConversation: NewConversationCard?,
     val recent: RecentCard?,
     val channels: ChannelsCard?,
+    /** The cards in the panel's order; one without its card above (no channels, nothing recent) is left out. */
+    val order: List<MessengerConfig.HomeCard>,
     val tabs: Tabs,
+    /** "Powered by Clomni" under the cards, or null where the plan turns it off. */
+    val poweredBy: String?,
     /** The thin yellow strip under the header. */
     val offline: String?,
     val failure: Failure?,
@@ -34,6 +38,13 @@ internal data class HomeScreen(
     data class Header(
         val brandName: String,
         val logoUrl: String?,
+        /** For dark mode; [logoUrl] when null. */
+        val logoDarkUrl: String?,
+        val style: MessengerConfig.HeaderStyle,
+        /** The photo of [MessengerConfig.HeaderStyle.IMAGE], under a dark veil. */
+        val imageUrl: String?,
+        /** A soft glow of the brand colour behind the header. */
+        val glow: Boolean,
         /** Stands in the logo square while there is no logo. */
         val brandInitial: String,
         /** Up to three, overlapping. */
@@ -114,12 +125,16 @@ internal class HomePresenter(
     fun home(snapshot: MessengerSnapshot): HomeScreen {
         val config = snapshot.config
         val cards = config?.home?.cards ?: MessengerConfig.HomeCard.entries
-        val recent = if (MessengerConfig.HomeCard.RECENT_CONVERSATION in cards) {
+        val recent = if (MessengerConfig.HomeCard.RECENT in cards) {
             snapshot.conversations.asSequence().mapNotNull { row(it, config) }.firstOrNull()
         } else {
             null
         }
-        val channels = config?.home?.channels.orEmpty().map { ChannelItem.of(it.type, it.url, strings) }
+        val channels = if (MessengerConfig.HomeCard.CHANNELS in cards) {
+            config?.home?.channels.orEmpty().take(MessengerConfig.MAX_CHANNELS).map { ChannelItem.of(it.type, it.url, strings) }
+        } else {
+            emptyList()
+        }
         val failed = config == null && snapshot.configLoad == MessengerSnapshot.Load.FAILED
         return HomeScreen(
             phase = when {
@@ -128,10 +143,18 @@ internal class HomePresenter(
                 else -> HomeScreen.Phase.LOADING
             },
             header = header(snapshot),
-            newConversation = if (MessengerConfig.HomeCard.NEW_CONVERSATION in cards) newConversation(config) else null,
+            newConversation = newConversation(config),
             recent = recent?.let { HomeScreen.RecentCard(strings[Key.RECENT_MESSAGE], it) },
             channels = if (channels.isEmpty()) null else HomeScreen.ChannelsCard(strings[Key.FOLLOW_US], channels),
+            order = cards.filter {
+                when (it) {
+                    MessengerConfig.HomeCard.SEND -> true
+                    MessengerConfig.HomeCard.RECENT -> recent != null
+                    MessengerConfig.HomeCard.CHANNELS -> channels.isNotEmpty()
+                }
+            },
             tabs = tabs(snapshot),
+            poweredBy = if (config?.poweredBy == false) null else POWERED_BY,
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
             failure = if (failed) failure else null,
         )
@@ -149,7 +172,7 @@ internal class HomePresenter(
             title = strings[Key.TAB_MESSAGES],
             phase = phase,
             rows = rows,
-            empty = if (phase == HomeScreen.Phase.READY && rows.isEmpty()) strings[Key.NO_CONVERSATIONS] else null,
+            empty = if (phase == HomeScreen.Phase.READY && rows.isEmpty()) strings[Key.EMPTY_LIST] else null,
             newConversation = newConversation(snapshot.config),
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
             failure = if (failed) failure else null,
@@ -170,10 +193,12 @@ internal class HomePresenter(
         // The avatar is the other side's: the operator's, or the bot's.
         val fromUs = message.sender.type == SenderType.USER || message.sender.type == SenderType.SYSTEM
         val otherName = if (fromUs) conversation.assignee?.name ?: botName ?: brand else name
-        val otherAvatar = if (fromUs) {
-            conversation.assignee?.avatarUrl ?: config?.bot?.avatarUrl
-        } else {
-            message.sender.avatarUrl ?: if (message.sender.type == SenderType.BOT) config?.bot?.avatarUrl else null
+        val botAvatar = botAvatar(config)
+        val otherAvatar = when {
+            fromUs -> conversation.assignee?.avatarUrl ?: botAvatar
+            // The panel's bot picture, as in the conversation.
+            message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar
+            else -> message.sender.avatarUrl
         }
         val preview = plainText(message)
         val ago = time.ago(message.createdAt, now)
@@ -192,26 +217,29 @@ internal class HomePresenter(
     private fun header(snapshot: MessengerSnapshot): HomeScreen.Header {
         val config = snapshot.config
         val brand = config?.brand?.name.orEmpty()
-        val firstName = snapshot.userName?.trim()?.split(WHITESPACE)?.firstOrNull()?.takeIf { it.isNotEmpty() }
-        val hello = strings[Key.GREETING_HELLO]
         return HomeScreen.Header(
             brandName = brand,
             logoUrl = config?.brand?.logoUrl,
+            logoDarkUrl = config?.brand?.logoDarkUrl,
+            // A picture style without its picture is the gradient.
+            style = config?.brand?.headerStyle
+                ?.takeUnless { it == MessengerConfig.HeaderStyle.IMAGE && config.brand.headerImageUrl == null }
+                ?: MessengerConfig.HeaderStyle.GRADIENT,
+            imageUrl = config?.brand?.headerImageUrl,
+            glow = config?.brand?.glow ?: false,
             brandInitial = brand.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
-            teamAvatars = if (config?.home?.showTeamAvatars == false) {
-                emptyList()
-            } else {
-                config?.team?.avatars.orEmpty().take(3)
-            },
-            greeting = if (firstName != null) "$hello, $firstName 👋" else "$hello 👋",
-            title = config?.home?.greetingTitle ?: strings[Key.GREETING_TITLE],
+            teamAvatars = if (config?.team?.show == false) emptyList() else config?.team?.avatars.orEmpty().take(3),
+            greeting = strings.greeting(snapshot.userName),
+            title = strings[Key.GREETING_LINE2],
             closeLabel = strings[Key.CLOSE],
         )
     }
 
     private fun newConversation(config: MessengerConfig?): HomeScreen.NewConversationCard {
-        val title = strings[Key.NEW_CONVERSATION]
-        val subtitle = config?.team?.replyTime
+        val title = strings[Key.SEND_CARD_TITLE]
+        val team = config?.team
+        // After hours the panel's own line ("Hazırda iş saatı deyil, sizə səhər cavab verəcəyik").
+        val subtitle = if (team?.officeHours?.openNow == false) team.replyTimeOffline ?: team.replyTime else team?.replyTime
         return HomeScreen.NewConversationCard(title, subtitle, if (subtitle != null) "$title. $subtitle" else title)
     }
 
@@ -229,7 +257,12 @@ internal class HomePresenter(
     private val failure get() = HomeScreen.Failure(strings[Key.ERROR], strings[Key.RETRY])
 
     companion object {
-        private val WHITESPACE = Regex("\\s+")
+        /** Not translated: the product's name. */
+        const val POWERED_BY = "Powered by Clomni"
+
+        /** The bot's picture; the brand's logo when the panel set none (the initial when there is no logo either). */
+        fun botAvatar(config: MessengerConfig?): String? = config?.bot?.avatarUrl ?: config?.brand?.logoUrl
+
         private val LINK = Regex("\\[([^\\]]*)\\]\\([^)]*\\)")
 
         // `\w` spelled out: Java's is ASCII-only, Android's (ICU) is not.

@@ -449,58 +449,38 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
 
     private fun config(o: JsonObject): MessengerConfig {
         val brand = o.section("brand")
-        val launcher = o.section("launcher")
         val home = o.section("home")
         val team = o.section("team")
         val bot = o.section("bot")
+        val theme = o.section("theme")
+        val launcher = theme.section("launcher")
         val composer = o.section("composer")
         val limits = o.section("limits")
         val primaryColor = brand.string("primary_color")
         return MessengerConfig(
+            version = o.int("version") ?: 0,
             brand = MessengerConfig.Brand(
                 name = brand.string("name") ?: "",
                 logoUrl = brand.string("logo_url"),
+                logoDarkUrl = brand.string("logo_dark_url"),
                 primaryColor = primaryColor?.takeIf { hexColor.matches(it) } ?: run {
                     logger("brand.primary_color \"$primaryColor\" is not #RRGGBB; default colour used")
                     MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR
                 },
-                onPrimaryColor = brand.string("on_primary_color")?.takeIf { hexColor.matches(it) },
-                theme = when (brand.string("theme")) {
-                    "light" -> MessengerConfig.Theme.LIGHT
-                    "dark" -> MessengerConfig.Theme.DARK
-                    else -> MessengerConfig.Theme.SYSTEM
+                headerStyle = when (brand.string("header_style")) {
+                    "solid" -> MessengerConfig.HeaderStyle.SOLID
+                    "image" -> MessengerConfig.HeaderStyle.IMAGE
+                    else -> MessengerConfig.HeaderStyle.GRADIENT
                 },
-            ),
-            launcher = MessengerConfig.Launcher(
-                visible = launcher.boolean("visible") ?: false,
-                position = if (launcher.string("position") == "left") {
-                    MessengerConfig.LauncherPosition.LEFT
-                } else {
-                    MessengerConfig.LauncherPosition.RIGHT
-                },
-                bottomPadding = launcher.int("bottom_padding")?.takeIf { it >= 0 } ?: 20,
-                icon = launcher.string("icon") ?: "default",
-            ),
-            home = MessengerConfig.Home(
-                greetingTitle = home.string("greeting_title"),
-                greetingSubtitle = home.string("greeting_subtitle"),
-                showTeamAvatars = home.boolean("show_team_avatars") ?: true,
-                channels = (home["channels"] as? JsonArray).orEmpty().mapNotNull { element ->
-                    val channel = element as? JsonObject ?: return@mapNotNull null
-                    val type = channel.string("type") ?: return@mapNotNull null
-                    channel.string("url")?.let { MessengerConfig.Channel(type, it) }
-                },
-                cards = (home["cards"] as? JsonArray)?.strings()?.mapNotNull {
-                    when (it) {
-                        "recent_conversation" -> MessengerConfig.HomeCard.RECENT_CONVERSATION
-                        "new_conversation" -> MessengerConfig.HomeCard.NEW_CONVERSATION
-                        else -> null
-                    }
-                } ?: MessengerConfig.HomeCard.entries,
+                headerImageUrl = brand.string("header_image_url"),
+                glow = brand.boolean("glow") ?: false,
+                colors = colors(brand.section("colors")),
             ),
             team = MessengerConfig.Team(
+                show = team.boolean("show") ?: true,
                 avatars = (team["avatars"] as? JsonArray)?.strings().orEmpty(),
                 replyTime = team.string("reply_time"),
+                replyTimeOffline = team.string("reply_time_offline"),
                 officeHours = (team["office_hours"] as? JsonObject)?.let {
                     MessengerConfig.OfficeHours(
                         it.string("tz"),
@@ -510,8 +490,31 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 },
             ),
             bot = MessengerConfig.Bot(bot.string("name") ?: "", bot.string("avatar_url")),
+            home = MessengerConfig.Home(
+                cards = homeCards(home["cards"] as? JsonArray),
+                channels = (home["channels"] as? JsonArray).orEmpty().mapNotNull { element ->
+                    val channel = element as? JsonObject ?: return@mapNotNull null
+                    val type = channel.string("type") ?: return@mapNotNull null
+                    channel.string("url")?.let { MessengerConfig.Channel(type, it) }
+                }.take(MessengerConfig.MAX_CHANNELS),
+            ),
+            theme = MessengerConfig.ThemeSettings(
+                mode = when (theme.string("mode")) {
+                    "light" -> MessengerConfig.ThemeMode.LIGHT
+                    "dark" -> MessengerConfig.ThemeMode.DARK
+                    else -> MessengerConfig.ThemeMode.SYSTEM
+                },
+                launcher = MessengerConfig.Launcher(
+                    enabled = launcher.boolean("enabled") ?: false,
+                    position = if (launcher.string("position") == "left") {
+                        MessengerConfig.LauncherPosition.LEFT
+                    } else {
+                        MessengerConfig.LauncherPosition.RIGHT
+                    },
+                    bottomPadding = launcher.int("bottom_padding")?.coerceIn(0, 200) ?: 20,
+                ),
+            ),
             composer = MessengerConfig.Composer(
-                placeholder = composer.string("placeholder"),
                 attachments = composer.boolean("attachments") ?: true,
                 emoji = composer.boolean("emoji") ?: true,
             ),
@@ -524,7 +527,46 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 fileMb = limits.int("file_mb")?.takeIf { it > 0 } ?: 25,
                 textChars = limits.int("text_chars")?.takeIf { it > 0 } ?: 4000,
             ),
+            poweredBy = o.boolean("powered_by") ?: true,
         )
+    }
+
+    /** The panel's order of the known cards; "send" is always there, first unless placed. */
+    private fun homeCards(cards: JsonArray?): List<MessengerConfig.HomeCard> {
+        val known = cards?.strings()?.mapNotNull {
+            when (it) {
+                "send" -> MessengerConfig.HomeCard.SEND
+                "recent" -> MessengerConfig.HomeCard.RECENT
+                "channels" -> MessengerConfig.HomeCard.CHANNELS
+                else -> null
+            }
+        }?.distinct() ?: return MessengerConfig.HomeCard.entries
+        return if (MessengerConfig.HomeCard.SEND in known) known else listOf(MessengerConfig.HomeCard.SEND) + known
+    }
+
+    /** Both palettes, every colour #RRGGBB; anything less and the SDK derives them itself. */
+    private fun colors(o: JsonObject): MessengerConfig.Colors? {
+        fun palette(p: JsonObject?): MessengerConfig.Palette? {
+            p ?: return null
+            fun color(key: String) = p.string(key)?.takeIf { hexColor.matches(it) }
+            return MessengerConfig.Palette(
+                primary = color("primary") ?: return null,
+                onPrimary = color("on_primary") ?: return null,
+                primarySoft = color("primary_soft") ?: return null,
+                primaryLine = color("primary_line") ?: return null,
+                headerFrom = color("header_from") ?: return null,
+                headerTo = color("header_to") ?: return null,
+                headerText = color("header_text"),
+            )
+        }
+        if (o.isEmpty()) return null
+        val light = palette(o["light"] as? JsonObject)
+        val dark = palette(o["dark"] as? JsonObject)
+        if (light == null || dark == null) {
+            logger("brand.colors incomplete; the SDK derives the colours")
+            return null
+        }
+        return MessengerConfig.Colors(light, dark)
     }
 
     private fun push(o: JsonObject): PushPayload {

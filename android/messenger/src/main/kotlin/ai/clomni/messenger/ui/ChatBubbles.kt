@@ -5,6 +5,7 @@ import ai.clomni.messenger.presentation.Bubble
 import ai.clomni.messenger.presentation.ChatAvatar
 import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ClomniTheme
+import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.Media
 import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.SystemLine
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -428,9 +430,6 @@ internal fun ChatAvatarView(avatar: ChatAvatar, size: Float, theme: ClomniTheme)
             avatar.initial,
             style = clomniText(0f, theme.colors.onPrimary, FontWeight.Bold).copy(fontSize = fontSize, lineHeight = fontSize),
         )
-        val url = avatar.url
-        if (url != null && !LocalInspectionMode.current) {
-            coil.compose.AsyncImage(url, null, Modifier.size(size.dp), contentScale = ContentScale.Crop)
-        }
+        avatar.url?.let { RemoteImageFill(it, ImageSizing.Kind.ICON, size, Color.Transparent) }
     }
 }

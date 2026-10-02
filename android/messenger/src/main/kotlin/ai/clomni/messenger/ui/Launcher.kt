@@ -3,6 +3,7 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.LauncherState
+import ai.clomni.messenger.presentation.ThemeOverride
 import ai.clomni.messenger.protocol.MessengerConfig
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -29,7 +30,7 @@ import android.widget.FrameLayout
 internal class LauncherOverlay<S : Any>(private val surface: Surface<S>) {
     interface Surface<S> {
         /** Puts the button on [screen] (or updates the one already there). */
-        fun show(screen: S, state: LauncherState, config: MessengerConfig?, tap: () -> Unit)
+        fun show(screen: S, state: LauncherState, config: MessengerConfig?, override: ThemeOverride, tap: () -> Unit)
 
         fun hide(screen: S)
     }
@@ -38,9 +39,10 @@ internal class LauncherOverlay<S : Any>(private val surface: Surface<S>) {
     private var shownOn: S? = null
 
     /** What [shownOn] has, to ask the surface only for changes. */
-    private var shown: Pair<LauncherState, MessengerConfig?>? = null
+    private var shown: Triple<LauncherState, MessengerConfig?, ThemeOverride>? = null
     private var state: LauncherState? = null
     private var config: MessengerConfig? = null
+    private var override = ThemeOverride()
     private var tap: () -> Unit = {}
 
     /** An app screen came to the front. */
@@ -55,9 +57,11 @@ internal class LauncherOverlay<S : Any>(private val surface: Surface<S>) {
         render()
     }
 
-    fun update(state: LauncherState?, config: MessengerConfig?, tap: () -> Unit) {
+    /** [override]: `Clomni.setTheme`, over the panel's look. */
+    fun update(state: LauncherState?, config: MessengerConfig?, override: ThemeOverride = ThemeOverride(), tap: () -> Unit) {
         this.state = state
         this.config = config
+        this.override = override
         this.tap = tap
         render()
     }
@@ -72,22 +76,23 @@ internal class LauncherOverlay<S : Any>(private val surface: Surface<S>) {
         }
         shownOn = target
         val current = state ?: return
-        if (target == null || shown == current to config) return
-        shown = current to config
-        surface.show(target, current, config, tap)
+        val look = Triple(current, config, override)
+        if (target == null || shown == look) return
+        shown = look
+        surface.show(target, current, config, override, tap)
     }
 }
 
 /** The launcher on an activity: a [LauncherView] added to its window's decor view, never a system window. */
 internal class ActivityLauncherSurface : LauncherOverlay.Surface<Activity> {
-    override fun show(screen: Activity, state: LauncherState, config: MessengerConfig?, tap: () -> Unit) {
+    override fun show(screen: Activity, state: LauncherState, config: MessengerConfig?, override: ThemeOverride, tap: () -> Unit) {
         val decor = screen.window?.decorView as? ViewGroup ?: return
         val view = decor.findViewWithTag<LauncherView>(TAG) ?: LauncherView(screen).also {
             it.tag = TAG
             decor.addView(it)
         }
         val dark = (screen.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        view.bind(state, ClomniTheme.make(config?.brand, ClomniTheme.isDark(config?.brand?.theme, dark)), tap)
+        view.bind(state, ClomniTheme.resolve(config, dark, override), tap)
     }
 
     override fun hide(screen: Activity) {

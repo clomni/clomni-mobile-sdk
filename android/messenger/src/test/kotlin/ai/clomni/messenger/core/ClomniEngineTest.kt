@@ -499,6 +499,19 @@ class ClomniEngineTest {
         assertEquals("Apar", phone.engine.config?.brand?.name)
     }
 
+    /** config.changed refetches the config in the language it was asked in, not in the server's default. */
+    @Test
+    fun configChangedKeepsTheLanguage() {
+        val (phone, _) = ready()
+        phone.engine.refreshConfig("ru").await()
+        fake.configChanged()
+        eventually("the refetch") { fake.count("GET /v1/mobile/config") == 2 }
+        assertEquals(
+            listOf("GET /v1/mobile/config?lang=ru", "GET /v1/mobile/config?lang=ru"),
+            fake.log.filter { it.startsWith("GET /v1/mobile/config") },
+        )
+    }
+
     @Test
     fun readReceiptsAndTypingAreNotRepeated() {
         val (phone, conversation) = ready()

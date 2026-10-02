@@ -176,15 +176,21 @@ if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_
 
 Every call works from Java as well; the sample compiles one of each:
 
-<!-- sample: java/ai/clomni/messenger/sample/JavaUsage.java#L23-L25 -->
+<!-- sample: java/ai/clomni/messenger/sample/JavaUsage.java#L24-L26 -->
 ```java
 Clomni.initialize(context, "app_demo", "android_sdk-demo");
 Clomni.setLogLevel(ClomniLogLevel.DEBUG);
 Clomni.loginUser(new ClomniUser("12345", "aysel@example.com"), "hash from the app's server");
 ```
 
-## 11. Font and logs
+## 11. Look, font and logs
 
-`Clomni.setTypeface(typeface)` puts the app's font on every text of the messenger (it still follows the user's font
-size). `Clomni.setLogLevel(ClomniLogLevel.DEBUG)` while developing; integration mistakes are logged as errors under
-the tag `Clomni`.
+The messenger's colours, logo, header, Home cards and texts come from the panel (the inbox's "Görünüş" tab) and
+change without an app update; a published change fades in on the open screen. To put the app's own look over the
+panel's, `Clomni.setTheme(primaryColor = "#0A66C2", mode = ClomniThemeMode.DARK)`: the other brand colours are
+derived from the colour by the panel's rules, the mode is `LIGHT`, `DARK` or `SYSTEM`, and each call replaces the
+last; a value left out (null) stays the panel's. Its `typeface`, like `Clomni.setTypeface(typeface)`, puts the app's
+font on every text of the messenger (it still follows the user's font size).
+
+`Clomni.setLogLevel(ClomniLogLevel.DEBUG)` while developing; integration mistakes are logged as errors under the tag
+`Clomni`.

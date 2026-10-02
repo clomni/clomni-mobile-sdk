@@ -3,8 +3,11 @@ package ai.clomni.messenger
 import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.log.ClomniLog
-import ai.clomni.messenger.ui.MessengerRuntime
+import ai.clomni.messenger.presentation.RgbColor
+import ai.clomni.messenger.presentation.ThemeOverride
+import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.ui.ClomniFonts
+import ai.clomni.messenger.ui.MessengerRuntime
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Handler
@@ -18,13 +21,22 @@ import kotlinx.serialization.json.JsonPrimitive
 /**
  * The app's user, for [Clomni.loginUser]. Clomni knows the user by [userId], else by [email]; [phone] and [name] are
  * shown to the operators and fill the messenger's forms.
+ *
+ * A plain class, not a data class, so a later field can be added without breaking apps built against this one.
  */
-public data class ClomniUser @JvmOverloads constructor(
-    val userId: String? = null,
-    val email: String? = null,
-    val phone: String? = null,
-    val name: String? = null,
-)
+public class ClomniUser @JvmOverloads constructor(
+    public val userId: String? = null,
+    public val email: String? = null,
+    public val phone: String? = null,
+    public val name: String? = null,
+) {
+    override fun equals(other: Any?): Boolean =
+        other is ClomniUser && userId == other.userId && email == other.email && phone == other.phone && name == other.name
+
+    override fun hashCode(): Int = listOf(userId, email, phone, name).hashCode()
+
+    override fun toString(): String = "ClomniUser(userId=$userId, email=$email, phone=$phone, name=$name)"
+}
 
 /**
  * The Clomni Messenger SDK (brief 8·9): everything the app calls is here, with the same names as on iOS.
@@ -188,6 +200,29 @@ public object Clomni {
         ClomniFonts.typeface = typeface
     }
 
+    /**
+     * The app's own look over the panel's. [primaryColor] "#RRGGBB": the other brand colours are derived from it by
+     * the panel's rules. [mode]: light, dark, or as the system is. Each call replaces the last; null leaves that one to
+     * the panel. [typeface] sets the font as [setTypeface] does; null leaves the font as it is. The open messenger and
+     * the launcher change at once.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun setTheme(primaryColor: String? = null, typeface: Typeface? = null, mode: ClomniThemeMode? = null) {
+        typeface?.let(::setTypeface)
+        val override = themeOverride(primaryColor, mode)
+        onMain { MessengerRuntime.setTheme(override) }
+    }
+
+    /** [setTheme]'s colour and mode; a colour that is not #RRGGBB is logged and left to the panel. */
+    internal fun themeOverride(primaryColor: String?, mode: ClomniThemeMode?): ThemeOverride {
+        val color = primaryColor?.let(RgbColor::parse)
+        if (primaryColor != null && color == null) {
+            ClomniLog.error { "setTheme: primaryColor \"$primaryColor\" is not #RRGGBB; the panel's colour stays" }
+        }
+        return ThemeOverride(color, mode?.mode)
+    }
+
     /** Lifts the launcher above the app's bottom navigation, in dp. */
     @JvmStatic
     public fun setBottomPadding(dp: Int) {
@@ -266,6 +301,13 @@ public object Clomni {
         is Array<*> -> JsonArray(value.map(::json))
         else -> throw IllegalArgumentException("data holds a ${value::class.java.simpleName}, which JSON cannot carry")
     }
+}
+
+/** Light, dark, or as the system is, for [Clomni.setTheme]. */
+public enum class ClomniThemeMode(internal val mode: MessengerConfig.ThemeMode) {
+    SYSTEM(MessengerConfig.ThemeMode.SYSTEM),
+    LIGHT(MessengerConfig.ThemeMode.LIGHT),
+    DARK(MessengerConfig.ThemeMode.DARK),
 }
 
 /** How much the SDK writes to logcat, for [Clomni.setLogLevel]. */

@@ -61,8 +61,8 @@ internal class ChatPresenter(
         val subtitle = when {
             hours?.openNow == false ->
                 hours.nextOpenAt?.let { strings.format(Key.AWAY_UNTIL, time.upcoming(it, now)) } ?: strings[Key.AWAY]
-            status == ConversationStatus.QUEUED -> config?.team?.replyTime ?: strings[Key.TEAM_CAN_HELP]
-            else -> strings[Key.TEAM_CAN_HELP]
+            status == ConversationStatus.QUEUED -> config?.team?.replyTime ?: strings[Key.HEADER_SUBTITLE]
+            else -> strings[Key.HEADER_SUBTITLE]
         }
         return ChatHeader(
             ChatHeader.Lead.Team(teamAvatars(config)),
@@ -74,7 +74,7 @@ internal class ChatPresenter(
     }
 
     private fun teamAvatars(config: MessengerConfig?): List<String> =
-        if (config?.home?.showTeamAvatars == false) emptyList() else config?.team?.avatars.orEmpty().take(3)
+        if (config?.team?.show == false) emptyList() else config?.team?.avatars.orEmpty().take(3)
 
     // Composer
 
@@ -84,13 +84,13 @@ internal class ChatPresenter(
         val replies = waiting?.content as? MessageContent.QuickReplies
         val mode = when {
             snapshot.conversation?.status == ConversationStatus.CLOSED ->
-                ChatComposer.Mode.Closed(strings[Key.CONVERSATION_CLOSED], strings[Key.START_NEW_CONVERSATION])
+                ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
             replies?.inputDisabled == true -> ChatComposer.Mode.Locked(strings[Key.CHOOSE_ABOVE])
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(
             mode = mode,
-            placeholder = config?.composer?.placeholder ?: strings[Key.MESSAGE_PLACEHOLDER],
+            placeholder = strings[Key.COMPOSER_PLACEHOLDER],
             showsAttach = config?.composer?.attachments ?: true,
             showsEmoji = config?.composer?.emoji ?: true,
             limit = config?.limits?.textChars ?: 4_000,
@@ -397,7 +397,7 @@ internal class ChatPresenter(
         return when (sender.type) {
             SenderType.BOT -> {
                 val name = sender.name ?: config?.bot?.name?.takeIf { it.isNotEmpty() } ?: brand
-                name to ChatAvatar(config?.bot?.avatarUrl ?: sender.avatarUrl, initial(name), true)
+                name to ChatAvatar(config?.bot?.avatarUrl ?: sender.avatarUrl ?: config?.brand?.logoUrl, initial(name), true)
             }
             SenderType.OPERATOR -> {
                 val assignee = snapshot.conversation?.assignee

@@ -1,154 +1,154 @@
 package ai.clomni.messenger.protocol
 
+import ai.clomni.messenger.presentation.APAR_CONFIG_V2
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** GET /v1/mobile/config, version 2 (APPEARANCE-CONTRACT 1). */
 class MessengerConfigTest {
-
     private val protocol = RecordingProtocol()
-
-    private fun fixture(name: String): MessengerConfig = protocol.json.parseConfig(ProtocolFiles.read("fixtures/$name"))!!
 
     private fun config(json: String): MessengerConfig = protocol.json.parseConfig(json)!!
 
     @Test
-    fun fullConfig() {
+    fun theContractsExample() {
+        val config = config(APAR_CONFIG_V2)
+        assertEquals(12, config.version)
         assertEquals(
-            MessengerConfig(
-                brand = MessengerConfig.Brand(
-                    name = "Apar",
-                    logoUrl = "https://app.clomni.ai/a/apar.png",
-                    primaryColor = "#1F9D63",
-                    onPrimaryColor = "#FFFFFF",
-                    theme = MessengerConfig.Theme.SYSTEM,
+            MessengerConfig.Brand(
+                name = "Apar",
+                logoUrl = "https://app.clomni.ai/a/apar.png",
+                logoDarkUrl = null,
+                primaryColor = "#1F9D63",
+                headerStyle = MessengerConfig.HeaderStyle.GRADIENT,
+                headerImageUrl = null,
+                glow = false,
+                colors = MessengerConfig.Colors(
+                    light = MessengerConfig.Palette("#1F9D63", "#FFFFFF", "#E9F5EF", "#C6E6D5", "#1F9D63", "#13734A", "#FFFFFF"),
+                    dark = MessengerConfig.Palette("#34B57A", "#0B0C0E", "#16241D", "#24503A", "#1F9D63", "#0E4F33", "#FFFFFF"),
                 ),
-                launcher = MessengerConfig.Launcher(false, MessengerConfig.LauncherPosition.RIGHT, 20, "default"),
-                home = MessengerConfig.Home(
-                    greetingTitle = "Necə kömək edə bilərik?",
-                    greetingSubtitle = "Bizdən nəsə soruşun və ya fikrinizi bildirin",
-                    showTeamAvatars = true,
-                    channels = listOf(
-                        MessengerConfig.Channel("instagram", "https://instagram.com/apar.az"),
-                        MessengerConfig.Channel("whatsapp", "https://wa.me/994501234567"),
-                        MessengerConfig.Channel("linkedin", "https://linkedin.com/company/apar"),
-                        MessengerConfig.Channel("email", "mailto:support@apar.az"),
-                    ),
-                    cards = listOf(MessengerConfig.HomeCard.RECENT_CONVERSATION, MessengerConfig.HomeCard.NEW_CONVERSATION),
-                ),
-                team = MessengerConfig.Team(
-                    avatars = listOf(
-                        "https://app.clomni.ai/a/leyla.png",
-                        "https://app.clomni.ai/a/rauf.png",
-                        "https://app.clomni.ai/a/nigar.png",
-                    ),
-                    replyTime = "Adətən bir neçə dəqiqəyə cavab veririk",
-                    officeHours = MessengerConfig.OfficeHours("Asia/Baku", true),
-                ),
-                bot = MessengerConfig.Bot("Clomni", "https://app.clomni.ai/a/bot.png"),
-                composer = MessengerConfig.Composer("Mesaj yazın…", attachments = true, emoji = true),
-                languages = listOf("az", "en", "ru"),
-                strings = mapOf(
-                    "today" to "Bu gün",
-                    "yesterday" to "Dünən",
-                    "send" to "Göndər",
-                    "new_conversation" to "Bizə mesaj göndərin",
-                    "sent" to "Göndərildi",
-                    "read" to "Oxundu",
-                    "choose_above" to "Yuxarıdakı variantlardan birini seçin",
-                ),
-                limits = MessengerConfig.Limits(10, 25, 4000),
             ),
-            fixture("42-config-apar.json"),
+            config.brand,
         )
-        assertEquals(emptyList<String>(), protocol.warnings)
+        assertEquals(
+            MessengerConfig.Team(
+                show = true,
+                avatars = listOf("https://app.clomni.ai/a/leyla.png", "https://app.clomni.ai/a/rauf.png", "https://app.clomni.ai/a/nigar.png"),
+                replyTime = "Adətən bir neçə dəqiqəyə cavab veririk",
+                replyTimeOffline = "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik",
+                officeHours = MessengerConfig.OfficeHours("Asia/Baku", openNow = true),
+            ),
+            config.team,
+        )
+        assertEquals(MessengerConfig.Bot("Clomni", "https://app.clomni.ai/a/bot.png"), config.bot)
+        assertEquals(
+            listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS),
+            config.home.cards,
+        )
+        assertEquals(listOf("instagram", "whatsapp", "linkedin", "email"), config.home.channels.map { it.type })
+        assertEquals(
+            MessengerConfig.ThemeSettings(
+                MessengerConfig.ThemeMode.SYSTEM,
+                MessengerConfig.Launcher(enabled = false, position = MessengerConfig.LauncherPosition.RIGHT, bottomPadding = 20),
+            ),
+            config.theme,
+        )
+        assertEquals(MessengerConfig.Composer(attachments = true, emoji = true), config.composer)
+        assertEquals("Salam, {first_name} 👋", config.strings["greeting_line1"])
+        assertEquals(MessengerConfig.Limits(10, 25, 4000), config.limits)
+        assertTrue(config.poweredBy)
+        assertTrue(protocol.warnings.isEmpty())
     }
 
     @Test
-    fun minimalConfigGetsDefaults() {
-        val config = fixture("43-config-minimal.json")
-        assertEquals(
-            MessengerConfig.Brand("Clomni, Inc.", null, "#10A670", null, MessengerConfig.Theme.SYSTEM),
-            config.brand,
+    fun headerStylesThemeAndLauncher() {
+        val image = config(
+            """{"brand":{"header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/h","glow":true,
+                 "logo_dark_url":"https://app.clomni.ai/v1/images/d"},
+               "theme":{"mode":"dark","launcher":{"enabled":true,"position":"left","bottom_padding":64}},
+               "powered_by":false,"team":{"show":false}}""",
         )
-        assertEquals(MessengerConfig.Launcher(false, MessengerConfig.LauncherPosition.RIGHT, 20, "default"), config.launcher)
-        assertEquals(
-            MessengerConfig.Home(null, null, true, emptyList(), listOf(MessengerConfig.HomeCard.NEW_CONVERSATION)),
-            config.home,
-        )
-        assertEquals(MessengerConfig.Team(emptyList(), null, null), config.team)
-        assertEquals(MessengerConfig.Bot("Clomni", null), config.bot)
-        assertEquals(MessengerConfig.Composer(null, attachments = true, emoji = true), config.composer)
+        assertEquals(MessengerConfig.HeaderStyle.IMAGE, image.brand.headerStyle)
+        assertEquals("https://app.clomni.ai/v1/images/h", image.brand.headerImageUrl)
+        assertTrue(image.brand.glow)
+        assertEquals("https://app.clomni.ai/v1/images/d", image.brand.logoDarkUrl)
+        assertEquals(MessengerConfig.ThemeMode.DARK, image.theme.mode)
+        assertEquals(MessengerConfig.Launcher(true, MessengerConfig.LauncherPosition.LEFT, 64), image.theme.launcher)
+        assertFalse(image.poweredBy)
+        assertFalse(image.team.show)
+        assertEquals(MessengerConfig.HeaderStyle.SOLID, config("""{"brand":{"header_style":"solid"}}""").brand.headerStyle)
+        assertEquals(MessengerConfig.ThemeMode.LIGHT, config("""{"theme":{"mode":"light"}}""").theme.mode)
+        assertEquals("0–200", 200, config("""{"theme":{"launcher":{"bottom_padding":900}}}""").theme.launcher.bottomPadding)
+    }
+
+    /** "send" is always there; the panel's order otherwise; unknown cards and channels over five are dropped. */
+    @Test
+    fun cardsAndChannels() {
+        fun cards(json: String) = config("""{"home":{"cards":$json}}""").home.cards
+        assertEquals(listOf(MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.SEND), cards("""["channels","send"]"""))
+        assertEquals(listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT), cards("""["recent","articles"]"""))
+        assertEquals(listOf(MessengerConfig.HomeCard.SEND), cards("""["send","send"]"""))
+        assertEquals(MessengerConfig.HomeCard.entries, config("{}").home.cards)
+        val seven = (1..7).joinToString(",") { """{"type":"link","url":"https://x/$it"}""" }
+        assertEquals(5, config("""{"home":{"channels":[$seven]}}""").home.channels.size)
+    }
+
+    /** The server's colours are taken whole or not at all: the SDK then derives them. */
+    @Test
+    fun brokenColoursAreDerivedInstead() {
+        val missing = config("""{"brand":{"colors":{"light":{"primary":"#1F9D63"}}}}""")
+        assertNull(missing.brand.colors)
+        assertEquals("brand.colors incomplete; the SDK derives the colours", protocol.warnings.last())
+        val notHex = APAR_CONFIG_V2.replace("\"#0E4F33\"", "\"dark green\"")
+        assertNull(config(notHex).brand.colors)
+        assertNull(config("""{"brand":{}}""").brand.colors)
+        // header_text came later: a server without it still sends usable colours, and the SDK works the text out.
+        val withoutText = config(APAR_CONFIG_V2.replace(", \"header_text\": \"#FFFFFF\"", ""))
+        assertEquals("#1F9D63", withoutText.brand.colors?.light?.headerFrom)
+        assertNull(withoutText.brand.colors?.light?.headerText)
+    }
+
+    @Test
+    fun anEmptyObjectIsAConfigOfDefaults() {
+        val config = config("{}")
+        assertEquals(0, config.version)
+        assertEquals("", config.brand.name)
+        assertEquals(MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR, config.brand.primaryColor)
+        assertEquals(MessengerConfig.HeaderStyle.GRADIENT, config.brand.headerStyle)
+        assertFalse(config.brand.glow)
+        assertTrue(config.team.show)
+        assertNull(config.team.replyTimeOffline)
+        assertEquals(MessengerConfig.ThemeMode.SYSTEM, config.theme.mode)
+        assertFalse(config.theme.launcher.enabled)
         assertEquals(listOf("az"), config.languages)
-        assertEquals(emptyMap<String, String>(), config.strings)
-        assertEquals(MessengerConfig.Limits(10, 25, 4000), config.limits)
-        assertEquals(emptyList<String>(), protocol.warnings)
+        assertTrue(config.poweredBy)
+    }
+
+    /** The v1 fixtures (until the server's v2 ones arrive) still read: their old fields are ignored. */
+    @Test
+    fun aVersionOneConfigReadsWithDefaults() {
+        val old = protocol.json.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
+        assertEquals("Apar", old.brand.name)
+        assertNull(old.brand.colors)
+        assertFalse("v1's launcher.visible is not v2's theme.launcher.enabled", old.theme.launcher.enabled)
+        assertEquals("unknown v1 card names: send only", listOf(MessengerConfig.HomeCard.SEND), old.home.cards)
     }
 
     @Test
     fun invalidColourFallsBackToTheDefault() {
-        assertEquals(MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR, fixture("96-invalid-config-color.json").brand.primaryColor)
-        assertTrue(protocol.warnings.toString(), protocol.warnings.single().contains("\"green\""))
+        assertEquals(MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR, config("""{"brand":{"primary_color":"green"}}""").brand.primaryColor)
+        assertEquals("brand.primary_color \"green\" is not #RRGGBB; default colour used", protocol.warnings.single())
     }
 
-    @Test
-    fun emptyObjectIsAConfigOfDefaults() {
-        val config = config("{}")
-        assertEquals(MessengerConfig.Brand.DEFAULT_PRIMARY_COLOR, config.brand.primaryColor)
-        assertEquals("", config.brand.name)
-        assertEquals(MessengerConfig.HomeCard.entries, config.home.cards)
-        assertEquals("", config.bot.name)
-        assertEquals(1, protocol.warnings.size)
-    }
-
-    @Test
-    fun brokenValuesAreSkipped() {
-        val config = config(
-            """{
-              "brand": {"name": "X", "primary_color": "#abcdef", "on_primary_color": "white", "theme": "dark"},
-              "launcher": {"visible": true, "position": "left", "bottom_padding": -4},
-              "home": {
-                "channels": [{"type": "telegram", "url": "https://t.me/x"}, {"type": "x"}, {"url": "https://y"}, "z"],
-                "cards": ["new_conversation", "articles", 3]
-              },
-              "team": {"avatars": ["https://a", 1, null], "office_hours": {"tz": 4}},
-              "languages": ["de", "en", 3],
-              "strings": {"send": "Send", "count": 3},
-              "limits": {"image_mb": 0, "file_mb": 50, "text_chars": "many"}
-            }""",
-        )
-        assertEquals("#abcdef", config.brand.primaryColor)
-        assertNull(config.brand.onPrimaryColor)
-        assertEquals(MessengerConfig.Theme.DARK, config.brand.theme)
-        assertEquals(MessengerConfig.Launcher(true, MessengerConfig.LauncherPosition.LEFT, 20, "default"), config.launcher)
-        assertEquals(listOf(MessengerConfig.Channel("telegram", "https://t.me/x")), config.home.channels)
-        assertEquals(listOf(MessengerConfig.HomeCard.NEW_CONVERSATION), config.home.cards)
-        assertEquals(listOf("https://a"), config.team.avatars)
-        assertEquals(MessengerConfig.OfficeHours(null, openNow = true), config.team.officeHours)
-        // Language codes are kept as sent; the UI falls back for one it has no texts for.
-        assertEquals(listOf("de", "en"), config.languages)
-        assertEquals(mapOf("send" to "Send"), config.strings)
-        assertEquals(MessengerConfig.Limits(10, 50, 4000), config.limits)
-        assertEquals(MessengerConfig.Theme.LIGHT, config("""{"brand":{"theme":"light"}}""").brand.theme)
-        assertEquals(listOf("az"), config("""{"languages":[]}""").languages)
-    }
-
-    /** CM-052, additive: after hours the config says when the team is back. */
     @Test
     fun nextOpeningTime() {
         val closed = config("""{"team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}""")
         assertEquals(MessengerConfig.OfficeHours(null, openNow = false, nextOpenAt = 1_790_917_200_000L), closed.team.officeHours)
         val broken = config("""{"team":{"office_hours":{"open_now":false,"next_open_at":"sabah"}}}""")
         assertNull(broken.team.officeHours?.nextOpenAt)
-        assertNull(config("""{"team":{"office_hours":{"open_now":true,"next_open_at":null}}}""").team.officeHours?.nextOpenAt)
-    }
-
-    @Test
-    fun briefExample() {
-        val config = protocol.json.parseConfig(ProtocolFiles.read("examples/brief/s6.3-config.json"))!!
-        assertEquals("Apar", config.brand.name)
-        assertEquals("Dün", config.strings["yesterday"])
     }
 
     @Test

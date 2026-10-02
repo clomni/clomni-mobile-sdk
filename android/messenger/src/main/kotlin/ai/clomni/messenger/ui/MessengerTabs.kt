@@ -77,9 +77,7 @@ internal fun ClomniMessenger(
             controller.stop()
         }
     }
-    val brand = screens.config?.brand
-    val dark = ClomniTheme.isDark(brand?.theme, isSystemInDarkTheme())
-    val theme = remember(brand, dark) { ClomniTheme.make(brand, dark) }
+    val theme = rememberTheme(screens.config)
     val actions = remember(controller, openedFrom, close, openConversation, conversationStarted) {
         MessengerActions(
             close = close,
