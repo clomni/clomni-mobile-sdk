@@ -212,6 +212,18 @@ class ChatSnapshotTest {
         snap("chat_font_scale_200", loaded(languages, answerable = setOf(languages.id)))
     }
 
+    /** Clomni.setTypeface: the app's font on every text (serif stands in; layoutlib has no bold serif to pick). */
+    @Test
+    fun appsTypeface() {
+        ai.clomni.messenger.Clomni.setTypeface(android.graphics.Typeface.SERIF)
+        try {
+            val step = ChatFixture.message("10-apar-level2-S-chips.json")
+            snap("chat_typeface", loaded(ChatFixture.message("02-text-operator-markdown.json"), step, answerable = setOf(step.id)))
+        } finally {
+            ai.clomni.messenger.Clomni.setTypeface(null)
+        }
+    }
+
     // The reference (docs/ui-reference.html 4.2, 4.3) at its own size, 282×602 dp at 1.5×, with its data.
 
     private fun reference() = paparazzi.unsafeUpdateConfig(

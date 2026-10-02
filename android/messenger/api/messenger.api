@@ -28,6 +28,7 @@ public final class ai/clomni/messenger/Clomni {
 	public static final fun setLauncherVisible (Z)V
 	public static final fun setLogLevel (Lai/clomni/messenger/ClomniLogLevel;)V
 	public static final fun setNotificationIcon (I)V
+	public static final fun setTypeface (Landroid/graphics/Typeface;)V
 	public static final fun startFlow (Ljava/lang/String;)V
 	public static final fun startFlow (Ljava/lang/String;Ljava/util/Map;)V
 	public static final fun startFlow (Ljava/lang/String;Ljava/util/Map;Z)V

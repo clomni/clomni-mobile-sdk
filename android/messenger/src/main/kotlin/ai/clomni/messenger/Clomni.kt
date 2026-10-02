@@ -4,7 +4,9 @@ import ai.clomni.messenger.api.ApiConfiguration
 import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.ui.MessengerRuntime
+import ai.clomni.messenger.ui.ClomniFonts
 import android.content.Context
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import kotlinx.serialization.json.JsonArray
@@ -174,6 +176,16 @@ public object Clomni {
     @JvmStatic
     public fun setLauncherVisible(visible: Boolean) {
         onMain { MessengerRuntime.setLauncherVisible(visible) }
+    }
+
+    /**
+     * The app's own font for every text of the messenger, for example `ResourcesCompat.getFont(context,
+     * R.font.montserrat)` with a font family that has the weights. Text keeps following the user's font size. A
+     * weight the family lacks takes its nearest face. null is the system font. Set it before the messenger opens.
+     */
+    @JvmStatic
+    public fun setTypeface(typeface: Typeface?) {
+        ClomniFonts.typeface = typeface
     }
 
     /** Lifts the launcher above the app's bottom navigation, in dp. */
