@@ -234,7 +234,8 @@ struct ChatHeaderView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-            CloseButton(label: header.closeLabel, color: theme.colors.textSecondary, action: close)
+            CloseButton(label: header.closeLabel, color: theme.colors.textSecondary, edge: CGFloat(ClomniTheme.Space.xl),
+                        action: close)
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
         .padding(.bottom, CGFloat(ClomniTheme.Space.m))
@@ -285,7 +286,6 @@ struct FullScreenImage: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CloseButton(label: closeLabel, color: .white, action: close)
-                .padding(.trailing, 30)
         }
     }
 }

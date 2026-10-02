@@ -48,9 +48,12 @@ struct RemoteImage: View {
 @MainActor
 final class ImageLoader: ObservableObject {
     @Published private(set) var image: UIImage?
+    /// It did not load (no network, not found): the caller may show something else.
+    @Published private(set) var failed = false
 
     func load(_ url: URL) async {
         image = await ImageCache.shared.image(url)
+        failed = image == nil
     }
 }
 

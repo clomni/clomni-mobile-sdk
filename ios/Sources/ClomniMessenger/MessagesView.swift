@@ -81,7 +81,8 @@ struct MessagesTitleBar: View {
                 .accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer()
-                CloseButton(label: closeLabel, color: theme.colors.textPrimary, action: close)
+                CloseButton(label: closeLabel, color: theme.colors.textPrimary, edge: CGFloat(ClomniTheme.Space.xxl),
+                            action: close)
             }
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xxl))

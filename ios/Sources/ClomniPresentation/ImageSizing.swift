@@ -6,11 +6,14 @@ import Foundation
 package enum ImageSizing {
     package enum Kind: Sendable {
         case icon, header
+        /// The full logo (APPEARANCE-CONTRACT § 4a).
+        case wordmark
 
         var widths: [Int] {
             switch self {
             case .icon: return [48, 96, 144]
             case .header: return [360, 720, 1080]
+            case .wordmark: return [300, 600, 1200]
             }
         }
     }

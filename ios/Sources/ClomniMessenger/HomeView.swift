@@ -45,23 +45,27 @@ struct HomeHeaderView: View {
     let header: HomeScreen.Header
     let theme: ClomniTheme
     let close: () -> Void
+    /// The header's width, for the full logo's 60%; a typical phone's until measured.
+    @State private var width: CGFloat = 390
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: CGFloat(ClomniTheme.Space.l)) {
-                BrandMark(header: header, theme: theme)
+                if let wordmark = header.wordmark {
+                    WordmarkView(wordmark: wordmark, header: header, theme: theme, maxWidth: width * 0.6)
+                } else {
+                    BrandMark(header: header, theme: theme)
+                }
                 Spacer(minLength: 0)
                 TeamAvatars(urls: header.teamAvatars, ring: theme.colors.headerFrom, theme: theme)
-                CloseButton(label: header.closeLabel, color: ink, action: close)
+                CloseButton(label: header.closeLabel, color: ink, edge: CGFloat(ClomniTheme.Space.xxl), action: close)
             }
             .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
-            // The first line in the header's full colour, told apart by size and weight: at 62% opacity it fell
-            // below 3:1 on mid-tone brand colours (BRIEF-DEVIATIONS #18, same as Android).
+            // Both lines in the header's full colour, told apart by size and weight (BRIEF-DEVIATIONS #18), at the
+            // panel's size (home.title_size). They wrap rather than shrink or cut off at large Dynamic Type sizes.
             VStack(alignment: .leading, spacing: 2) {
-                Text(header.greeting)
-                    .clomniFont(ClomniTheme.FontSize.brand, .regular, relativeTo: .headline)
-                Text(header.title)
-                    .clomniFont(ClomniTheme.FontSize.greeting, .semibold, relativeTo: .title2)
+                GreetingLine(text: header.greeting, size: header.titleSize.greeting, weight: .regular, style: .headline)
+                GreetingLine(text: header.title, size: header.titleSize.title, weight: .semibold, style: .title2)
             }
             .padding(.top, 20)
             .accessibilityElement(children: .combine)
@@ -72,6 +76,11 @@ struct HomeHeaderView: View {
         // 62 = the 40 the cards ride up + 22 of air above them.
         .padding(.bottom, 62)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(GeometryReader { proxy in
+            Color.clear
+                .onAppear { width = proxy.size.width }
+                .onChange(of: proxy.size.width) { width = $0 }
+        })
         .background {
             ZStack {
                 if header.glow {
@@ -134,32 +143,90 @@ struct HeaderBackground: View {
     }
 }
 
-/// The 22 pt white square with the logo (or the brand's initial) and the brand name 17/700.
+/// One line of the greeting: `size` scaled with Dynamic Type, lines 1.25 times the size apart, wrapping.
+struct GreetingLine: View {
+    let text: String
+    let size: Double
+    let weight: Font.Weight
+    let style: Font.TextStyle
+
+    var body: some View {
+        Text(text)
+            .clomniFont(size, weight, relativeTo: style)
+            // The system font's own line height is about 1.19 times its size; this makes it 1.25.
+            .lineSpacing(CGFloat(size * (HomeScreen.TitleSize.lineHeight - 1.19)))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The logo as it is, 32 pt with 8 pt corners, no tile behind it; without one the initial in a 32 pt circle of the
+/// brand's soft tone. The name 17 semibold, 10 pt to the right, both centred on one line.
 struct BrandMark: View {
     let header: HomeScreen.Header
     let theme: ClomniTheme
 
     var body: some View {
-        HStack(spacing: 7) {
-            ZStack {
-                RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.logo), style: .continuous)
-                    .fill(Color.white)
+        HStack(alignment: .center, spacing: CGFloat(ClomniTheme.Space.m)) {
+            Group {
                 // The dark-mode logo when the panel has one.
                 if let logo = (theme.isDark ? header.logoDarkUrl : nil) ?? header.logoUrl {
                     RemoteImage(url: logo, kind: .icon, points: ClomniTheme.Size.logo, theme: theme, fit: true)
-                        .padding(3)
+                        .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.logo), style: .continuous))
                 } else {
                     Text(header.brandInitial)
-                        .clomniFixedFont(13, .bold)
+                        .clomniFixedFont(15, .semibold)
                         .foregroundStyle(theme.colors.primary.color)
+                        .frame(width: CGFloat(ClomniTheme.Size.logo), height: CGFloat(ClomniTheme.Size.logo))
+                        .background(Circle().fill(theme.colors.primarySoft.color))
                 }
             }
             .frame(width: CGFloat(ClomniTheme.Size.logo), height: CGFloat(ClomniTheme.Size.logo))
-            .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.logo), style: .continuous))
             .accessibilityHidden(true)
             Text(header.brandName)
-                .clomniFont(ClomniTheme.FontSize.brand, .bold, relativeTo: .headline)
+                .clomniFont(ClomniTheme.FontSize.brand, .semibold, relativeTo: .headline)
                 .lineLimit(1)
+        }
+    }
+}
+
+/// The full logo in place of the logo and the name (APPEARANCE-CONTRACT § 4a): 32 pt high, at most 60% of the
+/// header's width, fitted, never cut or stretched; the dark one in dark mode when there is one. Its height is held
+/// while it loads; if it does not load, the logo and the name. VoiceOver reads the brand's name.
+struct WordmarkView: View {
+    let wordmark: HomeScreen.Wordmark
+    let header: HomeScreen.Header
+    let theme: ClomniTheme
+    /// 60% of the header's width.
+    let maxWidth: CGFloat
+    @Environment(\.displayScale) private var scale
+    @Environment(\.clomniLoadsRemoteImages) private var loadsImages
+    @StateObject private var loader = ImageLoader()
+
+    private var url: URL {
+        let source = (theme.isDark ? wordmark.darkUrl : nil) ?? wordmark.url
+        return ImageSizing.url(source, kind: .wordmark, points: Double(maxWidth), scale: Double(scale))
+    }
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else if loader.failed || !loadsImages {
+                BrandMark(header: header, theme: theme)
+            } else {
+                // Its place, kept while it loads.
+                Color.clear
+            }
+        }
+        .frame(maxWidth: maxWidth, maxHeight: CGFloat(ClomniTheme.Size.wordmark), alignment: .leading)
+        .frame(height: CGFloat(ClomniTheme.Size.wordmark))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(header.brandName))
+        .task(id: url) {
+            guard loadsImages else { return }
+            await loader.load(url)
         }
     }
 }
@@ -182,24 +249,35 @@ struct TeamAvatars: View {
     }
 }
 
-/// ✕: a 14 pt glyph in a 44 pt target.
+/// ✕: a 28 pt icon (its cross 16 pt, as Android's 28 dp close icon draws it) in a 44 pt target, the icon 12 pt from
+/// the screen's edge. `edge`: the side padding of the row it sits in, which the target reaches into.
 struct CloseButton: View {
     let label: String
     let color: RGBColor
+    var edge: CGFloat = 0
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: 14, weight: .semibold))
+                .resizable()
+                .scaledToFit()
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 16, height: 16)
+                .frame(width: CGFloat(ClomniTheme.Size.closeIcon), height: CGFloat(ClomniTheme.Size.closeIcon))
                 .foregroundStyle(color.color)
                 .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
-        // The target reaches into the header's margin so the glyph lines up with the edge.
-        .padding(.trailing, -15)
+        .padding(.trailing, Self.trailing(edge: edge))
         .accessibilityLabel(Text(label))
+    }
+
+    /// The icon 12 pt from the edge: the target is 8 pt wider than the icon on each side.
+    static func trailing(edge: CGFloat) -> CGFloat {
+        let overhang = (CGFloat(ClomniTheme.Size.touchTarget) - CGFloat(ClomniTheme.Size.closeIcon)) / 2
+        return CGFloat(ClomniTheme.Space.l) - edge - overhang
     }
 }
 

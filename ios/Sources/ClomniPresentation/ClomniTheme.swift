@@ -48,7 +48,8 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let pill: Double = 18
         package static let card: Double = 12
         package static let input: Double = 20
-        package static let logo: Double = 6
+        /// The Home header's logo (DESIGN-PASS 2).
+        package static let logo: Double = 8
         package static let channel: Double = 8
     }
 
@@ -75,7 +76,11 @@ package struct ClomniTheme: Sendable, Equatable {
     }
 
     package enum Size {
-        package static let logo: Double = 22
+        package static let logo: Double = 32
+        /// The full logo's height on Home.
+        package static let wordmark: Double = 32
+        /// ✕'s icon box (the target is `touchTarget`).
+        package static let closeIcon: Double = 28
         package static let headerAvatar: Double = 24
         /// Header avatars overlap by this much.
         package static let headerAvatarOverlap: Double = 7

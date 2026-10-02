@@ -58,6 +58,18 @@ final class AppearanceSnapshotTests: XCTestCase {
         try render("derived-colours", config(["brand": ["primary_color": "#0A66C2", "colors": nil]]))
     }
 
+    /// DESIGN-PASS: the logo as it is (or the initial in a circle), the greeting's three sizes, the full logo (here
+    /// not loaded, so the logo and the name stand in), the larger ✕.
+    func testLogoTitleSizeAndWordmark() throws {
+        try render("no-logo", config(["brand": ["logo_url": nil]]))
+        try render("title-s", config(["home": ["title_size": "s"]]))
+        try render("title-l", config(["home": ["title_size": "l"]]))
+        try render("title-l-long", config(["home": ["title_size": "l"],
+                                           "strings": ["greeting_line2": "Sifarişiniz, gedişiniz və ya ödənişiniz haqqında yazın"]]))
+        try render("wordmark-not-loaded", config(["brand": ["logo_style": "wordmark",
+                                                            "wordmark_url": "https://app.clomni.ai/v1/images/img_w"]]))
+    }
+
     func testCardsChannelsAndPoweredBy() throws {
         try render("cards-order", config(["home": ["cards": ["channels", "recent", "send"]]]))
         try render("channels-off", config(["home": ["cards": ["send", "recent"]]]))
