@@ -75,6 +75,12 @@ kotlin {
     }
 }
 
+// Source information is what lets the IDE jump from Layout Inspector to a composable's line. An app embedding the
+// AAR cannot use it for our code; it was ~15 KB of the release AAR (checkAarSize).
+composeCompiler {
+    includeSourceInformation.set(false)
+}
+
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
