@@ -241,7 +241,7 @@ class AppearanceSnapshotTest {
                 RAUF to face(0xFF7C3AED.toInt(), "R"),
                 NIGAR to face(0xFF0E7490.toInt(), "N"),
                 HEADER to landscape(),
-                WORDMARK to written(),
+                WORDMARK to realWordmark(),
             )
         }
 
@@ -281,13 +281,13 @@ class AppearanceSnapshotTest {
             drawCircle(58f, 48f, 6f, paint)
         }
 
-        /** A wide, transparent written logo: a mark and the name in white, 4:1. */
-        private fun written() = picture(480, 120) { paint ->
-            paint.color = 0xFFFFFFFF.toInt()
-            drawRoundRect(RectF(8f, 16f, 96f, 104f), 22f, 22f, paint)
-            paint.color = 0xFF1F9D63.toInt()
-            drawCircle(52f, 60f, 22f, paint)
-            letter(paint, "Apar Taxi", 0xFFFFFFFF.toInt(), 64f, 290f, 60f)
+        /**
+         * Clomni's own written logo (mobile-sdk/logo/clomni-wordmark-white.png, 14127 px wide) at the server's largest
+         * size, 1200 px: a real 3.5:1 picture, a green mark and the name in white on transparency.
+         */
+        private fun realWordmark(): ImageBitmap {
+            val bytes = AppearanceSnapshotTest::class.java.getResourceAsStream("/clomni-wordmark-white-1200.png")!!.use { it.readBytes() }
+            return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap()
         }
 
         private fun landscape() = picture(720, 400) { paint ->
