@@ -40,6 +40,32 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
     /** Null only when the body is not a JSON object; every missing or broken field takes its default. */
     fun parseConfig(json: String): MessengerConfig? = guard("config") { config(json.toJsonObject()) }
 
+    /**
+     * GET /news. An item without an id or a title is left out; a title over 80 characters is cut there, and a button
+     * without a text or an address is left off, each logged (protocol fixtures 63, 64).
+     */
+    fun parseNews(json: String): List<NewsItem>? = guard("news") {
+        (json.toJsonObject()["items"] as? JsonArray).orEmpty().mapNotNull { element ->
+            val o = element as? JsonObject ?: return@mapNotNull null
+            val id = o.string("id") ?: return@mapNotNull null.also { logger("news item without an id dropped") }
+            val title = o.string("title")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null.also { logger("news $id without a title dropped") }
+            val button = (o["button"] as? JsonObject)?.let { b ->
+                val text = b.string("text")
+                val url = b.string("url")
+                if (text.isNullOrBlank() || url.isNullOrBlank()) null.also { logger("news $id: button without text or url left off") } else NewsItem.Button(text, url)
+            }
+            NewsItem(
+                id = id,
+                title = if (title.length > 80) title.take(80).also { logger("news $id: title over 80 characters cut") } else title,
+                summary = o.string("summary"),
+                bodyMarkdown = o.string("body_markdown"),
+                imageUrl = o.string("image_url"),
+                button = button,
+                publishedAt = o.string("published_at")?.let(Iso8601::parseMillis),
+            )
+        }
+    }
+
     /** Null when the payload is not a Clomni push (`"clomni": "1"`) or lacks a required key. */
     fun parsePush(json: String): PushPayload? = guard("push") { push(json.toJsonObject()) }
 
@@ -475,6 +501,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 },
                 headerImageUrl = brand.string("header_image_url"),
                 wordmarkUrl = brand.string("wordmark_url").takeIf { brand.string("logo_style") == "wordmark" },
+                logoScale = brand.int("logo_scale")?.coerceIn(60, 200) ?: 100,
                 wordmarkDarkUrl = brand.string("wordmark_dark_url").takeIf { brand.string("logo_style") == "wordmark" },
                 glow = brand.boolean("glow") ?: false,
                 colors = colors(brand.section("colors")),
@@ -500,10 +527,11 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                     val type = channel.string("type") ?: return@mapNotNull null
                     channel.string("url")?.let { MessengerConfig.Channel(type, it) }
                 }.take(MessengerConfig.MAX_CHANNELS),
-                titleSize = when (home.string("title_size")) {
-                    "s" -> MessengerConfig.TitleSize.S
-                    "l" -> MessengerConfig.TitleSize.L
-                    else -> MessengerConfig.TitleSize.M
+                // title_scale; a draft from before it has title_size, which the server maps the same way.
+                titleScale = home.int("title_scale")?.coerceIn(70, 140) ?: when (home.string("title_size")) {
+                    "s" -> 85
+                    "l" -> 120
+                    else -> 100
                 },
             ),
             theme = MessengerConfig.ThemeSettings(
@@ -543,13 +571,17 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
     private fun homeCards(cards: JsonArray?): List<MessengerConfig.HomeCard> {
         val known = cards?.strings()?.mapNotNull {
             when (it) {
+                "messages" -> MessengerConfig.HomeCard.MESSAGES
+                "news" -> MessengerConfig.HomeCard.NEWS
                 "send" -> MessengerConfig.HomeCard.SEND
                 "recent" -> MessengerConfig.HomeCard.RECENT
                 "channels" -> MessengerConfig.HomeCard.CHANNELS
                 else -> null
             }
         }?.distinct() ?: return MessengerConfig.HomeCard.entries
-        return if (MessengerConfig.HomeCard.SEND in known) known else listOf(MessengerConfig.HomeCard.SEND) + known
+        // The list can be reached only from its card, and a conversation started only from send: both always there.
+        val withSend = if (MessengerConfig.HomeCard.SEND in known) known else listOf(MessengerConfig.HomeCard.SEND) + known
+        return if (MessengerConfig.HomeCard.MESSAGES in withSend) withSend else listOf(MessengerConfig.HomeCard.MESSAGES) + withSend
     }
 
     /** Both palettes, every colour #RRGGBB; anything less and the SDK derives them itself. */
@@ -565,6 +597,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 headerFrom = color("header_from") ?: return null,
                 headerTo = color("header_to") ?: return null,
                 headerText = color("header_text"),
+                primaryStrong = color("primary_strong"),
             )
         }
         if (o.isEmpty()) return null

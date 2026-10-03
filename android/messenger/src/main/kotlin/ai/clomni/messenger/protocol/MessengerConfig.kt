@@ -43,6 +43,8 @@ internal data class MessengerConfig(
         val wordmarkUrl: String? = null,
         /** For dark mode; [wordmarkUrl] when null. */
         val wordmarkDarkUrl: String? = null,
+        /** The logo's height, % of 32 dp (60–200, the panel's slider); 100 when not set. */
+        val logoScale: Int = 100,
     ) {
         companion object {
             /** For [ai.clomni.messenger.presentation.ClomniTheme]'s grey before any config: the secondary text grey. */
@@ -79,6 +81,8 @@ internal data class MessengerConfig(
         val headerTo: String,
         /** Text and icons on the header; null from a server before it sent one: the SDK works it out. */
         val headerText: String? = null,
+        /** Home's first greeting line (at about 70%); null from a server before it sent one. */
+        val primaryStrong: String? = null,
     )
 
     data class Team(
@@ -102,22 +106,16 @@ internal data class MessengerConfig(
     data class Bot(val name: String, val avatarUrl: String?)
 
     data class Home(
-        /** In the panel's order; [HomeCard.SEND] is always there. */
+        /** In the panel's order; [HomeCard.MESSAGES] and [HomeCard.SEND] are always there. */
         val cards: List<HomeCard>,
         /** At most five, in the panel's order. */
         val channels: List<Channel>,
-        /** The greeting's size, chosen in the panel. */
-        val titleSize: TitleSize = TitleSize.M,
+        /** The greeting's size, % of 28 (70–140, the panel's slider); 100 when not set. */
+        val titleScale: Int = 100,
     )
 
-    enum class HomeCard { SEND, RECENT, CHANNELS }
-
-    /** `home.title_size`: the greeting's two lines, sp (first line normal, second semibold). Unknown: [M]. */
-    enum class TitleSize(val firstLine: Float, val secondLine: Float) {
-        S(15f, 20f),
-        M(17f, 24f),
-        L(19f, 28f),
-    }
+    /** The default order is [entries]'. */
+    enum class HomeCard { MESSAGES, RECENT, SEND, NEWS, CHANNELS }
 
     /** A social channel icon on Home; [type] is open-ended (instagram, whatsapp, linkedin, email, …). */
     data class Channel(val type: String, val url: String)

@@ -29,8 +29,8 @@ class MessengerConfigTest {
                 headerImageUrl = null,
                 glow = false,
                 colors = MessengerConfig.Colors(
-                    light = MessengerConfig.Palette("#1F9D63", "#000000", "#E9F5EF", "#CEE9DD", "#1F9D63", "#177248", "#FFFFFF"),
-                    dark = MessengerConfig.Palette("#27C87E", "#000000", "#142520", "#173B2D", "#1F9D63", "#0E482D", "#FFFFFF"),
+                    light = MessengerConfig.Palette("#1F9D63", "#000000", "#E9F5EF", "#CEE9DD", "#1F9D63", "#177248", "#FFFFFF", "#0E482D"),
+                    dark = MessengerConfig.Palette("#27C87E", "#000000", "#142520", "#173B2D", "#1F9D63", "#0E482D", "#FFFFFF", "#0E482D"),
                 ),
             ),
             config.brand,
@@ -47,7 +47,7 @@ class MessengerConfigTest {
         )
         assertEquals("no bot picture: the SDK shows the logo", MessengerConfig.Bot("Clomni", null), config.bot)
         assertEquals(
-            listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS),
+            MessengerConfig.HomeCard.entries,
             config.home.cards,
         )
         assertEquals(listOf("instagram", "whatsapp", "linkedin", "email"), config.home.channels.map { it.type })
@@ -87,13 +87,15 @@ class MessengerConfigTest {
         assertEquals("0–200", 200, config("""{"theme":{"launcher":{"bottom_padding":900}}}""").theme.launcher.bottomPadding)
     }
 
-    /** "send" is always there; the panel's order otherwise; unknown cards and channels over five are dropped. */
+    /** "messages" and "send" are always there; the panel's order otherwise; unknown cards and channels over five dropped. */
     @Test
     fun cardsAndChannels() {
         fun cards(json: String) = config("""{"home":{"cards":$json}}""").home.cards
-        assertEquals(listOf(MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.SEND), cards("""["channels","send"]"""))
-        assertEquals(listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT), cards("""["recent","articles"]"""))
-        assertEquals(listOf(MessengerConfig.HomeCard.SEND), cards("""["send","send"]"""))
+        val messages = MessengerConfig.HomeCard.MESSAGES
+        assertEquals(listOf(messages, MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.SEND), cards("""["channels","send"]"""))
+        assertEquals(listOf(messages, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT), cards("""["recent","articles"]"""))
+        assertEquals(listOf(messages, MessengerConfig.HomeCard.SEND), cards("""["send","send"]"""))
+        assertEquals(listOf(MessengerConfig.HomeCard.SEND, messages), cards("""["send","messages"]"""))
         assertEquals(MessengerConfig.HomeCard.entries, config("{}").home.cards)
         val seven = (1..7).joinToString(",") { """{"type":"link","url":"https://x/$it"}""" }
         assertEquals(5, config("""{"home":{"channels":[$seven]}}""").home.channels.size)
@@ -145,17 +147,21 @@ class MessengerConfigTest {
         assertEquals("1200 wide at most", "https://x/w.png?w=600&format=webp", ai.clomni.messenger.presentation.ImageSizing.url("https://x/w.png", ai.clomni.messenger.presentation.ImageSizing.Kind.WORDMARK, 216f, 2.75f))
     }
 
-    /** home.title_size: s, m, l; absent or unknown is m. */
+    /** home.title_scale and brand.logo_scale, % (70–140 and 60–200); title_size from an older draft maps to 85/100/120. */
     @Test
-    fun theGreetingsSize() {
-        fun size(json: String) = config("""{"home":$json}""").home.titleSize
-        assertEquals(MessengerConfig.TitleSize.S, size("""{"title_size":"s"}"""))
-        assertEquals(MessengerConfig.TitleSize.L, size("""{"title_size":"l"}"""))
-        assertEquals(MessengerConfig.TitleSize.M, size("""{"title_size":"xl"}"""))
-        assertEquals(MessengerConfig.TitleSize.M, size("{}"))
-        assertEquals(MessengerConfig.TitleSize.M, config(apar).home.titleSize)
-        assertEquals(MessengerConfig.TitleSize.L, config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).home.titleSize)
-        assertEquals(listOf(15f, 20f, 17f, 24f, 19f, 28f), MessengerConfig.TitleSize.entries.flatMap { listOf(it.firstLine, it.secondLine) })
+    fun theGreetingsAndTheLogosSize() {
+        fun title(json: String) = config("""{"home":$json}""").home.titleScale
+        assertEquals(115, title("""{"title_scale":115}"""))
+        assertEquals("clamped", 140, title("""{"title_scale":300}"""))
+        assertEquals(85, title("""{"title_size":"s"}"""))
+        assertEquals(120, title("""{"title_size":"l"}"""))
+        assertEquals(100, title("{}"))
+        fun logo(json: String) = config("""{"brand":$json}""").brand.logoScale
+        assertEquals(150, logo("""{"logo_scale":150}"""))
+        assertEquals("clamped", 60, logo("""{"logo_scale":10}"""))
+        assertEquals(100, logo("{}"))
+        assertEquals(MessengerConfig.HomeCard.entries, config("{}").home.cards)
+        assertEquals("the list and send always there", listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.NEWS), config("""{"home":{"cards":["news"]}}""").home.cards)
     }
 
     @Test
