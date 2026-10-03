@@ -12,6 +12,7 @@
         "on_primary": "#000000",
         "primary_soft": "#E7F6F1",
         "primary_line": "#CAEBE0",
+        "primary_strong": "#074931",
         "header_from": "#10A670",
         "header_to": "#10A670",
         "header_text": "#FFFFFF"
@@ -21,6 +22,7 @@
         "on_primary": "#000000",
         "primary_soft": "#122622",
         "primary_line": "#123E31",
+        "primary_strong": "#074931",
         "header_from": "#14D58F",
         "header_to": "#14D58F",
         "header_text": "#1B1D21"

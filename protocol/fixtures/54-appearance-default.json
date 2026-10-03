@@ -6,7 +6,8 @@
     "glow": false,
     "logo": null,
     "logo_dark": null,
-    "header_image": null
+    "header_image": null,
+    "logo_scale": 100
   },
   "team": {
     "show": true,
@@ -23,11 +24,14 @@
   "texts": {},
   "home": {
     "cards": [
-      "send",
+      "messages",
       "recent",
+      "send",
+      "news",
       "channels"
     ],
-    "channels": []
+    "channels": [],
+    "title_scale": 100
   },
   "theme": {
     "mode": "system",
