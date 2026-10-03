@@ -120,7 +120,9 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     package let position: Position
     /// Next to the last bubble of an incoming run.
     package let avatar: ChatAvatar?
-    /// Under the last bubble of an incoming run: "Clomni · Bot · indi", "Leyla · indi".
+    /// Over the first bubble of a bot's run, outside it (DESIGN-PASS-2 13): "Clomni · Bot".
+    package let nameLine: String?
+    /// Under the last bubble of an incoming run: "Leyla · indi"; a bot's run says only when, its name is above.
     package let meta: String?
     /// Under the user's message when it is the last one, or when it failed.
     package let status: Status?

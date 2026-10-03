@@ -26,6 +26,11 @@ private struct LoadingLabelKey: EnvironmentKey {
     static let defaultValue = ClomniStrings(language: nil)[.loading]
 }
 
+/// The screen's width, for widths given as a share of it (a bubble's 78%).
+private struct ScreenWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 390
+}
+
 /// The app's `Clomni.setTheme` colour and mode.
 private struct ThemeOverrideKey: EnvironmentKey {
     static let defaultValue = ThemeOverride()
@@ -40,6 +45,11 @@ extension EnvironmentValues {
     var clomniLoadingLabel: String {
         get { self[LoadingLabelKey.self] }
         set { self[LoadingLabelKey.self] = newValue }
+    }
+
+    var clomniScreenWidth: CGFloat {
+        get { self[ScreenWidthKey.self] }
+        set { self[ScreenWidthKey.self] = newValue }
     }
 
     var clomniTypeface: Typeface? {

@@ -100,6 +100,8 @@ package struct ChatPresenter: Sendable {
         let body: Bubble.Body
         let avatar: ChatAvatar?
         let metaName: String?
+        /// A bot's name, over its run.
+        let nameLine: String?
         var status: Bubble.Status?
         let accessibilityLabel: String
     }
@@ -142,7 +144,7 @@ package struct ChatPresenter: Sendable {
             let text = pending.preview ?? (pending.upload?.fileName ?? strings[.back])
             entries.append(.draft(Draft(
                 id: pending.id, side: .outgoing, sender: "user", date: pending.createdAt, body: body, avatar: nil,
-                metaName: nil, status: status(pending),
+                metaName: nil, nameLine: nil, status: status(pending),
                 accessibilityLabel: "\(strings[.you]), \(time.clock(pending.createdAt)): \(text)")))
         }
         if let sender = snapshot.typing {
@@ -195,10 +197,13 @@ package struct ChatPresenter: Sendable {
                 let position: Bubble.Position = run.count == 1 ? .single
                     : offset == 0 ? .first : offset == run.count - 1 ? .last : .middle
                 let closesRun = offset == run.count - 1 && draft.side == .incoming
-                let meta = draft.metaName.map { "\($0) · \(time.ago(draft.date, now: now))" }
+                let ago = time.ago(draft.date, now: now)
+                let meta = draft.nameLine != nil ? ago : draft.metaName.map { "\($0) · \(ago)" }
+                let opensRun = (offset == 0) && draft.side == .incoming
                 let status = draft.status.flatMap { $0.isFailure ? nil : $0.text }
                 items.append(.bubble(Bubble(id: draft.id, side: draft.side, body: draft.body, position: position,
-                                            avatar: closesRun ? draft.avatar : nil, meta: closesRun ? meta : nil,
+                                            avatar: closesRun ? draft.avatar : nil,
+                                            nameLine: opensRun ? draft.nameLine : nil, meta: closesRun ? meta : nil,
                                             status: draft.status,
                                             accessibilityLabel: draft.accessibilityLabel + (status.map { ". \($0)" } ?? ""),
                                             accessibilityHint: hint(draft.body))))
@@ -215,7 +220,8 @@ package struct ChatPresenter: Sendable {
             id: message.id, side: outgoing ? .outgoing : .incoming,
             sender: outgoing ? "user" : "\(message.sender.type.rawValue) \(message.sender.id ?? message.sender.name ?? "")",
             date: message.createdAt, body: body, avatar: outgoing ? nil : who.avatar,
-            metaName: outgoing ? nil : message.sender.type == .bot ? "\(who.name) · \(strings[.bot])" : who.name,
+            metaName: outgoing ? nil : who.name,
+            nameLine: message.sender.type == .bot ? "\(who.name) · \(strings[.bot])" : nil,
             status: nil, accessibilityLabel: label(message, snapshot))
     }
 

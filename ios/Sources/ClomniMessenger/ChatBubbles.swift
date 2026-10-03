@@ -108,8 +108,12 @@ struct BubbleRow: View {
     let theme: ClomniTheme
     let actions: ChatActions
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.clomniScreenWidth) private var screenWidth
 
     private var incoming: Bool { bubble.side == .incoming }
+
+    /// DESIGN-PASS-2 13: a bubble is at most 78% of the screen wide.
+    private var maxWidth: CGFloat { screenWidth * 0.78 }
 
     /// 16 pt, 5 where bubbles of one run meet; the user's always keep the 5 pt bottom-trailing corner.
     private var corners: (topLeading: CGFloat, topTrailing: CGFloat, bottomLeading: CGFloat, bottomTrailing: CGFloat) {
@@ -135,15 +139,23 @@ struct BubbleRow: View {
 
     var body: some View {
         VStack(alignment: incoming ? .leading : .trailing, spacing: CGFloat(ClomniTheme.Space.xxs)) {
+            if let name = bubble.nameLine {
+                // Outside the bubble, over its run.
+                Text(name)
+                    .clomniFont(13, .semibold, relativeTo: .footnote)
+                    .foregroundStyle(theme.colors.textSecondary.color)
+                    .padding(.leading, CGFloat(ClomniTheme.Size.headerAvatar + ClomniTheme.Space.s))
+                    .accessibilityHidden(true)
+            }
             HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
                 if incoming {
                     avatarSlot
-                } else {
-                    Spacer(minLength: 40)
                 }
-                // The other side's bubbles keep their 222 pt even on a narrow screen: no spacer after them.
+                // At most 78% of the screen's width, never at its edge (the transcript keeps 16 pt on each side).
                 BubbleBody(bubble: bubble, theme: theme, shape: shape, actions: actions)
+                    .frame(maxWidth: maxWidth, alignment: incoming ? .leading : .trailing)
             }
+            .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
             if let meta = bubble.meta {
                 Text(meta)
                     .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
@@ -195,7 +207,7 @@ struct BubbleBody: View {
                 .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
                 .background(shape.fill(fill))
-                .frame(maxWidth: incoming ? 222 : 210, alignment: incoming ? .leading : .trailing)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text(bubble.accessibilityLabel))
         case .image(let image):

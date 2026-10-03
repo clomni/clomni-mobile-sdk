@@ -52,6 +52,7 @@ struct ChatView: View {
     @State private var pickingCamera = false
     @State private var pickingFile = false
     @State private var staged: StagedFile?
+    @State private var screenWidth: CGFloat = 390
     @State private var fullScreenImage: ImageURL?
     @State private var refusal: String?
     @State private var announced: String?
@@ -85,6 +86,12 @@ struct ChatView: View {
         }
         .background(theme.colors.background.color.ignoresSafeArea())
         .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
+        .environment(\.clomniScreenWidth, screenWidth)
+        .background(GeometryReader { proxy in
+            Color.clear
+                .onAppear { screenWidth = proxy.size.width }
+                .onChange(of: proxy.size.width) { screenWidth = $0 }
+        })
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .configCrossfade(model.config)
         .task { await model.controller.load() }

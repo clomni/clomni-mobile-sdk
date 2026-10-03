@@ -54,7 +54,9 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(list.map(\.position), [.first, .last, .single], "70 s later starts a new run")
         XCTAssertNil(list[0].avatar)
         XCTAssertNil(list[0].meta)
-        XCTAssertEqual(list[1].meta, "Clomni · Bot · indi")
+        // The bot's name over its run (DESIGN-PASS-2 13), when under it.
+        XCTAssertEqual(list.map(\.nameLine), ["Clomni · Bot", nil, "Clomni · Bot"])
+        XCTAssertEqual(list[1].meta, "indi")
         XCTAssertEqual(list[1].avatar, ChatAvatar(url: URL(string: "https://app.clomni.ai/a/bot.png"), initial: "C", isBot: true))
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
         XCTAssertEqual(list[0].accessibilityLabel, "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.")

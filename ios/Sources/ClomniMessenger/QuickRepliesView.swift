@@ -17,8 +17,8 @@ struct QuickRepliesView: View {
     @State private var chosen = false
 
     var body: some View {
+        // Right-aligned over the composer, 8 pt apart; the transcript keeps them 16 pt from the screen's edges.
         layout
-            .frame(maxWidth: 240, alignment: .trailing)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.top, CGFloat(ClomniTheme.Space.s))
             .opacity(chosen ? 0 : 1)
@@ -60,8 +60,8 @@ struct QuickRepliesView: View {
     }
 }
 
-/// background, 1 pt primaryLine border, primary text 14/500, radius 18, padding 8×12; up to two lines, then "…".
-/// The tap target reaches 44 pt even where the pill is smaller.
+/// DESIGN-PASS-2 13: white, a 1 pt border in the border grey, text 15, 40 high, 16 pt on the sides; up to two lines,
+/// then "…". The tap target reaches 44 pt.
 struct PillButton: View {
     let title: String
     let accessibilityLabel: String
@@ -73,18 +73,19 @@ struct PillButton: View {
         let shape = RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.pill), style: .continuous)
         Button(action: action) {
             Text(title)
-                .clomniFont(ClomniTheme.FontSize.text, isBack ? .regular : .medium)
-                .foregroundStyle(isBack ? theme.colors.textSecondary.color : theme.colors.primary.color)
+                .clomniFont(15, isBack ? .regular : .medium, relativeTo: .subheadline)
+                .foregroundStyle(isBack ? theme.colors.textSecondary.color : theme.colors.textPrimary.color)
                 .multilineTextAlignment(.trailing)
                 .lineLimit(2)
                 .truncationMode(.tail)
                 .padding(.vertical, CGFloat(ClomniTheme.Space.s))
-                .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
-                .background(shape.fill(theme.colors.background.color))
-                .overlay(shape.stroke(isBack ? theme.colors.border.color : theme.colors.primaryLine.color, lineWidth: 1))
-                .padding(.vertical, 6)
+                .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
+                .frame(minHeight: 40)
+                .background(shape.fill(theme.isDark ? theme.colors.surface.color : theme.colors.background.color))
+                .overlay(shape.stroke(theme.colors.border.color, lineWidth: 1))
+                .padding(.vertical, 2)
                 .contentShape(Rectangle())
-                .padding(.vertical, -6)
+                .padding(.vertical, -2)
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel(Text(accessibilityLabel))
