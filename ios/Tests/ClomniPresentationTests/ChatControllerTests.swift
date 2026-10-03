@@ -164,7 +164,7 @@ final class ChatControllerTests: XCTestCase {
         await source.set([step], answerable: [step.id])
         let chat = controller()
         await chat.load()
-        XCTAssertEqual(chat.screen.composer.mode, .locked("Yuxarıdakı variantlardan birini seçin"))
+        XCTAssertEqual(chat.screen.composer.mode, .locked("Yuxarıdan birini seçin"))
         await chat.tap("o_t", in: step.id)
         await chat.tap("o_u", in: step.id)
         await chat.tap("missing", in: "msg_unknown")

@@ -11,7 +11,12 @@ package struct ClomniStrings: Sendable, Equatable {
         case greetingLine2 = "greeting_line2"
         case recentMessage = "recent_message"
         case followUs = "follow_us"
-        case tabMessages = "tab_messages"
+        case messagesTitle = "messages_title"
+        case newsTitle = "news_title"
+        case pickMedia = "pick_media"
+        case pickCamera = "pick_camera"
+        case pickFile = "pick_file"
+        case removeAttachment = "remove_attachment"
         case emptyList = "empty_list"
         case error, retry, offline, now, you, close, unread, email, phone
         // The conversation (CM-083).
@@ -107,15 +112,16 @@ package struct ClomniStrings: Sendable, Equatable {
     static let fallbacks: [String: [Key: String]] = [
         "az": [
             .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .sendCardTitle: "Bizə mesaj göndərin",
-            .greetingLine1: "Salam, {first_name}", .greetingLine1Anonymous: "Salam", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
-            .followUs: "Bizi izləyin", .tabMessages: "Mesajlar",
+            .greetingLine1: "Salam, {first_name}", .greetingLine1Anonymous: "Salam", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Ən son mesaj",
+            .followUs: "Bizi izləyin", .messagesTitle: "Mesajlar", .newsTitle: "Xəbərlər", .pickMedia: "Şəkil və ya video",
+            .pickCamera: "Kamera", .pickFile: "Fayl", .removeAttachment: "Sil",
             .emptyList: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
             .offline: "İnternet yoxdur", .now: "indi", .you: "Siz",
             .close: "Bağla", .unread: "Oxunmamış", .unreadMessages: "Oxunmamış mesaj var", .minutesShort: "%d dəq",
             .hoursShort: "%d saat", .daysShort: "%d gün", .email: "E-poçt", .phone: "Telefon",
             .headerSubtitle: "Adətən bir neçə dəqiqəyə cavab veririk", .online: "onlayn", .away: "Hazırda iş saatı deyil",
             .awayUntil: "Növbəti iş saatı: %@",
-            .composerPlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdakı variantlardan birini seçin",
+            .composerPlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdan birini seçin",
             .sending: "Göndərilir", .sent: "Göndərildi", .read: "Oxundu", .failed: "Göndərilmədi",
             .closed: "Söhbət bağlanıb", .startNewConversation: "Yeni söhbət başlat", .back: "← Geri",
             .goBack: "Geri", .bot: "Bot", .typing: "yazır", .attach: "Fayl əlavə et",
@@ -128,14 +134,15 @@ package struct ClomniStrings: Sendable, Equatable {
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
             .greetingLine1: "Hi, {first_name}", .greetingLine1Anonymous: "Hi", .greetingLine2: "How can we help?", .recentMessage: "Recent message",
-            .followUs: "Follow us", .tabMessages: "Messages",
+            .followUs: "Follow us", .messagesTitle: "Messages", .newsTitle: "News", .pickMedia: "Photo or video",
+            .pickCamera: "Camera", .pickFile: "File", .removeAttachment: "Remove",
             .emptyList: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
             .offline: "No internet connection", .now: "now", .you: "You",
             .close: "Close", .unread: "Unread", .unreadMessages: "Unread messages", .minutesShort: "%d min",
             .hoursShort: "%d h", .daysShort: "%d d", .email: "Email", .phone: "Phone",
             .headerSubtitle: "Typically replies in a few minutes", .online: "online", .away: "Outside working hours",
             .awayUntil: "Next working hours: %@",
-            .composerPlaceholder: "Write a message…", .chooseAbove: "Choose one of the options above",
+            .composerPlaceholder: "Write a message…", .chooseAbove: "Choose an option above",
             .sending: "Sending", .sent: "Sent", .read: "Read", .failed: "Not sent",
             .closed: "Conversation closed", .startNewConversation: "Start a new conversation",
             .back: "← Back", .goBack: "Back", .bot: "Bot", .typing: "is typing",
@@ -149,14 +156,15 @@ package struct ClomniStrings: Sendable, Equatable {
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
             .greetingLine1: "Здравствуйте, {first_name}", .greetingLine1Anonymous: "Здравствуйте", .greetingLine2: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
-            .followUs: "Мы в соцсетях", .tabMessages: "Сообщения",
+            .followUs: "Мы в соцсетях", .messagesTitle: "Сообщения", .newsTitle: "Новости", .pickMedia: "Фото или видео",
+            .pickCamera: "Камера", .pickFile: "Файл", .removeAttachment: "Удалить",
             .emptyList: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
             .offline: "Нет подключения к интернету", .now: "сейчас", .you: "Вы",
             .close: "Закрыть", .unread: "Не прочитано", .unreadMessages: "Есть непрочитанные сообщения",
             .minutesShort: "%d мин", .hoursShort: "%d ч", .daysShort: "%d дн", .email: "Почта", .phone: "Телефон",
             .headerSubtitle: "Обычно отвечаем в течение нескольких минут", .online: "в сети", .away: "Сейчас нерабочее время",
             .awayUntil: "Следующее рабочее время: %@",
-            .composerPlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите один из вариантов выше",
+            .composerPlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите вариант выше",
             .sending: "Отправляется", .sent: "Отправлено", .read: "Прочитано", .failed: "Не отправлено",
             .closed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад",
             .goBack: "Назад", .bot: "Бот", .typing: "печатает", .attach: "Прикрепить файл",

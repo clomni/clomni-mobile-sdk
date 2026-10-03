@@ -56,7 +56,8 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(header.style, .gradient)
         XCTAssertFalse(header.glow)
         XCTAssertNil(header.wordmark, "fixture 42 has no wordmark: the logo and the name")
-        XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(.m))
+        XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(scale: 100))
+        XCTAssertEqual(header.logoHeight, 32)
         XCTAssertEqual(header.teamAvatars.count, 3)
         // The default greets by the first name; the panel can choose {name}, the whole name.
         XCTAssertEqual(header.greeting, "Salam, Aysel")
@@ -95,7 +96,7 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(apar.newConversation?.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk")
         XCTAssertEqual(apar.newConversation?.accessibilityLabel,
                        "Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk")
-        XCTAssertEqual(apar.recent?.label, "Son mesaj")
+        XCTAssertEqual(apar.recent?.label, "Ən son mesaj")
         XCTAssertEqual(apar.channels?.label, "Bizi izləyin")
         XCTAssertEqual(apar.channels?.items.map(\.accessibilityLabel), ["Instagram", "WhatsApp", "LinkedIn", "E-poçt"])
         XCTAssertNil(apar.offline)
@@ -114,17 +115,21 @@ final class PresenterTests: XCTestCase {
 
     /// home.title_size and the full logo (DESIGN-PASS; APPEARANCE-CONTRACT § 4a).
     func testTitleSizeAndWordmark() throws {
-        XCTAssertEqual([MessengerConfig.TitleSize.s, .m, .l].map { HomeScreen.TitleSize($0) }.map { [$0.greeting, $0.title] },
-                       [[23.8, 23.8], [28, 28], [33.6, 33.6]], "the server's 85, 100 and 120%")
+        XCTAssertEqual([85, 100, 120].map { HomeScreen.TitleSize(scale: $0) }.map { [$0.greeting, $0.title] },
+                       [[23.8, 23.8], [28, 28], [33.6, 33.6]])
         XCTAssertEqual(HomeScreen.TitleSize(scale: 50).title, 19.6, accuracy: 0.001, "70% at least")
         XCTAssertEqual(HomeScreen.TitleSize(scale: 200).title, 39.2, accuracy: 0.001, "140% at most")
         XCTAssertEqual(HomeScreen.TitleSize.lineHeight, 1.2)
         let large = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"name":"Clomni","logo_style":"wordmark","wordmark_url":"https://app.clomni.ai/v1/images/img_w"},
-             "home":{"title_size":"l"}}
+             "home":{"title_scale":120}}
             """##.utf8)))
         let header = presenter(config: large).home(snapshot(large)).header
-        XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(.l))
+        XCTAssertEqual(header.titleSize, HomeScreen.TitleSize(scale: 120))
+        let wordmark = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixture.data("59-config-wordmark.json").isEmpty ? Data()
+            : Fixture.data("59-config-wordmark.json")))
+        XCTAssertEqual(presenter(config: wordmark).home(snapshot(wordmark)).header.logoHeight, 44.8, accuracy: 0.001,
+                       "32 at 140%")
         XCTAssertEqual(header.wordmark, HomeScreen.Wordmark(url: URL(string: "https://app.clomni.ai/v1/images/img_w")!,
                                                             darkUrl: nil))
         XCTAssertEqual(header.brandName, "Clomni", "for the fallback and VoiceOver")
@@ -151,7 +156,7 @@ final class PresenterTests: XCTestCase {
     /// Config v2: what the panel publishes reaches Home (APPEARANCE-CONTRACT § 1, § 4).
     func testAppearanceFromThePanel() throws {
         let apar = presenter().home(snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
-        XCTAssertEqual(apar.order, [.send, .recent, .channels])
+        XCTAssertEqual(apar.order, [.messages, .recent, .send, .channels])
         XCTAssertEqual(apar.poweredBy, "Powered by Clomni")
 
         let json = ##"""
@@ -167,7 +172,7 @@ final class PresenterTests: XCTestCase {
             """##
         let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(json.utf8)))
         let home = presenter(config: config).home(snapshot(config, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
-        XCTAssertEqual(home.order, [.channels, .recent, .send], "the panel's order")
+        XCTAssertEqual(home.order, [.messages, .channels, .recent, .send], "the panel's order")
         XCTAssertNil(home.poweredBy, "the plan turned it off")
         XCTAssertEqual(home.header.style, .image(URL(string: "https://app.clomni.ai/v1/images/head")!))
         XCTAssertTrue(home.header.glow)
@@ -181,7 +186,7 @@ final class PresenterTests: XCTestCase {
 
         // Without a recent conversation or channels, those cards are not in the order at all.
         let bare = presenter(config: config).home(snapshot(config))
-        XCTAssertEqual(presenter(config: config).home(snapshot(config, [])).order, [.channels, .send])
+        XCTAssertEqual(presenter(config: config).home(snapshot(config, [])).order, [.messages, .channels, .send])
         XCTAssertNil(bare.recent)
         // An image style without its picture is the gradient.
         let noPicture = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"header_style":"image"}}"#.utf8)))

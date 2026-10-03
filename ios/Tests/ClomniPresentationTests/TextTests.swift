@@ -15,7 +15,7 @@ final class StringsTests: XCTestCase {
     }
 
     func testLanguageAndOverrides() {
-        XCTAssertEqual(ClomniStrings(language: "en")[.tabMessages], "Messages")
+        XCTAssertEqual(ClomniStrings(language: "en")[.messagesTitle], "Messages")
         XCTAssertEqual(ClomniStrings(language: "ru-RU")[.followUs], "Мы в соцсетях")
         XCTAssertEqual(ClomniStrings(language: "de")[.followUs], "Bizi izləyin", "anything else reads as az")
         XCTAssertEqual(ClomniStrings(language: nil).language, "az")

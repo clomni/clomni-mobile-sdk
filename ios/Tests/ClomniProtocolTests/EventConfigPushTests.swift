@@ -92,7 +92,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertFalse(config.brand.glow)
         XCTAssertEqual(config.brand.colors?.light, MessengerConfig.Palette(
             primary: "#1F9D63", onPrimary: "#000000", primarySoft: "#E9F5EF", primaryLine: "#CEE9DD",
-            headerFrom: "#1F9D63", headerTo: "#177248", headerText: "#FFFFFF"))
+            headerFrom: "#1F9D63", headerTo: "#177248", headerText: "#FFFFFF", primaryStrong: "#0E482D"))
         XCTAssertEqual(config.brand.colors?.dark.primary, "#27C87E")
         XCTAssertEqual(config.team.show, true)
         XCTAssertEqual(config.team.avatars.count, 3)
@@ -101,7 +101,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(config.team.officeHours, MessengerConfig.OfficeHours(timeZone: "Asia/Baku", openNow: true,
                                                                             nextOpenAt: nil))
         XCTAssertEqual(config.bot, MessengerConfig.Bot(name: "Clomni", avatarUrl: nil))
-        XCTAssertEqual(config.home.cards, [.send, .recent, .channels])
+        XCTAssertEqual(config.home.cards, [.messages, .recent, .send, .news, .channels])
         XCTAssertEqual(config.home.channels.map(\.type), ["instagram", "whatsapp", "linkedin", "email"])
         XCTAssertEqual(config.theme, MessengerConfig.Theme(
             mode: .system, launcher: MessengerConfig.Launcher(enabled: false, position: .right, bottomPadding: 20)))
@@ -113,44 +113,49 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertTrue(config.poweredBy)
     }
 
-    /// APPEARANCE-CONTRACT § 4a and DESIGN-PASS: the full logo and the greeting's size.
-    func testWordmarkAndTitleSize() throws {
+    /// APPEARANCE-CONTRACT § 4a and § 4c: the full logo, the logo's and the greeting's scale, the cards.
+    func testWordmarkScalesAndCards() throws {
         let wordmark = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"name":"Clomni","logo_style":"wordmark","wordmark_url":"https://app.clomni.ai/v1/images/img_w",
-                      "wordmark_dark_url":"https://app.clomni.ai/v1/images/img_wd"},
-             "home":{"title_size":"l"}}
+                      "wordmark_dark_url":"https://app.clomni.ai/v1/images/img_wd","logo_scale":150},
+             "home":{"title_scale":120,"cards":["send","news","recent","promo","send"]}}
             """##.utf8)))
         XCTAssertEqual(wordmark.brand.logoStyle, .wordmark)
         XCTAssertEqual(wordmark.brand.wordmarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_w")
         XCTAssertEqual(wordmark.brand.wordmarkDarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_wd")
-        XCTAssertEqual(wordmark.home.titleSize, .l)
+        XCTAssertEqual(wordmark.brand.logoScale, 150)
+        XCTAssertEqual(wordmark.home.titleScale, 120)
+        XCTAssertEqual(wordmark.home.cards, [.messages, .send, .news, .recent],
+                       "messages always, first when missing; unknown skipped; each once")
 
-        let small = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"home":{"title_size":"s"}}"#.utf8)))
-        XCTAssertEqual(small.home.titleSize, .s)
-        // Without a wordmark there is nothing to show: mark. Unknown values take the defaults.
+        // Without a wordmark there is nothing to show: mark. Out of range: kept in it.
         let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
-            #"{"brand":{"logo_style":"wordmark","wordmark_url":null},"home":{"title_size":"xl"}}"#.utf8)))
+            #"{"brand":{"logo_style":"wordmark","wordmark_url":null,"logo_scale":500},"home":{"title_scale":10}}"#.utf8)))
         XCTAssertEqual(odd.brand.logoStyle, .mark)
-        XCTAssertEqual(odd.home.titleSize, .m)
+        XCTAssertEqual(odd.brand.logoScale, 200)
+        XCTAssertEqual(odd.home.titleScale, 70)
         let neon = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
             #"{"brand":{"logo_style":"neon","wordmark_url":"https://a.az/w.png"}}"#.utf8)))
         XCTAssertEqual(neon.brand.logoStyle, .mark)
-        // The server's fixtures: 59 with a wordmark and the large greeting, 42 and 58 without.
+        // The server's fixtures: 59 with a wordmark, a large logo and greeting; 42 and 58 at 100%.
         let fixture = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("59-config-wordmark.json")))
         XCTAssertEqual(fixture.brand.logoStyle, .wordmark)
         XCTAssertEqual(fixture.brand.wordmarkUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Wm7Qk2Lx9PzR4sTv8NcY")
         XCTAssertNil(fixture.brand.wordmarkDarkUrl)
-        XCTAssertEqual(fixture.home.titleSize, .l)
+        XCTAssertEqual([fixture.brand.logoScale, fixture.home.titleScale], [140, 120])
+        XCTAssertEqual(fixture.home.cards, [.messages, .send, .channels])
         for name in ["42-config-apar.json", "58-config-apar-en.json"] {
             let apar = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data(name)))
             XCTAssertEqual(apar.brand.logoStyle, .mark, name)
             XCTAssertNil(apar.brand.wordmarkUrl, name)
-            XCTAssertEqual(apar.home.titleSize, .m, name)
+            XCTAssertEqual([apar.brand.logoScale, apar.home.titleScale], [100, 100], name)
+            XCTAssertEqual(apar.home.cards, [.messages, .recent, .send, .news, .channels], name)
         }
-        // A server that does not send the fields at all.
+        // A server that does not send the fields at all: 100%, every card.
         let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Apar"},"home":{}}"#.utf8)))
         XCTAssertEqual(older.brand.logoStyle, .mark)
-        XCTAssertEqual(older.home.titleSize, .m)
+        XCTAssertEqual([older.brand.logoScale, older.home.titleScale], [100, 100])
+        XCTAssertEqual(older.home.cards, [.messages, .recent, .send, .news, .channels])
     }
 
     func testMinimalConfigTakesDefaults() throws {
@@ -164,7 +169,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(config.brand.headerStyle, .solid)
         XCTAssertEqual(config.theme, MessengerConfig.Theme(
             mode: .system, launcher: MessengerConfig.Launcher(enabled: false, position: .right, bottomPadding: 20)))
-        XCTAssertEqual(config.home.cards, [.send])
+        XCTAssertEqual(config.home.cards, [.messages, .send], "the way to the conversations is never off")
         XCTAssertTrue(config.home.channels.isEmpty)
         XCTAssertEqual(config.team, MessengerConfig.Team(
             show: false, avatars: [], replyTime: "Adətən bir neçə dəqiqəyə cavab veririk",
@@ -180,7 +185,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         let empty = try XCTUnwrap(ProtocolJSON.parseConfig(Data("{}".utf8)))
         XCTAssertEqual(empty.version, 0)
         XCTAssertEqual(empty.brand.name, "")
-        XCTAssertEqual(empty.home.cards, [.send, .recent, .channels], "no list: every card")
+        XCTAssertEqual(empty.home.cards, [.messages, .recent, .send, .news, .channels], "no list: every card")
         XCTAssertEqual(empty.languages, ["az"])
 
         let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
@@ -207,7 +212,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(odd.theme, MessengerConfig.Theme(
             mode: .system, launcher: MessengerConfig.Launcher(enabled: true, position: .left, bottomPadding: 20)))
         XCTAssertEqual(odd.home.channels.map(\.type), ["tiktok", "a", "b", "c", "d"], "at most five")
-        XCTAssertEqual(odd.home.cards, [.send, .channels, .recent], "send always, each card once, in order")
+        XCTAssertEqual(odd.home.cards, [.messages, .send, .channels, .recent], "send always, each card once, in order")
         XCTAssertFalse(odd.team.show)
         XCTAssertEqual(odd.team.avatars.count, 1)
         XCTAssertEqual(odd.team.officeHours?.openNow, true)

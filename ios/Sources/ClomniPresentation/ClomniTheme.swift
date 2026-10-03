@@ -21,8 +21,8 @@ package struct ClomniTheme: Sendable, Equatable {
         /// Text and icons on the header: white where it reaches 3:1 on both header colours (the greeting is large
         /// text), else #1B1D21. Not `onPrimary`, which in dark mode can be black on a dark header.
         package let headerText: RGBColor
-        /// The brand's strong tone, for Home's first greeting line (at 70%): two steps darker, in dark mode one
-        /// lighter. The server's `primary_strong` once it sends one.
+        /// The brand's strong tone, for Home's first greeting line (at 70%): the server's `primary_strong`, else
+        /// `primaryStrong(_:)` of the brand.
         package let primaryStrong: RGBColor
         package let background: RGBColor
         /// Behind the Home cards.
@@ -130,6 +130,11 @@ package struct ClomniTheme: Sendable, Equatable {
     package static func make(brand: MessengerConfig.Brand?, dark: Bool, primaryColor: String? = nil) -> ClomniTheme {
         let background = dark ? hex("#121316") : .white
         var tokens: Tokens
+        let own = primaryColor.flatMap { RGBColor(hex: $0) }
+        let base = own ?? brand.flatMap { RGBColor(hex: $0.primaryColor) } ?? defaultPrimary
+        // The server's primary_strong when it sent one (and the app set no colour), else the same rule here.
+        let palette = dark ? brand?.colors?.dark : brand?.colors?.light
+        let strong = (own == nil ? palette?.primaryStrong.flatMap { RGBColor(hex: $0) } : nil) ?? primaryStrong(base)
         if let primaryColor, let base = RGBColor(hex: primaryColor) {
             tokens = derive(base, dark: dark)
         } else if let palette = dark ? brand?.colors?.dark : brand?.colors?.light {
@@ -159,7 +164,7 @@ package struct ClomniTheme: Sendable, Equatable {
             headerFrom: tokens.headerFrom,
             headerTo: tokens.headerTo,
             headerText: tokens.headerText,
-            primaryStrong: dark ? tokens.primary.steps(1) : tokens.primary.steps(-2),
+            primaryStrong: strong,
             background: background,
             canvas: hex(dark ? "#0B0C0E" : "#F5F6F8"),
             surface: hex(dark ? "#22242A" : "#F1F2F4"),
@@ -209,6 +214,12 @@ package struct ClomniTheme: Sendable, Equatable {
         package var headerFrom: RGBColor
         package var headerTo: RGBColor
         package var headerText: RGBColor
+    }
+
+    /// primary_strong's rule (the server's too): the brand 20 points of HSL lightness darker, or lighter when the
+    /// brand is so dark that white reads on it at 7:1. The same in both modes.
+    package static func primaryStrong(_ brand: RGBColor) -> RGBColor {
+        brand.contrast(with: .white) >= 7 ? brand.steps(2) : brand.steps(-2)
     }
 
     /// The server's rules, for when it sent no colours or the app chose its own: in dark mode the primary is one step

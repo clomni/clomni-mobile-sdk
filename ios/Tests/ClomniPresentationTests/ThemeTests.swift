@@ -142,6 +142,23 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(blue, ClomniTheme.neutral(dark: false))
     }
 
+    /// primary_strong (Home's first greeting line): the server's, else 20 points darker, or lighter for a brand
+    /// white reads on at 7:1; the same in both modes; setTheme's colour gets the rule.
+    func testPrimaryStrong() throws {
+        let apar = Fixture.aparConfig
+        XCTAssertEqual(ClomniTheme.make(brand: apar.brand, dark: false).colors.primaryStrong.hex, "#0E482D", "the server's")
+        XCTAssertEqual(ClomniTheme.make(brand: apar.brand, dark: true).colors.primaryStrong.hex, "#0E482D")
+        let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"{"brand":{"primary_color":"#1F9D63"}}"##.utf8)))
+        let green = RGBColor(hex: "#1F9D63")!
+        XCTAssertEqual(ClomniTheme.make(brand: older.brand, dark: false).colors.primaryStrong, green.steps(-2))
+        XCTAssertEqual(ClomniTheme.make(brand: older.brand, dark: true).colors.primaryStrong, green.steps(-2), "both modes")
+        let navy = RGBColor(hex: "#0B1F3A")!
+        XCTAssertGreaterThanOrEqual(navy.contrast(with: .white), 7)
+        XCTAssertEqual(ClomniTheme.primaryStrong(navy), navy.steps(2), "too dark to go darker")
+        let own = ClomniTheme.make(brand: apar.brand, dark: false, primaryColor: "#0A66C2").colors.primaryStrong
+        XCTAssertEqual(own, RGBColor(hex: "#0A66C2")!.steps(-2), "the app's colour, not the panel's strong tone")
+    }
+
     func testNeutralTokens() {
         let light = ClomniTheme.make(brand: nil, dark: false)
         XCTAssertFalse(light.isDark)

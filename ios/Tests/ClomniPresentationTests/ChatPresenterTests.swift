@@ -222,7 +222,7 @@ final class ChatPresenterTests: XCTestCase {
         guard case .replies(let chipsBlock)? = chips.items.last else { return XCTFail() }
         XCTAssertEqual(chipsBlock.layout, .chips)
         XCTAssertEqual(chipsBlock.back, ReplyButton(id: "back", title: "← Geri", accessibilityLabel: "Geri"))
-        XCTAssertEqual(chips.composer.mode, .locked("Yuxarıdakı variantlardan birini seçin"))
+        XCTAssertEqual(chips.composer.mode, .locked("Yuxarıdan birini seçin"))
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
         let long = Fixture.message("13-button-title-over-80.json")

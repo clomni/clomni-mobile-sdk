@@ -59,14 +59,6 @@ package struct HomeScreen: Sendable, Equatable {
             (greeting, title) = (size, size)
         }
 
-        /// Until the server sends title_scale: its own conversion of the older title_size.
-        package init(_ size: MessengerConfig.TitleSize) {
-            switch size {
-            case .s: self.init(scale: 85)
-            case .m: self.init(scale: 100)
-            case .l: self.init(scale: 120)
-            }
-        }
     }
 
     /// The header's background: the brand gradient (header_from → header_to), one colour, or a picture under a dark
@@ -197,7 +189,7 @@ package struct HomePresenter: Sendable {
 
     package func home(_ snapshot: MessengerSnapshot) -> HomeScreen {
         let config = snapshot.config
-        let cards = config?.home.cards ?? [.send, .recent, .channels]
+        let cards = config?.home.cards ?? MessengerConfig.HomeCard.allCases
         let recent = cards.contains(.recent) ? snapshot.conversations.lazy
             .compactMap { row($0, config: config) }.first.map { HomeScreen.RecentCard(label: strings[.recentMessage], row: $0) }
             : nil
@@ -217,9 +209,11 @@ package struct HomePresenter: Sendable {
             loadingLabel: strings[.loading],
             order: cards.filter { card in
                 switch card {
-                case .send: return true
+                case .messages, .send: return true
                 case .recent: return recent != nil
                 case .channels: return channels != nil
+                // News comes with its own API (CM-114); until the SDK reads it there is none to show.
+                case .news: return false
                 }
             },
             poweredBy: config?.poweredBy == false ? nil : "Powered by Clomni")
@@ -239,7 +233,7 @@ package struct HomePresenter: Sendable {
         let phase: HomeScreen.Phase = !rows.isEmpty || snapshot.conversationsLoad == .loaded ? .ready
             : failed ? .failed : .loading
         return MessagesScreen(
-            title: strings[.tabMessages], phase: phase, rows: rows,
+            title: strings[.messagesTitle], phase: phase, rows: rows,
             empty: phase == .ready && rows.isEmpty ? strings[.emptyList] : nil,
             newConversation: newConversation(snapshot.config),
             offline: snapshot.isOffline ? strings[.offline] : nil,
@@ -298,11 +292,11 @@ package struct HomePresenter: Sendable {
                 guard config.brand.logoStyle == .wordmark, let url = config.brand.wordmarkUrl else { return nil }
                 return HomeScreen.Wordmark(url: url, darkUrl: config.brand.wordmarkDarkUrl)
             },
-            logoHeight: ClomniTheme.Size.logo,
+            logoHeight: ClomniTheme.Size.logo * Double(config?.brand.logoScale ?? 100) / 100,
             teamAvatars: config?.team.show == false ? [] : Array((config?.team.avatars ?? []).prefix(3)),
             greeting: greeting(snapshot.userName),
             title: strings[.greetingLine2],
-            titleSize: HomeScreen.TitleSize(config?.home.titleSize ?? .m),
+            titleSize: HomeScreen.TitleSize(scale: config?.home.titleScale ?? 100),
             closeLabel: strings[.close])
     }
 
@@ -327,7 +321,7 @@ package struct HomePresenter: Sendable {
 
     private func messagesCard(_ snapshot: MessengerSnapshot) -> HomeScreen.MessagesCard {
         let unread = snapshot.unreadTotal > 0 || snapshot.conversations.contains { $0.unreadCount > 0 }
-        let messages = strings[.tabMessages]
+        let messages = strings[.messagesTitle]
         let label = unread ? "\(messages), \(strings[.unreadMessages])" : messages
         return HomeScreen.MessagesCard(title: messages, unread: unread, accessibilityLabel: label)
     }

@@ -41,6 +41,8 @@ package struct MessengerConfig: Sendable, Equatable {
         package let wordmarkUrl: URL?
         /// For dark mode; nil uses `wordmarkUrl` there too.
         package let wordmarkDarkUrl: URL?
+        /// Home's logo (and full logo) height in percent of 32: 60 to 200, 100 when absent.
+        package let logoScale: Int
 
         /// Clomni's own colour, used when the config has none or an invalid one.
         package static let defaultPrimaryColor = "#10A670"
@@ -57,10 +59,6 @@ package struct MessengerConfig: Sendable, Equatable {
         case wordmark
     }
 
-    /// The size of Home's greeting, chosen in the panel.
-    package enum TitleSize: String, Sendable, Equatable {
-        case s, m, l
-    }
 
     package struct Colors: Sendable, Equatable {
         package let light: Palette
@@ -79,6 +77,8 @@ package struct MessengerConfig: Sendable, Equatable {
         package let headerTo: String
         /// Text and icons on the header; nil from a server before it sent this (the SDK then works it out).
         package let headerText: String?
+        /// Home's first greeting line (at about 70%); nil from a server before it sent this (the SDK works it out).
+        package let primaryStrong: String?
     }
 
     package struct Team: Sendable, Equatable {
@@ -105,16 +105,21 @@ package struct MessengerConfig: Sendable, Equatable {
     }
 
     package struct Home: Sendable, Equatable {
-        /// In the panel's order; `send` is always there.
+        /// In the panel's order; `messages` and `send` are always there.
         package let cards: [HomeCard]
         /// At most five, in the panel's order.
         package let channels: [Channel]
-        /// `m` when the server sends none or one this SDK does not know.
-        package let titleSize: TitleSize
+        /// The greeting's size in percent of 28: 70 to 140, 100 when absent.
+        package let titleScale: Int
     }
 
-    package enum HomeCard: String, Sendable, Equatable {
-        case send, recent, channels
+    package enum HomeCard: String, Sendable, Equatable, CaseIterable {
+        /// Opens the conversation list (there is no tab bar).
+        case messages
+        case recent, send
+        /// The published news; not drawn when there is none.
+        case news
+        case channels
     }
 
     /// A social channel icon on Home; `type` is open-ended (instagram, whatsapp, linkedin, email, …).
@@ -181,7 +186,8 @@ extension MessengerConfig {
             logoStyle: brand.optionalURL("wordmark_url") == nil ? .mark
                 : brand.optionalString("logo_style").flatMap(LogoStyle.init(rawValue:)) ?? .mark,
             wordmarkUrl: brand.optionalURL("wordmark_url"),
-            wordmarkDarkUrl: brand.optionalURL("wordmark_dark_url"))
+            wordmarkDarkUrl: brand.optionalURL("wordmark_dark_url"),
+            logoScale: Self.percent(brand.optionalInt("logo_scale"), in: 60...200))
 
         let team = section(f, "team")
         self.team = Team(
@@ -203,8 +209,10 @@ extension MessengerConfig {
         where !cards.contains(card) {
             cards.append(card)
         }
-        if home["cards"] == nil { cards = [.send, .recent, .channels] }
+        if home["cards"] == nil { cards = HomeCard.allCases }
+        // The way to the conversations and to a new one is never off; an older server's list has no messages.
         if !cards.contains(.send) { cards.insert(.send, at: 0) }
+        if !cards.contains(.messages) { cards.insert(.messages, at: 0) }
         self.home = Home(
             cards: cards,
             channels: Array((home["channels"]?.arrayValue ?? []).compactMap { item -> Channel? in
@@ -212,7 +220,7 @@ extension MessengerConfig {
                 else { return nil }
                 return Channel(type: type, url: url)
             }.prefix(Self.maxChannels)),
-            titleSize: home.optionalString("title_size").flatMap(TitleSize.init(rawValue:)) ?? .m)
+            titleScale: Self.percent(home.optionalInt("title_scale"), in: 70...140))
 
         let theme = section(f, "theme")
         let launcher = section(theme, "launcher")
@@ -246,7 +254,12 @@ extension MessengerConfig {
             return nil
         }
         return Palette(primary: primary, onPrimary: onPrimary, primarySoft: soft, primaryLine: line, headerFrom: from,
-                       headerTo: to, headerText: color("header_text"))
+                       headerTo: to, headerText: color("header_text"), primaryStrong: color("primary_strong"))
+    }
+
+    /// A panel percentage, kept within its range; 100 when absent.
+    private static func percent(_ value: Int?, in range: ClosedRange<Int>) -> Int {
+        min(range.upperBound, max(range.lowerBound, value ?? 100))
     }
 
     /// "#RRGGBB" with ASCII hex digits (Character.isHexDigit also takes fullwidth ones), or nil for anything else.
