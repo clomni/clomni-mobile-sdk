@@ -47,7 +47,6 @@ struct ChatView: View {
     @State private var writeAnyway = false
     @State private var choosingAttachment = false
     @State private var pickingPhoto = false
-    @State private var pickingMedia: [PhotosPickerItem] = []
     @State private var showingPhotos = false
     @State private var pickingCamera = false
     @State private var pickingFile = false
