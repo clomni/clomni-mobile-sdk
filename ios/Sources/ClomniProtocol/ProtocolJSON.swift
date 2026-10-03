@@ -33,6 +33,20 @@ package enum ProtocolJSON {
         decode(data, "config") { MessengerConfig($0) }
     }
 
+    /// The news; an item that cannot be read is left out (and logged), the rest stay.
+    package static func parseNews(_ data: Data) -> [NewsItem]? {
+        decode(data, "news") { fields in
+            (fields["items"]?.arrayValue ?? []).enumerated().compactMap { index, item in
+                do {
+                    return try NewsItem(try JSONFields(item, path: "news.items[\(index)]"))
+                } catch {
+                    ClomniLog.warning("news item left out: \(error)")
+                    return nil
+                }
+            }
+        }
+    }
+
     /// nil when the payload is not a Clomni push.
     package static func parsePush(_ data: Data) -> PushPayload? {
         decode(data, "push") { try PushPayload($0) }

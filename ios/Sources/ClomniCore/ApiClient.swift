@@ -75,6 +75,11 @@ enum ConfigResult: Equatable {
     case changed(MessengerConfig, body: Data, etag: String?)
 }
 
+enum NewsResult: Equatable {
+    case notModified
+    case changed([NewsItem], body: Data, etag: String?)
+}
+
 /// The Mobile API (protocol/openapi.yaml). Session endpoints authenticate with the app's public keys, the rest with
 /// the session token. A `401` renews the session once and repeats the request; `429` waits `Retry-After`; a `5xx`
 /// is retried with 1, 2, 4 s waits. Anything else is thrown as `ClomniError`.
@@ -219,6 +224,14 @@ actor ApiClient {
                                          headers: etag.map { ["If-None-Match": $0] } ?? [:])
         if response.status == 304 { return .notModified }
         return .changed(try read(response, ProtocolJSON.parseConfig), body: response.body, etag: response.header("ETag"))
+    }
+
+    /// GET /news, cached like the config: 304 when the ETag still holds.
+    func news(language: String?, etag: String?) async throws -> NewsResult {
+        let response = try await request("GET", "/news", query: ["lang": language],
+                                         headers: etag.map { ["If-None-Match": $0] } ?? [:])
+        if response.status == 304 { return .notModified }
+        return .changed(try read(response, ProtocolJSON.parseNews), body: response.body, etag: response.header("ETag"))
     }
 
     func conversations(cursor: String? = nil, limit: Int = 20) async throws -> ConversationPage {

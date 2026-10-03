@@ -86,6 +86,10 @@ final class FixtureIndexTests: ProtocolTestCase {
                 || event == "typing" && typing?["conversation_id"]?.stringValue?.hasPrefix("conv_") == true
                 && ["on", "off"].contains(typing?["state"]?.stringValue ?? "")
             XCTAssertEqual(fits, entry.isValid, label)
+        case ("news.json", nil):
+            let news = ProtocolJSON.parseNews(data)
+            XCTAssertNotNil(news, label)
+            if entry.isValid { XCTAssertEqual(news?.count, ProtocolJSON.decode(data)?["items"]?.arrayValue?.count, label) }
         case ("appearance.json", nil):
             // The panel's document; the SDK reads only what the server makes of it, config.json.
             XCTAssertNotNil(ProtocolJSON.decode(data), label)

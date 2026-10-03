@@ -7,6 +7,7 @@ import ClomniProtocol
 package enum ClomniChange: Sendable, Equatable {
     case session
     case config
+    case news
     case conversations
     /// Messages or pending messages of one conversation.
     case messages(conversationId: String)
@@ -36,6 +37,8 @@ package actor ClomniEngine {
     private lazy var store: MessageStore = cache.load(MessageStore.self, Files.store) ?? MessageStore()
     private lazy var outbox: Outbox = cache.load(Outbox.self, Files.outbox) ?? Outbox()
     package private(set) lazy var config: MessengerConfig? = cache.read(Files.config).flatMap(ProtocolJSON.parseConfig)
+    /// The last news the server sent, from disk until it is asked.
+    package private(set) lazy var news: [NewsItem] = cache.read(Files.news).flatMap(ProtocolJSON.parseNews) ?? []
     private lazy var configETag: String? = cache.read(Files.configETag).map { String(decoding: $0, as: UTF8.self) }
     /// The inbox is switched off in Clomni: the messenger must not open.
     package private(set) var isAppDisabled = false
@@ -90,6 +93,8 @@ package actor ClomniEngine {
         static let outbox = "outbox.json"
         static let config = "config.json"
         static let configETag = "config.etag"
+        static let news = "news.json"
+        static let newsETag = "news.etag"
         /// Kept in the vault, next to the session it was registered for (the system may purge the cache).
         static let push = "push_registration"
     }
@@ -163,6 +168,7 @@ package actor ClomniEngine {
         }
         clearLocalData()
         config = nil
+        news = []
         configETag = nil
         cache.clear()
         notify(.session)
@@ -298,6 +304,30 @@ package actor ClomniEngine {
             ClomniLog.warning("config not refreshed: \(error)")
         }
         return config
+    }
+
+    /// The published news, in the language of the config's texts; the cached ones (from disk at first) when the
+    /// server has nothing newer or cannot be reached.
+    @discardableResult
+    package func refreshNews() async -> [NewsItem] {
+        do {
+            let etag = cache.read(Files.newsETag).map { String(decoding: $0, as: UTF8.self) }
+            if case .changed(let items, let body, let etag) = try await api.news(language: configLanguage, etag: etag) {
+                news = items
+                cache.write(body, Files.news)
+                cache.write(etag.map { Data($0.utf8) }, Files.newsETag)
+                notify(.news)
+            }
+        } catch {
+            noteDisabled(error)
+            ClomniLog.warning("news not refreshed: \(error)")
+        }
+        return news
+    }
+
+    /// Opening a news item, for the panel's analytics: the app event news_opened {news_id}.
+    package func newsOpened(_ id: String) async {
+        try? await track("news_opened", data: ["news_id": .string(id)])
     }
 
     package func refreshConversations() async throws {

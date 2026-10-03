@@ -49,6 +49,9 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     private var frameSink: (@Sendable (String) -> Void)?
     var enforceHash = false
     let configETag = "W/\"c1\""
+    let newsETag = "W/\"n1\""
+    /// GET /news's body: fixture 61 unless a test sets another.
+    var newsBody: JSONValue?
 
     init(time: TimeSource) {
         self.time = time
@@ -227,6 +230,9 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
                                      "home": [:], "team": [:], "bot": ["name": "Clomni"], "composer": [:],
                                      "languages": ["az"], "strings": [:], "limits": ["text_chars": 50]]
             return Self.json(200, config, headers: ["ETag": configETag])
+        case ("GET", ["news"]):
+            if request.headers["If-None-Match"] == newsETag { return HTTPResponse(status: 304) }
+            return Self.json(200, newsBody ?? ["items": []], headers: ["ETag": newsETag])
         case ("GET", ["conversations"]):
             let list = conversations.values.filter { $0.user == user }.sorted { $0.id > $1.id }
             return Self.json(200, ["conversations": .array(list.map(conversationJSON)), "next_cursor": nil])
