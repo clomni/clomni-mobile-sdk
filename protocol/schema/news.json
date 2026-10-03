@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/news.json",
+  "title": "News",
+  "description": "GET /v1/news: the channel's published news in the panel's order, in one language (an item without that language comes in az). Home shows the first three as the news card; with no items the card is not shown. Cached with If-None-Match like the config. Opening an item is reported as the app event news_opened ({news_id}).",
+  "type": "object",
+  "required": ["items"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["id", "title", "summary", "body_markdown", "image_url", "button", "published_at"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^news_[0-9]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "summary": { "type": ["string", "null"], "maxLength": 160, "description": "Shown on the card, two lines." },
+        "body_markdown": {
+          "type": ["string", "null"],
+          "maxLength": 5000,
+          "description": "The item's screen: **bold**, *italic*, [links](https://…) and - lists."
+        },
+        "image_url": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "Cover picture, drawn 16:9. GET it with ?w=360|720|1080 like the config's images."
+        },
+        "button": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["text", "url"],
+              "properties": {
+                "text": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "url": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9+.-]*://\\S+$",
+                  "description": "https://… or a deep link. Passed to the host app's onLink; without one the system browser opens it."
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "published_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

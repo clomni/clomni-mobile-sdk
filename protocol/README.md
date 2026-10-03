@@ -10,6 +10,7 @@ is [docs/audit.md](../docs/audit.md) (§15 maps Clomni messages to these types).
 | [schema/client-message.json](schema/client-message.json) | client → server, `POST /v1/conversations/{id}/messages` |
 | [schema/event.json](schema/event.json) | WebSocket frame `{event, data, ts}` |
 | [schema/config.json](schema/config.json) | `GET /v1/mobile/config` |
+| [schema/news.json](schema/news.json) | `GET /v1/news` |
 | [schema/push.json](schema/push.json) | Clomni keys of an FCM / APNs push |
 | [openapi.yaml](openapi.yaml) | Mobile API v1 (REST), OpenAPI 3.1; the realtime socket is described in its `info` |
 | [strings.json](strings.json) | the SDKs' UI texts in az, en and ru (see below) |
