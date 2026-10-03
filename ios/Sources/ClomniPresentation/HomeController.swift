@@ -52,15 +52,20 @@ package final class HomeController {
         await changes.settled()
     }
 
-    package init(source: MessengerDataSource, language: String?, userName: String?, timeZone: TimeZone = .current,
-                now: @escaping @Sendable () -> Date = { Date() }) {
+    /// `config`: the one the messenger already has (cached or fetched), so the first frame is the panel's Home and
+    /// not the SDK's default texts (DESIGN-PASS-2 9).
+    package init(source: MessengerDataSource, language: String?, userName: String?, config: MessengerConfig? = nil,
+                timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.source = source
         self.language = language
         self.timeZone = timeZone
         self.now = now
-        snapshot = MessengerSnapshot(userName: userName)
+        snapshot = MessengerSnapshot(config: config, userName: userName)
+        if config != nil { snapshot.configLoad = .loaded }
         self.userName = userName
-        let presenter = HomePresenter(strings: ClomniStrings(language: language), timeZone: timeZone, now: now())
+        let presenter = HomePresenter(strings: ClomniStrings(language: language ?? config?.languages.first,
+                                                             overrides: config?.strings ?? [:]),
+                                      timeZone: timeZone, now: now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)
     }
@@ -115,7 +120,8 @@ package final class HomeController {
     }
 
     private func read() async {
-        snapshot.config = await source.config
+        // Never back to no config once there is one: a load must not redraw Home with the SDK's own texts.
+        snapshot.config = await source.config ?? snapshot.config
         snapshot.conversations = await source.conversations()
         snapshot.unreadTotal = await source.unreadTotal
     }

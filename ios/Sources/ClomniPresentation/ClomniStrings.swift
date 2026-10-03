@@ -11,7 +11,6 @@ package struct ClomniStrings: Sendable, Equatable {
         case greetingLine2 = "greeting_line2"
         case recentMessage = "recent_message"
         case followUs = "follow_us"
-        case tabHome = "tab_home"
         case tabMessages = "tab_messages"
         case emptyList = "empty_list"
         case error, retry, offline, now, you, close, unread, email, phone
@@ -109,7 +108,7 @@ package struct ClomniStrings: Sendable, Equatable {
         "az": [
             .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .sendCardTitle: "Bizə mesaj göndərin",
             .greetingLine1: "Salam, {first_name}", .greetingLine1Anonymous: "Salam", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Son mesaj",
-            .followUs: "Bizi izləyin", .tabHome: "Ana səhifə", .tabMessages: "Mesajlar",
+            .followUs: "Bizi izləyin", .tabMessages: "Mesajlar",
             .emptyList: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
             .offline: "İnternet yoxdur", .now: "indi", .you: "Siz",
             .close: "Bağla", .unread: "Oxunmamış", .unreadMessages: "Oxunmamış mesaj var", .minutesShort: "%d dəq",
@@ -129,7 +128,7 @@ package struct ClomniStrings: Sendable, Equatable {
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
             .greetingLine1: "Hi, {first_name}", .greetingLine1Anonymous: "Hi", .greetingLine2: "How can we help?", .recentMessage: "Recent message",
-            .followUs: "Follow us", .tabHome: "Home", .tabMessages: "Messages",
+            .followUs: "Follow us", .tabMessages: "Messages",
             .emptyList: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
             .offline: "No internet connection", .now: "now", .you: "You",
             .close: "Close", .unread: "Unread", .unreadMessages: "Unread messages", .minutesShort: "%d min",
@@ -150,7 +149,7 @@ package struct ClomniStrings: Sendable, Equatable {
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
             .greetingLine1: "Здравствуйте, {first_name}", .greetingLine1Anonymous: "Здравствуйте", .greetingLine2: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
-            .followUs: "Мы в соцсетях", .tabHome: "Главная", .tabMessages: "Сообщения",
+            .followUs: "Мы в соцсетях", .tabMessages: "Сообщения",
             .emptyList: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
             .offline: "Нет подключения к интернету", .now: "сейчас", .you: "Вы",
             .close: "Закрыть", .unread: "Не прочитано", .unreadMessages: "Есть непрочитанные сообщения",

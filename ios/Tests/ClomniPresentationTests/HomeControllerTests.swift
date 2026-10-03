@@ -111,14 +111,14 @@ final class HomeControllerTests: XCTestCase {
         await source.set(fresh: Fixture.aparConfig)
         let home = controller()
         await home.load()
-        XCTAssertFalse(home.home.tabs.messagesUnread)
+        XCTAssertFalse(home.home.messagesCard.unread)
         let before = renders
         await source.push(unread: 1, .typing(conversationId: "conv_1", sender: Sender(type: .operator), isTyping: true))
         await home.settled()
         XCTAssertEqual(renders, before, "typing is the conversation screen's business")
         await source.push(unread: 2, .unread(total: 2))
         await home.settled()
-        XCTAssertTrue(home.home.tabs.messagesUnread)
+        XCTAssertTrue(home.home.messagesCard.unread)
         XCTAssertEqual(renders, before + 1)
 
         await home.retry()
@@ -136,6 +136,22 @@ final class HomeControllerTests: XCTestCase {
         let id = await home.startConversation(openedFrom: "home")
         XCTAssertEqual(id, "draft_1", "a draft: nothing on the server until its first message")
         XCTAssertTrue(home.messages.rows.isEmpty, "not in the list either")
+    }
+
+    /// DESIGN-PASS-2 9: Home with a config is drawn with it from the first frame, and coming back to it (a load
+    /// again) never passes through the SDK's default texts.
+    func testHomeWithAConfigNeverShowsTheDefaults() async {
+        await source.set(cached: nil, fresh: Fixture.aparConfig)
+        let custom = Fixture.aparConfig.strings["greeting_line2"]
+        XCTAssertEqual(custom, "Bizdən nəsə soruşun")
+        let home = HomeController(source: source, language: nil, userName: "Aysel", config: Fixture.aparConfig)
+        var titles = [home.home.header.title]
+        XCTAssertEqual(home.home.phase, .ready, "the first frame")
+        home.onChange = { titles.append(home.home.header.title) }
+        await home.load()
+        await home.load()
+        XCTAssertEqual(Set(titles), ["Bizdən nəsə soruşun"], "\(titles)")
+        XCTAssertNotEqual(home.home.header.title, ClomniStrings(language: "az")[.greetingLine2])
     }
 
     func testNameAndConnectivityRedraw() {

@@ -21,6 +21,9 @@ package struct ClomniTheme: Sendable, Equatable {
         /// Text and icons on the header: white where it reaches 3:1 on both header colours (the greeting is large
         /// text), else #1B1D21. Not `onPrimary`, which in dark mode can be black on a dark header.
         package let headerText: RGBColor
+        /// The brand's strong tone, for Home's first greeting line (at 70%): two steps darker, in dark mode one
+        /// lighter. The server's `primary_strong` once it sends one.
+        package let primaryStrong: RGBColor
         package let background: RGBColor
         /// Behind the Home cards.
         package let canvas: RGBColor
@@ -47,6 +50,8 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let messageJoined: Double = 5
         package static let pill: Double = 18
         package static let card: Double = 12
+        /// Home's cards (DESIGN-PASS-2 5).
+        package static let homeCard: Double = 16
         package static let input: Double = 20
         /// The Home header's logo (DESIGN-PASS 2).
         package static let logo: Double = 8
@@ -83,8 +88,16 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let logo: Double = 32
         /// The full logo's height on Home.
         package static let wordmark: Double = 32
-        /// ✕'s icon box (the target is `touchTarget`).
-        package static let closeIcon: Double = 28
+        /// The close button on every screen (DESIGN-PASS-2 6): a 40 pt circle with a 20 pt ✕ drawn 2 pt thick, in a
+        /// 44 pt target, 16 pt from the screen's side and 12 pt under the safe area.
+        package static let closeCircle: Double = 40
+        package static let closeGlyph: Double = 20
+        package static let closeStroke: Double = 2
+        /// Every screen's bar: its buttons this far from the side and under the safe area.
+        package static let barEdge: Double = 16
+        package static let barTop: Double = 12
+        /// The conversation header's avatar.
+        package static let headerLead: Double = 32
         package static let headerAvatar: Double = 24
         /// Header avatars overlap by this much.
         package static let headerAvatarOverlap: Double = 7
@@ -92,9 +105,8 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let channel: Double = 30
         package static let unreadDot: Double = 7
         package static let tabDot: Double = 8
-        package static let tabIcon: Double = 22
-        /// The cards ride up over the header by this much.
-        package static let cardOverlap: Double = 40
+        /// Icons in Home's cards.
+        package static let cardIcon: Double = 20
         /// No tap target is smaller, whatever it looks like.
         package static let touchTarget: Double = 44
     }
@@ -106,7 +118,7 @@ package struct ClomniTheme: Sendable, Equatable {
         package let radius: Double
         package let y: Double
 
-        package static let card = Shadow(opacity: 0.07, radius: 8, y: 2)
+        package static let card = Shadow(opacity: 0.06, radius: 3, y: 1)
     }
 
     /// Clomni's own colour, for a config that has none.
@@ -147,6 +159,7 @@ package struct ClomniTheme: Sendable, Equatable {
             headerFrom: tokens.headerFrom,
             headerTo: tokens.headerTo,
             headerText: tokens.headerText,
+            primaryStrong: dark ? tokens.primary.steps(1) : tokens.primary.steps(-2),
             background: background,
             canvas: hex(dark ? "#0B0C0E" : "#F5F6F8"),
             surface: hex(dark ? "#22242A" : "#F1F2F4"),
@@ -180,7 +193,7 @@ package struct ClomniTheme: Sendable, Equatable {
         let colors = Colors(
             primary: accent, onPrimary: readableText(on: accent),
             primarySoft: base.surface, primaryLine: base.border,
-            headerFrom: header, headerTo: header, headerText: base.textPrimary,
+            headerFrom: header, headerTo: header, headerText: base.textPrimary, primaryStrong: base.textSecondary,
             background: base.background, canvas: base.canvas, surface: base.surface, textPrimary: base.textPrimary,
             textSecondary: base.textSecondary, border: base.border, unread: base.unread, online: base.online,
             warning: base.warning, onWarning: base.onWarning)

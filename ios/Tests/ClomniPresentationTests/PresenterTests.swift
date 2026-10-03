@@ -115,7 +115,10 @@ final class PresenterTests: XCTestCase {
     /// home.title_size and the full logo (DESIGN-PASS; APPEARANCE-CONTRACT § 4a).
     func testTitleSizeAndWordmark() throws {
         XCTAssertEqual([MessengerConfig.TitleSize.s, .m, .l].map { HomeScreen.TitleSize($0) }.map { [$0.greeting, $0.title] },
-                       [[15, 20], [17, 24], [19, 28]])
+                       [[23.8, 23.8], [28, 28], [33.6, 33.6]], "the server's 85, 100 and 120%")
+        XCTAssertEqual(HomeScreen.TitleSize(scale: 50).title, 19.6, accuracy: 0.001, "70% at least")
+        XCTAssertEqual(HomeScreen.TitleSize(scale: 200).title, 39.2, accuracy: 0.001, "140% at most")
+        XCTAssertEqual(HomeScreen.TitleSize.lineHeight, 1.2)
         let large = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"name":"Clomni","logo_style":"wordmark","wordmark_url":"https://app.clomni.ai/v1/images/img_w"},
              "home":{"title_size":"l"}}
@@ -274,18 +277,18 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(preview("👍🙏"), "👍🙏")
     }
 
-    func testTabDot() {
+    func testMessagesCardDot() {
         var quiet = snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")])
-        XCTAssertFalse(presenter().home(quiet).tabs.messagesUnread)
-        XCTAssertEqual(presenter().home(quiet).tabs.messagesAccessibilityLabel, "Mesajlar")
+        XCTAssertFalse(presenter().home(quiet).messagesCard.unread)
+        XCTAssertEqual(presenter().home(quiet).messagesCard.accessibilityLabel, "Mesajlar")
         quiet.unreadTotal = 1
-        let tabs = presenter().home(quiet).tabs
-        XCTAssertTrue(tabs.messagesUnread)
-        XCTAssertEqual(tabs.home, "Ana səhifə")
-        XCTAssertEqual(tabs.messagesAccessibilityLabel, "Mesajlar, Oxunmamış mesaj var")
+        let card = presenter().home(quiet).messagesCard
+        XCTAssertTrue(card.unread)
+        XCTAssertEqual(card.title, "Mesajlar")
+        XCTAssertEqual(card.accessibilityLabel, "Mesajlar, Oxunmamış mesaj var")
         let unreadInList = snapshot(Fixture.aparConfig,
                                     [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json", unread: 1)])
-        XCTAssertTrue(presenter().home(unreadInList).tabs.messagesUnread, "before the first unread.changed")
+        XCTAssertTrue(presenter().home(unreadInList).messagesCard.unread, "before the first unread.changed")
     }
 
     func testLoadingFailureAndOffline() {

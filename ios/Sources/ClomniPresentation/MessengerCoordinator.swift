@@ -24,9 +24,11 @@ package protocol MessengerSession: Sendable {
 
 extension ClomniEngine: MessengerSession {}
 
-/// Where the open messenger is.
-package enum MessengerRoute: Sendable, Equatable {
+/// A screen of the open messenger.
+package enum MessengerRoute: Sendable, Equatable, Hashable {
     case home
+    /// The conversations, from Home's "Mesajlar" card.
+    case messages
     /// A conversation, or a new one's draft (`ClomniEngine.draftConversation`) until its first message.
     case conversation(String)
 }
@@ -74,8 +76,10 @@ package final class MessengerCoordinator {
     /// The last `prepare` reached nothing (no network at a first launch, say): the open messenger shows "Nəsə səhv
     /// getdi" with "Yenidən cəhd et" instead of skeletons that would never end. Trying again clears it.
     package private(set) var preparationFailed = false
-    /// nil while the messenger is closed.
-    package private(set) var route: MessengerRoute?
+    /// The open messenger's screens, Home first, as a navigation stack shows them; empty while it is closed.
+    package private(set) var stack: [MessengerRoute] = []
+    /// The screen on top; nil while the messenger is closed.
+    package var route: MessengerRoute? { stack.last }
     /// The `source` of the open messenger, written to a new conversation's `opened_from`.
     package private(set) var source: String?
     package private(set) var unreadTotal = 0
@@ -170,7 +174,7 @@ package final class MessengerCoordinator {
     private func refuse(_ disabled: Bool, _ reason: String) -> Bool {
         if disabled {
             readiness = .disabled
-            route = nil
+            stack = []
             ClomniLog.error("this App SDK inbox is switched off in Clomni: the messenger does not open")
         } else {
             preparationFailed = true
@@ -224,17 +228,35 @@ package final class MessengerCoordinator {
         return conversation.id
     }
 
-    /// A move inside the open messenger: Home, or a conversation picked there.
+    /// A move inside the open messenger: a screen pushed on top (Messages, a conversation), or back to Home.
     package func navigate(to route: MessengerRoute) {
-        guard self.route != nil else { return }
-        self.route = route
+        guard !stack.isEmpty else { return }
+        if route == .home {
+            stack = [.home]
+        } else if stack.last != route {
+            stack.append(route)
+        }
+        changed()
+    }
+
+    /// The back button: the screen under this one. Home has none.
+    package func back() {
+        guard stack.count > 1 else { return }
+        stack.removeLast()
+        changed()
+    }
+
+    /// The navigation stack went back by itself (the swipe from the edge): only `count` screens are left.
+    package func poppedTo(count: Int) {
+        guard count >= 1, count < stack.count else { return }
+        stack.removeLast(stack.count - count)
         changed()
     }
 
     /// `Clomni.dismiss()`, or the user closing it; the app returns to where it was.
     package func dismiss() {
         guard route != nil else { return }
-        route = nil
+        stack = []
         source = nil
         events.messengerClosed?()
         changed()
@@ -254,7 +276,8 @@ package final class MessengerCoordinator {
         let wasClosed = self.route == nil
         // The first frame in the brand's colours: the cached config if the engine has not handed it over yet.
         if config == nil { config = session.cachedConfigFromDisk() }
-        self.route = route
+        // Home under every screen, so back always has somewhere to go.
+        stack = route == .home ? [.home] : [.home, route]
         if wasClosed {
             self.source = source
             events.messengerOpened?(source)

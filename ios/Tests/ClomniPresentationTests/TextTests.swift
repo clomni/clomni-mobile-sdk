@@ -16,8 +16,8 @@ final class StringsTests: XCTestCase {
 
     func testLanguageAndOverrides() {
         XCTAssertEqual(ClomniStrings(language: "en")[.tabMessages], "Messages")
-        XCTAssertEqual(ClomniStrings(language: "ru-RU")[.tabHome], "Главная")
-        XCTAssertEqual(ClomniStrings(language: "de")[.tabHome], "Ana səhifə", "anything else reads as az")
+        XCTAssertEqual(ClomniStrings(language: "ru-RU")[.followUs], "Мы в соцсетях")
+        XCTAssertEqual(ClomniStrings(language: "de")[.followUs], "Bizi izləyin", "anything else reads as az")
         XCTAssertEqual(ClomniStrings(language: nil).language, "az")
         // The panel's texts come first; an empty one does not hide the SDK's.
         let strings = ClomniStrings(language: "az", overrides: ["yesterday": "Dün", "send": "", "custom": "x"])

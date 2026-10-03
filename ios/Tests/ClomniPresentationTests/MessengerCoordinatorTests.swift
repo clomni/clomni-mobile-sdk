@@ -274,6 +274,39 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(messenger.config?.brand.name, "Apar", "before any await")
     }
 
+    /// The open messenger is a navigation stack with Home at the bottom: Messages and conversations go on top, back
+    /// and the edge swipe take them off, and every way in leaves Home under the screen it opens.
+    func testScreensStackOnHome() {
+        let messenger = coordinator()
+        messenger.navigate(to: .messages)
+        XCTAssertEqual(messenger.stack, [], "nothing while closed")
+        messenger.present()
+        XCTAssertEqual(messenger.stack, [.home])
+        messenger.back()
+        XCTAssertEqual(messenger.stack, [.home], "Home has no back")
+        messenger.navigate(to: .messages)
+        messenger.navigate(to: .conversation("conv_1"))
+        messenger.navigate(to: .conversation("conv_1"))
+        XCTAssertEqual(messenger.stack, [.home, .messages, .conversation("conv_1")], "the same screen once")
+        messenger.back()
+        XCTAssertEqual(messenger.route, .messages)
+        messenger.navigate(to: .conversation("conv_2"))
+        messenger.poppedTo(count: 1)
+        XCTAssertEqual(messenger.stack, [.home], "swiped back to Home")
+        messenger.poppedTo(count: 0)
+        XCTAssertEqual(messenger.stack, [.home], "never below Home")
+        messenger.navigate(to: .messages)
+        messenger.navigate(to: .home)
+        XCTAssertEqual(messenger.stack, [.home])
+        messenger.dismiss()
+        messenger.presentConversation("conv_5521", source: "push")
+        XCTAssertEqual(messenger.stack, [.home, .conversation("conv_5521")], "a push opens over Home")
+        messenger.presentConversation("conv_9")
+        XCTAssertEqual(messenger.stack, [.home, .conversation("conv_9")])
+        messenger.dismiss()
+        XCTAssertEqual(messenger.stack, [])
+    }
+
     func testANewConversationCarriesTheSource() async throws {
         await session.set(loggedIn: true)
         let messenger = coordinator()

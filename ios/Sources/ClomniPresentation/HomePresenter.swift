@@ -23,8 +23,10 @@ package struct HomeScreen: Sendable, Equatable {
         package let glow: Bool
         /// Stands in for the logo while there is none.
         package let brandInitial: String
-        /// The full logo in place of the logo and the name (APPEARANCE-CONTRACT § 4a); nil: the logo and the name.
+        /// The full logo in place of the logo (APPEARANCE-CONTRACT § 4a); nil: the logo.
         package let wordmark: Wordmark?
+        /// The logo's (or the full logo's) height: 32 at 100%, times the panel's `brand.logo_scale`.
+        package let logoHeight: Double
         /// Up to three, overlapping.
         package let teamAvatars: [URL]
         /// "Salam, Aysel".
@@ -42,21 +44,29 @@ package struct HomeScreen: Sendable, Equatable {
         package let darkUrl: URL?
     }
 
-    /// The greeting's two lines, by `home.title_size` (DESIGN-PASS): the first regular, the second semibold; each
-    /// line 1.25 times its size apart. Dynamic Type scales them further.
+    /// The greeting's two lines (DESIGN-PASS-2 3): both 28 at 100%, times the panel's `home.title_scale`; each line
+    /// 1.2 times its size apart. Dynamic Type scales them further.
     package struct TitleSize: Sendable, Equatable {
+        package static let base: Double = 28
+        package static let lineHeight = 1.2
+
         package let greeting: Double
         package let title: Double
 
-        package init(_ size: MessengerConfig.TitleSize) {
-            switch size {
-            case .s: (greeting, title) = (15, 20)
-            case .m: (greeting, title) = (17, 24)
-            case .l: (greeting, title) = (19, 28)
-            }
+        /// `scale`: percent, 70 to 140.
+        package init(scale: Int) {
+            let size = Self.base * Double(min(140, max(70, scale))) / 100
+            (greeting, title) = (size, size)
         }
 
-        package static let lineHeight = 1.25
+        /// Until the server sends title_scale: its own conversion of the older title_size.
+        package init(_ size: MessengerConfig.TitleSize) {
+            switch size {
+            case .s: self.init(scale: 85)
+            case .m: self.init(scale: 100)
+            case .l: self.init(scale: 120)
+            }
+        }
     }
 
     /// The header's background: the brand gradient (header_from → header_to), one colour, or a picture under a dark
@@ -93,12 +103,12 @@ package struct HomeScreen: Sendable, Equatable {
         }
     }
 
-    package struct Tabs: Sendable, Equatable {
-        package let home: String
-        package let messages: String
-        /// The red dot on "Mesajlar".
-        package let messagesUnread: Bool
-        package let messagesAccessibilityLabel: String
+    /// "Mesajlar" with its icon: the way to the conversations, always on Home (there is no tab bar).
+    package struct MessagesCard: Sendable, Equatable {
+        package let title: String
+        /// The red dot next to the icon.
+        package let unread: Bool
+        package let accessibilityLabel: String
     }
 
     package struct Failure: Sendable, Equatable {
@@ -112,7 +122,7 @@ package struct HomeScreen: Sendable, Equatable {
     package let newConversation: NewConversationCard?
     package let recent: RecentCard?
     package let channels: ChannelsCard?
-    package let tabs: Tabs
+    package let messagesCard: MessagesCard
     /// The thin yellow strip under the header.
     package let offline: String?
     package let failure: Failure?
@@ -149,6 +159,8 @@ package struct MessagesScreen: Sendable, Equatable {
     package let offline: String?
     package let failure: HomeScreen.Failure?
     package let loadingLabel: String
+    /// VoiceOver's name for the back button.
+    package let backLabel: String
 }
 
 /// What the screens are built from.
@@ -199,7 +211,7 @@ package struct HomePresenter: Sendable {
             newConversation: newConversation(config),
             recent: recent,
             channels: channels,
-            tabs: tabs(snapshot),
+            messagesCard: messagesCard(snapshot),
             offline: snapshot.isOffline ? strings[.offline] : nil,
             failure: failed ? failure : nil,
             loadingLabel: strings[.loading],
@@ -232,7 +244,8 @@ package struct HomePresenter: Sendable {
             newConversation: newConversation(snapshot.config),
             offline: snapshot.isOffline ? strings[.offline] : nil,
             failure: failed ? failure : nil,
-            loadingLabel: strings[.loading])
+            loadingLabel: strings[.loading],
+            backLabel: strings[.goBack])
     }
 
     /// A conversation with a last message; one without has nothing to show yet.
@@ -285,6 +298,7 @@ package struct HomePresenter: Sendable {
                 guard config.brand.logoStyle == .wordmark, let url = config.brand.wordmarkUrl else { return nil }
                 return HomeScreen.Wordmark(url: url, darkUrl: config.brand.wordmarkDarkUrl)
             },
+            logoHeight: ClomniTheme.Size.logo,
             teamAvatars: config?.team.show == false ? [] : Array((config?.team.avatars ?? []).prefix(3)),
             greeting: greeting(snapshot.userName),
             title: strings[.greetingLine2],
@@ -311,12 +325,11 @@ package struct HomePresenter: Sendable {
                                               accessibilityLabel: subtitle.map { "\(title). \($0)" } ?? title)
     }
 
-    private func tabs(_ snapshot: MessengerSnapshot) -> HomeScreen.Tabs {
+    private func messagesCard(_ snapshot: MessengerSnapshot) -> HomeScreen.MessagesCard {
         let unread = snapshot.unreadTotal > 0 || snapshot.conversations.contains { $0.unreadCount > 0 }
         let messages = strings[.tabMessages]
         let label = unread ? "\(messages), \(strings[.unreadMessages])" : messages
-        return HomeScreen.Tabs(home: strings[.tabHome], messages: messages, messagesUnread: unread,
-                               messagesAccessibilityLabel: label)
+        return HomeScreen.MessagesCard(title: messages, unread: unread, accessibilityLabel: label)
     }
 
     private var failure: HomeScreen.Failure {

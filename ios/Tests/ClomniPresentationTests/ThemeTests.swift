@@ -165,8 +165,10 @@ final class ThemeTests: XCTestCase {
         // Why "Hələ söhbət yoxdur" on the canvas uses textPrimary: the grey is under 4.5:1 there.
         XCTAssertEqual(light.colors.canvas.contrast(with: light.colors.textSecondary), 4.32, accuracy: 0.01)
         XCTAssertEqual(ClomniTheme.Radius.card, 12)
-        XCTAssertEqual(ClomniTheme.Size.cardOverlap, 40)
-        XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.07, radius: 8, y: 2), "one layer")
+        XCTAssertEqual(ClomniTheme.Radius.homeCard, 16)
+        XCTAssertEqual([ClomniTheme.Size.closeCircle, ClomniTheme.Size.closeGlyph, ClomniTheme.Size.closeStroke,
+                        ClomniTheme.Size.barEdge, ClomniTheme.Size.barTop], [40, 20, 2, 16, 12], "one close button")
+        XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.06, radius: 3, y: 1), "one, barely seen")
     }
 
     /// onPrimary, where the SDK derives it: white or black by WCAG 4.5:1.
