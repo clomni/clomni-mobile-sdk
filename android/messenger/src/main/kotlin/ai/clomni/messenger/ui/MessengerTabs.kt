@@ -21,12 +21,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -133,7 +135,8 @@ internal fun MessengerTabs(
 private fun TabBar(tabs: HomeScreen.Tabs, selected: MessengerTab, select: (MessengerTab) -> Unit, theme: ClomniTheme) {
     Column(Modifier.background(theme.colors.background.color).windowInsetsPadding(WindowInsets.navigationBars)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
-        Row(Modifier.fillMaxWidth().height(80.dp)) {
+        // 80 dp, and taller when a large font size needs it: the labels are never cut.
+        Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).height(IntrinsicSize.Min)) {
             val home = selected == MessengerTab.HOME
             val homeIcon = if (home) R.drawable.clomni_ic_home_filled else R.drawable.clomni_ic_home
             TabItem(tabs.home, tabs.home, homeIcon, home, false, theme) { select(MessengerTab.HOME) }

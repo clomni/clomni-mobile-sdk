@@ -41,10 +41,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -62,8 +64,15 @@ import coil.compose.AsyncImage
 /** The Home tab (brief 8·7.3): the brand header with the greeting, and the cards riding up over it by 40. */
 @Composable
 internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions) {
-    Column(Modifier.fillMaxSize().background(theme.colors.canvas.color).verticalScroll(rememberScrollState())) {
-        HomeHeader(screen.header, theme, actions.close)
+    val scroll = rememberScrollState()
+    var headerHeight by remember { mutableStateOf(0) }
+    // Behind the page, the header's colour for its own height: pulled down past the top (overscroll), the header seems
+    // to stretch and the page's grey never shows above it.
+    val backdrop = Modifier.drawBehind {
+        drawRect(theme.colors.headerFrom.color, size = Size(size.width, (headerHeight - scroll.value).coerceAtLeast(0).toFloat()))
+    }
+    Column(Modifier.fillMaxSize().background(theme.colors.canvas.color).then(backdrop).verticalScroll(scroll)) {
+        Box(Modifier.onSizeChanged { headerHeight = it.height }) { HomeHeader(screen.header, theme, actions.close) }
         screen.offline?.let { OfflineStrip(it, theme) }
         val cards = Modifier.padding(horizontal = ClomniTheme.Space.l.dp)
         // Under the offline strip the cards cannot ride up over the header.
@@ -217,7 +226,9 @@ private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme, modifier: M
         BasicText(
             header.brandName,
             Modifier.weight(1f, fill = false),
-            style = clomniText(ClomniTheme.FontSize.brand, theme.colors.headerText, FontWeight.SemiBold, lineHeight = 1.25f),
+            // The name grows with the user's font size up to 1.5 times, no more: it shares its row with the buttons.
+            style = clomniText(ClomniTheme.FontSize.brand, theme.colors.headerText, FontWeight.SemiBold, lineHeight = 1.25f)
+                .capFontScale(1.5f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

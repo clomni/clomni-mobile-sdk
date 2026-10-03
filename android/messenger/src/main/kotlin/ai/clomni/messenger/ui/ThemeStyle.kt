@@ -72,6 +72,15 @@ internal fun clomniText(
     textDirection = TextDirection.Content,
 )
 
+/** This style's sizes (sp) grow with the user's font size up to [max] times, no further. */
+@androidx.compose.runtime.Composable
+internal fun TextStyle.capFontScale(max: Float): TextStyle {
+    val scale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    if (scale <= max) return this
+    val factor = max / scale
+    return copy(fontSize = fontSize * factor, lineHeight = lineHeight * factor)
+}
+
 /**
  * A Home card: background, radius 12, padding 12×14, a soft shadow (a 1 dp border in dark mode). With [onClick] the
  * whole card is one button read out as [label].
