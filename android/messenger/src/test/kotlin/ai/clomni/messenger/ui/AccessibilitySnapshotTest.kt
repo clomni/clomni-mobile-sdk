@@ -63,7 +63,7 @@ class AccessibilitySnapshotTest {
 
     private fun home(
         name: String,
-        tab: MessengerTab = MessengerTab.HOME,
+        tab: Shown = Shown.HOME,
         dark: Boolean = false,
         offline: Boolean = false,
         conversations: List<Conversation> = listOf(leyla),
@@ -82,7 +82,7 @@ class AccessibilitySnapshotTest {
         val theme = ClomniTheme.make(config.brand, dark)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalLayoutDirection provides direction(rtl)) {
-                MessengerTabs(presenter.home(state), presenter.messages(state), theme, MessengerActions(), tab)
+                MessengerScreenAt(presenter.home(state), presenter.messages(state), theme, MessengerActions(), tab)
             }
         }
         semantics.assertTouchTargets(name)
@@ -125,6 +125,28 @@ class AccessibilitySnapshotTest {
     private fun assertReads(expected: List<String>) =
         assertEquals(expected.joinToString("\n"), semantics.elements.joinToString("\n"))
 
+    /**
+     * DESIGN-PASS-2 6: one close button on every screen, the same size in the same place: a 48 dp target (its 40 dp
+     * circle 16 dp from the end edge), at the same height under the top.
+     */
+    @Test
+    fun theCloseButtonIsTheSameEverywhere() {
+        fun close(): SemanticsCapture.Element = semantics.elements.single { it.label == "Bağla" }
+        home("close_home")
+        val onHome = close()
+        home("close_messages", Shown.MESSAGES)
+        val onList = close()
+        chat("close_chat", languageChoice())
+        val inChat = close()
+        for (element in listOf(onHome, onList, inChat)) {
+            assertEquals(48f, element.width, 0.5f)
+            assertEquals(48f, element.height, 0.5f)
+            assertEquals("its circle 16 dp from the edge", 12f, element.fromEnd, 0.5f)
+        }
+        assertEquals(onHome.top, onList.top, 0.5f)
+        assertEquals(onHome.top, inChat.top, 0.5f)
+    }
+
     // What TalkBack reads, with Paparazzi's overlay
 
     @Test
@@ -136,16 +158,15 @@ class AccessibilitySnapshotTest {
                 "Apar",
                 "Bağla [Button]",
                 "Salam, Aysel Bizdən nəsə soruşun [heading]",
+                "Mesajlar, Oxunmamış mesaj var [Button]",
+                "Ən son mesaj. Leyla, 2 dəq: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər. Oxunmamış [Button]",
                 "Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk [Button]",
-                "Son mesaj. Leyla, 2 dəq: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər. Oxunmamış [Button]",
                 "Bizi izləyin [heading]",
                 "Instagram [Button]",
                 "WhatsApp [Button]",
                 "LinkedIn [Button]",
                 "E-poçt [Button]",
                 "Powered by Clomni",
-                "Ana səhifə [Tab]",
-                "Mesajlar, Oxunmamış mesaj var [Tab]",
             ),
         )
     }
@@ -197,15 +218,14 @@ class AccessibilitySnapshotTest {
 
     @Test
     fun messagesReads() {
-        home("messages", MessengerTab.MESSAGES)
+        home("messages", Shown.MESSAGES)
         assertReads(
             listOf(
+                "Geri [Button]",
                 "Mesajlar [heading]",
                 "Bağla [Button]",
                 "Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk [Button]",
                 "Leyla, 2 dəq: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər. Oxunmamış [Button]",
-                "Ana səhifə [Tab]",
-                "Mesajlar, Oxunmamış mesaj var [Tab]",
             ),
         )
     }
@@ -216,7 +236,7 @@ class AccessibilitySnapshotTest {
     fun homeAt200() = for200 { dark -> home("home_font_200_${mode(dark)}", dark = dark) }
 
     @Test
-    fun messagesAt200() = for200 { dark -> home("messages_font_200_${mode(dark)}", MessengerTab.MESSAGES, dark) }
+    fun messagesAt200() = for200 { dark -> home("messages_font_200_${mode(dark)}", Shown.MESSAGES, dark) }
 
     @Test
     fun offlineAt200() = for200 { dark -> home("offline_font_200_${mode(dark)}", dark = dark, offline = true) }

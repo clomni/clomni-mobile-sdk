@@ -8,6 +8,8 @@ import ai.clomni.messenger.presentation.MessengerSnapshot
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.ProtocolFiles
+import ai.clomni.messenger.protocol.ProtocolJson
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import app.cash.paparazzi.DeviceConfig
@@ -37,7 +39,7 @@ class HomeSnapshotTest {
     private fun snap(
         name: String,
         state: MessengerSnapshot,
-        tab: MessengerTab = MessengerTab.HOME,
+        tab: Shown = Shown.HOME,
         dark: Boolean = false,
     ) {
         val config = state.config
@@ -45,7 +47,7 @@ class HomeSnapshotTest {
         val theme = ClomniTheme.make(config?.brand, dark)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true) {
-                MessengerTabs(presenter.home(state), presenter.messages(state), theme, MessengerActions(), tab)
+                MessengerScreenAt(presenter.home(state), presenter.messages(state), theme, MessengerActions(), tab)
             }
         }
         semantics.assertTouchTargets(name)
@@ -110,11 +112,11 @@ class HomeSnapshotTest {
     fun messagesLoading() = snap(
         "messages_loading",
         loaded(conversations = emptyList()).copy(conversationsLoad = MessengerSnapshot.Load.LOADING),
-        MessengerTab.MESSAGES,
+        Shown.MESSAGES,
     )
 
     @Test
-    fun messagesEmpty() = snap("messages_empty", loaded(conversations = emptyList()), MessengerTab.MESSAGES)
+    fun messagesEmpty() = snap("messages_empty", loaded(conversations = emptyList()), Shown.MESSAGES)
 
     @Test
     fun messagesList() = snap(
@@ -126,13 +128,13 @@ class HomeSnapshotTest {
                 Fixture.conversation("conv_3", "10-apar-level2-S-chips.json", at = "2026-09-20T12:00:00Z"),
             ),
         ),
-        MessengerTab.MESSAGES,
+        Shown.MESSAGES,
     )
 
     @Test
     fun messagesDark() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(nightMode = NightMode.NIGHT))
-        snap("messages_dark", loaded(), MessengerTab.MESSAGES, dark = true)
+        snap("messages_dark", loaded(), Shown.MESSAGES, dark = true)
     }
 
     /**
@@ -147,5 +149,24 @@ class HomeSnapshotTest {
         val message = leyla.lastMessage!!.copy(content = MessageContent.Text("Balansınıza 2 AZN qaytarıldı."))
         snap("home_reference", loaded(conversations = listOf(leyla.copy(lastMessage = message))))
     }
-}
 
+    private val news = ProtocolJson().parseNews(ProtocolFiles.read("fixtures/61-news.json"))!!
+
+    /** CM-114: Home with the news card (fixture 61). */
+    @Test
+    fun homeWithNews() = snap("home_news", loaded().copy(news = news))
+
+    /** CM-114: a news item's own screen: picture, title, date, text, button. */
+    @Test
+    fun newsItem() {
+        val state = loaded().copy(news = news)
+        val presenter = HomePresenter(ClomniStrings("az", state.config?.strings.orEmpty()), TimeZone.getTimeZone("UTC"), now)
+        val screen = presenter.news(state, "news_12")!!
+        paparazzi.snapshot("news_item") {
+            CompositionLocalProvider(LocalInspectionMode provides true) {
+                NewsView(screen, ClomniTheme.make(state.config?.brand, false), {}, {}, {})
+            }
+        }
+        semantics.assertTouchTargets("news_item")
+    }
+}

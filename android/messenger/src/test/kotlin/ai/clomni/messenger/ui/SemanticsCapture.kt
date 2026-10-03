@@ -27,6 +27,11 @@ class SemanticsCapture : RenderExtension {
         val liveRegion: LiveRegionMode?,
         val width: Float,
         val height: Float,
+        /** From the screen's end edge and top, dp. */
+        val fromEnd: Float = 0f,
+        val top: Float = 0f,
+        /** A link inside running text: as tall as its line, which WCAG 2.5.8 exempts ("inline"). */
+        val inline: Boolean = false,
     ) {
         override fun toString() = buildString {
             append(label)
@@ -66,6 +71,10 @@ class SemanticsCapture : RenderExtension {
                     liveRegion = config.getOrNull(SemanticsProperties.LiveRegion),
                     width = node.size.width / density,
                     height = node.size.height / density,
+                    fromEnd = (view.width - node.boundsInRoot.right) / density,
+                    top = node.boundsInRoot.top / density,
+                    // Compose marks a text link's node with this key; it is not public API, so it is matched by name.
+                    inline = config.any { it.key.name == "LinkTestMarker" },
                 )
             }
             node.children.forEach(::visit)
@@ -81,9 +90,9 @@ class SemanticsCapture : RenderExtension {
         return found
     }
 
-    /** Brief 7.6: everything that can be tapped is at least 48 × 48 dp, however small it looks. */
+    /** Brief 7.6: everything that can be tapped is at least 48 × 48 dp, however small it looks; links in text excepted. */
     fun assertTouchTargets(screen: String) {
-        val small = elements.filter { it.clickable && (it.width < 47.5f || it.height < 47.5f) }
+        val small = elements.filter { it.clickable && !it.inline && (it.width < 47.5f || it.height < 47.5f) }
         assertTrue("$screen: smaller than 48 dp: ${small.joinToString { "\"$it\" ${it.width}×${it.height}" }}", small.isEmpty())
     }
 }

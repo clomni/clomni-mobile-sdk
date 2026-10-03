@@ -61,6 +61,8 @@ internal class MessengerActions(
     val back: () -> Unit = {},
     /** Home's "Mesajlar" card. */
     val openMessages: () -> Unit = {},
+    /** A news card: the item's screen. */
+    val openNews: (String) -> Unit = {},
     val newConversation: () -> Unit = {},
     val openConversation: (String) -> Unit = {},
     val retry: () -> Unit = {},
@@ -114,11 +116,16 @@ internal fun rememberMessengerActions(
     back: () -> Unit,
     openMessages: () -> Unit,
     openConversation: (String) -> Unit,
-): MessengerActions = remember(controller, openedFrom, close, back, openMessages, openConversation) {
+    openNews: (String) -> Unit,
+): MessengerActions = remember(controller, openedFrom, close, back, openMessages, openConversation, openNews) {
     MessengerActions(
         close = close,
         back = back,
         openMessages = openMessages,
+        openNews = { id ->
+            controller.newsOpened(id)
+            openNews(id)
+        },
         newConversation = { openConversation(controller.newConversation(openedFrom)) },
         openConversation = openConversation,
         retry = controller::retry,

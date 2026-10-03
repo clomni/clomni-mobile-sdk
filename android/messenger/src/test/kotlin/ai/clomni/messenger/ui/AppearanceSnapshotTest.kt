@@ -79,7 +79,7 @@ class AppearanceSnapshotTest {
         val theme = ClomniTheme.resolve(config, systemIsDark = dark, override)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalPreviewImages provides pictures) {
-                MessengerTabs(presenter.home(state), presenter.messages(state), theme, MessengerActions())
+                MessengerScreenAt(presenter.home(state), presenter.messages(state), theme, MessengerActions())
             }
         }
         semantics.assertTouchTargets(name)

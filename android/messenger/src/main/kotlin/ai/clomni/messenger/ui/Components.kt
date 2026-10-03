@@ -7,6 +7,7 @@ import ai.clomni.messenger.presentation.ConversationRow
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.RgbColor
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,8 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -136,19 +139,49 @@ internal fun FailureView(failure: HomeScreen.Failure, theme: ClomniTheme, retry:
     }
 }
 
+/** Where a [CloseButton] sits, for its circle's colour. */
+internal enum class CloseStyle {
+    /** On Home's brand colour: a white circle at 55%, the ✕ dark. */
+    ON_BRAND,
+
+    /** On the white (or dark) background: the text colour at 6%, the ✕ in the text colour. */
+    ON_SURFACE,
+
+    /** Over a picture on black: white at 20%, the ✕ white. */
+    ON_MEDIA,
+}
+
 /**
- * ✕: a 28 dp glyph in a 48 dp target that lays out at the glyph's size. [endRoom] is the space between it and the
- * screen's edge: the target reaches no further that way (a target cut by the edge is a smaller target).
+ * ✕, the same on every screen (DESIGN-PASS-2 6): a 40 dp circle with a 20 dp cross drawn 2 dp thick, in a 48 dp
+ * target. Placed by [closeButtonPlace]: 16 dp from the end edge and 12 under the safe area.
  */
 @Composable
-internal fun CloseButton(label: String, color: RgbColor, close: () -> Unit, endRoom: Dp = target) {
-    val glyph = 28.dp
-    val inset = (target - glyph) / 2
-    val end = minOf(inset, endRoom)
-    Box(Modifier.bleed(start = inset * 2 - end, top = inset, end = end, bottom = inset).size(target).button(label, close)) {
-        Icon(R.drawable.clomni_ic_close, color, glyph, Modifier.align(Alignment.CenterEnd).padding(end = end))
+internal fun CloseButton(label: String, style: CloseStyle, theme: ClomniTheme, close: () -> Unit, modifier: Modifier = Modifier) {
+    val (circle, cross) = when (style) {
+        CloseStyle.ON_BRAND -> Color.White.copy(alpha = 0.55f) to RgbColor.parse("#1B1D21")!!.color
+        CloseStyle.ON_SURFACE -> theme.colors.textPrimary.color.copy(alpha = 0.06f) to theme.colors.textPrimary.color
+        CloseStyle.ON_MEDIA -> Color.White.copy(alpha = 0.2f) to Color.White
+    }
+    Box(modifier.size(target).button(label, close), Alignment.Center) {
+        Canvas(Modifier.size(CLOSE_CIRCLE)) {
+            drawCircle(circle)
+            // The cross fills a 20 dp square: each arm runs 10 dp from the centre along a diagonal.
+            val arm = 10.dp.toPx() / 1.414f
+            val stroke = 2.dp.toPx()
+            drawLine(cross, Offset(center.x - arm, center.y - arm), Offset(center.x + arm, center.y + arm), stroke, StrokeCap.Round)
+            drawLine(cross, Offset(center.x - arm, center.y + arm), Offset(center.x + arm, center.y - arm), stroke, StrokeCap.Round)
+        }
     }
 }
+
+/** The close button's circle. */
+internal val CLOSE_CIRCLE = 40.dp
+
+/**
+ * The close button's place on a screen: the circle 16 dp from the end edge and 12 dp under the safe area (the target
+ * reaches 4 dp around the circle).
+ */
+internal fun Modifier.closeButtonPlace(): Modifier = padding(top = 12.dp - 4.dp, end = 16.dp - 4.dp)
 
 /** A drawable icon tinted in one colour. */
 @Composable
@@ -173,20 +206,6 @@ internal fun NewConversationCardView(card: HomeScreen.NewConversationCard, theme
         }
         Spacer(Modifier.width(ClomniTheme.Space.l.dp))
         Icon(R.drawable.clomni_ic_send, theme.colors.primary, 18.dp)
-    }
-}
-
-/** "Son mesaj": the newest conversation's last message. */
-@Composable
-internal fun RecentCardView(card: HomeScreen.RecentCard, theme: ClomniTheme, open: (String) -> Unit) {
-    val label = "${card.label}. ${card.row.accessibilityLabel}"
-    Column(Modifier.fillMaxWidth().clomniCard(theme, label) { open(card.row.id) }) {
-        BasicText(
-            card.label,
-            Modifier.padding(bottom = ClomniTheme.Space.s.dp),
-            style = clomniText(ClomniTheme.FontSize.label, theme.colors.textPrimary, FontWeight.SemiBold),
-        )
-        ConversationRowView(card.row, theme)
     }
 }
 
