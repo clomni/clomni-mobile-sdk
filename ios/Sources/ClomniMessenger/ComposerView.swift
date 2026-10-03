@@ -2,6 +2,7 @@
 import SwiftUI
 import UIKit
 import PhotosUI
+import UniformTypeIdentifiers
 #if canImport(ClomniCore)
 import ClomniProtocol
 import ClomniCore
@@ -10,40 +11,62 @@ import ClomniCore
 import ClomniPresentation
 #endif
 
-/// White strip with the top hairline above the safe area: the field (surface, radius 20, 38 high, up to 5 lines),
-/// emoji and attach icons while it is empty, and the primary send button (34) once there is text. A step waiting
-/// for a button locks it; a closed conversation offers a new one, and writing anyway reopens it.
+/// A file picked for the next message, shown over the composer until it goes (or its × removes it).
+struct StagedFile: Equatable {
+    let data: Data
+    let fileName: String
+    let mime: String
+    /// A picture's own small copy; nil shows the file icon.
+    let preview: UIImage?
+}
+
+/// White, with a 1 pt line on top (DESIGN-PASS-2 11): the field (surface, radius 20, at least 44 high, up to 5 lines
+/// then it scrolls), the emoji and attach icons (24) inside it, and once there is something to send the round send
+/// button (36, brand colour) in the attach icon's place, coming in over 150 ms. A step that waits for a button keeps
+/// the field, greyed and saying so, without icons (13); a closed conversation offers a new one, and writing anyway
+/// reopens it. A picked file waits above it as a 64 pt square with its ×.
 struct ComposerView: View {
     let composer: ChatComposer
     let theme: ClomniTheme
     @Binding var text: String
     @Binding var writeAnyway: Bool
+    @Binding var staged: StagedFile?
     let send: () -> Void
     let attach: () -> Void
     let startNew: () -> Void
     @FocusState private var focused: Bool
 
     var body: some View {
-        content
-            .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
-            .padding(.vertical, CGFloat(ClomniTheme.Space.s))
-            .background(theme.colors.background.color.ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) {
-                Rectangle().fill(theme.colors.border.color).frame(height: 1)
+        VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
+            if let staged, composer.mode == .open || writeAnyway {
+                StagedPreview(file: staged, removeLabel: composer.removeAttachmentLabel, theme: theme) {
+                    self.staged = nil
+                }
             }
+            content
+        }
+        .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
+        .padding(.vertical, CGFloat(ClomniTheme.Space.s))
+        .background(theme.colors.background.color.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) {
+            Rectangle().fill(theme.colors.border.color).frame(height: 1)
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         switch composer.mode {
         case .locked(let hint):
+            // The field stays where it was, greyed: the step takes a button, not text.
             Text(hint)
-                .clomniFont(13, relativeTo: .footnote)
+                .clomniFont(ClomniTheme.FontSize.text)
                 .foregroundStyle(theme.colors.textSecondary.color)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, minHeight: 38)
+                .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.touchTarget), alignment: .leading)
+                .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
                 .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.input), style: .continuous)
                     .fill(theme.colors.surface.color))
+                .opacity(0.6)
+                .accessibilityAddTraits(.isStaticText)
         case .closed(let closed, let action) where !writeAnyway:
             HStack(spacing: CGFloat(ClomniTheme.Space.xs)) {
                 Button {
@@ -70,45 +93,45 @@ struct ComposerView: View {
         }
     }
 
+    /// Text that may go, or a picked file.
     private var canSend: Bool {
-        ChatPresenter.canSend(text, limit: composer.limit)
+        staged != nil || ChatPresenter.canSend(text, limit: composer.limit)
     }
 
     private var field: some View {
-        HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
-            HStack(alignment: .center, spacing: CGFloat(ClomniTheme.Space.m)) {
-                input
-                if text.isEmpty {
-                    if composer.showsEmoji {
-                        iconButton("face.smiling", label: composer.emojiLabel) { focused = true }
+        HStack(alignment: .center, spacing: CGFloat(ClomniTheme.Space.s)) {
+            input
+            if composer.showsEmoji {
+                iconButton("face.smiling", label: composer.emojiLabel) { focused = true }
+            }
+            ZStack {
+                if canSend {
+                    Button(action: send) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(theme.colors.onPrimary.color)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(theme.colors.primary.color))
+                            .frame(width: CGFloat(ClomniTheme.Size.touchTarget),
+                                   height: CGFloat(ClomniTheme.Size.touchTarget))
+                            .contentShape(Rectangle())
                     }
-                    if composer.showsAttach {
-                        iconButton("paperclip", label: composer.attachLabel, action: attach)
-                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel(Text(composer.sendLabel))
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                } else if composer.showsAttach {
+                    iconButton("paperclip", label: composer.attachLabel, action: attach)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
             }
-            .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
-            .padding(.vertical, CGFloat(ClomniTheme.Space.s))
-            .frame(minHeight: 38)
-            .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.input), style: .continuous)
-                .fill(theme.colors.surface.color))
-            if canSend {
-                Button(action: send) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(theme.colors.onPrimary.color)
-                        .frame(width: 34, height: 34)
-                        .background(Circle().fill(theme.colors.primary.color))
-                        .padding(5)
-                        .contentShape(Rectangle())
-                        .padding(-5)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityLabel(Text(composer.sendLabel))
-                .transition(.opacity)
-            }
+            .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
         }
-        .animation(.easeOut(duration: 0.2), value: canSend)
+        .padding(.leading, CGFloat(ClomniTheme.Space.xl))
+        .padding(.trailing, CGFloat(ClomniTheme.Space.xxs))
+        .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
+        .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.input), style: .continuous)
+            .fill(theme.colors.surface.color))
+        .animation(.easeOut(duration: 0.15), value: canSend)
     }
 
     @ViewBuilder
@@ -119,11 +142,13 @@ struct ComposerView: View {
                 .lineLimit(1...5)
                 .clomniFont(ClomniTheme.FontSize.text)
                 .focused($focused)
+                .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .accessibilityLabel(Text(composer.placeholder))
         } else {
             TextField(composer.placeholder, text: $text)
                 .clomniFont(ClomniTheme.FontSize.text)
                 .focused($focused)
+                .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .accessibilityLabel(Text(composer.placeholder))
         }
     }
@@ -131,14 +156,110 @@ struct ComposerView: View {
     private func iconButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 19))
+                .font(.system(size: 20))
+                .frame(width: 24, height: 24)
                 .foregroundStyle(theme.colors.textSecondary.color)
-                .padding(12)
+                .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
                 .contentShape(Rectangle())
-                .padding(-12)
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel(Text(label))
+    }
+}
+
+/// The picked file before it goes: a 64 pt square (the picture, or the file icon on grey) with × on its corner.
+struct StagedPreview: View {
+    let file: StagedFile
+    let removeLabel: String
+    let theme: ClomniTheme
+    let remove: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Group {
+                if let preview = file.preview {
+                    Image(uiImage: preview).resizable().scaledToFill()
+                } else {
+                    Image(systemName: "doc")
+                        .font(.system(size: 24))
+                        .foregroundStyle(theme.colors.textSecondary.color)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(theme.colors.surface.color)
+                }
+            }
+            .frame(width: 64, height: 64)
+            .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous))
+            .accessibilityLabel(Text(file.fileName))
+            Button(action: remove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 20, height: 20)
+                    .background(Circle().fill(Color.black.opacity(0.6)))
+                    .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .offset(x: 14, y: -14)
+            .accessibilityLabel(Text(removeLabel))
+        }
+        .padding(.top, CGFloat(ClomniTheme.Space.s))
+    }
+}
+
+/// The attachment sheet (DESIGN-PASS-2 12): rows 56 high, a 24 pt icon and the text 16: the photo library, the
+/// camera (only when the app may use it), any file. A grabber on top, no cancel: it is swiped down.
+struct AttachmentSheet: View {
+    let composer: ChatComposer
+    let theme: ClomniTheme
+    let cameraAvailable: Bool
+    let pick: (AttachmentSource) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            row("photo.on.rectangle", composer.mediaLabel) { pick(.media) }
+            if cameraAvailable {
+                row("camera", composer.cameraLabel) { pick(.camera) }
+            }
+            row("doc", composer.fileLabel) { pick(.file) }
+        }
+        .padding(.top, CGFloat(ClomniTheme.Space.xxl))
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(theme.colors.background.color.ignoresSafeArea())
+    }
+
+    /// The sheet's height for its rows.
+    static func height(rows: Int) -> CGFloat {
+        CGFloat(rows) * 56 + CGFloat(ClomniTheme.Space.xxl) * 2
+    }
+
+    private func row(_ symbol: String, _ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: CGFloat(ClomniTheme.Space.xl)) {
+                Image(systemName: symbol)
+                    .font(.system(size: 20))
+                    .frame(width: 24, height: 24)
+                Text(title)
+                    .clomniFont(16, relativeTo: .body)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(theme.colors.textPrimary.color)
+            .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge + 4))
+            .frame(height: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+enum AttachmentSource {
+    case media, camera, file
+
+    /// The camera, when the device has one and the app declared why it uses it (NSCameraUsageDescription).
+    @MainActor
+    static var cameraAvailable: Bool {
+        UIImagePickerController.isSourceTypeAvailable(.camera)
+            && Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") != nil
     }
 }
 
@@ -180,6 +301,83 @@ struct PhotoPicker: UIViewControllerRepresentable {
     }
 }
 
+/// The system's photo picker (PhotosPicker, iOS 16): a photo or a video, staged for the next message. On iOS 15 the
+/// same picker comes as PHPicker (PhotoPicker), photos only.
+struct MediaPicker: ViewModifier {
+    @Binding var isPresented: Bool
+    @Binding var staged: StagedFile?
+
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.modifier(PhotosPickerModifier(isPresented: $isPresented, staged: $staged))
+        } else {
+            content
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PhotosPickerModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    @Binding var staged: StagedFile?
+    @State private var item: PhotosPickerItem?
+
+    func body(content: Content) -> some View {
+        content
+            .photosPicker(isPresented: $isPresented, selection: $item, matching: .any(of: [.images, .videos]))
+            .onChange(of: item) { picked in
+                guard let picked else { return }
+                item = nil
+                Task { @MainActor in
+                    guard let data = try? await picked.loadTransferable(type: Data.self) else { return }
+                    let type = picked.supportedContentTypes.first
+                    if type?.conforms(to: .image) ?? true, let image = UIImage(data: data) {
+                        staged = ImagePreparation.staged(image)
+                    } else {
+                        let ext = type?.preferredFilenameExtension ?? "mov"
+                        staged = StagedFile(data: data, fileName: "video.\(ext)",
+                                            mime: type?.preferredMIMEType ?? "video/quicktime", preview: nil)
+                    }
+                }
+            }
+    }
+}
+
+/// The camera (UIImagePickerController), for a photo; hands back the photo or nil.
+struct CameraPicker: UIViewControllerRepresentable {
+    let pick: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(pick: pick)
+    }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let pick: (UIImage?) -> Void
+
+        init(pick: @escaping (UIImage?) -> Void) {
+            self.pick = pick
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            pick(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            pick(nil)
+        }
+    }
+}
+
 enum ImagePreparation {
     /// JPEG with the longer side at most 2048 px (brief 8 · 5.5).
     static func jpeg(_ image: UIImage) -> Data? {
@@ -192,6 +390,12 @@ enum ImagePreparation {
             image.draw(in: CGRect(origin: .zero, size: size))
         }
         return resized.jpegData(compressionQuality: 0.85)
+    }
+
+    /// A picked picture as the file that goes, with its small copy for the composer.
+    static func staged(_ image: UIImage) -> StagedFile? {
+        guard let data = jpeg(image) else { return nil }
+        return StagedFile(data: data, fileName: "image.jpg", mime: "image/jpeg", preview: image)
     }
 }
 #endif

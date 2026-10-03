@@ -330,8 +330,9 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertTrue(open.showsAttach && open.showsEmoji)
         XCTAssertEqual(open.limit, 4_000)
         XCTAssertEqual(open.sendLabel, "Göndər")
-        XCTAssertEqual([open.attachLabel, open.imageLabel, open.fileLabel, open.emojiLabel],
-                       ["Fayl əlavə et", "Şəkil", "Fayl", "Emoji"])
+        XCTAssertEqual([open.attachLabel, open.mediaLabel, open.cameraLabel, open.fileLabel, open.removeAttachmentLabel,
+                        open.emojiLabel],
+                       ["Fayl əlavə et", "Şəkil və ya video", "Kamera", "Fayl", "Sil", "Emoji"])
         let closed = screen([]) { $0.conversation = Fixture.conversation(status: "closed") }.composer
         XCTAssertEqual(closed.mode, .closed(text: "Söhbət bağlanıb", action: "Yeni söhbət başlat"))
         let minimal = screen([]) { $0.config = Fixture.minimalConfig }.composer

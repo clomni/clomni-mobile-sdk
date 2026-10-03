@@ -2,6 +2,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import PhotosUI
 #if canImport(ClomniCore)
 import ClomniProtocol
 import ClomniCore
@@ -46,7 +47,11 @@ struct ChatView: View {
     @State private var writeAnyway = false
     @State private var choosingAttachment = false
     @State private var pickingPhoto = false
+    @State private var pickingMedia: [PhotosPickerItem] = []
+    @State private var showingPhotos = false
+    @State private var pickingCamera = false
     @State private var pickingFile = false
+    @State private var staged: StagedFile?
     @State private var fullScreenImage: ImageURL?
     @State private var refusal: String?
     @State private var announced: String?
@@ -76,7 +81,7 @@ struct ChatView: View {
             transcript
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
-                         send: send, attach: { choosingAttachment = true }, startNew: startNew)
+                         staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew)
         }
         .background(theme.colors.background.color.ignoresSafeArea())
         .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
@@ -86,22 +91,26 @@ struct ChatView: View {
         .onDisappear { Task { await model.controller.stop() } }
         .onChange(of: draft) { text in Task { await model.controller.textChanged(text) } }
         .onChange(of: model.screen.announcement) { announcement in announce(announcement) }
-        .confirmationDialog(model.screen.composer.attachLabel, isPresented: $choosingAttachment) {
-            Button(model.screen.composer.imageLabel) { pickingPhoto = true }
-            Button(model.screen.composer.fileLabel) { pickingFile = true }
+        .sheet(isPresented: $choosingAttachment) {
+            attachmentSheet
         }
+        .modifier(MediaPicker(isPresented: $showingPhotos, staged: $staged))
         .sheet(isPresented: $pickingPhoto) {
             PhotoPicker { image in
                 pickingPhoto = false
-                guard let image, let data = ImagePreparation.jpeg(image) else { return }
-                Task { @MainActor in
-                    refusal = await model.controller.sendFile(data, fileName: "image.jpg", mime: "image/jpeg")
-                }
+                staged = image.flatMap(ImagePreparation.staged)
             }
+        }
+        .fullScreenCover(isPresented: $pickingCamera) {
+            CameraPicker { image in
+                pickingCamera = false
+                staged = image.flatMap(ImagePreparation.staged)
+            }
+            .ignoresSafeArea()
         }
         .fileImporter(isPresented: $pickingFile, allowedContentTypes: [.item]) { result in
             guard case .success(let url) = result else { return }
-            sendFile(at: url)
+            stageFile(at: url)
         }
         .fullScreenCover(item: $fullScreenImage) { image in
             FullScreenImage(url: image.url, closeLabel: model.screen.header.closeLabel, theme: theme) {
@@ -152,8 +161,46 @@ struct ChatView: View {
         }
     }
 
+    /// The attachment sheet at its rows' height; iOS 15 shows it at its full height.
+    @ViewBuilder
+    private var attachmentSheet: some View {
+        let camera = AttachmentSource.cameraAvailable
+        let sheet = AttachmentSheet(composer: model.screen.composer, theme: theme, cameraAvailable: camera) { source in
+            choosingAttachment = false
+            // The next sheet once this one is gone.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                switch source {
+                case .media:
+                    if #available(iOS 16.0, *) { showingPhotos = true } else { pickingPhoto = true }
+                case .camera: pickingCamera = true
+                case .file: pickingFile = true
+                }
+            }
+        }
+        if #available(iOS 16.0, *) {
+            sheet
+                .presentationDetents([.height(AttachmentSheet.height(rows: camera ? 3 : 2))])
+                .presentationDragIndicator(.visible)
+        } else {
+            sheet
+        }
+    }
+
+    /// The text, or a picked file with the text as its caption.
     private func send() {
         let text = draft
+        if let file = staged {
+            let caption = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            Task { @MainActor in
+                refusal = await model.controller.sendFile(file.data, fileName: file.fileName, mime: file.mime,
+                                                          caption: caption.isEmpty ? nil : caption)
+                if refusal == nil {
+                    staged = nil
+                    if draft == text { draft = "" }
+                }
+            }
+            return
+        }
         Task { @MainActor in
             if await model.controller.send(text), draft == text { draft = "" }
         }
@@ -176,15 +223,13 @@ struct ChatView: View {
         }
     }
 
-    private func sendFile(at url: URL) {
+    private func stageFile(at url: URL) {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         guard let data = try? Data(contentsOf: url) else { return }
         let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-        let name = url.lastPathComponent
-        Task { @MainActor in
-            refusal = await model.controller.sendFile(data, fileName: name, mime: mime)
-        }
+        let preview = mime.hasPrefix("image/") ? UIImage(data: data) : nil
+        staged = StagedFile(data: data, fileName: url.lastPathComponent, mime: mime, preview: preview)
     }
 
     /// VoiceOver reads a new incoming message; the ones there when the screen opened are not news.

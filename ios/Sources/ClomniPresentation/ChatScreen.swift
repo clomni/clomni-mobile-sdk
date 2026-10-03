@@ -197,7 +197,8 @@ package struct FormCard: Sendable, Equatable {
 package struct ChatComposer: Sendable, Equatable {
     package enum Mode: Sendable, Equatable {
         case open
-        /// The step waits for a button: "Yuxarıdakı variantlardan birini seçin", no icons.
+        /// The step waits for a button and takes no text: the field stays, greyed, "Yuxarıdan birini seçin", no
+        /// icons (DESIGN-PASS-2 13).
         case locked(String)
         /// "Söhbət bağlanıb · Yeni söhbət başlat"; writing anyway reopens it.
         case closed(text: String, action: String)
@@ -212,9 +213,11 @@ package struct ChatComposer: Sendable, Equatable {
     package let sendLabel: String
     package let attachLabel: String
     package let emojiLabel: String
-    /// The attachment menu: a picture, or any file.
-    package let imageLabel: String
+    /// The attachment sheet's rows: the photo library, the camera, any file; and the x on a picked file.
+    package let mediaLabel: String
+    package let cameraLabel: String
     package let fileLabel: String
+    package let removeAttachmentLabel: String
 }
 
 /// What the conversation screen is built from.

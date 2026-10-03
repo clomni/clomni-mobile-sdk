@@ -115,6 +115,7 @@ private struct SnapshotScene: View {
             ChatHeaderView(header: screen.header, theme: theme, back: {}, close: {})
             ChatTranscript(items: screen.items, theme: theme, actions: ChatActions())
             ComposerView(composer: screen.composer, theme: theme, text: .constant(""), writeAnyway: .constant(false),
+                         staged: .constant(nil),
                          send: {}, attach: {}, startNew: {})
         }
         .background(theme.colors.background.color)
