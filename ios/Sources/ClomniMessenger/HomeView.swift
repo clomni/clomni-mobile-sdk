@@ -19,24 +19,36 @@ struct MessengerActions {
     var retry: () -> Void = {}
 }
 
-/// Home (DESIGN-PASS-2, Intercom's layout): no header block. The brand's colour starts at the top and fades into the
-/// page by about 45% of the screen; the logo top left and ✕ top right, the greeting under them, the cards over the
-/// fade. No tab bar: the "Mesajlar" card leads to the conversations.
+/// Home (DESIGN-PASS-2, Intercom's layout): no header block. The brand's colour runs full under the logo and the
+/// greeting and 16 pt past them, then fades into the page over 160 pt, where the cards start; text never stands in
+/// the fade. The logo top left and ✕ top right. No tab bar: the "Mesajlar" card leads to the conversations.
 struct HomeView: View {
     let screen: HomeScreen
     let theme: ClomniTheme
     let actions: MessengerActions
+    /// The logo and greeting block's height: the full colour reaches 16 pt past it, the fade 160 pt further.
+    @State private var block: CGFloat = 200
+
+    static let fullPast: CGFloat = 16
+    static let fade: CGFloat = 160
 
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    HomeTopBar(header: screen.header, theme: theme, close: actions.close, width: proxy.size.width)
-                    GreetingView(header: screen.header, theme: theme)
-                        .frame(maxWidth: proxy.size.width * 0.8, alignment: .leading)
-                        .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
-                        .padding(.top, CGFloat(ClomniTheme.Space.xxxl))
-                        .padding(.bottom, CGFloat(ClomniTheme.Space.xxxl))
+                    VStack(alignment: .leading, spacing: 0) {
+                        HomeTopBar(header: screen.header, theme: theme, close: actions.close, width: proxy.size.width)
+                        GreetingView(header: screen.header, theme: theme)
+                            .frame(maxWidth: proxy.size.width * 0.8, alignment: .leading)
+                            .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
+                            .padding(.top, CGFloat(ClomniTheme.Space.xxxl))
+                    }
+                    .background(GeometryReader { measured in
+                        Color.clear
+                            .onAppear { block = measured.size.height }
+                            .onChange(of: measured.size.height) { block = $0 }
+                    })
+                    .padding(.bottom, Self.fullPast)
                     if let offline = screen.offline {
                         OfflineStrip(text: offline, theme: theme)
                             .padding(.bottom, CGFloat(ClomniTheme.Space.l))
@@ -47,8 +59,10 @@ struct HomeView: View {
                 }
                 .padding(.top, proxy.safeAreaInsets.top)
                 .background(alignment: .top) {
-                    HomeBackground(style: screen.header.style, glow: screen.header.glow, theme: theme)
-                        .frame(height: proxy.size.height * 0.45 + proxy.safeAreaInsets.top)
+                    let full = proxy.safeAreaInsets.top + block + Self.fullPast
+                    HomeBackground(style: screen.header.style, glow: screen.header.glow, theme: theme,
+                                   solidShare: full / (full + Self.fade))
+                        .frame(height: full + Self.fade)
                 }
             }
             .ignoresSafeArea(.container, edges: .top)
@@ -64,6 +78,8 @@ struct HomeBackground: View {
     let style: HomeScreen.Style
     let glow: Bool
     let theme: ClomniTheme
+    /// The share of the height in full colour; the rest fades.
+    var solidShare: CGFloat = 0.5
 
     var body: some View {
         ZStack {
@@ -88,7 +104,7 @@ struct HomeBackground: View {
         }
         // Into the page: full colour for the top half, gone at the bottom.
         .mask {
-            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45),
+            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: solidShare),
                                    .init(color: .clear, location: 1)],
                            startPoint: .top, endPoint: .bottom)
         }
@@ -132,8 +148,9 @@ struct HomeTopBar: View {
     }
 }
 
-/// "Salam, Aysel" over "Necə kömək edə bilərik?": 28 semibold in the brand's strong tone at 70%, then 28 bold in
-/// the header's text colour; both at the panel's scale, 1.2 line height, wrapping, scaled further by Dynamic Type.
+/// "Salam, Aysel" over "Necə kömək edə bilərik?": 28 semibold in the header's text colour at 72%, then 28 bold at
+/// full; both at the panel's scale, 1.2 line height, wrapping, scaled further by Dynamic Type. Always on the full
+/// brand colour (coordinator's decision, 2026-10-03).
 struct GreetingView: View {
     let header: HomeScreen.Header
     let theme: ClomniTheme
@@ -141,7 +158,7 @@ struct GreetingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             GreetingLine(text: header.greeting, size: header.titleSize.greeting, weight: .semibold, style: .title)
-                .foregroundStyle(theme.colors.primaryStrong.color.opacity(0.7))
+                .foregroundStyle(ink.color.opacity(0.72))
             GreetingLine(text: header.title, size: header.titleSize.title, weight: .bold, style: .title)
                 .foregroundStyle(ink.color)
         }
