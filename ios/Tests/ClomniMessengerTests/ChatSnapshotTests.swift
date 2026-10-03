@@ -37,6 +37,25 @@ final class ChatSnapshotTests: XCTestCase {
         XCTAssertTrue(Snapshot.isBlank(solid), "one colour is blank")
     }
 
+    /// DESIGN-PASS-2 6: one close button, the same size on every screen. Drawn on white, its circle (the text colour
+    /// at 6%) spans 40 pt, in a 44 pt view; the bar puts it 16 pt from the side.
+    func testTheCloseButtonsSize() throws {
+        let theme = PreviewData.theme(dark: false)
+        let button = CloseButton(label: "Bağla", theme: theme, action: {}).background(Color.white).ignoresSafeArea()
+        let image = Snapshot.render(button, width: 44, height: 44, dark: false)
+        let box = try XCTUnwrap(Snapshot.inkBox(image), "nothing drawn")
+        XCTAssertEqual(box.width, 80, accuracy: 2, "40 pt at @2x")
+        XCTAssertEqual(box.height, 80, accuracy: 2)
+        XCTAssertEqual(box.minX, 4, accuracy: 2, "centred in the 44 pt target")
+        // Without the safe area, so its 12 pt are measured from the top.
+        let bar = ScreenBar(closeLabel: "Bağla", theme: theme, close: {}) { EmptyView() }.background(Color.white)
+            .ignoresSafeArea()
+        let barImage = Snapshot.render(bar, width: 390, dark: false)
+        let barBox = try XCTUnwrap(Snapshot.inkBox(barImage))
+        XCTAssertEqual(780 - barBox.maxX, 32, accuracy: 2, "16 pt from the side")
+        XCTAssertEqual(barBox.minY, 24, accuracy: 2, "12 pt under the top")
+    }
+
     func testEveryMessageFixture() throws {
         let index = try JSONDecoder().decode([[String: JSONValue]].self,
                                              from: Data(contentsOf: fixtures.appendingPathComponent("index.json")))
@@ -203,6 +222,23 @@ enum Snapshot {
 
     static func rgb(_ color: RGBColor) -> [Int] {
         [color.red, color.green, color.blue].map { Int(($0 * 255).rounded()) }
+    }
+
+    /// The pixels that are not the top-left one's colour, as a box in pixels; nil when there are none.
+    static func inkBox(_ image: UIImage) -> CGRect? {
+        guard let picture = pixels(image), picture.bytes.count >= 4 else { return nil }
+        let paper = Array(picture.bytes[0..<4])
+        var minX = Int.max, minY = Int.max, maxX = -1, maxY = -1
+        for y in 0..<picture.height {
+            for x in 0..<picture.width {
+                let offset = (y * picture.width + x) * 4
+                let pixel = picture.bytes[offset..<offset + 4]
+                guard zip(pixel, paper).contains(where: { abs(Int($0) - Int($1)) > 2 }) else { continue }
+                minX = min(minX, x); minY = min(minY, y); maxX = max(maxX, x); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= 0 else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
     /// Every pixel the same (or no pixels at all).

@@ -53,6 +53,8 @@ struct ChatView: View {
     @State private var pickingFile = false
     @State private var staged: StagedFile?
     @State private var screenWidth: CGFloat = 390
+    /// The transcript has been scrolled to its end once.
+    @State private var atBottom = false
     @State private var fullScreenImage: ImageURL?
     @State private var refusal: String?
     @State private var announced: String?
@@ -157,8 +159,11 @@ struct ChatView: View {
                     ChatTranscript(items: model.screen.items, theme: theme, actions: actions, reachedTop: loadOlder)
                         .onAppear {
                             if let last = model.screen.items.last?.id { proxy.scrollTo(last, anchor: .bottom) }
+                            // Shown once it stands at its end: the first frame is the bottom, nothing slides.
+                            DispatchQueue.main.async { atBottom = true }
                         }
                 }
+                .opacity(atBottom ? 1 : 0)
                 .onChange(of: model.screen.items.last?.id) { last in
                     guard let last else { return }
                     // Reduce Motion: the transcript jumps to the new message instead of sliding.
