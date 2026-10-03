@@ -23,6 +23,12 @@ The first release.
   app's own colour, font and mode over the panel's.
 - A new conversation is created on the server with the user's first message, not when it is opened; offline, the
   outbox creates it once and then sends.
+- The messenger opens as a page sheet over the app (swipe down closes it), its screens in a navigation stack with
+  the system's push and swipe back. Home has no tab bar: a "Mesajlar" card opens the conversations, the brand's
+  colour fades into the page under the greeting, the panel's logo and greeting scales apply, and published news show
+  as a card with their own screen. A news button's link goes to `Clomni.onLink`; without it the system opens it.
+- The composer: the attach icon opens a sheet (photos and videos, the camera, files); a picked file waits above it
+  until sent. During a flow step that takes only a button, the composer stays, greyed.
 - Every method may be called from any thread; callbacks run on the main thread. `initialize` does no disk or keychain
   work on the main thread.
 - System frameworks only. A privacy manifest (`PrivacyInfo.xcprivacy`): no tracking, no required-reason APIs.
