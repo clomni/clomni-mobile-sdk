@@ -133,18 +133,19 @@ apiValidation {
     )
 }
 
-// Brief 11: the release AAR (a library: not shrunk here, R8 runs in the app) is at most 1.5 MB. Part of CI.
+// Brief 11 said 1.5 MB for the release AAR (a library: not shrunk here, R8 runs in the app); raised to 1.75 MB by the
+// coordinator on 2026-10-03 (BRIEF-DEVIATIONS 21) when Home v2 and the news left ~11 KB of room. Part of CI.
 val checkAarSize by tasks.registering {
-    description = "Fails when the release AAR is larger than 1.5 MB."
+    description = "Fails when the release AAR is larger than 1.75 MB."
     group = "verification"
     val aar = layout.buildDirectory.file("outputs/aar/messenger-release.aar")
     dependsOn("bundleReleaseAar")
     inputs.file(aar)
     doLast {
         val bytes = aar.get().asFile.length()
-        val limit = 1_500_000L
+        val limit = 1_750_000L
         logger.lifecycle("messenger-release.aar: $bytes bytes (limit $limit)")
-        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over the brief's 1.5 MB" }
+        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over 1.75 MB (BRIEF-DEVIATIONS 21)" }
     }
 }
 
