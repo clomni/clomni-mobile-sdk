@@ -215,10 +215,9 @@ internal object MessengerRuntime {
         if (closedByUser && !activity.replaced) coordinator?.dismiss()
     }
 
-    /** Back: from a conversation to Home, from Home out. */
+    /** Back: to the screen this one was opened from; from the first one, out. */
     fun back() {
-        val coordinator = coordinator ?: return
-        if (coordinator.route is MessengerRoute.Conversation) coordinator.navigate(MessengerRoute.Home) else coordinator.dismiss()
+        coordinator?.back()
     }
 
     /** Brings Android in line with the coordinator. */
@@ -234,7 +233,7 @@ internal object MessengerRuntime {
         if (coordinator.route != null && shown == null && !opening) {
             open()
         } else if (coordinator.route == null && shown != null && !shown.isFinishing) {
-            shown.finish()
+            shown.closeAnimated()
         }
         overlay.update(coordinator.launcher, coordinator.config, AppTheme.override) { coordinator.present("launcher") }
     }
@@ -249,7 +248,7 @@ internal object MessengerRuntime {
             (from ?: app).startActivity(intent)
             if (from != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 @Suppress("DEPRECATION")
-                from.overridePendingTransition(Motion.open(from), R.anim.clomni_stay)
+                from.overridePendingTransition(0, 0)
             }
         } catch (e: RuntimeException) {
             opening = false

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -48,9 +49,9 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
             tap(id)
         }
     }
-    // Pills a row apart are 16 dp apart: their 48 dp targets meet without covering each other (brief 7.6).
-    val gap = Arrangement.spacedBy(ClomniTheme.Space.xs.dp, Alignment.End)
-    val rows = Arrangement.spacedBy(16.dp)
+    // 40 dp pills 8 apart: their 48 dp targets meet without covering each other (brief 7.6, DESIGN-PASS-2 13).
+    val gap = Arrangement.spacedBy(8.dp, Alignment.End)
+    val rows = Arrangement.spacedBy(8.dp)
     val buttons = block.buttons + listOfNotNull(block.back)
     val modifier = Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.s.dp).alpha(opacity)
     Box(modifier, Alignment.CenterEnd) {
@@ -68,31 +69,36 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
 }
 
 /**
- * Background, a 1 dp primaryLine border, primary text 14/500, radius 18, padding 7×13; up to two lines, then "…". The
- * tap target reaches 48 dp where the pill is smaller.
+ * A pill (DESIGN-PASS-2 13): 40 dp high, white with a 1 dp border, text 15, 16 dp to its sides, radius 20; up to two
+ * lines, then "…". Its tap target reaches 48 dp.
  */
 @Composable
 private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabled: Boolean, choose: (String) -> Unit) {
-    val shape = RoundedCornerShape(ClomniTheme.Radius.pill.dp)
-    val reach = 8.dp
+    val shape = RoundedCornerShape(20.dp)
+    val reach = 4.dp
     val target = Modifier.bleed(vertical = reach).let {
         if (enabled) it.button(button.accessibilityLabel) { choose(button.id) } else it
     }
     Box(target.padding(vertical = reach).wrapContentWidth(Alignment.End)) {
-        BasicText(
-            button.title,
-            Modifier.clip(shape)
+        Box(
+            Modifier.heightIn(min = 40.dp)
+                .clip(shape)
                 .background(theme.colors.background.color)
-                .border(1.dp, if (isBack) theme.colors.border.color else theme.colors.primaryLine.color, shape)
-                .padding(vertical = 8.dp, horizontal = 12.dp),
-            style = clomniText(
-                ClomniTheme.FontSize.text,
-                if (isBack) theme.colors.textSecondary else theme.colors.primaryText,
-                if (isBack) FontWeight.Normal else FontWeight.Medium,
-                lineHeight = 1.3f,
-            ).copy(textAlign = TextAlign.End),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+                .border(1.dp, theme.colors.border.color, shape)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            Alignment.Center,
+        ) {
+            BasicText(
+                button.title,
+                style = clomniText(
+                    15f,
+                    if (isBack) theme.colors.textSecondary else theme.colors.textPrimary,
+                    if (isBack) FontWeight.Normal else FontWeight.Medium,
+                    lineHeight = 1.3f,
+                ).copy(textAlign = TextAlign.End),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }

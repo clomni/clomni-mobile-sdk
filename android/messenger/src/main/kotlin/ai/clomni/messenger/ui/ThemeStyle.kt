@@ -72,40 +72,23 @@ internal fun clomniText(
     textDirection = TextDirection.Content,
 )
 
-/** This style's sizes (sp) grow with the user's font size up to [max] times, no further. */
-@androidx.compose.runtime.Composable
-internal fun TextStyle.capFontScale(max: Float): TextStyle {
-    val scale = androidx.compose.ui.platform.LocalDensity.current.fontScale
-    if (scale <= max) return this
-    val factor = max / scale
-    return copy(fontSize = fontSize * factor, lineHeight = lineHeight * factor)
-}
-
 /**
- * A Home card: background, radius 12, padding 12×14, a soft shadow (a 1 dp border in dark mode). With [onClick] the
- * whole card is one button read out as [label].
+ * A card (DESIGN-PASS-2 5): white (the surface in dark mode), radius 16, padding 20, a shadow that is barely there
+ * (y 1, blur 3, about 6%) and no border. With [onClick] the whole card is one button read out as [label].
  */
 internal fun Modifier.clomniCard(theme: ClomniTheme, label: String = "", onClick: (() -> Unit)? = null): Modifier {
-    val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
-    val outline = if (theme.isDark) {
-        border(1.dp, theme.colors.border.color, shape)
-    } else {
-        // shadow.card (0 1 2 / 6% + 0 2 10 / 5%) as one soft elevation.
-        shadow(2.dp, shape, ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.10f))
-    }
-    val clipped = outline.clip(shape)
+    val shape = RoundedCornerShape(16.dp)
+    val lifted = if (theme.isDark) this else shadow(1.dp, shape, ambientColor = Color.Black.copy(alpha = 0.03f), spotColor = Color.Black.copy(alpha = 0.06f))
+    val clipped = lifted.clip(shape)
     // A tappable card is a 48 dp target even with one line in it.
     return (if (onClick != null) clipped.heightIn(min = ClomniTheme.Size.touchTarget.dp).button(label, onClick) else clipped)
-        .background(theme.colors.background.color)
-        .padding(vertical = ClomniTheme.Space.l.dp, horizontal = ClomniTheme.Space.xl.dp)
+        .background(if (theme.isDark) theme.colors.surface.color else theme.colors.background.color)
+        .padding(20.dp)
 }
 
-/** Moves the content up by [by] and takes that much less room: the Home cards riding up over the header. */
-internal fun Modifier.rise(by: Dp): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    val offset = by.roundToPx()
-    layout(placeable.width, (placeable.height - offset).coerceAtLeast(0)) { placeable.place(0, -offset) }
-}
+/** [clomniCard], Home's name for it. */
+internal fun Modifier.homeCard(theme: ClomniTheme, label: String = "", onClick: (() -> Unit)? = null): Modifier =
+    clomniCard(theme, label, onClick)
 
 /**
  * Like the symmetric [bleed], with each side its own: a target at a screen edge reaches inwards instead of past it.

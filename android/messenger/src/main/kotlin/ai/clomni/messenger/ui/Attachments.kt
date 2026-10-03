@@ -51,6 +51,24 @@ internal object Attachments {
         return ChatController.PickedFile(out.toByteArray(), "image.jpg", "image/jpeg")
     }
 
+    /** A picked or taken file as it is sent: a picture scaled ([image]), anything else as it is ([file]). */
+    fun read(resolver: ContentResolver, uri: Uri, maxBytes: Long): ChatController.PickedFile? =
+        if (resolver.getType(uri)?.startsWith("image/") == true) image(resolver, uri) else file(resolver, uri, maxBytes)
+
+    /** A file's name for its preview. */
+    fun name(resolver: ContentResolver, uri: Uri): String = runCatching {
+        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    }.getOrNull() ?: uri.lastPathSegment ?: "file"
+
+    /** Where the camera writes the next photo: a new file in the app's cache, shared with the camera app by Uri. */
+    fun cameraTarget(context: android.content.Context): Uri? = runCatching {
+        val dir = java.io.File(context.cacheDir, "clomni_camera").apply { mkdirs() }
+        val file = java.io.File(dir, "photo-${System.currentTimeMillis()}.jpg")
+        androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.clomni.camera", file)
+    }.getOrNull()
+
     /**
      * A picked file, read up to one byte over [maxBytes]: the engine refuses what is over its limit, and nothing larger
      * is held in memory. Null when it cannot be opened.

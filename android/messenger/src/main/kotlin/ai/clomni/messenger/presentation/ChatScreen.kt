@@ -83,11 +83,13 @@ internal data class Bubble(
     val position: Position,
     /** Next to the last bubble of an incoming run. */
     val avatar: ChatAvatar?,
-    /** Under the last bubble of an incoming run: "Clomni · Bot · indi", "Leyla · indi". */
+    /** Under the last bubble of an incoming run: when, "indi". */
     val meta: String?,
     /** Under the user's message when it is the last one, or when it failed. */
     val status: Status?,
     val accessibilityLabel: String,
+    /** Over the first bubble of an incoming run: who, "Clomni · Bot", "Leyla" (DESIGN-PASS-2 13). */
+    val author: String? = null,
 ) {
     enum class Side { INCOMING, OUTGOING }
 
@@ -189,9 +191,11 @@ internal data class ChatComposer(
     val sendLabel: String,
     val attachLabel: String,
     val emojiLabel: String,
-    /** The attachment menu: a picture, or any file. */
-    val imageLabel: String,
+    /** The attachment sheet: photo or video, the camera, any file; the × on a picked one. */
+    val mediaLabel: String,
+    val cameraLabel: String,
     val fileLabel: String,
+    val removeLabel: String,
 ) {
     sealed interface Mode {
         data object Open : Mode

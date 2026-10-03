@@ -42,6 +42,12 @@ internal interface MessengerSession {
 internal sealed interface MessengerRoute {
     data object Home : MessengerRoute
 
+    /** The list of conversations, opened from Home's "Mesajlar" card. */
+    data object Messages : MessengerRoute
+
+    /** A news item's own screen. */
+    data class News(val id: String) : MessengerRoute
+
     /** A conversation, or a new one not yet on the server ([MessengerSession.draft]). */
     data class Conversation(val id: String) : MessengerRoute
 }
@@ -75,6 +81,9 @@ internal class MessengerEvents {
     @Volatile var conversationStarted: ((String) -> Unit)? = null
 
     @Volatile var unreadCountChanged: ((Int) -> Unit)? = null
+
+    /** `Clomni.onLink`: a news button's link; true when the app opened it, otherwise the system does. */
+    @Volatile var link: ((String) -> Boolean)? = null
 
     /** A flow reached its END node, with the flow's id. */
     @Volatile var flowCompleted: ((String) -> Unit)? = null
@@ -309,10 +318,29 @@ internal class MessengerCoordinator(
         }
     }
 
-    /** A move inside the open messenger: Home, or a conversation picked there. */
+    /** Where back leads, the last first; empty: back closes the messenger. */
+    private val backStack = ArrayDeque<MessengerRoute>()
+
+    /** The last move went deeper (a push) rather than back (a pop): which way the screens slide. */
+    var forward = true
+        private set
+
+    /** A move deeper inside the open messenger: the list, a conversation; back returns to where it came from. */
     fun navigate(to: MessengerRoute) {
-        if (route == null) return
+        val from = route ?: return
+        if (from == to) return
+        backStack.addLast(from)
+        forward = true
         route = to
+        changed()
+    }
+
+    /** Back (the arrow, the system's back): the screen it came from, or closed from the first one. */
+    fun back() {
+        if (route == null) return
+        val previous = backStack.removeLastOrNull() ?: return dismiss()
+        forward = false
+        route = previous
         changed()
     }
 
@@ -320,6 +348,7 @@ internal class MessengerCoordinator(
     fun dismiss() {
         if (route == null) return
         route = null
+        backStack.clear()
         source = null
         events.messengerClosed?.invoke()
         changed()
@@ -330,8 +359,15 @@ internal class MessengerCoordinator(
         events.conversationStarted?.invoke(id)
     }
 
+    /** Conversations that began as a draft, by their id: the draft's screen stays the same screen. */
+    private val drafts = HashMap<String, String>()
+
+    /** The screen showing conversation [id]: its draft's, when it began as one. */
+    fun screenKey(id: String): String = drafts[id] ?: id
+
     /** A draft's first message created its conversation: the screen showing the draft now shows it. */
     private fun started(draftId: String, conversationId: String) {
+        drafts[conversationId] = draftId
         if (route == MessengerRoute.Conversation(draftId)) route = MessengerRoute.Conversation(conversationId)
         conversationStarted(conversationId)
         changed()
@@ -343,6 +379,15 @@ internal class MessengerCoordinator(
             return false
         }
         val wasClosed = route == null
+        val from = route
+        forward = true
+        if (wasClosed) {
+            // A conversation opened from the app (or a push) goes back to Home, as one opened there does.
+            backStack.clear()
+            if (to !is MessengerRoute.Home) backStack.addLast(MessengerRoute.Home)
+        } else if (from != null && from != to) {
+            backStack.addLast(from)
+        }
         route = to
         if (wasClosed) {
             this.source = source

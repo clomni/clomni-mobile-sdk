@@ -12,6 +12,7 @@ import ai.clomni.messenger.protocol.MessagePage
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.MobileSession
 import ai.clomni.messenger.protocol.MobileUser
+import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.ServerError
 import ai.clomni.messenger.protocol.UploadedFile
@@ -55,6 +56,13 @@ internal data class DeviceInfo(
 )
 
 /** GET /mobile/config: [Changed] carries the body to keep on disk with its ETag. */
+/** GET /news: changed (with its ETag), or 304. */
+internal sealed interface NewsResponse {
+    object NotModified : NewsResponse
+
+    data class Changed(val items: List<NewsItem>, val body: String, val etag: String?) : NewsResponse
+}
+
 internal sealed interface ConfigResponse {
     object NotModified : ConfigResponse
 
@@ -137,6 +145,12 @@ internal class ApiClient(
             call("GET", "mobile/config", query = mapOf("lang" to lang), headers = mapOf("If-None-Match" to etag))
         if (response.status == 304) return ConfigResponse.NotModified
         return ConfigResponse.Changed(read(response, protocol::parseConfig), response.body, response.etag)
+    }
+
+    fun getNews(lang: String?, etag: String?): NewsResponse {
+        val response = call("GET", "news", query = mapOf("lang" to lang), headers = mapOf("If-None-Match" to etag))
+        if (response.status == 304) return NewsResponse.NotModified
+        return NewsResponse.Changed(read(response, protocol::parseNews), response.body, response.etag)
     }
 
     fun listConversations(limit: Int? = null, cursor: String? = null): ConversationPage = read(

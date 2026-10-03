@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The messenger's activity: no action bar; Compose draws everything, edge to edge. -->
+    <!-- The messenger's activity: no action bar; Compose draws everything, edge to edge. Translucent, so the app stays
+         visible behind the sheet; the sheet animates itself, the window does not. -->
     <style name="clomni_messenger" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

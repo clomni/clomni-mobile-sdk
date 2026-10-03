@@ -13,6 +13,17 @@
             android:exported="false"
             android:theme="@style/clomni_messenger"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- A photo taken for a message: the camera app writes it here (the app's cache), for this one use. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.clomni.camera"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/clomni_camera_paths" />
+        </provider>
     </application>
 
 </manifest>

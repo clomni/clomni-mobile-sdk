@@ -164,7 +164,6 @@ class ThemeTest {
             assertTrue(theme.colors.background.contrast(theme.colors.textSecondary) >= 4.5)
         }
         assertEquals(12f, ClomniTheme.Radius.card)
-        assertEquals(40f, ClomniTheme.Size.cardOverlap)
         assertEquals(48f, ClomniTheme.Size.touchTarget)
         assertEquals(listOf(2.0, 10.0), ClomniTheme.Shadow.card.map { it.radius })
     }
@@ -207,9 +206,9 @@ class StringsTest {
 
     @Test
     fun languageAndOverrides() {
-        assertEquals("Messages", ClomniStrings("en")[Key.TAB_MESSAGES])
-        assertEquals("Главная", ClomniStrings("ru-RU")[Key.TAB_HOME])
-        assertEquals("anything else reads as az", "Ana səhifə", ClomniStrings("de")[Key.TAB_HOME])
+        assertEquals("Messages", ClomniStrings("en")[Key.MESSAGES_TITLE])
+        assertEquals("Сообщения", ClomniStrings("ru-RU")[Key.MESSAGES_TITLE])
+        assertEquals("anything else reads as az", "Mesajlar", ClomniStrings("de")[Key.MESSAGES_TITLE])
         assertEquals("az", ClomniStrings(null).language)
         // The panel's texts come first; an empty one does not hide the SDK's.
         val strings = ClomniStrings("az", mapOf("yesterday" to "Dün", "send" to "", "custom" to "x"))

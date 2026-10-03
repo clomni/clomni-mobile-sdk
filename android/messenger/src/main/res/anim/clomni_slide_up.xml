@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The messenger slides up over the app (brief 8·7.6: 200–250 ms, ease-out). -->
-<translate xmlns:android="http://schemas.android.com/apk/res/android"
-    android:duration="250"
-    android:fromYDelta="100%p"
-    android:interpolator="@android:interpolator/decelerate_cubic"
-    android:toYDelta="0" />

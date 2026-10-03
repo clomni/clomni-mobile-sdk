@@ -8,6 +8,9 @@ internal sealed interface ClomniChange {
 
     data object Config : ClomniChange
 
+    /** The published news. */
+    data object News : ClomniChange
+
     data object Conversations : ClomniChange
 
     /** Messages or pending messages of one conversation. */

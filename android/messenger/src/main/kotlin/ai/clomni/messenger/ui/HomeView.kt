@@ -1,5 +1,6 @@
 package ai.clomni.messenger.ui
 
+import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
@@ -46,6 +47,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -58,122 +61,141 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
-/** The Home tab (brief 8·7.3): the brand header with the greeting, and the cards riding up over it by 40. */
+/**
+ * Home (DESIGN-PASS-2 1–6): no header block and no tab bar. The brand's colour starts at the top, from the top start
+ * corner to a slightly lighter tone, and fades into the page by about 45% of the screen; the logo top start, ✕ top end,
+ * the two-line greeting, then the cards on the fade: "Mesajlar" (the list), the latest conversation, "Bizə mesaj
+ * göndərin", the channels, in the panel's order.
+ */
 @Composable
 internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions) {
-    val scroll = rememberScrollState()
-    var headerHeight by remember { mutableStateOf(0) }
-    // Behind the page, the header's colour for its own height: pulled down past the top (overscroll), the header seems
-    // to stretch and the page's grey never shows above it.
-    val backdrop = Modifier.drawBehind {
-        drawRect(theme.colors.headerFrom.color, size = Size(size.width, (headerHeight - scroll.value).coerceAtLeast(0).toFloat()))
-    }
-    Column(Modifier.fillMaxSize().background(theme.colors.canvas.color).then(backdrop).verticalScroll(scroll)) {
-        Box(Modifier.onSizeChanged { headerHeight = it.height }) { HomeHeader(screen.header, theme, actions.close) }
-        screen.offline?.let { OfflineStrip(it, theme) }
-        val cards = Modifier.padding(horizontal = ClomniTheme.Space.l.dp)
-        // Under the offline strip the cards cannot ride up over the header.
-        val placed = if (screen.offline == null) {
-            cards.rise(ClomniTheme.Size.cardOverlap.dp)
-        } else {
-            cards.padding(top = ClomniTheme.Space.m.dp)
-        }
-        HomeCards(screen, theme, actions, placed.padding(bottom = ClomniTheme.Space.xxl.dp))
-    }
-}
-
-@Composable
-private fun HomeHeader(header: HomeScreen.Header, theme: ClomniTheme, close: () -> Unit) {
-    // header_text: white on a dark header or a picture, dark on a light one; never on_primary.
-    val text = theme.colors.headerText
-    Box(Modifier.fillMaxWidth().then(if (header.glow) Modifier.glow(theme) else Modifier)) {
-        HeaderBackground(header, theme, Modifier.matchParentSize())
+    Box(Modifier.fillMaxSize().background(theme.colors.background.color)) {
+        // The full brand colour reaches 16 dp under the greeting, then fades into the page over 160 dp: the text
+        // always stands on the full colour, and a larger title_scale takes the colour further down with it.
+        var greetingBottom by remember { mutableStateOf(0f) }
         Column(
-            Modifier.fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                // 64 = the 40 the cards ride up + 24 of air above them.
-                .padding(start = ClomniTheme.Space.xxl.dp, end = ClomniTheme.Space.l.dp, bottom = 64.dp),
+            Modifier.fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .homeBackdrop(screen.header, theme, greetingBottom)
+                .windowInsetsPadding(WindowInsets.statusBars),
         ) {
-            // 48: the buttons' targets stay inside the row, whatever is above it.
-            Row(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp), verticalAlignment = Alignment.CenterVertically) {
-                // The brand gives way (its name ends in "…"); the avatars and ✕ keep their size.
-                val wordmark = (if (theme.isDark) header.wordmarkDarkUrl else null) ?: header.wordmarkUrl
-                if (wordmark != null) {
-                    Wordmark(wordmark, header, theme, Modifier.weight(1f))
-                } else {
-                    BrandMark(header, theme, Modifier.weight(1f))
-                }
-                Spacer(Modifier.width(ClomniTheme.Space.l.dp))
-                TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
-                if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
-                // 12 dp from the screen's edge, like the avatars' row (the row's end padding).
-                CloseButton(header.closeLabel, text, close, endRoom = ClomniTheme.Space.l.dp)
-            }
-            Column(Modifier.padding(top = 20.dp).semantics(mergeDescendants = true) { heading() }) {
-                // Both lines in the header's full colour, set apart by size and weight (BRIEF-DEVIATIONS 18), at the
-                // panel's title_size; sp, so the user's font size goes on top, and long text wraps.
-                val size = header.titleSize
-                BasicText(header.greeting, style = clomniText(size.firstLine, text, lineHeight = 1.25f))
-                BasicText(header.title, style = clomniText(size.secondLine, text, FontWeight.SemiBold, lineHeight = 1.25f, letterSpacing = -0.3f))
-            }
+            HomeTop(screen.header, theme, actions.close)
+            Greeting(screen.header, theme, Modifier.onGloballyPositioned { greetingBottom = it.boundsInParent().bottom })
+            screen.offline?.let { OfflineStrip(it, theme) }
+            HomeCards(
+                screen,
+                theme,
+                actions,
+                Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
+            )
         }
     }
 }
 
-/**
- * The glow (APPEARANCE-CONTRACT 1): a soft radial light of the brand colour at 25% behind the header, so it shows
- * where it spills out under it, around the cards; as the panel's preview draws it: an ellipse 140% of the header's
- * width and 260 dp tall, from 45% of the header's height down.
- */
-private fun Modifier.glow(theme: ClomniTheme): Modifier = drawBehind {
-    val height = 260.dp.toPx()
-    val center = Offset(size.width / 2, size.height * 0.45f + height / 2)
-    val light = theme.colors.primary.color.copy(alpha = 0.25f)
-    withTransform({ scale(scaleX = size.width * 1.4f / height, scaleY = 1f, pivot = center) }) {
-        drawCircle(Brush.radialGradient(listOf(light, Color.Transparent), center, height / 2), height / 2, center)
-    }
-}
+/** The light tone the brand colour runs to towards the top end: a quarter of the way to white. */
+private fun lighter(color: RgbColor): RgbColor = RgbColor.WHITE.over(color, 0.25)
 
 /**
- * Behind the header and the status bar: the brand gradient (header_from at the top to header_to; one colour when
- * solid), or the panel's picture under a black veil, 35% at the top to 55% at the bottom.
+ * Behind the scrolling page, from its top: the brand colour (header_from) running to a lighter tone diagonally
+ * (gradient), or flat (solid), or the panel's picture under its veil (image), in full down to 16 dp under the
+ * greeting ([greetingBottom], px); then the page's own colour rising over it for 160 dp, so it fades with no edge.
  */
 @Composable
-private fun HeaderBackground(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier) {
+private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme, greetingBottom: Float): Modifier {
     val picture = header.imageUrl.takeIf { header.style == MessengerConfig.HeaderStyle.IMAGE }
-    Box(
-        modifier.clearAndSetSemantics {}.drawWithContent {
-            if (picture == null) {
-                drawRect(Brush.verticalGradient(listOf(theme.colors.headerFrom.color, theme.colors.headerTo.color)))
+    val bitmap = picture?.let { LocalPreviewImages.current[it] }
+    val painter = if (picture != null && bitmap == null && !LocalInspectionMode.current) {
+        coil.compose.rememberAsyncImagePainter(
+            ImageSizing.url(picture, ImageSizing.Kind.HEADER, LocalConfiguration.current.screenWidthDp.toFloat(), LocalDensity.current.density),
+            ClomniImages.loader(LocalContext.current),
+        )
+    } else {
+        null
+    }
+    val brand = theme.colors.headerFrom.color
+    val light = lighter(theme.colors.headerFrom).color
+    val page = theme.colors.background.color
+    return drawBehind {
+        val fadeStart = greetingBottom + 16.dp.toPx()
+        val end = fadeStart + 160.dp.toPx()
+        val area = Size(size.width, end)
+        when {
+            picture != null -> {
+                drawRect(theme.colors.surface.color, size = area)
+                if (bitmap != null) {
+                    val scale = maxOf(area.width / bitmap.width, area.height / bitmap.height)
+                    withTransform({ scale(scale, scale, Offset.Zero) }) { drawImage(bitmap) }
+                } else if (painter != null) {
+                    with(painter) { draw(area) }
+                }
+                drawRect(Brush.verticalGradient(listOf(VEIL_TOP, VEIL_BOTTOM), endY = end), size = area)
             }
-            drawContent()
-            if (picture != null) drawRect(Brush.verticalGradient(listOf(VEIL_TOP, VEIL_BOTTOM)))
-        },
-    ) {
-        if (picture != null) {
-            RemoteImageFill(picture, ImageSizing.Kind.HEADER, LocalConfiguration.current.screenWidthDp.toFloat(), theme.colors.primarySoft.color)
+            header.style == MessengerConfig.HeaderStyle.SOLID -> drawRect(brand, size = area)
+            else -> drawRect(Brush.linearGradient(listOf(brand, light), Offset.Zero, Offset(size.width, end)), size = area)
         }
+        drawRect(Brush.verticalGradient(listOf(page.copy(alpha = 0f), page), startY = fadeStart, endY = end), size = area)
     }
 }
 
 private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
 
+/** The logo (or the written logo) at the top start, the team's faces and ✕ at the top end; one 48 dp row. */
+@Composable
+private fun HomeTop(header: HomeScreen.Header, theme: ClomniTheme, close: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().closeButtonPlace().heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(start = HOME_START),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val wordmark = (if (theme.isDark) header.wordmarkDarkUrl else null) ?: header.wordmarkUrl
+        if (wordmark != null) {
+            Wordmark(wordmark, header, theme, Modifier.weight(1f))
+        } else {
+            Logo(header, theme, Modifier.weight(1f))
+        }
+        TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
+        if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
+        CloseButton(header.closeLabel, CloseStyle.ON_BRAND, theme, close)
+    }
+}
+
+/** Where Home's logo, greeting and the cards' text start: the cards' 16 and their padding 20. */
+private val HOME_START = 36.dp
+
 /**
- * The written logo (APPEARANCE-CONTRACT 4a): 32 dp high, at most 60% of the header's width, fitted, never cut or
+ * "Salam, Aysel" and "Necə kömək edə bilərik?", both 28 × the panel's title_scale (sp: the user's font size goes on
+ * top), line height 1.2, about 80% of the screen wide, wrapping; both in header_text, the first semibold at 72%, the
+ * second bold (coordinator's decision, 2026-10-03: primary_strong read blurred on a mid green).
+ */
+@Composable
+private fun Greeting(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier = Modifier) {
+    val text = theme.colors.headerText
+    val first = text.over(theme.colors.headerFrom, 0.72)
+    Column(
+        modifier.padding(start = HOME_START, top = 32.dp).fillMaxWidth(0.8f).semantics(mergeDescendants = true) { heading() },
+    ) {
+        val size = header.titleSize
+        BasicText(header.greeting, style = clomniText(size, first, FontWeight.SemiBold, lineHeight = 1.2f, letterSpacing = -0.3f))
+        BasicText(header.title, style = clomniText(size, text, FontWeight.Bold, lineHeight = 1.2f, letterSpacing = -0.3f))
+    }
+}
+
+/**
+ * The written logo (APPEARANCE-CONTRACT 4a): 32 dp × the panel's logo_scale high, at most 60% of the header's width, fitted, never cut or
  * stretched; its room is kept while it loads, and if it cannot load the logo and the name stand in. Read as the
  * brand's name. Home's header only: the conversation keeps the logo and the name.
  */
 @Composable
 private fun Wordmark(url: String, header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier) {
     var failed by remember(url) { mutableStateOf(false) }
-    if (failed) return BrandMark(header, theme, modifier)
+    if (failed) return Logo(header, theme, modifier)
     val width = LocalConfiguration.current.screenWidthDp * 0.6f
     Box(modifier.semantics { contentDescription = header.brandName }, Alignment.CenterStart) {
-        val box = Modifier.height(32.dp).widthIn(max = width.dp).fillMaxWidth()
+        val box = Modifier.height(header.logoSize.dp).widthIn(max = width.dp).fillMaxWidth()
         val preview = LocalPreviewImages.current[url]
         when {
             preview != null -> Image(preview, null, box, alignment = Alignment.CenterStart, contentScale = ContentScale.Fit)
@@ -195,64 +217,46 @@ private fun Wordmark(url: String, header: HomeScreen.Header, theme: ClomniTheme,
 }
 
 /**
- * The logo as it was uploaded, 32 dp with 8 dp corners and nothing around it (the dark-mode one in dark mode); without
- * one the brand's initial on a 32 dp circle of its soft tone. The name 17 semibold 10 dp away, both centred on one line.
+ * The logo as it was uploaded, 32 dp × the panel's logo_scale high with 8 dp corners and nothing around it (the dark-mode one in dark mode).
+ * Without one the place stays empty: no initial (DESIGN-PASS-2 4).
  */
 @Composable
-private fun BrandMark(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier = Modifier) {
+private fun Logo(header: HomeScreen.Header, theme: ClomniTheme, modifier: Modifier = Modifier) {
     val logo = (if (theme.isDark) header.logoDarkUrl else null) ?: header.logoUrl
-    // Before any config there is no brand yet: an empty circle would be a placeholder for nothing.
-    if (logo == null && header.brandName.isBlank()) return Spacer(modifier)
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        val size = ClomniTheme.Size.logo
+    Box(modifier) {
         if (logo != null) {
+            val size = header.logoSize
             RemoteImage(
                 logo,
                 ImageSizing.Kind.ICON,
                 size,
                 theme.colors.primarySoft.color,
-                Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).clearAndSetSemantics {},
+                Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).semantics { contentDescription = header.brandName },
             )
-        } else {
-            Box(Modifier.size(size.dp).clip(CircleShape).background(theme.colors.primarySoft.color).clearAndSetSemantics {}, Alignment.Center) {
-                val letter = with(LocalDensity.current) { 15.dp.toSp() }
-                BasicText(
-                    header.brandInitial,
-                    style = clomniText(15f, theme.colors.primaryText, FontWeight.SemiBold).copy(fontSize = letter, lineHeight = letter),
-                )
-            }
         }
-        Spacer(Modifier.width(ClomniTheme.Space.l.dp))
-        BasicText(
-            header.brandName,
-            Modifier.weight(1f, fill = false),
-            // The name grows with the user's font size up to 1.5 times, no more: it shares its row with the buttons.
-            style = clomniText(ClomniTheme.FontSize.brand, theme.colors.headerText, FontWeight.SemiBold, lineHeight = 1.25f)
-                .capFontScale(1.5f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
-/** Skeleton, error, or the cards the config asks for, in its order; switching fades (200 ms), nothing moves. */
+/** Skeleton, error, or the cards the config asks for, in its order, 12 apart; switching fades (200 ms). */
 @Composable
 private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions, modifier: Modifier) {
     Crossfade(screen.phase, modifier, animationSpec = tween(200), label = "home") { phase ->
-        Column(verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (phase) {
                 HomeScreen.Phase.LOADING -> {
-                    SkeletonBlock(58f, theme)
-                    SkeletonBlock(74f, theme)
+                    SkeletonBlock(64f, theme)
+                    SkeletonBlock(112f, theme)
                 }
                 HomeScreen.Phase.FAILED -> screen.failure?.let { FailureView(it, theme, actions.retry) }
                 HomeScreen.Phase.READY -> {
                     for (card in screen.order) {
                         when (card) {
+                            MessengerConfig.HomeCard.MESSAGES -> MessagesCard(screen.messagesCard, theme, actions.openMessages)
                             MessengerConfig.HomeCard.SEND ->
-                                screen.newConversation?.let { NewConversationCardView(it, theme, actions.newConversation) }
-                            MessengerConfig.HomeCard.RECENT -> screen.recent?.let { RecentCardView(it, theme, actions.openConversation) }
+                                screen.newConversation?.let { SendCard(it, theme, actions.newConversation) }
+                            MessengerConfig.HomeCard.RECENT -> screen.recent?.let { LatestCard(it, theme, actions.openConversation) }
                             MessengerConfig.HomeCard.CHANNELS -> screen.channels?.let { ChannelsCardView(it, theme) }
+                            MessengerConfig.HomeCard.NEWS -> for (news in screen.news) NewsCardView(news, theme, actions.openNews)
                         }
                     }
                     screen.poweredBy?.let {
@@ -263,6 +267,74 @@ private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/** A Home card's title: 17 semibold. */
+@Composable
+private fun cardTitle(theme: ClomniTheme) = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.3f)
+
+/** "Mesajlar" and the conversation icon: the list. A red dot while something is unread. */
+@Composable
+private fun MessagesCard(card: HomeScreen.MessagesCard, theme: ClomniTheme, open: () -> Unit) {
+    Row(Modifier.fillMaxWidth().homeCard(theme, card.accessibilityLabel, open), verticalAlignment = Alignment.CenterVertically) {
+        BasicText(card.title, Modifier.weight(1f), style = cardTitle(theme))
+        if (card.unread) {
+            Box(Modifier.size(ClomniTheme.Size.unreadDot.dp).clip(CircleShape).background(theme.colors.unread.color))
+            Spacer(Modifier.width(ClomniTheme.Space.s.dp))
+        }
+        Icon(R.drawable.clomni_ic_chat_filled, theme.colors.textPrimary, 20.dp)
+    }
+}
+
+/** "Bizə mesaj göndərin" and an arrow in the brand colour: a new conversation. */
+@Composable
+private fun SendCard(card: HomeScreen.NewConversationCard, theme: ClomniTheme, start: () -> Unit) {
+    Row(Modifier.fillMaxWidth().homeCard(theme, card.accessibilityLabel, start), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            BasicText(card.title, style = cardTitle(theme))
+            card.subtitle?.let {
+                BasicText(it, Modifier.padding(top = 4.dp), style = clomniText(14f, theme.colors.textSecondary))
+            }
+        }
+        Spacer(Modifier.width(ClomniTheme.Space.l.dp))
+        Icon(R.drawable.clomni_ic_send, theme.colors.primaryText, 20.dp)
+    }
+}
+
+/** "Son mesaj": the newest conversation, its avatar, who and when on one line, the message under it. */
+@Composable
+private fun LatestCard(card: HomeScreen.RecentCard, theme: ClomniTheme, open: (String) -> Unit) {
+    val row = card.row
+    Column(Modifier.fillMaxWidth().homeCard(theme, "${card.label}. ${row.accessibilityLabel}") { open(row.id) }) {
+        BasicText(card.label, Modifier.padding(bottom = 12.dp), style = cardTitle(theme))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Avatar(row.avatarUrl, row.initial, 40f, theme)
+            Spacer(Modifier.width(ClomniTheme.Space.l.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(
+                        row.name,
+                        Modifier.weight(1f, fill = false),
+                        style = clomniText(15f, theme.colors.textPrimary, FontWeight.Medium),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.width(ClomniTheme.Space.s.dp))
+                    BasicText(row.time, style = clomniText(14f, theme.colors.textSecondary), maxLines = 1)
+                }
+                BasicText(
+                    row.preview,
+                    style = clomniText(14f, if (row.unread) theme.colors.textPrimary else theme.colors.textSecondary),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (row.unread) {
+                Spacer(Modifier.width(ClomniTheme.Space.s.dp))
+                Box(Modifier.size(ClomniTheme.Size.unreadDot.dp).clip(CircleShape).background(theme.colors.unread.color))
             }
         }
     }

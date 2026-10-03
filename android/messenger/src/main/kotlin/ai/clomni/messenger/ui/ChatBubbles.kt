@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -76,7 +77,11 @@ internal class ChatActions(
     val close: () -> Unit = {},
     val send: () -> Unit = {},
     val pickImage: () -> Unit = {},
+    /** Null when the app may not use the camera: the sheet has no camera row then. */
+    val pickCamera: (() -> Unit)? = null,
     val pickFile: () -> Unit = {},
+    /** The × on a picked file, before it is sent. */
+    val removePicked: () -> Unit = {},
     val startNew: () -> Unit = {},
     val tap: (buttonId: String, messageId: String) -> Unit = { _, _ -> },
     /** The errors to show by field; empty when the form went. */
@@ -161,17 +166,31 @@ internal fun Bubble.shape(): RoundedCornerShape {
     }
 }
 
-/** A bubble with its avatar slot, meta line and status, on its side of the screen. */
+/**
+ * A bubble with its avatar slot, the author over the first of a run (13 semibold), the time under the last, and the
+ * status, on its side of the screen. A bubble is at most 78% of the screen wide (DESIGN-PASS-2 13).
+ */
 @Composable
 internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions) {
     val incoming = bubble.side == Bubble.Side.INCOMING
     val startsRun = bubble.position == Bubble.Position.FIRST || bubble.position == Bubble.Position.SINGLE
-    // A new run starts a little apart: 4 dp for the other side, 8 dp for the user.
-    val top = if (startsRun) (if (incoming) 4.dp else 8.dp) else 0.dp
+    // A new run starts a little apart: 8 dp for the other side (12 with its author line), 8 for the user.
+    val top = if (startsRun) 8.dp else 0.dp
+    val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.78f
+    val gutter = ClomniTheme.Size.headerAvatar.dp + ClomniTheme.Space.s.dp
     Column(
         Modifier.fillMaxWidth().padding(top = top),
         horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
     ) {
+        bubble.author?.let { author ->
+            BasicText(
+                author,
+                Modifier.padding(start = gutter, bottom = 4.dp).clearAndSetSemantics {},
+                style = clomniText(13f, theme.colors.textSecondary, FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         Row(verticalAlignment = Alignment.Bottom) {
             if (incoming) {
                 val avatar = bubble.avatar
@@ -181,17 +200,13 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
                     Spacer(Modifier.width(ClomniTheme.Size.headerAvatar.dp))
                 }
                 Spacer(Modifier.width(ClomniTheme.Space.s.dp))
-            } else {
-                Spacer(Modifier.width(40.dp))
             }
-            // The other side's bubbles are only capped (222 dp), as in the reference: on its 282 dp phone the cap is
-            // the whole row after the avatar.
-            Box(Modifier.weight(1f, fill = false)) { BubbleBody(bubble, theme, actions) }
+            Box(Modifier.widthIn(max = maxWidth)) { BubbleBody(bubble, theme, actions) }
         }
         bubble.meta?.let { meta ->
             BasicText(
                 meta,
-                Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = 36.dp).clearAndSetSemantics {},
+                Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = gutter).clearAndSetSemantics {},
                 style = clomniText(ClomniTheme.FontSize.meta, theme.colors.textSecondary),
             )
         }
@@ -209,8 +224,7 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
     when (val body = bubble.body) {
         is Bubble.TextBody -> BasicText(
             attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
-            Modifier.widthIn(max = if (incoming) 222.dp else 210.dp)
-                .clip(shape)
+            Modifier.clip(shape)
                 .background(fill.color)
                 .padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp)
                 .clearAndSetSemantics { contentDescription = bubble.accessibilityLabel },

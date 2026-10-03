@@ -4,26 +4,32 @@ import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ChatComposer
 import ai.clomni.messenger.presentation.ChatPresenter
 import ai.clomni.messenger.presentation.ClomniTheme
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,10 +44,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -50,15 +60,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
+
+/** A file picked in the sheet, shown over the field until it is sent with the message, or removed. */
+internal class PickedPreview(
+    /** A picture's local address (a content Uri as text) for its thumbnail; null for another file. */
+    val image: String?,
+    val name: String,
+)
 
 /**
- * A white strip with the top hairline over the navigation bar (and the keyboard): the field (surface, radius 20, 38
- * high, up to 5 lines), the emoji and attach icons while it is empty, and the primary send button (34) once there is
- * text. A step waiting for a button locks it; a closed conversation offers a new one, and writing anyway reopens it.
+ * A white strip with the top hairline over the navigation bar, rising with the keyboard (DESIGN-PASS-2 11): a picked
+ * file's 64 dp preview with its ×, then the field (surface, radius 20, at least 44 high, up to 5 lines, then it
+ * scrolls) with the emoji and attach icons (24) inside it at the end; once there is something to send, the 36 dp send
+ * button in the brand colour takes the attach icon's place (150 ms, scale and fade). A step that waits for a button
+ * keeps the field, greyed, with "Yuxarıdan birini seçin" and no icons; a closed conversation offers a new one, and
+ * writing anyway reopens it.
  */
 @Composable
 internal fun ComposerView(
@@ -69,6 +87,7 @@ internal fun ComposerView(
     writeAnyway: Boolean,
     setWriteAnyway: () -> Unit,
     actions: ChatActions,
+    picked: PickedPreview? = null,
     focus: FocusRequester = remember { FocusRequester() },
 ) {
     Column(
@@ -76,25 +95,65 @@ internal fun ComposerView(
             .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
-        Box(Modifier.fillMaxWidth().padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.s.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            if (picked != null && composer.mode !is ChatComposer.Mode.Locked) {
+                Preview(picked, composer.removeLabel, theme, actions.removePicked)
+            }
             when (val mode = composer.mode) {
-                is ChatComposer.Mode.Locked -> BasicText(
-                    mode.text,
-                    Modifier.fillMaxWidth().heightIn(min = 40.dp)
-                        .clip(RoundedCornerShape(ClomniTheme.Radius.input.dp))
-                        .background(theme.colors.surface.color)
-                        .padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.m.dp),
-                    style = clomniText(13f, theme.colors.textSecondary).copy(textAlign = TextAlign.Center),
-                )
+                is ChatComposer.Mode.Locked -> Locked(mode.text, theme)
                 is ChatComposer.Mode.Closed -> if (writeAnyway) {
-                    Field(composer, theme, text, changeText, actions, focus)
+                    Field(composer, theme, text, changeText, actions, focus, picked != null)
                     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
                 } else {
                     Closed(mode, theme, actions.startNew) {
                         setWriteAnyway()
                     }
                 }
-                ChatComposer.Mode.Open -> Field(composer, theme, text, changeText, actions, focus)
+                ChatComposer.Mode.Open -> Field(composer, theme, text, changeText, actions, focus, picked != null)
+            }
+        }
+    }
+}
+
+/** The field while a step waits for a button: there, greyed (60%), "Yuxarıdan birini seçin", nothing to tap. */
+@Composable
+private fun Locked(text: String, theme: ClomniTheme) {
+    Box(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).alpha(0.6f)
+            .clip(RoundedCornerShape(20.dp))
+            .background(theme.colors.surface.color)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        Alignment.CenterStart,
+    ) {
+        BasicText(text, style = clomniText(16f, theme.colors.textSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A picked file over the field: 64 dp, the picture itself or the file's icon, radius 12, × at its corner. */
+@Composable
+private fun Preview(picked: PickedPreview, removeLabel: String, theme: ClomniTheme, remove: () -> Unit) {
+    Box(Modifier.padding(bottom = 8.dp)) {
+        Box(
+            Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(theme.colors.surface.color)
+                .semantics { contentDescription = picked.name },
+            Alignment.Center,
+        ) {
+            if (picked.image != null && !LocalInspectionMode.current) {
+                coil.compose.AsyncImage(
+                    picked.image,
+                    null,
+                    ClomniImages.loader(LocalContext.current),
+                    Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Icon(R.drawable.clomni_ic_file, theme.colors.textSecondary, 24.dp)
+            }
+        }
+        // The × reaches a 48 dp target around its 20 dp circle at the corner.
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 18.dp, y = (-18).dp).size(48.dp).button(removeLabel, remove), Alignment.Center) {
+            Box(Modifier.size(20.dp).clip(CircleShape).background(theme.colors.textPrimary.color), Alignment.Center) {
+                Icon(R.drawable.clomni_ic_close, theme.colors.background, 14.dp)
             }
         }
     }
@@ -127,112 +186,87 @@ private fun Field(
     changeText: (String) -> Unit,
     actions: ChatActions,
     focus: FocusRequester,
+    hasPicked: Boolean,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
-    val canSend = ChatPresenter.canSend(text, composer.limit)
-    // The field is the 40 dp grey box, but takes taps (and TalkBack's frame) over 48: 4 dp of it above and below the
-    // box lay out over the bar's own padding.
-    val slack = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
-    Row(verticalAlignment = Alignment.Bottom) {
-        BasicTextField(
-            text,
-            changeText,
-            Modifier.weight(1f).bleed(vertical = slack).heightIn(min = ClomniTheme.Size.touchTarget.dp)
-                .focusRequester(focus).semantics { contentDescription = composer.placeholder },
-            textStyle = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary),
-            maxLines = 5,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            cursorBrush = SolidColor(theme.colors.primary.color),
-            decorationBox = { inner ->
-                Row(
-                    Modifier.padding(vertical = slack).heightIn(min = 40.dp)
-                        .clip(RoundedCornerShape(ClomniTheme.Radius.input.dp))
-                        .background(theme.colors.surface.color)
-                        .padding(horizontal = ClomniTheme.Space.l.dp, vertical = ClomniTheme.Space.s.dp),
-                    horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        if (text.isEmpty()) {
-                            BasicText(
-                                composer.placeholder,
-                                style = clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        inner()
-                    }
+    val canSend = hasPicked || ChatPresenter.canSend(text, composer.limit)
+    var sheet by remember { mutableStateOf(false) }
+    // The field is the 44 dp grey box; its target is 48, 2 dp of it above and below laying out over the bar's padding.
+    val slack = (ClomniTheme.Size.touchTarget.dp - 44.dp) / 2
+    BasicTextField(
+        text,
+        changeText,
+        Modifier.fillMaxWidth().bleed(vertical = slack).heightIn(min = ClomniTheme.Size.touchTarget.dp)
+            .focusRequester(focus).semantics { contentDescription = composer.placeholder },
+        textStyle = clomniText(16f, theme.colors.textPrimary),
+        maxLines = 5,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        cursorBrush = SolidColor(theme.colors.primary.color),
+        decorationBox = { inner ->
+            Row(
+                Modifier.padding(vertical = slack).heightIn(min = 44.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(theme.colors.surface.color)
+                    .padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f).padding(vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
                     if (text.isEmpty()) {
-                        if (composer.showsEmoji) {
-                            IconButton(R.drawable.clomni_ic_emoji, composer.emojiLabel, theme) {
-                                // The keyboard's own emoji key does the rest.
-                                focus.requestFocus()
-                                keyboard?.show()
-                            }
-                        }
-                        if (composer.showsAttach) AttachButton(composer, theme, actions)
+                        BasicText(
+                            composer.placeholder,
+                            style = clomniText(16f, theme.colors.textSecondary),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    inner()
+                }
+                if (composer.showsEmoji) {
+                    IconButton(R.drawable.clomni_ic_emoji, composer.emojiLabel, theme) {
+                        // The keyboard's own emoji key does the rest.
+                        focus.requestFocus()
+                        keyboard?.show()
                     }
                 }
-            },
-        )
-        AnimatedVisibility(canSend, enter = fadeIn(tween(200)), exit = fadeOut(tween(200))) {
-            val inset = (ClomniTheme.Size.touchTarget.dp - 34.dp) / 2
-            Box(
-                Modifier.padding(start = ClomniTheme.Space.s.dp, bottom = 2.dp)
-                    .bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(composer.sendLabel, actions.send),
-                Alignment.Center,
-            ) {
-                Box(Modifier.size(34.dp).clip(CircleShape).background(theme.colors.primary.color), Alignment.Center) {
-                    Icon(R.drawable.clomni_ic_send_up, theme.colors.onPrimary, 15.dp)
+                // Send takes the attach icon's place once there is something to send.
+                AnimatedContent(
+                    canSend,
+                    transitionSpec = {
+                        (scaleIn(tween(150), initialScale = 0.6f) + fadeIn(tween(150))) togetherWith
+                            (scaleOut(tween(150), targetScale = 0.6f) + fadeOut(tween(150)))
+                    },
+                    label = "send",
+                ) { sending ->
+                    when {
+                        sending -> SendButton(composer.sendLabel, theme, actions.send)
+                        composer.showsAttach -> IconButton(R.drawable.clomni_ic_attach, composer.attachLabel, theme) { sheet = true }
+                        else -> Spacer(Modifier.size(0.dp))
+                    }
                 }
             }
+        },
+    )
+    if (sheet) {
+        AttachmentSheet(composer, theme, actions) { sheet = false }
+    }
+}
+
+/** 36 dp circle in the brand colour with the white arrow, in a 40 dp slot (its target reaches 48). */
+@Composable
+private fun SendButton(label: String, theme: ClomniTheme, send: () -> Unit) {
+    val inset = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
+    Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, send), Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(theme.colors.primary.color), Alignment.Center) {
+            Icon(R.drawable.clomni_ic_send_up, theme.colors.onPrimary, 18.dp)
         }
     }
 }
 
-/** A 19 dp icon in a 48 dp target that lays out at the icon's size. */
+/** A 24 dp icon in a 40 dp slot (its target reaches 48). */
 @Composable
 private fun IconButton(icon: Int, label: String, theme: ClomniTheme, action: () -> Unit) {
-    val inset = (ClomniTheme.Size.touchTarget.dp - 19.dp) / 2
+    val inset = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
     Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, action), Alignment.Center) {
-        Icon(icon, theme.colors.textSecondary, 19.dp)
-    }
-}
-
-/** The paper clip opens a small menu: a picture (Photo Picker) or any file. */
-@Composable
-private fun AttachButton(composer: ChatComposer, theme: ClomniTheme, actions: ChatActions) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(R.drawable.clomni_ic_attach, composer.attachLabel, theme) { open = true }
-        if (open) {
-            val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
-            Popup(
-                alignment = Alignment.BottomEnd,
-                offset = IntOffset(0, -56),
-                onDismissRequest = { open = false },
-                properties = PopupProperties(focusable = true),
-            ) {
-                Column(
-                    Modifier.widthIn(min = 160.dp).clip(shape).background(theme.colors.background.color)
-                        .border(1.dp, theme.colors.border.color, shape),
-                ) {
-                    for ((label, pick) in listOf(composer.imageLabel to actions.pickImage, composer.fileLabel to actions.pickFile)) {
-                        Box(
-                            Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp)
-                                .button(label) {
-                                    open = false
-                                    pick()
-                                }
-                                .padding(horizontal = ClomniTheme.Space.l.dp),
-                            Alignment.CenterStart,
-                        ) {
-                            BasicText(label, style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary))
-                        }
-                    }
-                }
-            }
-        }
+        Icon(icon, theme.colors.textSecondary, 24.dp)
     }
 }

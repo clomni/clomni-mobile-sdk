@@ -208,7 +208,7 @@ class ChatControllerTest {
         source.set(listOf(step), answerable = setOf(step.id))
         val chat = controller()
         chat.load()
-        assertEquals(ChatComposer.Mode.Locked("Yuxarıdakı variantlardan birini seçin"), chat.screen.composer.mode)
+        assertEquals(ChatComposer.Mode.Locked("Yuxarıdan birini seçin"), chat.screen.composer.mode)
         chat.tap("o_t", step.id)
         chat.tap("o_u", step.id)
         chat.tap("missing", "msg_unknown")

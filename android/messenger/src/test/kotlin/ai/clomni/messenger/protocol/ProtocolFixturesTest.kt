@@ -47,6 +47,8 @@ class ProtocolFixturesTest(path: String) {
             schema == "appearance.json" -> Json.parseToJsonElement(json)
             // A request body the SDK writes (ApiClient.createConversation); checked against what it writes there.
             schema == "conversation-start.json" -> Json.parseToJsonElement(json)
+            // The news: kept items as a list (a broken one comes out repaired, and logged).
+            schema == "news.json" -> protocol.json.parseNews(json)
             // What the app says over the socket: only the pong (RealtimeClient); typing goes over REST.
             schema == "realtime-client.json" -> Json.parseToJsonElement(json)
             schema == "client-message.json" -> {
@@ -132,6 +134,10 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/53-appearance-apar.json" to JsonObject::class,
             "fixtures/54-appearance-default.json" to JsonObject::class,
             "fixtures/60-conversation-start-client-id.json" to JsonObject::class,
+            "fixtures/61-news.json" to java.util.ArrayList::class,
+            "fixtures/62-news-empty.json" to java.util.ArrayList::class,
+            "fixtures/63-invalid-news-button-without-url.json" to java.util.ArrayList::class,
+            "fixtures/64-invalid-news-title-too-long.json" to java.util.ArrayList::class,
             "fixtures/99-invalid-conversation-start-client-id-empty.json" to JsonObject::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,

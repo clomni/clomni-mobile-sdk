@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the camera writes a photo for the messenger: the app's cache, nothing shared. -->
+<paths>
+    <cache-path name="clomni_camera" path="clomni_camera/" />
+</paths>

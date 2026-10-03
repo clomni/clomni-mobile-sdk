@@ -308,6 +308,32 @@ class MessengerCoordinatorTest {
         assertEquals("read once", 1, changes)
     }
 
+    /** DESIGN-PASS-2 1, 8: Home → the list → a conversation; back retraces them, and from Home it closes. */
+    @Test
+    fun backRetracesTheWay() {
+        session.loggedIn = true
+        val messenger = coordinator()
+        messenger.present()
+        messenger.navigate(MessengerRoute.Messages)
+        assertTrue(messenger.forward)
+        messenger.navigate(MessengerRoute.Conversation("conv_1"))
+        messenger.back()
+        assertEquals(MessengerRoute.Messages, messenger.route)
+        assertFalse("back slides the other way", messenger.forward)
+        messenger.back()
+        assertEquals(MessengerRoute.Home, messenger.route)
+        messenger.back()
+        assertNull("from Home, back closes", messenger.route)
+        // Opened straight into a conversation (the app, a push): back goes to Home.
+        messenger.presentConversation("conv_2")
+        messenger.back()
+        assertEquals(MessengerRoute.Home, messenger.route)
+        // A news item, from Home.
+        messenger.navigate(MessengerRoute.News("news_12"))
+        messenger.back()
+        assertEquals(MessengerRoute.Home, messenger.route)
+    }
+
     @Test
     fun startingAFlow() {
         session.loggedIn = true

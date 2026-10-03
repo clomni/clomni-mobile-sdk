@@ -84,7 +84,7 @@ class AccessibilityChecksTest {
         val presenter = HomePresenter(ClomniStrings("az"), utc, now)
         var dark by mutableStateOf(false)
         compose.setContent {
-            MessengerTabs(presenter.home(state), presenter.messages(state), ClomniTheme.make(config.brand, dark), MessengerActions())
+            HomeView(presenter.home(state), ClomniTheme.make(config.brand, dark), MessengerActions())
         }
         compose.enableAccessibilityChecks()
         compose.onRoot().tryPerformAccessibilityChecks()

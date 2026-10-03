@@ -1,5 +1,6 @@
 package ai.clomni.messenger.ui
 
+import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.ConversationRow
 import ai.clomni.messenger.presentation.HomeScreen
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -35,7 +37,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions) {
     Column(Modifier.fillMaxSize().background(theme.colors.canvas.color)) {
-        TitleBar(screen.title, closeLabel, theme, actions.close)
+        TitleBar(screen.title, screen.backLabel, closeLabel, theme, actions.back, actions.close)
         screen.offline?.let { OfflineStrip(it, theme) }
         val padding = Modifier.padding(ClomniTheme.Space.l.dp)
         val spacing = Arrangement.spacedBy(ClomniTheme.Space.m.dp)
@@ -64,17 +66,23 @@ internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel
     }
 }
 
-/** The bar with the bottom hairline: the title 14.5/600 in the middle and ✕ at the end. */
+/** The bar with the bottom hairline: back at the start, the title 17 semibold in the middle, ✕ at the end. */
 @Composable
-private fun TitleBar(title: String, closeLabel: String, theme: ClomniTheme, close: () -> Unit) {
+private fun TitleBar(title: String, backLabel: String, closeLabel: String, theme: ClomniTheme, back: () -> Unit, close: () -> Unit) {
     Column(Modifier.background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
-        Box(Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(horizontal = ClomniTheme.Space.xxl.dp)) {
+        Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
+            Box(
+                Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(ClomniTheme.Size.touchTarget.dp).button(backLabel, back),
+                Alignment.Center,
+            ) {
+                Icon(R.drawable.clomni_ic_back, theme.colors.textPrimary, 10.dp, Modifier.size(10.dp, 17.dp))
+            }
             BasicText(
                 title,
                 Modifier.align(Alignment.Center).semantics { heading() },
-                style = clomniText(ClomniTheme.FontSize.title, theme.colors.textPrimary, FontWeight.SemiBold),
+                style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold),
             )
-            Box(Modifier.align(Alignment.CenterEnd)) { CloseButton(closeLabel, theme.colors.textPrimary, close) }
+            CloseButton(closeLabel, CloseStyle.ON_SURFACE, theme, close, Modifier.align(Alignment.CenterEnd).padding(end = 12.dp))
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
     }

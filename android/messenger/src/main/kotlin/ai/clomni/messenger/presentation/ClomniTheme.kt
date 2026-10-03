@@ -16,6 +16,8 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val headerTo: RgbColor,
         /** Text and icons on the header: white where it reaches 3:1 on both header colours, else dark; white on a picture. */
         val headerText: RgbColor,
+        /** Home's first greeting line, drawn at about 70%: the server's primary_strong. */
+        val primaryStrong: RgbColor,
         /** [primary] as text (pills, links, "Yeni söhbət başlat"): itself, or as much darker as 4.5:1 needs. */
         val primaryText: RgbColor,
         /** [primary] at 10% over the background: image placeholders, soft backgrounds. */
@@ -87,11 +89,6 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val avatar = 28f
         val channel = 30f
         val unreadDot = 7f
-        val tabDot = 8f
-        val tabIcon = 22f
-
-        /** The cards ride up over the header by this much. */
-        val cardOverlap = 40f
 
         /** No tap target is smaller, whatever it looks like (Android's 48 dp; iOS uses 44 pt). */
         val touchTarget = 48f
@@ -146,6 +143,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                     picture -> RgbColor.WHITE
                     else -> brandColors.headerText ?: headerText(headerFrom, headerTo)
                 },
+                primaryStrong = brandColors.primaryStrong,
                 primarySoft = brandColors.primarySoft,
                 primaryLine = brandColors.primaryLine,
                 onPrimary = brandColors.onPrimary,
@@ -187,6 +185,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             val headerTo: RgbColor,
             /** The server's; null: [headerText] of the header's colours. */
             val headerText: RgbColor? = null,
+            val primaryStrong: RgbColor = primary,
         )
 
         /** The server's rules (APPEARANCE-CONTRACT 1), for a config without colours or a colour set in the app. */
@@ -201,8 +200,15 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                 // dark mode.
                 headerFrom = base,
                 headerTo = base.steps(if (dark) -2 else -1),
+                primaryStrong = strong(base),
             )
         }
+
+        /**
+         * The server's primary_strong rule, for a config before it or a colour set in the app: two steps darker, or two
+         * lighter for a brand so dark that white reads on it at 7:1.
+         */
+        fun strong(base: RgbColor): RgbColor = if (base.contrast(RgbColor.WHITE) >= 7.0) base.steps(2) else base.steps(-2)
 
         private fun fromPalette(palette: MessengerConfig.Palette) = BrandColors(
             primary = hex(palette.primary),
@@ -212,6 +218,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
             headerFrom = hex(palette.headerFrom),
             headerTo = hex(palette.headerTo),
             headerText = palette.headerText?.let(::hex),
+            primaryStrong = palette.primaryStrong?.let(::hex) ?: strong(hex(palette.headerFrom)),
         )
 
         /** `Clomni.setTheme`'s mode, else the panel's `theme.mode`; `system` follows the device. */
@@ -258,6 +265,7 @@ internal fun ClomniTheme.toward(target: ClomniTheme, fraction: Double): ClomniTh
             headerFrom = mix(a.headerFrom, b.headerFrom),
             headerTo = mix(a.headerTo, b.headerTo),
             headerText = mix(a.headerText, b.headerText),
+            primaryStrong = mix(a.primaryStrong, b.primaryStrong),
             primarySoft = mix(a.primarySoft, b.primarySoft),
             primaryLine = mix(a.primaryLine, b.primaryLine),
             onPrimary = mix(a.onPrimary, b.onPrimary),

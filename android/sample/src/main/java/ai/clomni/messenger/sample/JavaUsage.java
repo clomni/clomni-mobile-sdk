@@ -55,6 +55,7 @@ final class JavaUsage {
         Clomni.onConversationStarted(id -> { });
         Clomni.onUnreadCountChanged(count -> { });
         Clomni.onFlowCompleted(flowId -> { });
+        Clomni.onLink(url -> false);
         String version = Clomni.getVersion();
 
         Clomni.logout();
