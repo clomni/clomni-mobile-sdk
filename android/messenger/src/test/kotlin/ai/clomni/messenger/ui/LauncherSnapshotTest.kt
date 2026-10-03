@@ -63,7 +63,7 @@ class LauncherSnapshotTest {
         assertEquals("Bizə mesaj göndərin, Oxunmamış mesaj var", view.contentDescription)
         val params = view.layoutParams as FrameLayout.LayoutParams
         assertEquals(Gravity.BOTTOM or Gravity.END, params.gravity)
-        assertEquals("18 dp from the edge, minus the badge's room", ((18 - 6) * density).toInt(), params.marginEnd)
-        assertEquals(((18 - 6 + 20) * density).toInt(), params.bottomMargin)
+        assertEquals("20 dp from the edge, minus the badge's room", ((20 - 6) * density).toInt(), params.marginEnd)
+        assertEquals(((20 - 6 + 20) * density).toInt(), params.bottomMargin)
     }
 }
