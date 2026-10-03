@@ -72,15 +72,13 @@ struct MessagesView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             MessagesView(screen: PreviewData.presenter.messages(PreviewData.snapshot()),
-                         theme: PreviewData.theme(dark: false), closeLabel: "Bağla", actions: MessengerActions())
+                         theme: PreviewData.theme(dark: false), closeLabel: "Bağla", backLabel: "Geri",
+                         actions: MessengerActions())
                 .previewDisplayName("Messages")
             MessagesView(screen: PreviewData.presenter.messages(PreviewData.snapshot(conversations: false)),
-                         theme: PreviewData.theme(dark: false), closeLabel: "Bağla", actions: MessengerActions())
+                         theme: PreviewData.theme(dark: false), closeLabel: "Bağla", backLabel: "Geri",
+                         actions: MessengerActions())
                 .previewDisplayName("Messages, empty")
-            TabBar(tabs: PreviewData.presenter.home(PreviewData.snapshot()).tabs, selected: .constant(.home),
-                   theme: PreviewData.theme(dark: false))
-                .previewLayout(.sizeThatFits)
-                .previewDisplayName("Tab bar")
         }
     }
 }

@@ -87,9 +87,11 @@ struct HomeBackground: View {
             }
         }
         // Into the page: full colour for the top half, gone at the bottom.
-        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45),
-                                     .init(color: .clear, location: 1)],
-                             startPoint: .top, endPoint: .bottom))
+        .mask {
+            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45),
+                                   .init(color: .clear, location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+        }
         .background(alignment: .top) {
             theme.colors.headerFrom.color
                 .frame(height: 1000)
@@ -213,14 +215,15 @@ struct WordmarkView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else if loader.failed || !loadsImages {
-                BrandMark(header: header, theme: theme)
+                // No full logo: the place stays empty, as without a logo.
+                Color.clear
             } else {
                 // Its place, kept while it loads.
                 Color.clear
             }
         }
-        .frame(maxWidth: maxWidth, maxHeight: CGFloat(ClomniTheme.Size.wordmark), alignment: .leading)
-        .frame(height: CGFloat(ClomniTheme.Size.wordmark))
+        .frame(maxWidth: maxWidth, maxHeight: CGFloat(header.logoHeight), alignment: .leading)
+        .frame(height: CGFloat(header.logoHeight))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(header.brandName))
         .task(id: url) {
@@ -273,6 +276,10 @@ struct HomeCardsView: View {
                 // In the panel's order.
                 ForEach(screen.order, id: \.self) { card in
                     switch card {
+                    case .messages:
+                        MessagesCardView(card: screen.messagesCard, theme: theme, action: actions.openMessages)
+                    case .news:
+                        EmptyView()
                     case .send:
                         if let send = screen.newConversation {
                             NewConversationCardView(card: send, theme: theme, action: actions.newConversation)
@@ -301,7 +308,52 @@ struct HomeCardsView: View {
     }
 }
 
-/// "Bizə mesaj göndərin", the reply time, and the paper plane in the brand colour.
+/// A card's title, 17 semibold.
+struct CardTitle: View {
+    let text: String
+    let theme: ClomniTheme
+
+    var body: some View {
+        Text(text)
+            .clomniFont(ClomniTheme.FontSize.brand, .semibold, relativeTo: .headline)
+            .foregroundStyle(theme.colors.textPrimary.color)
+    }
+}
+
+/// "Mesajlar" with the conversations icon (20) and the red dot while something is unread: the way to the list.
+struct MessagesCardView: View {
+    let card: HomeScreen.MessagesCard
+    let theme: ClomniTheme
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: CGFloat(ClomniTheme.Space.l)) {
+                CardTitle(text: card.title, theme: theme)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "bubble.left.fill")
+                    .font(.system(size: CGFloat(ClomniTheme.Size.cardIcon)))
+                    .foregroundStyle(theme.colors.textPrimary.color)
+                    .overlay(alignment: .topTrailing) {
+                        if card.unread {
+                            Circle()
+                                .fill(theme.colors.unread.color)
+                                .frame(width: CGFloat(ClomniTheme.Size.tabDot), height: CGFloat(ClomniTheme.Size.tabDot))
+                                .offset(x: 3, y: -3)
+                        }
+                    }
+            }
+            .clomniCard(theme)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(card.accessibilityLabel))
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// "Bizə mesaj göndərin" and the paper plane (20) in the brand's colour, the main action.
 struct NewConversationCardView: View {
     let card: HomeScreen.NewConversationCard
     let theme: ClomniTheme
@@ -310,19 +362,10 @@ struct NewConversationCardView: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: CGFloat(ClomniTheme.Space.l)) {
-                VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
-                    Text(card.title)
-                        .clomniFont(ClomniTheme.FontSize.text, .semibold)
-                        .foregroundStyle(theme.colors.textPrimary.color)
-                    if let subtitle = card.subtitle {
-                        Text(subtitle)
-                            .clomniFont(ClomniTheme.FontSize.secondary, relativeTo: .footnote)
-                            .foregroundStyle(theme.colors.textSecondary.color)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                CardTitle(text: card.title, theme: theme)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "paperplane.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: CGFloat(ClomniTheme.Size.cardIcon)))
                     .foregroundStyle(theme.colors.primary.color)
             }
             .clomniCard(theme)
@@ -345,10 +388,8 @@ struct RecentCardView: View {
         Button {
             open(card.row.id)
         } label: {
-            VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
-                Text(card.label)
-                    .clomniFont(ClomniTheme.FontSize.label, .semibold, relativeTo: .caption)
-                    .foregroundStyle(theme.colors.textPrimary.color)
+            VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.l)) {
+                CardTitle(text: card.label, theme: theme)
                 ConversationRowView(row: card.row, theme: theme)
             }
             .clomniCard(theme)
@@ -398,9 +439,7 @@ struct ChannelsCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
-            Text(card.label)
-                .clomniFont(ClomniTheme.FontSize.label, .semibold, relativeTo: .caption)
-                .foregroundStyle(theme.colors.textPrimary.color)
+            CardTitle(text: card.label, theme: theme)
                 .accessibilityAddTraits(.isHeader)
             icons
                 .padding(.horizontal, -Self.overhang)

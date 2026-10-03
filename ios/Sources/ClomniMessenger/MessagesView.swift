@@ -14,11 +14,13 @@ struct MessagesView: View {
     let screen: MessagesScreen
     let theme: ClomniTheme
     let closeLabel: String
+    let backLabel: String
     let actions: MessengerActions
 
     var body: some View {
         VStack(spacing: 0) {
-            MessagesTitleBar(title: screen.title, closeLabel: closeLabel, theme: theme, close: actions.close)
+            MessagesTitleBar(title: screen.title, closeLabel: closeLabel, backLabel: backLabel, theme: theme,
+                             back: actions.back, close: actions.close)
             if let offline = screen.offline {
                 OfflineStrip(text: offline, theme: theme)
             }
@@ -62,27 +64,26 @@ struct MessagesView: View {
     }
 }
 
-/// White bar with the bottom hairline: the title 14.5/600 in the middle and ✕ at the end.
+/// The bar: back, the title 17 semibold, ✕ as on every screen.
 struct MessagesTitleBar: View {
     let title: String
     let closeLabel: String
+    let backLabel: String
     let theme: ClomniTheme
+    let back: () -> Void
     let close: () -> Void
 
     var body: some View {
-        ZStack {
-            Text(title)
-                .clomniFont(ClomniTheme.FontSize.title, .semibold, relativeTo: .headline)
-                .foregroundStyle(theme.colors.textPrimary.color)
-                .accessibilityAddTraits(.isHeader)
-            HStack {
-                Spacer()
-                CloseButton(label: closeLabel, color: theme.colors.textPrimary, edge: CGFloat(ClomniTheme.Space.xxl),
-                            action: close)
+        ScreenBar(closeLabel: closeLabel, theme: theme, close: close) {
+            HStack(spacing: CGFloat(ClomniTheme.Space.xs)) {
+                BackButton(label: backLabel, color: theme.colors.textPrimary, action: back)
+                Text(title)
+                    .clomniFont(ClomniTheme.FontSize.brand, .semibold, relativeTo: .headline)
+                    .foregroundStyle(theme.colors.textPrimary.color)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
             }
         }
-        .padding(.horizontal, CGFloat(ClomniTheme.Space.xxl))
-        .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
         .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) {
             Rectangle().fill(theme.colors.border.color).frame(height: 1)

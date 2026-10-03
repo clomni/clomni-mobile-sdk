@@ -104,7 +104,9 @@ struct ChatView: View {
             sendFile(at: url)
         }
         .fullScreenCover(item: $fullScreenImage) { image in
-            FullScreenImage(url: image.url, closeLabel: model.screen.header.closeLabel) { fullScreenImage = nil }
+            FullScreenImage(url: image.url, closeLabel: model.screen.header.closeLabel, theme: theme) {
+                fullScreenImage = nil
+            }
         }
         .alert(refusal ?? "", isPresented: Binding(get: { refusal != nil }, set: { if !$0 { refusal = nil } })) {
             Button("OK", role: .cancel) {}
@@ -199,8 +201,9 @@ struct ImageURL: Identifiable {
     var id: String { url.absoluteString }
 }
 
-/// White bar with the bottom hairline: the brand-coloured back arrow, who answers (team avatars 24, or the operator
-/// 28 with the green dot), title 14.5/600 and the grey line 12 under it, ✕.
+/// The conversation's bar, one fixed height whatever it shows (DESIGN-PASS-2 10): back, the avatar (32), the name
+/// 17 semibold with the subtitle 13 under it (its line kept even when empty), and ✕ as on every screen. Nothing in it
+/// changes size when the subtitle, typing or loading changes, so the transcript under it does not move.
 struct ChatHeaderView: View {
     let header: ChatHeader
     let theme: ClomniTheme
@@ -208,51 +211,55 @@ struct ChatHeaderView: View {
     let close: () -> Void
 
     var body: some View {
-        HStack(spacing: CGFloat(ClomniTheme.Space.m)) {
-            Button(action: back) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(theme.colors.primary.color)
-                    .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
-                    .contentShape(Rectangle())
+        ScreenBar(closeLabel: header.closeLabel, theme: theme, close: close) {
+            HStack(spacing: CGFloat(ClomniTheme.Space.s)) {
+                BackButton(label: header.backLabel, color: theme.colors.textPrimary, action: back)
+                lead
+                    .frame(width: CGFloat(ClomniTheme.Size.headerLead), height: CGFloat(ClomniTheme.Size.headerLead))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(header.title)
+                        .clomniFont(ClomniTheme.FontSize.brand, .semibold, relativeTo: .headline)
+                        .foregroundStyle(theme.colors.textPrimary.color)
+                        .lineLimit(1)
+                    Text(header.subtitle.isEmpty ? " " : header.subtitle)
+                        .clomniFont(13, relativeTo: .footnote)
+                        .foregroundStyle(theme.colors.textSecondary.color)
+                        .lineLimit(1)
+                }
+                // Both lines' place, at the text size the user chose, never more or less.
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
             }
-            .buttonStyle(PlainButtonStyle())
-            .padding(.leading, -14)
-            .padding(.trailing, -10)
-            .accessibilityLabel(Text(header.backLabel))
-            lead
-            VStack(alignment: .leading, spacing: 0) {
-                Text(header.title)
-                    .clomniFont(ClomniTheme.FontSize.title, .semibold, relativeTo: .headline)
-                    .foregroundStyle(theme.colors.textPrimary.color)
-                    .lineLimit(1)
-                Text(header.subtitle)
-                    .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption)
-                    .foregroundStyle(theme.colors.textSecondary.color)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-            CloseButton(label: header.closeLabel, color: theme.colors.textSecondary, edge: CGFloat(ClomniTheme.Space.xl),
-                        action: close)
         }
-        .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
-        .padding(.bottom, CGFloat(ClomniTheme.Space.m))
-        .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
         .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) {
             Rectangle().fill(theme.colors.border.color).frame(height: 1)
         }
     }
 
+    /// The team's avatars, or the operator with the green dot: both in the same 32 pt.
     @ViewBuilder
     private var lead: some View {
         switch header.lead {
         case .team(let urls):
-            TeamAvatars(urls: urls, ring: theme.colors.background, theme: theme)
+            if urls.isEmpty {
+                Color.clear
+            } else {
+                ZStack {
+                    ForEach(Array(urls.prefix(3).enumerated()), id: \.offset) { index, url in
+                        AvatarView(url: url, initial: "", size: 20, theme: theme)
+                            .padding(1)
+                            .background(Circle().fill(theme.colors.background.color))
+                            .offset(x: CGFloat(index - (min(urls.count, 3) - 1)) * 6 + 5,
+                                    y: CGFloat(index % 2 == 0 ? -4 : 4))
+                    }
+                }
+                .accessibilityHidden(true)
+            }
         case .person(let avatar, let online):
-            ChatAvatarView(avatar: avatar, size: ClomniTheme.Size.avatar, theme: theme)
+            ChatAvatarView(avatar: avatar, size: ClomniTheme.Size.headerLead, theme: theme)
                 .overlay(alignment: .bottomTrailing) {
                     if online {
                         Circle()
@@ -271,10 +278,11 @@ struct ChatHeaderView: View {
 struct FullScreenImage: View {
     let url: URL
     let closeLabel: String
+    let theme: ClomniTheme
     let close: () -> Void
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
             // Black until it loads: no spinner (brief 8 · 7.5).
             AsyncImage(url: url) { phase in
@@ -285,7 +293,7 @@ struct FullScreenImage: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            CloseButton(label: closeLabel, color: .white, action: close)
+            ScreenBar(closeLabel: closeLabel, closeStyle: .onBrand, theme: theme, close: close) { EmptyView() }
         }
     }
 }

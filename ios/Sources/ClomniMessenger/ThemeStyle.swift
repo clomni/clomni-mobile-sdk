@@ -127,7 +127,8 @@ extension View {
         animation(.easeInOut(duration: 0.25), value: config)
     }
 
-    /// A Home card: background, radius 12, padding 12×14, one soft shadow (a 1 pt border in dark mode).
+    /// A Home card (DESIGN-PASS-2 5): white (the surface grey in dark mode), radius 16, padding 20, a shadow one
+    /// barely sees, no border.
     func clomniCard(_ theme: ClomniTheme) -> some View {
         modifier(CardStyle(theme: theme))
     }
@@ -137,19 +138,17 @@ struct CardStyle: ViewModifier {
     let theme: ClomniTheme
 
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.homeCard), style: .continuous)
         let shadow = ClomniTheme.Shadow.card
         return content
-            .padding(.vertical, CGFloat(ClomniTheme.Space.l))
-            .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
+            .padding(CGFloat(ClomniTheme.Space.xxl))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 shape
-                    .fill(theme.colors.background.color)
+                    .fill(theme.isDark ? theme.colors.surface.color : theme.colors.background.color)
                     .shadow(color: Color.black.opacity(theme.isDark ? 0 : shadow.opacity),
                             radius: CGFloat(shadow.radius) / 2, x: 0, y: CGFloat(shadow.y))
             )
-            .overlay(shape.stroke(theme.isDark ? theme.colors.border.color : Color.clear, lineWidth: 1))
     }
 }
 
