@@ -350,6 +350,47 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /news:
+    get:
+      tags: [Config]
+      operationId: getNews
+      summary: Published news
+      description: |
+        The channel's published news in the panel's order, in one language; an item without that language comes in
+        az. Home shows the first three as the news card, and no card when there are none. Cached like the config:
+        keep the answer, send `If-None-Match`. Opening an item is recorded with `POST /events`
+        (`{"event": "news_opened", "data": {"news_id": "news_12"}}`).
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - name: lang
+          in: query
+          description: Language of the texts. Defaults to the user's language.
+          schema:
+            $ref: '#/components/schemas/Language'
+        - name: If-None-Match
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Published news
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schema/news.json'
+        '304':
+          description: Unchanged since the given ETag
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /images/{id}:
     get:
       tags: [Config]

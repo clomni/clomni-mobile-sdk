@@ -394,5 +394,27 @@
     "schema": "conversation-start.json",
     "note": "Səhv: boş client_id",
     "valid": false
+  },
+  {
+    "file": "61-news.json",
+    "schema": "news.json",
+    "note": "Xəbərlər: ilki şəkil, qısa mətn, markdown və deep link düyməsi ilə; ikincisi yalnız başlıq. Ana səhifədə news kartı ilk üçünü göstərir"
+  },
+  {
+    "file": "62-news-empty.json",
+    "schema": "news.json",
+    "note": "Xəbər yoxdur: news kartı görünmür"
+  },
+  {
+    "file": "63-invalid-news-button-without-url.json",
+    "schema": "news.json",
+    "note": "Səhv: düymədə url yoxdur",
+    "valid": false
+  },
+  {
+    "file": "64-invalid-news-title-too-long.json",
+    "schema": "news.json",
+    "note": "Səhv: başlıq 80 simvoldan uzundur",
+    "valid": false
   }
 ]
