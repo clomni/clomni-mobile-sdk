@@ -1,5 +1,5 @@
 {
-  "$comment": "UI texts of the App SDKs (Android, iOS) with their az, en and ru defaults. GET /mobile/config sends the user language's set, with the inbox's own overrides on top (the panel can change greeting_line1, greeting_line1_anonymous, greeting_line2, send_card_title, composer_placeholder, header_subtitle, tab_home, tab_messages, empty_list, closed and offline); an SDK uses its built-in copy of this file until it has a config. %d stands for a number, %@ for a text. Every language must have the same keys (npm run validate). {name} and {first_name} are the user's name; greeting_line1_anonymous is shown when there is none. header_subtitle, under the name in the conversation's header, is the reply time the panel chose unless the panel wrote its own; the default here is the minutes reply time. loading is the accessibility label of the loading indicator.",
+  "$comment": "UI texts of the App SDKs (Android, iOS) with their az, en and ru defaults. GET /mobile/config sends the user language's set, with the inbox's own overrides on top (the panel can change greeting_line1, greeting_line1_anonymous, greeting_line2, send_card_title, composer_placeholder, header_subtitle, empty_list, closed and offline); an SDK uses its built-in copy of this file until it has a config. %d stands for a number, %@ for a text. Every language must have the same keys (npm run validate). {name} and {first_name} are the user's name; greeting_line1_anonymous is shown when there is none. header_subtitle, under the name in the conversation's header, is the reply time the panel chose unless the panel wrote its own; the default here is the minutes reply time. loading is the accessibility label of the loading indicator. messages_title names the Home card that opens the conversation list and that list; news_title the news; pick_media, pick_camera and pick_file are the attachment sheet's rows and remove_attachment the label of the x on a picked file. There is no tab bar, so tab_home and tab_messages are gone.",
   "az": {
     "today": "Bu gün",
     "yesterday": "Dünən",
@@ -8,10 +8,8 @@
     "greeting_line1": "Salam, {first_name}",
     "greeting_line1_anonymous": "Salam",
     "greeting_line2": "Necə kömək edə bilərik?",
-    "recent_message": "Son mesaj",
+    "recent_message": "Ən son mesaj",
     "follow_us": "Bizi izləyin",
-    "tab_home": "Ana səhifə",
-    "tab_messages": "Mesajlar",
     "empty_list": "Hələ söhbət yoxdur",
     "error": "Nəsə səhv getdi",
     "retry": "Yenidən cəhd et",
@@ -26,7 +24,7 @@
     "online": "onlayn",
     "away": "Hazırda iş saatı deyil",
     "composer_placeholder": "Mesaj yazın…",
-    "choose_above": "Yuxarıdakı variantlardan birini seçin",
+    "choose_above": "Yuxarıdan birini seçin",
     "sending": "Göndərilir",
     "sent": "Göndərildi",
     "read": "Oxundu",
@@ -56,7 +54,13 @@
     "away_until": "Növbəti iş saatı: %@",
     "tomorrow": "sabah",
     "support_messages": "Dəstək mesajları",
-    "loading": "Yüklənir"
+    "loading": "Yüklənir",
+    "messages_title": "Mesajlar",
+    "news_title": "Xəbərlər",
+    "pick_media": "Şəkil və ya video",
+    "pick_camera": "Kamera",
+    "pick_file": "Fayl",
+    "remove_attachment": "Sil"
   },
   "en": {
     "today": "Today",
@@ -68,8 +72,6 @@
     "greeting_line2": "How can we help?",
     "recent_message": "Recent message",
     "follow_us": "Follow us",
-    "tab_home": "Home",
-    "tab_messages": "Messages",
     "empty_list": "No conversations yet",
     "error": "Something went wrong",
     "retry": "Try again",
@@ -84,7 +86,7 @@
     "online": "online",
     "away": "Outside working hours",
     "composer_placeholder": "Write a message…",
-    "choose_above": "Choose one of the options above",
+    "choose_above": "Choose an option above",
     "sending": "Sending",
     "sent": "Sent",
     "read": "Read",
@@ -114,7 +116,13 @@
     "away_until": "Next working hours: %@",
     "tomorrow": "tomorrow",
     "support_messages": "Support messages",
-    "loading": "Loading"
+    "loading": "Loading",
+    "messages_title": "Messages",
+    "news_title": "News",
+    "pick_media": "Photo or video",
+    "pick_camera": "Camera",
+    "pick_file": "File",
+    "remove_attachment": "Remove"
   },
   "ru": {
     "today": "Сегодня",
@@ -126,8 +134,6 @@
     "greeting_line2": "Чем можем помочь?",
     "recent_message": "Последнее сообщение",
     "follow_us": "Мы в соцсетях",
-    "tab_home": "Главная",
-    "tab_messages": "Сообщения",
     "empty_list": "Пока нет переписки",
     "error": "Что-то пошло не так",
     "retry": "Повторить",
@@ -142,7 +148,7 @@
     "online": "в сети",
     "away": "Сейчас нерабочее время",
     "composer_placeholder": "Напишите сообщение…",
-    "choose_above": "Выберите один из вариантов выше",
+    "choose_above": "Выберите вариант выше",
     "sending": "Отправляется",
     "sent": "Отправлено",
     "read": "Прочитано",
@@ -172,6 +178,12 @@
     "away_until": "Следующее рабочее время: %@",
     "tomorrow": "завтра",
     "support_messages": "Сообщения поддержки",
-    "loading": "Загрузка"
+    "loading": "Загрузка",
+    "messages_title": "Сообщения",
+    "news_title": "Новости",
+    "pick_media": "Фото или видео",
+    "pick_camera": "Камера",
+    "pick_file": "Файл",
+    "remove_attachment": "Удалить"
   }
 }

@@ -19,6 +19,13 @@
         "logo": { "$ref": "#/$defs/image" },
         "logo_dark": { "$ref": "#/$defs/image" },
         "header_image": { "$ref": "#/$defs/image" },
+        "logo_scale": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 200,
+          "multipleOf": 5,
+          "description": "The logo's and the wordmark's height in percent of 32. Absent: 100."
+        },
         "logo_style": {
           "enum": ["mark", "wordmark"],
           "description": "mark (default): the square logo, or the initial, beside the name. wordmark: the full written logo instead of both."
@@ -81,16 +88,23 @@
       "additionalProperties": false,
       "required": ["cards", "channels"],
       "properties": {
+        "title_scale": {
+          "type": "integer",
+          "minimum": 70,
+          "maximum": 140,
+          "multipleOf": 5,
+          "description": "The greeting's size in percent: both lines are 28 times this, line height 1.2; the system font scale applies on top. Absent: 100."
+        },
         "title_size": {
           "enum": ["s", "m", "l"],
-          "description": "The greeting's size on Home: s 15/20, m 17/24, l 19/28 (first line / second line); line height 1.25 times the size, the system font scale applied on top. Absent: m."
+          "description": "Replaced by title_scale; kept so that a draft made before it stays valid. The server reads s, m and l as 85, 100 and 120."
         },
         "cards": {
           "type": "array",
-          "description": "In the order shown; send is always there.",
+          "description": "In the order shown; send is always there. messages (the card that opens the conversation list) is always shown too: the server puts it first when a draft leaves it out. news shows the published news, and nothing when there is none.",
           "uniqueItems": true,
           "minItems": 1,
-          "items": { "enum": ["send", "recent", "channels"] },
+          "items": { "enum": ["messages", "recent", "send", "news", "channels"] },
           "contains": { "const": "send" }
         },
         "channels": {

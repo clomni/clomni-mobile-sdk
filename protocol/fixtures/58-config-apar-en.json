@@ -6,6 +6,7 @@
     "logo_url": "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
     "logo_dark_url": null,
     "logo_style": "mark",
+    "logo_scale": 100,
     "wordmark_url": null,
     "wordmark_dark_url": null,
     "primary_color": "#1F9D63",
@@ -18,6 +19,7 @@
         "on_primary": "#000000",
         "primary_soft": "#E9F5EF",
         "primary_line": "#CEE9DD",
+        "primary_strong": "#0E482D",
         "header_from": "#1F9D63",
         "header_to": "#177248",
         "header_text": "#FFFFFF"
@@ -27,6 +29,7 @@
         "on_primary": "#000000",
         "primary_soft": "#142520",
         "primary_line": "#173B2D",
+        "primary_strong": "#0E482D",
         "header_from": "#1F9D63",
         "header_to": "#0E482D",
         "header_text": "#FFFFFF"
@@ -55,8 +58,10 @@
   },
   "home": {
     "cards": [
-      "send",
+      "messages",
       "recent",
+      "send",
+      "news",
       "channels"
     ],
     "channels": [
@@ -77,7 +82,7 @@
         "url": "mailto:support@apar.az"
       }
     ],
-    "title_size": "m"
+    "title_scale": 100
   },
   "theme": {
     "mode": "system",
@@ -106,8 +111,6 @@
     "greeting_line2": "Ask us anything",
     "recent_message": "Recent message",
     "follow_us": "Follow us",
-    "tab_home": "Home",
-    "tab_messages": "Messages",
     "empty_list": "No conversations yet",
     "error": "Something went wrong",
     "retry": "Try again",
@@ -122,7 +125,7 @@
     "online": "online",
     "away": "Outside working hours",
     "composer_placeholder": "Write a message…",
-    "choose_above": "Choose one of the options above",
+    "choose_above": "Choose an option above",
     "sending": "Sending",
     "sent": "Sent",
     "read": "Read",
@@ -152,7 +155,13 @@
     "away_until": "Next working hours: %@",
     "tomorrow": "tomorrow",
     "support_messages": "Support messages",
-    "loading": "Loading"
+    "loading": "Loading",
+    "messages_title": "Messages",
+    "news_title": "News",
+    "pick_media": "Photo or video",
+    "pick_camera": "Camera",
+    "pick_file": "File",
+    "remove_attachment": "Remove"
   },
   "limits": {
     "image_mb": 10,

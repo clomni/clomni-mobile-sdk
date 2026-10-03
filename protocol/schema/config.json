@@ -21,6 +21,12 @@
         "logo_dark_url": { "$ref": "#/$defs/image_url", "description": "For dark mode; null: the logo." },
         "primary_color": { "$ref": "#/$defs/color" },
         "header_style": { "enum": ["gradient", "solid", "image"] },
+        "logo_scale": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 200,
+          "description": "The logo's height on Home in percent of 32, the wordmark's too (still at most 60% of the screen wide). Absent: 100. No logo: the place stays empty, no initial."
+        },
         "logo_style": {
           "enum": ["mark", "wordmark"],
           "description": "wordmark: draw wordmark_url (wordmark_dark_url in dark mode, else wordmark_url) in place of the logo and the name in Home's header only, 32 high, at most 60% of the header's width, fitted, never cut or stretched; space kept while it loads; the mark with the name if it fails to load; brand.name as its accessibility label. The conversation's header always keeps the mark (small logo or initial and the name). Sent as wordmark only with a wordmark_url. Absent or unknown: mark."
@@ -72,11 +78,17 @@
       "type": "object",
       "required": ["cards", "channels"],
       "properties": {
-        "title_size": {
-          "enum": ["s", "m", "l"],
-          "description": "The greeting's size: s 15/20, m 17/24, l 19/28 (first line, normal, full header_text / second line, semibold); line height 1.25 times the size; the system font scale (Dynamic Type, fontScale) applies on top and long text wraps, never cut. Absent or unknown: m."
+        "title_scale": {
+          "type": "integer",
+          "minimum": 70,
+          "maximum": 140,
+          "description": "The greeting's size in percent: both lines are 28 times this (first line semibold in primary_strong at about 70%, second bold in header_text), line height 1.2, left-aligned, about 80% of the screen wide; the system font scale (Dynamic Type, fontScale) applies on top and long text wraps, never cut. Absent: 100."
         },
-        "cards": { "type": "array", "description": "In the order shown; send is always there.", "items": { "enum": ["send", "recent", "channels"] } },
+        "cards": {
+          "type": "array",
+          "description": "In the order shown. messages (opens the conversation list; there is no tab bar) and send are always there. news: the published news (GET /news), not drawn when there is none. An SDK skips a card it does not know.",
+          "items": { "enum": ["messages", "recent", "send", "news", "channels"] }
+        },
         "channels": {
           "type": "array",
           "maxItems": 5,
@@ -135,6 +147,7 @@
       "required": ["primary", "on_primary", "primary_soft", "primary_line", "header_from", "header_to", "header_text"],
       "properties": {
         "primary": { "$ref": "#/$defs/color", "description": "Dark mode: one step (10 points of HSL lightness) lighter than the brand colour." },
+          "primary_strong": { "$ref": "#/$defs/color", "description": "Home's first greeting line, drawn at about 70% opacity: the brand two steps (20 points of HSL lightness) darker, or lighter for a brand white reads on at 7:1. The same in both modes." },
         "on_primary": { "$ref": "#/$defs/color", "description": "White when it reaches 4.5:1 on primary, otherwise black." },
         "primary_soft": { "$ref": "#/$defs/color", "description": "primary at 10% over the background (#FFFFFF, dark #121316): soft fills, image placeholders." },
         "primary_line": { "$ref": "#/$defs/color", "description": "primary at 22% over the background: pill borders." },
