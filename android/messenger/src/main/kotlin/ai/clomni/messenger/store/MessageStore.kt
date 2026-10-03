@@ -4,6 +4,7 @@ import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.RealtimeEvent
 import ai.clomni.messenger.protocol.toJson
@@ -32,6 +33,18 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     val outbox = Outbox(dir?.let { JsonFile(File(it, "outbox.json")) }, protocol, dir?.let { File(it, "uploads") })
     private val conversationsFile = dir?.let { JsonFile(File(it, "conversations.json")) }
     private val configFile = dir?.let { JsonFile(File(it, "config.json")) }
+    private val newsFile = dir?.let { JsonFile(File(it, "news.json")) }
+    private var newsBody: String? = null
+    private var newsDirty = false
+
+    /** The published news, kept like the config (shown at once next time, then checked with its ETag). */
+    @get:Synchronized
+    var news: List<NewsItem> = emptyList()
+        private set
+
+    @get:Synchronized
+    var newsEtag: String? = null
+        private set
 
     private val conversations = LinkedHashMap<String, Conversation>()
     private val messages = HashMap<String, MutableMap<String, Message>>()
@@ -191,6 +204,15 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         changes += ClomniChange.Config
     }
 
+    @Synchronized
+    fun setNews(items: List<NewsItem>, body: String, etag: String?) {
+        news = items
+        newsBody = body
+        newsEtag = etag
+        newsDirty = true
+        changes += ClomniChange.News
+    }
+
     /** Something outside the store changed for the screens, e.g. the outbox of a conversation. */
     @Synchronized
     fun changed(change: ClomniChange) {
@@ -254,6 +276,15 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
             (page["synced_seq"] as? JsonPrimitive)?.longOrNull?.let { synced[conversationId] = it }
         }
         if (!configRead) readConfig()
+        (newsFile?.read() as? JsonObject)?.let { saved ->
+            (saved["body"] as? JsonPrimitive)?.contentOrNull?.let { body ->
+                protocol.parseNews(body)?.let {
+                    news = it
+                    newsBody = body
+                    newsEtag = (saved["etag"] as? JsonPrimitive)?.contentOrNull
+                }
+            }
+        }
         outbox.load()
         changes += listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(unreadTotal))
     }
@@ -270,6 +301,10 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         configBody = null
         configEtag = null
         configRead = true
+        news = emptyList()
+        newsBody = null
+        newsEtag = null
+        newsDirty = false
         unreadTotal = 0
         conversationsDirty = false
         configDirty = false
@@ -278,7 +313,8 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         dir?.let { File(it, MESSAGES_DIR).deleteRecursively() }
         conversationsFile?.delete()
         configFile?.delete()
-        changes += listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(0))
+        newsFile?.delete()
+        changes += listOf(ClomniChange.Config, ClomniChange.News, ClomniChange.Conversations, ClomniChange.Unread(0))
     }
 
     private fun insert(message: Message) {
@@ -333,6 +369,10 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         if (configDirty) {
             configFile?.write(buildJsonObject { put("etag", configEtag); put("body", configBody) })
             configDirty = false
+        }
+        if (newsDirty) {
+            newsFile?.write(buildJsonObject { put("etag", newsEtag); put("body", newsBody) })
+            newsDirty = false
         }
     }
 

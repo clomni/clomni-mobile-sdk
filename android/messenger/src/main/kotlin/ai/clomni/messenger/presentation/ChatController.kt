@@ -262,6 +262,7 @@ internal class ChatController(
             }
             is ClomniChange.Read -> if (change.conversationId == id) worker.execute { publish(read(id)) }
             ClomniChange.Conversations, ClomniChange.Config, ClomniChange.Session -> worker.execute { publish(read(id)) }
+            ClomniChange.News -> Unit
             is ClomniChange.Unread -> Unit
             // This screen's draft is a conversation now: it follows it there.
             is ClomniChange.Started -> if (change.draftId == id) {

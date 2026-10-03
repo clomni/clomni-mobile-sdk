@@ -12,6 +12,7 @@ public final class ai/clomni/messenger/Clomni {
 	public static final fun logout ()V
 	public static final fun onConversationStarted (Lai/clomni/messenger/ConversationStartedListener;)V
 	public static final fun onFlowCompleted (Lai/clomni/messenger/FlowCompletedListener;)V
+	public static final fun onLink (Lai/clomni/messenger/LinkListener;)V
 	public static final fun onMessengerClosed (Lai/clomni/messenger/MessengerClosedListener;)V
 	public static final fun onMessengerOpened (Lai/clomni/messenger/MessengerOpenedListener;)V
 	public static final fun onUnreadCountChanged (Lai/clomni/messenger/UnreadCountListener;)V
@@ -97,6 +98,10 @@ public abstract interface class ai/clomni/messenger/ConversationStartedListener 
 
 public abstract interface class ai/clomni/messenger/FlowCompletedListener {
 	public abstract fun onFlowCompleted (Ljava/lang/String;)V
+}
+
+public abstract interface class ai/clomni/messenger/LinkListener {
+	public abstract fun onLink (Ljava/lang/String;)Z
 }
 
 public abstract interface class ai/clomni/messenger/MessengerClosedListener {

@@ -4,6 +4,7 @@ import ai.clomni.messenger.api.ApiClient
 import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
+import ai.clomni.messenger.api.NewsResponse
 import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.UserIdentity
@@ -19,6 +20,7 @@ import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.MobileUser
+import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.RealtimeEvent
 import ai.clomni.messenger.protocol.SenderType
@@ -30,6 +32,8 @@ import ai.clomni.messenger.store.PendingMessage
 import ai.clomni.messenger.store.PendingUpload
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.UUID
@@ -555,6 +559,29 @@ internal class ClomniEngine(
 
     /** The language of the last config asked for: its texts are that language's, and config.changed keeps it. */
     private var configLanguage: String? = null
+
+    /** The published news, in the config's language; kept with its ETag. */
+    override fun refreshNews(language: String?): Future<List<NewsItem>> = submit {
+        try {
+            when (val response = authed { api.getNews(language ?: configLanguage, store.newsEtag) }) {
+                NewsResponse.NotModified -> Unit
+                is NewsResponse.Changed -> store.setNews(response.items, response.body, response.etag)
+            }
+        } catch (e: ClomniError) {
+            ClomniLog.info { "news not refreshed: ${e.message}" }
+        }
+        store.news
+    }
+
+    override val news: List<NewsItem> get() = store.news
+
+    /** A news item opened: the app event news_opened, with its id. */
+    override fun newsOpened(id: String) {
+        submit {
+            runCatching { authed { api.trackEvent("news_opened", buildJsonObject { put("news_id", id) }) } }
+                .onFailure { ClomniLog.info { "news_opened not sent: ${it.message}" } }
+        }
+    }
 
     private fun loadConfig(requested: String?) {
         val language = requested ?: configLanguage

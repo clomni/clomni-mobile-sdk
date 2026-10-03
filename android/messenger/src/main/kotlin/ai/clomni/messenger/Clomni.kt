@@ -288,6 +288,15 @@ public object Clomni {
         MessengerRuntime.events.flowCompleted = listener?.let { { flowId -> it.onFlowCompleted(flowId) } }
     }
 
+    /**
+     * A link the messenger is about to open (a news item's button: a web address or the app's own deep link). Return
+     * true when the app opened it; false, or no listener, lets the system open it. One listener; null removes it.
+     */
+    @JvmStatic
+    public fun onLink(listener: LinkListener?) {
+        MessengerRuntime.events.link = listener?.let { { url -> it.onLink(url) } }
+    }
+
     private fun notReady() = ClomniLog.error { "call Clomni.initialize first" }
 
     /** The app's own values as JSON; anything JSON cannot carry is refused. */
@@ -346,4 +355,9 @@ public fun interface ConversationStartedListener {
 /** [Clomni.onFlowCompleted]. */
 public fun interface FlowCompletedListener {
     public fun onFlowCompleted(flowId: String)
+}
+
+/** [Clomni.onLink]: true when the app opened [url] itself. */
+public fun interface LinkListener {
+    public fun onLink(url: String): Boolean
 }
