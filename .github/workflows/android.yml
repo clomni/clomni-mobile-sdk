@@ -55,10 +55,10 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      # API 34 google_apis never booted on the hosted runner (port 5554 never answered). The plain AOSP images of 30
-      # and 33 are lighter; both run, so a run shows which one boots.
+      # API 34 google_apis and API 33 default never booted on the hosted runner (port 5554 never answered); API 30's
+      # plain AOSP image does.
       matrix:
-        api-level: [30, 33]
+        api-level: [30]
     env:
       ARCH: x86_64
       TARGET: default
