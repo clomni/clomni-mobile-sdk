@@ -5,6 +5,7 @@ import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.SenderType
 import java.util.Locale
 import java.util.TimeZone
@@ -20,7 +21,9 @@ internal data class HomeScreen(
     val channels: ChannelsCard?,
     /** The cards in the panel's order; one without its card above (no channels, nothing recent) is left out. */
     val order: List<MessengerConfig.HomeCard>,
-    val tabs: Tabs,
+    val messagesCard: MessagesCard,
+    /** At most three; none: no news card. */
+    val news: List<NewsCard> = emptyList(),
     /** "Powered by Clomni" under the cards, or null where the plan turns it off. */
     val poweredBy: String?,
     /** The thin yellow strip under the header. */
@@ -58,8 +61,10 @@ internal data class HomeScreen(
         val greeting: String,
         /** "Necə kömək edə bilərik?" */
         val title: String,
-        /** The panel's size for the two lines. */
-        val titleSize: MessengerConfig.TitleSize = MessengerConfig.TitleSize.M,
+        /** Both lines' size, sp: 28 × the panel's title_scale. */
+        val titleSize: Float = 28f,
+        /** The logo's (and the written logo's) height, dp: 32 × the panel's logo_scale. */
+        val logoSize: Float = 32f,
         val closeLabel: String,
     )
 
@@ -68,15 +73,13 @@ internal data class HomeScreen(
 
     data class RecentCard(val label: String, val row: ConversationRow)
 
-    data class ChannelsCard(val label: String, val items: List<ChannelItem>)
+    /** One news item on Home: its picture, title and short text; a tap opens it. */
+    data class NewsCard(val id: String, val title: String, val summary: String?, val imageUrl: String?, val accessibilityLabel: String)
 
-    data class Tabs(
-        val home: String,
-        val messages: String,
-        /** The red dot on "Mesajlar". */
-        val messagesUnread: Boolean,
-        val messagesAccessibilityLabel: String,
-    )
+    /** "Mesajlar": the list of conversations, with a red dot while something is unread. */
+    data class MessagesCard(val title: String, val unread: Boolean, val accessibilityLabel: String)
+
+    data class ChannelsCard(val label: String, val items: List<ChannelItem>)
 
     data class Failure(val message: String, val retry: String)
 }
@@ -91,6 +94,9 @@ internal data class ConversationRow(
     val preview: String,
     /** "Leyla · 2 dəq" */
     val detail: String,
+    /** "Leyla", and "2 dəq": Home's "Son mesaj" card shows them on one line over the message. */
+    val name: String = "",
+    val time: String = "",
     val unread: Boolean,
     val accessibilityLabel: String,
 )
@@ -98,6 +104,8 @@ internal data class ConversationRow(
 /** The Messages tab. */
 internal data class MessagesScreen(
     val title: String,
+    /** "Geri": the bar's arrow back to Home. */
+    val backLabel: String = "",
     val phase: HomeScreen.Phase,
     val loadingLabel: String = "",
     val rows: List<ConversationRow>,
@@ -108,6 +116,22 @@ internal data class MessagesScreen(
     val failure: HomeScreen.Failure?,
 )
 
+/** A news item's own screen: its picture, title, date, text and button. */
+internal data class NewsScreen(
+    val id: String,
+    val title: String,
+    /** "Bu gün 09:00", "2 oktyabr 09:00". */
+    val date: String?,
+    val imageUrl: String?,
+    /** The text by paragraph; a list item ("- ") is its own block with a bullet. */
+    val blocks: List<Block>,
+    val button: NewsItem.Button?,
+    val backLabel: String,
+    val closeLabel: String,
+) {
+    data class Block(val runs: List<TextRun>, val bullet: Boolean)
+}
+
 /** What the screens are built from. */
 internal data class MessengerSnapshot(
     val config: MessengerConfig? = null,
@@ -116,6 +140,8 @@ internal data class MessengerSnapshot(
     val conversations: List<Conversation> = emptyList(),
     val conversationsLoad: Load = Load.LOADING,
     val unreadTotal: Int = 0,
+    /** The published news, in the panel's order. */
+    val news: List<NewsItem> = emptyList(),
     /** The logged-in user's name, for the greeting. */
     val userName: String? = null,
     val isOffline: Boolean = false,
@@ -157,15 +183,42 @@ internal class HomePresenter(
             channels = if (channels.isEmpty()) null else HomeScreen.ChannelsCard(strings[Key.FOLLOW_US], channels),
             order = cards.filter {
                 when (it) {
-                    MessengerConfig.HomeCard.SEND -> true
+                    MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.SEND -> true
+                    MessengerConfig.HomeCard.NEWS -> snapshot.news.isNotEmpty()
                     MessengerConfig.HomeCard.RECENT -> recent != null
                     MessengerConfig.HomeCard.CHANNELS -> channels.isNotEmpty()
                 }
             },
-            tabs = tabs(snapshot),
+            messagesCard = messagesCard(snapshot),
+            news = snapshot.news.take(3).map { item ->
+                HomeScreen.NewsCard(item.id, item.title, item.summary, item.imageUrl, listOfNotNull(item.title, item.summary).joinToString(". "))
+            },
             poweredBy = if (config?.poweredBy == false) null else POWERED_BY,
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
             failure = if (failed) failure else null,
+        )
+    }
+
+    /** The item's screen; null when it is no longer published. */
+    fun news(snapshot: MessengerSnapshot, id: String): NewsScreen? {
+        val item = snapshot.news.firstOrNull { it.id == id } ?: return null
+        val blocks = item.bodyMarkdown.orEmpty().split(Regex("\\n\\s*\\n")).flatMap { paragraph ->
+            val lines = paragraph.trim().lines()
+            if (lines.isNotEmpty() && lines.all { it.trimStart().startsWith("- ") || it.trimStart().startsWith("* ") }) {
+                lines.map { NewsScreen.Block(LimitedMarkdown.parse(it.trimStart().drop(2)), bullet = true) }
+            } else {
+                listOf(NewsScreen.Block(LimitedMarkdown.parse(paragraph.trim()), bullet = false))
+            }
+        }.filter { block -> block.runs.any { it.text.isNotBlank() } }
+        return NewsScreen(
+            id = item.id,
+            title = item.title,
+            date = item.publishedAt?.let { time.day(it, now) },
+            imageUrl = item.imageUrl,
+            blocks = blocks,
+            button = item.button,
+            backLabel = strings[Key.GO_BACK],
+            closeLabel = strings[Key.CLOSE],
         )
     }
 
@@ -178,7 +231,8 @@ internal class HomePresenter(
             else -> HomeScreen.Phase.LOADING
         }
         return MessagesScreen(
-            title = strings[Key.TAB_MESSAGES],
+            title = strings[Key.MESSAGES_TITLE],
+            backLabel = strings[Key.GO_BACK],
             phase = phase,
             loadingLabel = strings[Key.LOADING],
             rows = rows,
@@ -219,6 +273,8 @@ internal class HomePresenter(
             initial = otherName.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
             preview = preview,
             detail = "$name · $ago",
+            name = name,
+            time = ago,
             unread = unread,
             accessibilityLabel = "$name, $ago: $preview" + if (unread) ". ${strings[Key.UNREAD]}" else "",
         )
@@ -243,7 +299,8 @@ internal class HomePresenter(
             teamAvatars = if (config?.team?.show == false) emptyList() else config?.team?.avatars.orEmpty().take(3),
             greeting = strings.greeting(snapshot.userName),
             title = strings[Key.GREETING_LINE2],
-            titleSize = config?.home?.titleSize ?: MessengerConfig.TitleSize.M,
+            titleSize = 28f * (config?.home?.titleScale ?: 100) / 100f,
+            logoSize = 32f * (config?.brand?.logoScale ?: 100) / 100f,
             closeLabel = strings[Key.CLOSE],
         )
     }
@@ -256,15 +313,10 @@ internal class HomePresenter(
         return HomeScreen.NewConversationCard(title, subtitle, if (subtitle != null) "$title. $subtitle" else title)
     }
 
-    private fun tabs(snapshot: MessengerSnapshot): HomeScreen.Tabs {
+    private fun messagesCard(snapshot: MessengerSnapshot): HomeScreen.MessagesCard {
         val unread = snapshot.unreadTotal > 0 || snapshot.conversations.any { it.unreadCount > 0 }
-        val messages = strings[Key.TAB_MESSAGES]
-        return HomeScreen.Tabs(
-            home = strings[Key.TAB_HOME],
-            messages = messages,
-            messagesUnread = unread,
-            messagesAccessibilityLabel = if (unread) "$messages, ${strings[Key.UNREAD_MESSAGES]}" else messages,
-        )
+        val title = strings[Key.MESSAGES_TITLE]
+        return HomeScreen.MessagesCard(title, unread, if (unread) "$title, ${strings[Key.UNREAD_MESSAGES]}" else title)
     }
 
     private val failure get() = HomeScreen.Failure(strings[Key.ERROR], strings[Key.RETRY])

@@ -4,6 +4,7 @@ import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolFiles
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.Sender
@@ -97,7 +98,7 @@ class PresenterTest {
         assertEquals("Bizə mesaj göndərin", apar.newConversation?.title)
         assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", apar.newConversation?.subtitle)
         assertEquals("Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk", apar.newConversation?.accessibilityLabel)
-        assertEquals("Son mesaj", apar.recent?.label)
+        assertEquals("Ən son mesaj", apar.recent?.label)
         assertEquals("Bizi izləyin", apar.channels?.label)
         assertEquals(listOf("Instagram", "WhatsApp", "LinkedIn", "E-poçt"), apar.channels?.items?.map { it.accessibilityLabel })
         assertNull(apar.offline)
@@ -121,7 +122,7 @@ class PresenterTest {
     fun appearanceFromThePanel() {
         val withMessage = listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json"))
         val apar = presenter().home(snapshot(Fixture.aparConfig, withMessage))
-        assertEquals(listOf(MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.CHANNELS), apar.order)
+        assertEquals(listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.CHANNELS), apar.order)
         assertEquals("Powered by Clomni", apar.poweredBy)
         assertEquals(MessengerConfig.HeaderStyle.GRADIENT, apar.header.style)
 
@@ -137,7 +138,11 @@ class PresenterTest {
                "powered_by":false}""",
         )!!
         val home = presenter(config = config).home(snapshot(config, withMessage))
-        assertEquals("the panel's order", listOf(MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND), home.order)
+        assertEquals(
+            "the panel's order, the list's card always there",
+            listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND),
+            home.order,
+        )
         assertNull("the plan turned it off", home.poweredBy)
         assertEquals(MessengerConfig.HeaderStyle.IMAGE, home.header.style)
         assertEquals("https://app.clomni.ai/v1/images/head", home.header.imageUrl)
@@ -151,7 +156,7 @@ class PresenterTest {
         assertEquals("no bot picture: the brand's logo", "https://app.clomni.ai/v1/images/logo", HomePresenter.botAvatar(config))
 
         // Without a recent conversation, that card is not in the order at all.
-        assertEquals(listOf(MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.SEND), presenter(config = config).home(snapshot(config)).order)
+        assertEquals(listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.CHANNELS, MessengerConfig.HomeCard.SEND), presenter(config = config).home(snapshot(config)).order)
         // A picture style without its picture is the gradient; solid stays solid.
         val noPicture = ProtocolJson().parseConfig("""{"brand":{"header_style":"image"}}""")!!
         assertEquals(MessengerConfig.HeaderStyle.GRADIENT, presenter(config = noPicture).home(snapshot(noPicture)).header.style)
@@ -167,6 +172,24 @@ class PresenterTest {
         assertEquals("https://app.clomni.ai/v1/images/bot", presenter(config = panel).home(snapshot(panel, bot)).recent?.row?.avatarUrl)
         val none = ProtocolJson().parseConfig("""{"brand":{"name":"Apar","logo_url":"https://app.clomni.ai/v1/images/logo"}}""")!!
         assertEquals("the message's own", "https://app.clomni.ai/a/bot.png", presenter(config = none).home(snapshot(none, bot)).recent?.row?.avatarUrl)
+    }
+
+    /** CM-114: at most three news cards, in the panel's order; none without news; the item's screen. */
+    @Test
+    fun news() {
+        val items = ProtocolJson().parseNews(ProtocolFiles.read("fixtures/61-news.json"))!!
+        assertEquals(listOf("news_12", "news_9"), items.map { it.id })
+        val home = presenter().home(snapshot(Fixture.aparConfig).copy(news = items + items + items))
+        assertEquals(3, home.news.size)
+        assertTrue(MessengerConfig.HomeCard.NEWS in home.order)
+        assertFalse("no news, no card", MessengerConfig.HomeCard.NEWS in presenter().home(snapshot(Fixture.aparConfig)).order)
+        val screen = presenter().news(snapshot(Fixture.aparConfig).copy(news = items), "news_12")!!
+        assertEquals("Yeni zonalar açıldı", screen.title)
+        assertEquals(NewsItem.Button("Xəritəni aç", "apar://map/zones"), screen.button)
+        assertEquals(listOf(false, true, true, false), screen.blocks.map { it.bullet })
+        assertEquals("40 yeni zona", screen.blocks.first().runs.single { it.bold }.text)
+        assertEquals("2 oktyabr 09:00", screen.date)
+        assertNull("withdrawn", presenter().news(snapshot(Fixture.aparConfig), "news_12"))
     }
 
     @Test
@@ -234,17 +257,17 @@ class PresenterTest {
     }
 
     @Test
-    fun tabDot() {
+    fun messagesCardDot() {
         val list = listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json"))
         val quiet = snapshot(Fixture.aparConfig, list)
-        assertFalse(presenter().home(quiet).tabs.messagesUnread)
-        assertEquals("Mesajlar", presenter().home(quiet).tabs.messagesAccessibilityLabel)
-        val tabs = presenter().home(quiet.copy(unreadTotal = 1)).tabs
-        assertTrue(tabs.messagesUnread)
-        assertEquals("Ana səhifə", tabs.home)
-        assertEquals("Mesajlar, Oxunmamış mesaj var", tabs.messagesAccessibilityLabel)
+        assertFalse(presenter().home(quiet).messagesCard.unread)
+        assertEquals("Mesajlar", presenter().home(quiet).messagesCard.accessibilityLabel)
+        val card = presenter().home(quiet.copy(unreadTotal = 1)).messagesCard
+        assertTrue(card.unread)
+        assertEquals("Mesajlar", card.title)
+        assertEquals("Mesajlar, Oxunmamış mesaj var", card.accessibilityLabel)
         val unreadInList = snapshot(Fixture.aparConfig, listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json", unread = 1)))
-        assertTrue("before the first unread.changed", presenter().home(unreadInList).tabs.messagesUnread)
+        assertTrue("before the first unread.changed", presenter().home(unreadInList).messagesCard.unread)
     }
 
     @Test

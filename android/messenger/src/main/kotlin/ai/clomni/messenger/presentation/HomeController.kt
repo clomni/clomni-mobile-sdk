@@ -3,6 +3,7 @@ package ai.clomni.messenger.presentation
 import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.NewsItem
 import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.Executor
@@ -10,6 +11,14 @@ import java.util.concurrent.Future
 
 /** What the Home and Messages tabs read; `ClomniEngine` is one, tests use a fake. */
 internal interface MessengerDataSource {
+    /** The published news (GET /news), as kept; [refreshNews] asks the server. */
+    val news: List<NewsItem>
+
+    fun refreshNews(language: String? = null): Future<List<NewsItem>>
+
+    /** news_opened, for the panel's numbers. */
+    fun newsOpened(id: String)
+
     val config: MessengerConfig?
     val unreadTotal: Int
 
@@ -73,7 +82,15 @@ internal class HomeController(
         }
 
     init {
-        val presenter = HomePresenter(ClomniStrings(language), timeZone, now())
+        // What the engine already holds (memory, no disk): Home's first frame is the brand's, not default texts.
+        snapshot = snapshot.copy(
+            config = source.config,
+            conversations = source.conversations(),
+            unreadTotal = source.unreadTotal,
+            news = source.news,
+        )
+        val config = snapshot.config
+        val presenter = HomePresenter(ClomniStrings(language ?: config?.languages?.firstOrNull(), config?.strings.orEmpty()), timeZone, now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)
     }
@@ -85,6 +102,7 @@ internal class HomeController(
             if (observation == null) observation = source.observe(::changed)
             val config = runCatching { source.refreshConfig(language).get() }.getOrNull()
             val conversations = runCatching { source.refreshConversations().get() }.isSuccess
+            runCatching { source.refreshNews(language).get() }
             publish(state()) {
                 snapshot = snapshot.copy(
                     configLoad = if (config != null) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
@@ -102,6 +120,16 @@ internal class HomeController(
             observation = null
         }
     }
+
+    /** A news item's screen as it is now; null when it is no longer published. */
+    fun newsScreen(id: String): NewsScreen? {
+        val config = snapshot.config
+        val strings = ClomniStrings(language ?: config?.languages?.firstOrNull(), config?.strings.orEmpty())
+        return HomePresenter(strings, timeZone, now()).news(snapshot, id)
+    }
+
+    /** A news item's screen opened: news_opened. */
+    fun newsOpened(id: String) = source.newsOpened(id)
 
     /** "Yenidən cəhd et". */
     fun retry() {
@@ -128,9 +156,9 @@ internal class HomeController(
     }
 
     /** What the engine holds now; read on [worker]. */
-    private class State(val config: MessengerConfig?, val conversations: List<Conversation>, val unreadTotal: Int)
+    private class State(val config: MessengerConfig?, val conversations: List<Conversation>, val unreadTotal: Int, val news: List<NewsItem>)
 
-    private fun state() = State(source.config, source.conversations(), source.unreadTotal)
+    private fun state() = State(source.config, source.conversations(), source.unreadTotal, source.news)
 
     /** Hands [state] to the UI thread, applies [update] there, redraws, then runs [after]. */
     private fun publish(state: State, after: () -> Unit = {}, update: () -> Unit = {}) {
@@ -139,6 +167,7 @@ internal class HomeController(
                 config = state.config,
                 conversations = state.conversations,
                 unreadTotal = state.unreadTotal,
+                news = state.news,
             )
             update()
             render()

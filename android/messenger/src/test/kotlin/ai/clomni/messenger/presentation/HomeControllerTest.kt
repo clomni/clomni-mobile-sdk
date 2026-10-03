@@ -4,6 +4,7 @@ import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
 import org.junit.Assert.assertEquals
@@ -25,6 +26,8 @@ private class FakeSource : MessengerDataSource {
     var unread = 0
     var conversationsFail = false
     var drafts = mutableListOf<String?>()
+    var newsItems = listOf<NewsItem>()
+    val opened = mutableListOf<String>()
     val observers = LinkedHashMap<UUID, (ClomniChange) -> Unit>()
 
     override val config: MessengerConfig? get() = cached
@@ -36,6 +39,14 @@ private class FakeSource : MessengerDataSource {
     }
 
     override fun conversations(): List<Conversation> = list.toList()
+
+    override val news: List<NewsItem> get() = newsItems
+
+    override fun refreshNews(language: String?): Future<List<NewsItem>> = CompletableFuture.completedFuture(newsItems)
+
+    override fun newsOpened(id: String) {
+        opened += id
+    }
 
     override fun refreshConversations(): Future<Unit> =
         if (conversationsFail) CompletableFuture<Unit>().apply { completeExceptionally(ClomniError.Network("offline")) }
@@ -80,6 +91,23 @@ class HomeControllerTest {
     private fun controller(user: String? = "Aysel", worker: Executor = direct, main: Executor = direct) =
         HomeController(source, "az", user, worker, main, TimeZone.getTimeZone("UTC")) { 1_790_850_720_000L }
             .also { it.onChange = { renders++ } }
+
+    /**
+     * DESIGN-PASS-2 9: back on Home after the list or a conversation, its first frame is what the engine holds (the
+     * panel's texts, the news), never the SDK's defaults until the cache is read.
+     */
+    @Test
+    fun theFirstFrameIsWhatTheEngineHolds() {
+        source.cached = Fixture.aparConfig
+        source.newsItems = listOf(NewsItem("news_1", "Yeni zonalar", "Qısa", null, null, null, null))
+        val home = controller(worker = Queue())
+        assertEquals("Bizdən nəsə soruşun", home.home.header.title)
+        assertEquals(HomeScreen.Phase.READY, home.home.phase)
+        assertEquals(listOf("news_1"), home.home.news.map { it.id })
+        home.newsOpened("news_1")
+        assertEquals(listOf("news_1"), source.opened)
+        assertEquals("Yeni zonalar", home.newsScreen("news_1")?.title)
+    }
 
     @Test
     fun startsAsASkeleton() {
@@ -126,13 +154,13 @@ class HomeControllerTest {
         source.fresh = Fixture.aparConfig
         val home = controller()
         home.load()
-        assertFalse(home.home.tabs.messagesUnread)
+        assertFalse(home.home.messagesCard.unread)
         val before = renders
         source.push(1, ClomniChange.Typing("conv_1", Sender(SenderType.OPERATOR), true))
         source.push(1, ClomniChange.Read("conv_1", 3))
         assertEquals("typing and read receipts are the conversation screen's business", before, renders)
         source.push(2, ClomniChange.Unread(2))
-        assertTrue(home.home.tabs.messagesUnread)
+        assertTrue(home.home.messagesCard.unread)
         assertEquals(before + 1, renders)
 
         home.retry()

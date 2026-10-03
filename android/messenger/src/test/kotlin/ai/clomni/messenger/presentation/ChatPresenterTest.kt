@@ -95,7 +95,9 @@ class ChatPresenterTest {
         )
         assertNull(list[0].avatar)
         assertNull(list[0].meta)
-        assertEquals("Clomni · Bot · indi", list[1].meta)
+        assertEquals("the author over the first of the run, the time under the last", "Clomni · Bot", list[0].author)
+        assertNull(list[1].author)
+        assertEquals("indi", list[1].meta)
         assertEquals(ChatAvatar("https://app.clomni.ai/a/bot.png", "C", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
         assertEquals("Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
@@ -116,7 +118,8 @@ class ChatPresenterTest {
         val reply = bubbles(
             screen(listOf(ChatFixture.message("02-text-operator-markdown.json", "created_at" to "2026-10-01T10:30:00Z"))),
         ).first()
-        assertEquals("Leyla · 2 dəq", reply.meta)
+        assertEquals("Leyla", reply.author)
+        assertEquals("2 dəq", reply.meta)
         assertEquals("L", reply.avatar?.initial)
         val runs = (reply.body as Bubble.TextBody).runs
         assertEquals(TextRun("Gedişinizi yoxladıq.", bold = true), runs.first())
@@ -255,7 +258,7 @@ class ChatPresenterTest {
         val chipsBlock = (chips.items.last() as ChatItem.RepliesItem).block
         assertEquals(MessageContent.QuickRepliesLayout.CHIPS, chipsBlock.layout)
         assertEquals(ReplyButton("back", "← Geri", "Geri"), chipsBlock.back)
-        assertEquals(ChatComposer.Mode.Locked("Yuxarıdakı variantlardan birini seçin"), chips.composer.mode)
+        assertEquals(ChatComposer.Mode.Locked("Yuxarıdan birini seçin"), chips.composer.mode)
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
         val long = ChatFixture.message("13-button-title-over-80.json")
@@ -370,8 +373,8 @@ class ChatPresenterTest {
         assertEquals(4_000, open.limit)
         assertEquals("Göndər", open.sendLabel)
         assertEquals(
-            listOf("Fayl əlavə et", "Şəkil", "Fayl", "Emoji"),
-            listOf(open.attachLabel, open.imageLabel, open.fileLabel, open.emojiLabel),
+            listOf("Fayl əlavə et", "Şəkil və ya video", "Kamera", "Fayl", "Sil", "Emoji"),
+            listOf(open.attachLabel, open.mediaLabel, open.cameraLabel, open.fileLabel, open.removeLabel, open.emojiLabel),
         )
         val closed = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("closed")) }.composer
         assertEquals(ChatComposer.Mode.Closed("Söhbət bağlanıb", "Yeni söhbət başlat"), closed.mode)

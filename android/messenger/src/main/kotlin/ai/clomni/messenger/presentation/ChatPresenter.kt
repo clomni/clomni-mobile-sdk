@@ -98,8 +98,10 @@ internal class ChatPresenter(
             sendLabel = strings[Key.SEND],
             attachLabel = strings[Key.ATTACH],
             emojiLabel = strings[Key.EMOJI],
-            imageLabel = strings[Key.IMAGE],
-            fileLabel = strings[Key.FILE],
+            mediaLabel = strings[Key.PICK_MEDIA],
+            cameraLabel = strings[Key.PICK_CAMERA],
+            fileLabel = strings[Key.PICK_FILE],
+            removeLabel = strings[Key.REMOVE_ATTACHMENT],
         )
     }
 
@@ -209,7 +211,8 @@ internal class ChatPresenter(
                     else -> Bubble.Position.MIDDLE
                 }
                 val closesRun = offset == run.size - 1 && draft.side == Bubble.Side.INCOMING
-                val meta = draft.metaName?.let { "$it · ${time.ago(draft.date, now)}" }
+                val opensRun = offset == 0 && draft.side == Bubble.Side.INCOMING
+                val meta = draft.metaName?.let { time.ago(draft.date, now) }
                 items += ChatItem.BubbleItem(
                     Bubble(
                         draft.id, draft.side, draft.body, position,
@@ -217,6 +220,7 @@ internal class ChatPresenter(
                         meta = if (closesRun) meta else null,
                         status = draft.status,
                         accessibilityLabel = draft.accessibilityLabel,
+                        author = if (opensRun) draft.metaName else null,
                     ),
                 )
             }
