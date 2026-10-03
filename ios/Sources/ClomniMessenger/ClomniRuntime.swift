@@ -34,6 +34,7 @@ struct ClomniEvents: Sendable {
     var conversationStarted: (@MainActor @Sendable (String) -> Void)?
     var unreadCountChanged: (@MainActor @Sendable (Int) -> Void)?
     var flowCompleted: (@MainActor @Sendable (String) -> Void)?
+    var link: (@MainActor @Sendable (URL) -> Void)?
 }
 
 /// What any thread may read without waiting for the main thread: the callbacks, and what `handlePush` and

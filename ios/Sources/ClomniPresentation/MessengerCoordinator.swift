@@ -31,6 +31,8 @@ package enum MessengerRoute: Sendable, Equatable, Hashable {
     case messages
     /// A conversation, or a new one's draft (`ClomniEngine.draftConversation`) until its first message.
     case conversation(String)
+    /// A news item, from Home's news card.
+    case news(String)
 }
 
 /// The optional floating button (brief 8 · 7.2): off unless the app or the panel turns it on.

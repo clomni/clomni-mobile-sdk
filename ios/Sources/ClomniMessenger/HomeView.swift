@@ -15,6 +15,8 @@ struct MessengerActions {
     var openConversation: (String) -> Void = { _ in }
     /// Home's "Mesajlar" card.
     var openMessages: () -> Void = {}
+    /// An item of Home's news card.
+    var openNews: (String) -> Void = { _ in }
     var back: () -> Void = {}
     var retry: () -> Void = {}
 }
@@ -296,7 +298,9 @@ struct HomeCardsView: View {
                     case .messages:
                         MessagesCardView(card: screen.messagesCard, theme: theme, action: actions.openMessages)
                     case .news:
-                        EmptyView()
+                        if let news = screen.news {
+                            NewsCardView(card: news, theme: theme, open: actions.openNews)
+                        }
                     case .send:
                         if let send = screen.newConversation {
                             NewConversationCardView(card: send, theme: theme, action: actions.newConversation)

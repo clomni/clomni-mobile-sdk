@@ -282,6 +282,36 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(preview("👍🙏"), "👍🙏")
     }
 
+    /// The news card: the first three, in the panel's order; none, no card; off in the panel, no card.
+    func testNewsCard() throws {
+        let news = try XCTUnwrap(ProtocolJSON.parseNews(Fixture.data("61-news.json")))
+        var withNews = snapshot(Fixture.aparConfig)
+        withNews.news = news + news.map { item in
+            ProtocolJSON.parseNews(Data(#"{"items":[{"id":"\#(item.id)_b","title":"\#(item.title)","published_at":"2026-10-01T00:00:00Z"}]}"#.utf8))![0]
+        }
+        let home = presenter().home(withNews)
+        XCTAssertEqual(home.news?.items.map(\.id), ["news_12", "news_9", "news_12_b"], "three at most")
+        XCTAssertEqual(home.news?.items.first?.accessibilityLabel,
+                       "Yeni zonalar açıldı. Yasamal və Nərimanovda 40 yeni parklanma zonası var.")
+        XCTAssertEqual(home.order, [.messages, .send, .news, .channels], "fixture 42's order, recent has no conversation")
+        XCTAssertNil(presenter().home(snapshot(Fixture.aparConfig)).news, "no news, no card")
+        XCTAssertFalse(presenter().home(snapshot(Fixture.aparConfig)).order.contains(.news))
+        var off = withNews
+        off.config = Fixture.minimalConfig
+        XCTAssertNil(presenter().home(off).news, "the panel did not list it")
+
+        let article = NewsArticle(news[0], strings: ClomniStrings(language: "az"), time: TimeText(strings: ClomniStrings(language: "az"),
+                                  timeZone: TimeZone(identifier: "UTC")!), now: Date(timeIntervalSince1970: 1_790_850_720))
+        XCTAssertEqual(article.title, "Yeni zonalar açıldı")
+        XCTAssertEqual(article.blocks, [
+            .paragraph([TextRun("Bu həftədən "), TextRun("40 yeni zona", bold: true), TextRun(" işləyir.")]),
+            .listItem([TextRun("Yasamal: 22 zona")]), .listItem([TextRun("Nərimanov: 18 zona")]),
+            .paragraph([TextRun("Xəritəyə "), TextRun("buradan", link: URL(string: "https://apar.az/zones")), TextRun(" baxın.")]),
+        ])
+        XCTAssertEqual(article.button?.url.absoluteString, "apar://map/zones")
+        XCTAssertFalse(article.date.isEmpty)
+    }
+
     func testMessagesCardDot() {
         var quiet = snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")])
         XCTAssertFalse(presenter().home(quiet).messagesCard.unread)

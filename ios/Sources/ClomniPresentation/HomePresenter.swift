@@ -95,6 +95,21 @@ package struct HomeScreen: Sendable, Equatable {
         }
     }
 
+    /// The first three published news, in the panel's order.
+    package struct NewsCard: Sendable, Equatable {
+        package struct Item: Sendable, Equatable, Identifiable {
+            package let id: String
+            package let title: String
+            package let summary: String?
+            /// The cover, 16:9 at the top of the card.
+            package let imageUrl: URL?
+            package let accessibilityLabel: String
+        }
+
+        package static let maxItems = 3
+        package let items: [Item]
+    }
+
     /// "Mesajlar" with its icon: the way to the conversations, always on Home (there is no tab bar).
     package struct MessagesCard: Sendable, Equatable {
         package let title: String
@@ -115,6 +130,7 @@ package struct HomeScreen: Sendable, Equatable {
     package let recent: RecentCard?
     package let channels: ChannelsCard?
     package let messagesCard: MessagesCard
+    package let news: NewsCard?
     /// The thin yellow strip under the header.
     package let offline: String?
     package let failure: Failure?
@@ -165,6 +181,8 @@ package struct MessengerSnapshot: Sendable, Equatable {
     package var conversations: [Conversation] = []
     package var conversationsLoad = Load.loading
     package var unreadTotal = 0
+    /// The published news (GET /news), the first three on Home.
+    package var news: [NewsItem] = []
     /// The logged-in user's name, for the greeting.
     package var userName: String?
     package var isOffline = false
@@ -197,6 +215,11 @@ package struct HomePresenter: Sendable {
         let channels = cards.contains(.channels) && !items.isEmpty
             ? HomeScreen.ChannelsCard(label: strings[.followUs], items: items) : nil
         let failed = config == nil && snapshot.configLoad == .failed
+        let newsItems = snapshot.news.prefix(HomeScreen.NewsCard.maxItems).map {
+            HomeScreen.NewsCard.Item(id: $0.id, title: $0.title, summary: $0.summary, imageUrl: $0.imageUrl,
+                                     accessibilityLabel: [$0.title, $0.summary].compactMap { $0 }.joined(separator: ". "))
+        }
+        let news = cards.contains(.news) && !newsItems.isEmpty ? HomeScreen.NewsCard(items: newsItems) : nil
         return HomeScreen(
             phase: config != nil ? .ready : failed ? .failed : .loading,
             header: header(snapshot),
@@ -204,6 +227,7 @@ package struct HomePresenter: Sendable {
             recent: recent,
             channels: channels,
             messagesCard: messagesCard(snapshot),
+            news: news,
             offline: snapshot.isOffline ? strings[.offline] : nil,
             failure: failed ? failure : nil,
             loadingLabel: strings[.loading],
@@ -212,8 +236,7 @@ package struct HomePresenter: Sendable {
                 case .messages, .send: return true
                 case .recent: return recent != nil
                 case .channels: return channels != nil
-                // News comes with its own API (CM-114); until the SDK reads it there is none to show.
-                case .news: return false
+                case .news: return news != nil
                 }
             },
             poweredBy: config?.poweredBy == false ? nil : "Powered by Clomni")
@@ -350,5 +373,41 @@ extension MessengerConfig {
     /// The bot's picture: its own, else the brand's logo; nil leaves its initial.
     package var botAvatarUrl: URL? {
         bot.avatarUrl ?? brand.logoUrl
+    }
+}
+
+/// A news item's screen (DESIGN-PASS-2 "Xəbərlər"): the cover, the title 24 bold, the date 13, the text with its
+/// markdown, and the button.
+package struct NewsArticle: Sendable, Equatable {
+    package let id: String
+    package let imageUrl: URL?
+    package let title: String
+    /// "2 okt", or with the year when it is not this one.
+    package let date: String
+    /// Paragraphs; a "- " line is a list item.
+    package let blocks: [Block]
+    package let button: NewsItem.Button?
+    package let backLabel: String
+    package let closeLabel: String
+
+    package enum Block: Sendable, Equatable {
+        case paragraph([TextRun])
+        case listItem([TextRun])
+    }
+
+    package init(_ item: NewsItem, strings: ClomniStrings, time: TimeText, now: Date) {
+        id = item.id
+        imageUrl = item.imageUrl
+        title = item.title
+        date = time.day(item.publishedAt, now: now)
+        blocks = (item.bodyMarkdown ?? "").components(separatedBy: "\n").compactMap { line in
+            let text = line.trimmingCharacters(in: .whitespaces)
+            guard !text.isEmpty else { return nil }
+            if text.hasPrefix("- ") { return .listItem(LimitedMarkdown.parse(String(text.dropFirst(2)))) }
+            return .paragraph(LimitedMarkdown.parse(text))
+        }
+        button = item.button
+        backLabel = strings[.goBack]
+        closeLabel = strings[.close]
     }
 }

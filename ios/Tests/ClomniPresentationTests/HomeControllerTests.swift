@@ -34,6 +34,13 @@ actor FakeSource: MessengerDataSource {
         return "draft_\(starts)"
     }
 
+    var published: [NewsItem] = []
+    var news: [NewsItem] { published }
+    func refreshNews() async -> [NewsItem] { published }
+    func set(news: [NewsItem]) { published = news }
+    var opened: [String] = []
+    func newsOpened(_ id: String) async { opened.append(id) }
+
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
         let token = UUID()
         observers[token] = handler
@@ -152,6 +159,20 @@ final class HomeControllerTests: XCTestCase {
         await home.load()
         XCTAssertEqual(Set(titles), ["Bizdən nəsə soruşun"], "\(titles)")
         XCTAssertNotEqual(home.home.header.title, ClomniStrings(language: "az")[.greetingLine2])
+    }
+
+    func testNewsReachHomeAndAnItemOpens() async throws {
+        await source.set(fresh: Fixture.aparConfig)
+        await source.set(news: try XCTUnwrap(ProtocolJSON.parseNews(Fixture.data("61-news.json"))))
+        let home = controller()
+        await home.load()
+        XCTAssertEqual(home.home.news?.items.map(\.id), ["news_12", "news_9"])
+        let article = try XCTUnwrap(home.article("news_12"))
+        XCTAssertEqual(article.title, "Yeni zonalar açıldı")
+        XCTAssertNil(home.article("news_404"))
+        await home.opened(article)
+        let opened = await source.opened
+        XCTAssertEqual(opened, ["news_12"])
     }
 
     func testNameAndConnectivityRedraw() {

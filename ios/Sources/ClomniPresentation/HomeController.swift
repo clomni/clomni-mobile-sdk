@@ -12,6 +12,9 @@ package protocol MessengerDataSource: Sendable {
     func refreshConversations() async throws
     var unreadTotal: Int { get async }
     func draftConversation(openedFrom: String?) async -> String
+    var news: [NewsItem] { get async }
+    func refreshNews() async -> [NewsItem]
+    func newsOpened(_ id: String) async
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
     func stopObserving(_ token: UUID) async
 }
@@ -79,6 +82,7 @@ package final class HomeController {
         }
         let config = await source.refreshConfig(language: language)
         snapshot.configLoad = config == nil ? .failed : .loaded
+        _ = await source.refreshNews()
         do {
             try await source.refreshConversations()
             snapshot.conversationsLoad = .loaded
@@ -104,6 +108,18 @@ package final class HomeController {
         await load()
     }
 
+    /// A news item's screen, from the news Home has; reported as news_opened.
+    package func article(_ id: String) -> NewsArticle? {
+        guard let item = snapshot.news.first(where: { $0.id == id }) else { return nil }
+        let strings = ClomniStrings(language: language ?? snapshot.config?.languages.first,
+                                    overrides: snapshot.config?.strings ?? [:])
+        return NewsArticle(item, strings: strings, time: TimeText(strings: strings, timeZone: timeZone), now: now())
+    }
+
+    package func opened(_ article: NewsArticle) async {
+        await source.newsOpened(article.id)
+    }
+
     /// "Bizə mesaj göndərin": a draft's id. The server creates the conversation with its first message.
     package func startConversation(openedFrom: String?) async -> String {
         await source.draftConversation(openedFrom: openedFrom)
@@ -124,6 +140,7 @@ package final class HomeController {
         snapshot.config = await source.config ?? snapshot.config
         snapshot.conversations = await source.conversations()
         snapshot.unreadTotal = await source.unreadTotal
+        snapshot.news = await source.news
     }
 
     private func render() {

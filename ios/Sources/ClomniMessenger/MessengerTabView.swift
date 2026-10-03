@@ -67,6 +67,7 @@ struct HomeTabView: View {
             },
             openConversation: { [coordinator] in coordinator.navigate(to: .conversation($0)) },
             openMessages: { [coordinator] in coordinator.navigate(to: .messages) },
+            openNews: { [coordinator] in coordinator.navigate(to: .news($0)) },
             retry: { [model] in
                 Task { @MainActor in await model.controller.retry() }
             })

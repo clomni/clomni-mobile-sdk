@@ -22,6 +22,7 @@ Clomni: static func updateUser(name: String? = nil, language: String? = nil, cus
 Clomni: static let version: String
 Clomni: static var onConversationStarted: (@MainActor @Sendable (String) -> Void)?
 Clomni: static var onFlowCompleted: (@MainActor @Sendable (String) -> Void)?
+Clomni: static var onLink: (@MainActor @Sendable (URL) -> Void)?
 Clomni: static var onMessengerClosed: (@MainActor @Sendable () -> Void)?
 Clomni: static var onMessengerOpened: (@MainActor @Sendable (String?) -> Void)?
 Clomni: static var onUnreadCountChanged: (@MainActor @Sendable (Int) -> Void)?

@@ -120,6 +120,9 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
             case .messages:
                 MessagesScreenRoot(home: home ?? MessengerModel(engine: engine, language: nil, userName: nil),
                                    coordinator: coordinator)
+            case .news(let id):
+                NewsScreenView(model: home ?? MessengerModel(engine: engine, language: nil, userName: nil), id: id,
+                               coordinator: coordinator)
             case .conversation(let id):
                 ConversationScreen(engine: engine, conversationId: id, back: { [weak coordinator] in coordinator?.back() },
                                    close: { [weak coordinator] in coordinator?.dismiss() })
