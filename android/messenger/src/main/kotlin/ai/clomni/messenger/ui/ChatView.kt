@@ -1,6 +1,8 @@
 package ai.clomni.messenger.ui
 
+import android.net.Uri
 import ai.clomni.messenger.R
+import ai.clomni.messenger.presentation.ChatAvatar
 import ai.clomni.messenger.presentation.ChatController
 import ai.clomni.messenger.presentation.ChatHeader
 import ai.clomni.messenger.presentation.ChatItem
@@ -105,23 +107,53 @@ internal fun ClomniChat(
     var fullScreen by rememberSaveable { mutableStateOf<String?>(null) }
     val refused: (String?) -> Unit = { text -> if (text != null) Toast.makeText(context, text, Toast.LENGTH_LONG).show() }
     val resolver = context.contentResolver
-    val photo = rememberResultLauncher(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) controller.attach(refused) { Attachments.image(resolver, uri) }
+    // A picked file waits over the field, with its preview and ×, and goes with the next send (its text the caption).
+    var picked by remember { mutableStateOf<Uri?>(null) }
+    val photo = rememberResultLauncher(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) picked = uri }
+    val document = rememberResultLauncher(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) picked = uri }
+    var shot by remember { mutableStateOf<Uri?>(null) }
+    val camera = rememberResultLauncher(ActivityResultContracts.TakePicture()) { taken -> if (taken) picked = shot }
+    val mayUseCamera = remember(context) {
+        context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
-    val document = rememberResultLauncher(ActivityResultContracts.OpenDocument()) { uri ->
-        val limit = (config?.limits?.fileMb ?: 25).coerceAtLeast(config?.limits?.imageMb ?: 10) * 1_048_576L
-        if (uri != null) controller.attach(refused) { Attachments.file(resolver, uri, limit) }
+    val limit = (config?.limits?.fileMb ?: 25).coerceAtLeast(config?.limits?.imageMb ?: 10) * 1_048_576L
+    val preview = picked?.let { uri ->
+        remember(uri) {
+            val image = resolver.getType(uri)?.startsWith("image/") == true
+            PickedPreview(if (image) uri.toString() else null, Attachments.name(resolver, uri))
+        }
     }
     var older by remember { mutableStateOf(true) }
     var loadingOlder by remember { mutableStateOf(false) }
     val actions = ChatActions(
         back = back,
         close = close,
-        send = { if (controller.send(draft)) draft = "" },
+        send = {
+            val file = picked
+            if (file != null) {
+                val caption = draft.trim().ifEmpty { null }
+                controller.attach(refused) { Attachments.read(resolver, file, limit)?.let { ChatController.PickedFile(it.data, it.fileName, it.mime, caption) } }
+                picked = null
+                draft = ""
+            } else if (controller.send(draft)) {
+                draft = ""
+            }
+        },
         pickImage = {
-            photo?.launch(PickVisualMediaRequest.Builder().setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly).build())
+            photo?.launch(PickVisualMediaRequest.Builder().setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo).build())
+        },
+        pickCamera = if (mayUseCamera && camera != null) {
+            {
+                Attachments.cameraTarget(context)?.let { target ->
+                    shot = target
+                    camera.launch(target)
+                }
+            }
+        } else {
+            null
         },
         pickFile = { document?.launch(arrayOf("*/*")) },
+        removePicked = { picked = null },
         startNew = {
             writeAnyway = false
             controller.startNewConversation()
@@ -153,6 +185,7 @@ internal fun ClomniChat(
         writeAnyway = writeAnyway,
         setWriteAnyway = { writeAnyway = true },
         loadingOlder = loadingOlder,
+        picked = preview,
     )
     fullScreen?.let { url -> FullScreenImage(url, screen.header.closeLabel) { fullScreen = null } }
 }
@@ -200,6 +233,8 @@ internal fun ChatScreenView(
     lazy: Boolean = true,
     /** Older messages are on their way: a small indicator at the top of the list. */
     loadingOlder: Boolean = false,
+    /** A picked file waiting over the field. */
+    picked: PickedPreview? = null,
 ) {
     Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
         ChatHeaderView(screen.header, theme, actions)
@@ -224,7 +259,7 @@ internal fun ChatScreenView(
                 }
             }
         }
-        ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions)
+        ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
         Announcer(screen.announcement?.id, screen.announcement?.text)
     }
 }
@@ -248,9 +283,13 @@ private fun LazyTranscript(
     val known = remember { items.mapTo(HashSet()) { it.id } }
     val still = reduceMotion()
     val lastId = items.lastOrNull()?.id
+    // The first messages are placed at the end at once (the list opens at its bottom, then stays); only later ones
+    // scroll there, and without motion they too are simply there.
+    var placed by remember { mutableStateOf(items.isNotEmpty()) }
     LaunchedEffect(lastId) {
-        // Without motion the end is simply there.
-        if (items.isNotEmpty()) if (still) state.scrollToItem(last) else state.animateScrollToItem(last)
+        if (items.isEmpty()) return@LaunchedEffect
+        if (still || !placed) state.scrollToItem(last) else state.animateScrollToItem(last)
+        placed = true
     }
     val reachedTop by rememberUpdatedState(actions.reachedTop)
     LaunchedEffect(state) {
@@ -307,53 +346,49 @@ private fun Announcer(id: String?, text: String?) {
 @Composable
 internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: ChatActions) {
     Column(Modifier.fillMaxWidth().background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
+        // One height whatever comes and goes in it (a subtitle, typing, the operator's dot, the team's faces): one
+        // line each, so only the user's font size changes it (DESIGN-PASS-2 10).
         Row(
-            Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp)
-                .padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.m.dp),
-            horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
+            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val target = ClomniTheme.Size.touchTarget.dp
-            // The target reaches inwards from the screen's edge, the arrow where it was.
-            val edge = ClomniTheme.Space.xl.dp
-            val vertical = (target - 17.dp) / 2
-            Box(
-                Modifier.bleed(start = edge, top = vertical, end = target - 10.dp - edge, bottom = vertical).size(target)
-                    .button(header.backLabel, actions.back),
-                Alignment.CenterStart,
-            ) {
-                Icon(R.drawable.clomni_ic_back, theme.colors.primary, 10.dp, Modifier.padding(start = edge).size(10.dp, 17.dp))
+            Box(Modifier.padding(start = 4.dp).size(target).button(header.backLabel, actions.back), Alignment.Center) {
+                Icon(R.drawable.clomni_ic_back, theme.colors.textPrimary, 10.dp, Modifier.size(10.dp, 17.dp))
             }
-            when (val lead = header.lead) {
-                is ChatHeader.Lead.Team -> TeamAvatars(lead.urls, theme.colors.background, theme)
-                is ChatHeader.Lead.Person -> Box {
-                    ChatAvatarView(lead.avatar, ClomniTheme.Size.avatar, theme)
-                    if (lead.online) {
-                        Box(
-                            Modifier.align(Alignment.BottomEnd).offset(3.dp, 3.dp)
-                                .size(ClomniTheme.Size.tabDot.dp + 4.dp).clip(CircleShape)
-                                .background(theme.colors.background.color).padding(2.dp)
-                                .clip(CircleShape).background(theme.colors.online.color),
-                        )
-                    }
+            Spacer(Modifier.width(4.dp))
+            Box {
+                val avatar = when (val lead = header.lead) {
+                    is ChatHeader.Lead.Team -> ChatAvatar(lead.urls.firstOrNull(), "", false)
+                    is ChatHeader.Lead.Person -> lead.avatar
+                }
+                ChatAvatarView(avatar, 32f, theme)
+                if ((header.lead as? ChatHeader.Lead.Person)?.online == true) {
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp)
+                            .size(12.dp).clip(CircleShape)
+                            .background(theme.colors.background.color).padding(2.dp)
+                            .clip(CircleShape).background(theme.colors.online.color),
+                    )
                 }
             }
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
-                // Two lines each before an ellipsis: at a large font size the subtitle wraps instead of being cut.
                 BasicText(
                     header.title,
-                    style = clomniText(ClomniTheme.FontSize.title, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
-                    maxLines = 2,
+                    style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 BasicText(
                     header.subtitle,
-                    style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
-                    maxLines = 2,
+                    style = clomniText(13f, theme.colors.textSecondary, lineHeight = 1.3f),
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            CloseButton(header.closeLabel, theme.colors.textSecondary, actions.close, endRoom = ClomniTheme.Space.xl.dp)
+            Spacer(Modifier.width(8.dp))
+            CloseButton(header.closeLabel, CloseStyle.ON_SURFACE, theme, actions.close, Modifier.padding(end = 12.dp))
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
     }
@@ -367,8 +402,8 @@ private fun FullScreenImage(url: String, closeLabel: String, close: () -> Unit) 
             if (!LocalInspectionMode.current) {
                 AsyncImage(url, null, ClomniImages.loader(LocalContext.current), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             }
-            Box(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).padding(ClomniTheme.Space.xl.dp)) {
-                CloseButton(closeLabel, ai.clomni.messenger.presentation.RgbColor.WHITE, close)
+            Box(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).closeButtonPlace()) {
+                CloseButton(closeLabel, CloseStyle.ON_MEDIA, ai.clomni.messenger.presentation.ClomniTheme.make(null, true), close)
             }
         }
     }
