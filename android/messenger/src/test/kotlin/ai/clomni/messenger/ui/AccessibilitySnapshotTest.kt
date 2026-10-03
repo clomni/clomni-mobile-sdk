@@ -157,7 +157,7 @@ class AccessibilitySnapshotTest {
         assertReads(
             listOf(
                 "Geri [Button]",
-                "Apar Komanda da kömək edə bilər [heading]",
+                "Apar Adətən bir neçə dəqiqəyə cavab veririk [heading]",
                 "Bağla [Button]",
                 "Bu gün 10:30",
                 "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.",
@@ -180,7 +180,7 @@ class AccessibilitySnapshotTest {
         assertReads(
             listOf(
                 "Geri [Button]",
-                "Apar Komanda da kömək edə bilər [heading]",
+                "Apar Adətən bir neçə dəqiqəyə cavab veririk [heading]",
                 "Bağla [Button]",
                 "Bu gün 10:30",
                 "Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",

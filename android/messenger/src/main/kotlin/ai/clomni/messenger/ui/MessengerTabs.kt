@@ -6,9 +6,12 @@ import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.MessagesScreen
 import ai.clomni.messenger.protocol.MessengerConfig
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,12 +21,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -105,7 +110,13 @@ internal fun MessengerTabs(
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     Column(Modifier.fillMaxSize().background(theme.colors.background.color)) {
-        Crossfade(tab, Modifier.weight(1f), animationSpec = tween(200), label = "tab") { selected ->
+        // Material 3's fade-through, 150 ms: the old tab fades out in the first third, the new one fades in after it.
+        AnimatedContent(
+            tab,
+            Modifier.weight(1f),
+            transitionSpec = { fadeIn(tween(100, delayMillis = 50)) togetherWith fadeOut(tween(50)) },
+            label = "tab",
+        ) { selected ->
             when (selected) {
                 MessengerTab.HOME -> HomeView(home, theme, actions)
                 MessengerTab.MESSAGES -> MessagesView(messages, theme, home.header.closeLabel, actions)
@@ -124,7 +135,8 @@ internal fun MessengerTabs(
 private fun TabBar(tabs: HomeScreen.Tabs, selected: MessengerTab, select: (MessengerTab) -> Unit, theme: ClomniTheme) {
     Column(Modifier.background(theme.colors.background.color).windowInsetsPadding(WindowInsets.navigationBars)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
-        Row(Modifier.fillMaxWidth().height(80.dp)) {
+        // 80 dp, and taller when a large font size needs it: the labels are never cut.
+        Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).height(IntrinsicSize.Min)) {
             val home = selected == MessengerTab.HOME
             val homeIcon = if (home) R.drawable.clomni_ic_home_filled else R.drawable.clomni_ic_home
             TabItem(tabs.home, tabs.home, homeIcon, home, false, theme) { select(MessengerTab.HOME) }

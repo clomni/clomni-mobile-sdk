@@ -276,7 +276,7 @@ private fun LazyTranscript(
             }
         }
         items(items, key = { it.id }) { item ->
-            Box(Modifier.appearing(item.id !in known, still)) { ChatItemView(item, theme, actions) }
+            Box(Modifier.appearing(item.id !in known)) { ChatItemView(item, theme, actions) }
         }
     }
 }

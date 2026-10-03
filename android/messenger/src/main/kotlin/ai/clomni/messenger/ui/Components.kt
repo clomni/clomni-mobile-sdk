@@ -105,7 +105,7 @@ internal fun SkeletonBlock(height: Float, theme: ClomniTheme) {
     )
 }
 
-/** The thin yellow strip: "İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq". */
+/** The thin yellow strip: "İnternet yoxdur". */
 @Composable
 internal fun OfflineStrip(text: String, theme: ClomniTheme) {
     BasicText(

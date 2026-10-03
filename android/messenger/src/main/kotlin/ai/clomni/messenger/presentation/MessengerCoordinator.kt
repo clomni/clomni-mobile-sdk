@@ -59,7 +59,7 @@ internal data class LauncherState(
         const val SIZE = 56
 
         /** From the screen's side and bottom edges, dp. */
-        const val EDGE_PADDING = 18
+        const val EDGE_PADDING = 20
     }
 }
 

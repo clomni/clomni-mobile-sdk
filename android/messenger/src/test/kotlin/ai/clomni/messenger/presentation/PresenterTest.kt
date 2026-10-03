@@ -263,7 +263,7 @@ class PresenterTest {
         val home = presenter().home(cached)
         assertEquals(HomeScreen.Phase.READY, home.phase)
         assertNull(home.failure)
-        assertEquals("İnternet yoxdur, mesajlar göndəriləndə çatdırılacaq", home.offline)
+        assertEquals("İnternet yoxdur", home.offline)
         assertEquals(home.offline, presenter().messages(cached).offline)
     }
 
