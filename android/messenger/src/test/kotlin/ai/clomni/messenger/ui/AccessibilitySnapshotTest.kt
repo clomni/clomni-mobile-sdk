@@ -147,6 +147,31 @@ class AccessibilitySnapshotTest {
         assertEquals(onHome.top, inChat.top, 0.5f)
     }
 
+    /**
+     * The bar (list, conversation): its title in the middle of the screen, the same room on both sides however wide the
+     * buttons; back and ✕ the same 48 dp circles, 12 dp from their edges, at the same height.
+     */
+    @Test
+    fun theBarsTitleIsInTheMiddle() {
+        home("bar_messages", Shown.MESSAGES)
+        val title = semantics.elements.single { it.heading }
+        assertEquals("Mesajlar", title.label)
+        assertEquals("centred on the screen", title.fromStart, title.fromEnd, 0.5f)
+        val back = semantics.elements.single { it.label == "Geri" }
+        val close = semantics.elements.single { it.label == "Bağla" }
+        for (button in listOf(back, close)) {
+            assertEquals(48f, button.width, 0.5f)
+            assertEquals(48f, button.height, 0.5f)
+        }
+        assertEquals(12f, back.fromStart, 0.5f)
+        assertEquals(12f, close.fromEnd, 0.5f)
+        assertEquals(back.top, close.top, 0.5f)
+        chat("bar_chat", languageChoice())
+        val inChat = semantics.elements.single { it.label == "Geri" }
+        assertEquals(back.fromStart, inChat.fromStart, 0.5f)
+        assertEquals(back.top, inChat.top, 0.5f)
+    }
+
     // What TalkBack reads, with Paparazzi's overlay
 
     @Test

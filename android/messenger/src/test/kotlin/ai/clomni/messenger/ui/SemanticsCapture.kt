@@ -30,6 +30,8 @@ class SemanticsCapture : RenderExtension {
         /** From the screen's end edge and top, dp. */
         val fromEnd: Float = 0f,
         val top: Float = 0f,
+        /** From the screen's start (left) edge, dp. */
+        val fromStart: Float = 0f,
         /** A link inside running text: as tall as its line, which WCAG 2.5.8 exempts ("inline"). */
         val inline: Boolean = false,
     ) {
@@ -73,6 +75,7 @@ class SemanticsCapture : RenderExtension {
                     height = node.size.height / density,
                     fromEnd = (view.width - node.boundsInRoot.right) / density,
                     top = node.boundsInRoot.top / density,
+                    fromStart = node.boundsInRoot.left / density,
                     // Compose marks a text link's node with this key; it is not public API, so it is matched by name.
                     inline = config.any { it.key.name == "LinkTestMarker" },
                 )

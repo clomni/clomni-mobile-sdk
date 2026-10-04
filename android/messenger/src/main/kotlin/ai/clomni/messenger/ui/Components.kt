@@ -35,9 +35,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -51,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 
 private val target = ClomniTheme.Size.touchTarget.dp
 
@@ -153,23 +151,37 @@ internal enum class CloseStyle {
 
 /**
  * ✕, the same on every screen (DESIGN-PASS-2 6): a 40 dp circle with a 20 dp cross drawn 2 dp thick, in a 48 dp
- * target. Placed by [closeButtonPlace]: 16 dp from the end edge and 12 under the safe area.
+ * target. Placed by [closeButtonPlace] or [TopBar]: 16 dp from the end edge and 12 under the safe area.
  */
 @Composable
-internal fun CloseButton(label: String, style: CloseStyle, theme: ClomniTheme, close: () -> Unit, modifier: Modifier = Modifier) {
-    val (circle, cross) = when (style) {
+internal fun CloseButton(label: String, style: CloseStyle, theme: ClomniTheme, close: () -> Unit, modifier: Modifier = Modifier) =
+    CircleButton(label, style, theme, close, modifier) { cross ->
+        // The cross fills a 20 dp square: each arm runs 10 dp from the centre along a diagonal.
+        val arm = 10.dp.toPx() / 1.414f
+        val stroke = 2.dp.toPx()
+        drawLine(cross, Offset(center.x - arm, center.y - arm), Offset(center.x + arm, center.y + arm), stroke, StrokeCap.Round)
+        drawLine(cross, Offset(center.x - arm, center.y + arm), Offset(center.x + arm, center.y - arm), stroke, StrokeCap.Round)
+    }
+
+/** A 40 dp circle in [style]'s colour with [glyph] drawn in its ink, in a 48 dp target: ✕ and back. */
+@Composable
+internal fun CircleButton(
+    label: String,
+    style: CloseStyle,
+    theme: ClomniTheme,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    glyph: DrawScope.(Color) -> Unit,
+) {
+    val (circle, ink) = when (style) {
         CloseStyle.ON_BRAND -> Color.White.copy(alpha = 0.55f) to RgbColor.parse("#1B1D21")!!.color
         CloseStyle.ON_SURFACE -> theme.colors.textPrimary.color.copy(alpha = 0.06f) to theme.colors.textPrimary.color
         CloseStyle.ON_MEDIA -> Color.White.copy(alpha = 0.2f) to Color.White
     }
-    Box(modifier.size(target).button(label, close), Alignment.Center) {
+    Box(modifier.size(target).button(label, onClick), Alignment.Center) {
         Canvas(Modifier.size(CLOSE_CIRCLE)) {
             drawCircle(circle)
-            // The cross fills a 20 dp square: each arm runs 10 dp from the centre along a diagonal.
-            val arm = 10.dp.toPx() / 1.414f
-            val stroke = 2.dp.toPx()
-            drawLine(cross, Offset(center.x - arm, center.y - arm), Offset(center.x + arm, center.y + arm), stroke, StrokeCap.Round)
-            drawLine(cross, Offset(center.x - arm, center.y + arm), Offset(center.x + arm, center.y - arm), stroke, StrokeCap.Round)
+            glyph(ink)
         }
     }
 }

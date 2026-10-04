@@ -1,6 +1,5 @@
 package ai.clomni.messenger.ui
 
-import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
@@ -19,8 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -82,20 +79,10 @@ internal fun NewsCardView(card: HomeScreen.NewsCard, theme: ClomniTheme, open: (
 @Composable
 internal fun NewsView(screen: NewsScreen, theme: ClomniTheme, back: () -> Unit, close: () -> Unit, openLink: (String) -> Unit) {
     Column(Modifier.fillMaxSize().background(theme.colors.background.color)) {
-        Box(
-            Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).padding(vertical = 8.dp)
-                .heightIn(min = ClomniTheme.Size.touchTarget.dp),
-        ) {
-            Box(
-                Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(ClomniTheme.Size.touchTarget.dp).button(screen.backLabel, back),
-                Alignment.Center,
-            ) {
-                Icon(R.drawable.clomni_ic_back, theme.colors.textPrimary, 10.dp, Modifier.size(10.dp, 17.dp))
-            }
-            CloseButton(screen.closeLabel, CloseStyle.ON_SURFACE, theme, close, Modifier.align(Alignment.CenterEnd).padding(end = 12.dp))
-        }
+        val scroll = rememberScrollState()
+        TopBar(screen.backLabel, back, screen.closeLabel, close, theme, scrolled = scroll.value > 0)
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(scroll)
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
         ) {
