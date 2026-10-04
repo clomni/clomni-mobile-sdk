@@ -124,6 +124,15 @@ package struct ChatPresenter: Sendable {
             previous = date
         }
 
+        // Only the newest bot message's choices, while nothing has answered it (operator, 2026-10-04, 72): a choice
+        // made, here or on another device, or anything the user wrote after it, and the choices are gone; old ones
+        // in the history are never drawn.
+        let lastOther = snapshot.messages.last { $0.sender.type != .user && $0.sender.type != .system }
+        let answeredLater = lastOther.map { last in
+            !snapshot.pending.isEmpty || snapshot.messages.contains { $0.sender.type == .user && $0.seq > last.seq }
+        } ?? true
+        let choicesFor = answeredLater ? nil : lastOther?.id
+
         for message in snapshot.messages {
             separate(message.id, message.createdAt)
             if case .system(let system) = message.content {
@@ -134,7 +143,8 @@ package struct ChatPresenter: Sendable {
             if let body = body(message, snapshot) {
                 entries.append(.draft(draft(message, body, snapshot)))
             }
-            if case .quickReplies(let replies) = message.content, snapshot.answerable.contains(message.id) {
+            if case .quickReplies(let replies) = message.content, message.id == choicesFor,
+               snapshot.answerable.contains(message.id) {
                 entries.append(.replies(block(message.id, replies)))
             }
         }

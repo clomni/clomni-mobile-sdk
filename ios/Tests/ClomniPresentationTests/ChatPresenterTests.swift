@@ -200,6 +200,35 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(untilMorning.subtitle, "Növbəti iş saatı: sabah 05:00", "local time; these tests run in UTC")
     }
 
+    /// Operator, 2026-10-04 (72): only the newest bot message's choices, while nothing answered it. Old choices in
+    /// the history are never drawn, even when the store would still take an answer for them.
+    func testOnlyTheNewestUnansweredChoicesShow() {
+        func choices(_ screen: ChatScreen) -> [String] {
+            screen.items.compactMap { if case .replies(let block) = $0 { return block.messageId }; return nil }
+        }
+        let first = Fixture.message("09-apar-level1-A.json")
+        let second = Fixture.message("10-apar-level2-S-chips.json")
+        let both = screen([first, second]) { $0.answerable = [first.id, second.id] }
+        XCTAssertEqual(choices(both), [second.id], "the older step's choices are history")
+
+        let reply = Fixture.message("03-text-user.json", ["id": "msg_reply", "seq": 10, "created_at": "2026-10-01T10:31:00Z"])
+        let answered = screen([first, second, reply]) { $0.answerable = [second.id] }
+        XCTAssertEqual(choices(answered), [], "the user answered: only their bubble stays")
+        XCTAssertEqual(bubbles(answered).last?.side, .outgoing)
+
+        let sending = screen([first, second]) {
+            $0.answerable = [second.id]
+            $0.pending = [PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Var")),
+                                         preview: "Var", createdAt: Date())]
+        }
+        XCTAssertEqual(choices(sending), [], "a choice on its way")
+
+        let laterText = Fixture.message("01-text-bot.json", ["id": "msg_later", "seq": 10, "created_at": "2026-10-01T10:31:00Z"])
+        XCTAssertEqual(choices(screen([second, laterText]) { $0.answerable = [second.id] }), [],
+                       "a newer bot message: the choices are no longer the last word")
+        XCTAssertEqual(choices(screen([second])), [], "the store takes no answer: nothing")
+    }
+
     func testQuickReplies() throws {
         let languages = Fixture.message("07-language-select.json")
         let open = screen([languages]) { $0.answerable = [languages.id] }
