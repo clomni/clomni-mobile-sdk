@@ -99,9 +99,12 @@ struct ScreenBar<Leading: View>: View {
     var body: some View {
         HStack(alignment: .center, spacing: CGFloat(ClomniTheme.Space.s)) {
             leading()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // ✕ at the end even when `leading` is empty: a frame on an EmptyView lays out nothing, and the bar then
+            // shrank to the button and sat on the leading side (Home without a logo).
+            Spacer(minLength: 0)
             CloseButton(label: closeLabel, style: closeStyle, theme: theme, action: close)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge) - Self.overhang)
         .padding(.top, CGFloat(ClomniTheme.Size.barTop) - Self.overhang)
         .padding(.bottom, CGFloat(ClomniTheme.Space.s) - Self.overhang)

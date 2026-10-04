@@ -41,18 +41,19 @@ final class ChatSnapshotTests: XCTestCase {
     /// at 6%) spans 40 pt, in a 44 pt view; the bar puts it 16 pt from the side.
     func testTheCloseButtonsSize() throws {
         let theme = PreviewData.theme(dark: false)
-        let button = CloseButton(label: "Bağla", theme: theme, action: {}).background(Color.white).ignoresSafeArea()
-        let image = Snapshot.render(button, width: 44, height: 44, dark: false)
+        // At its own height: a fixed 44 pt canvas sits under the window's safe area and cut the circle (27 pt seen).
+        let button = CloseButton(label: "Bağla", theme: theme, action: {}).background(Color.white)
+        let image = Snapshot.render(button, width: 44, dark: false)
         let box = try XCTUnwrap(Snapshot.inkBox(image), "nothing drawn")
         XCTAssertEqual(box.width, 80, accuracy: 2, "40 pt at @2x")
         XCTAssertEqual(box.height, 80, accuracy: 2)
         XCTAssertEqual(box.minX, 4, accuracy: 2, "centred in the 44 pt target")
-        // Without the safe area, so its 12 pt are measured from the top.
+        // At its own height (no safe area in a fitted render), so its 12 pt are measured from the top.
         let bar = ScreenBar(closeLabel: "Bağla", theme: theme, close: {}) { EmptyView() }.background(Color.white)
-            .ignoresSafeArea()
         let barImage = Snapshot.render(bar, width: 390, dark: false)
         let barBox = try XCTUnwrap(Snapshot.inkBox(barImage))
-        XCTAssertEqual(780 - barBox.maxX, 32, accuracy: 2, "16 pt from the side")
+        XCTAssertEqual(780 - barBox.maxX, 32, accuracy: 2, "16 pt from the trailing side, with nothing leading")
+        XCTAssertEqual(barBox.width, 80, accuracy: 2)
         XCTAssertEqual(barBox.minY, 24, accuracy: 2, "12 pt under the top")
     }
 
