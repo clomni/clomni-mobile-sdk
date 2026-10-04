@@ -20,23 +20,15 @@ struct QuickRepliesView: View {
         // Right-aligned over the composer, 8 pt apart; the transcript keeps them 16 pt from the screen's edges.
         layout
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.top, CGFloat(ClomniTheme.Space.s))
+            .padding(.top, CGFloat(ClomniTheme.Space.l))
             .opacity(chosen ? 0 : 1)
             .animation(.easeOut(duration: 0.2), value: chosen)
             .allowsHitTesting(!chosen)
     }
 
-    @ViewBuilder
+    /// One under another, each on its own line, right-aligned (operator, 2026-10-04), whatever the layout says.
     private var layout: some View {
-        if block.layout == .chips {
-            if #available(iOS 16.0, *) {
-                WrapLayout(spacing: CGFloat(ClomniTheme.Space.xs)) { pills }
-            } else {
-                VStack(alignment: .trailing, spacing: CGFloat(ClomniTheme.Space.xs)) { pills }
-            }
-        } else {
-            VStack(alignment: .trailing, spacing: CGFloat(ClomniTheme.Space.xs)) { pills }
-        }
+        VStack(alignment: .trailing, spacing: CGFloat(ClomniTheme.Space.s)) { pills }
     }
 
     @ViewBuilder
@@ -60,8 +52,9 @@ struct QuickRepliesView: View {
     }
 }
 
-/// DESIGN-PASS-2 13: white, a 1 pt border in the border grey, text 15, 40 high, 16 pt on the sides; up to two lines,
-/// then "…". The tap target reaches 44 pt.
+/// A capsule with a clear outline (operator, 2026-10-04): white (surface in dark mode), 1.5 pt border in the text
+/// colour at 18% (24% in dark mode), text 16 regular in the text colour that wraps rather than cuts, at least 44
+/// high, 20 pt on the sides and 10 on top and bottom; pressed, the text colour at 6%.
 struct PillButton: View {
     let title: String
     let accessibilityLabel: String
@@ -70,25 +63,34 @@ struct PillButton: View {
     let action: () -> Void
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.pill), style: .continuous)
         Button(action: action) {
             Text(title)
-                .clomniFont(15, isBack ? .regular : .medium, relativeTo: .subheadline)
+                .clomniFont(16, relativeTo: .body)
                 .foregroundStyle(isBack ? theme.colors.textSecondary.color : theme.colors.textPrimary.color)
                 .multilineTextAlignment(.trailing)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .padding(.vertical, CGFloat(ClomniTheme.Space.s))
-                .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
-                .frame(minHeight: 40)
-                .background(shape.fill(theme.isDark ? theme.colors.surface.color : theme.colors.background.color))
-                .overlay(shape.stroke(theme.colors.border.color, lineWidth: 1))
-                .padding(.vertical, 2)
-                .contentShape(Rectangle())
-                .padding(.vertical, -2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 10)
+                .padding(.horizontal, CGFloat(ClomniTheme.Space.xxl))
+                .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(PillStyle(theme: theme))
         .accessibilityLabel(Text(accessibilityLabel))
+    }
+}
+
+struct PillStyle: ButtonStyle {
+    let theme: ClomniTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = Capsule(style: .continuous)
+        let text = theme.colors.textPrimary.color
+        return configuration.label
+            .background(ZStack {
+                shape.fill(theme.isDark ? theme.colors.surface.color : theme.colors.background.color)
+                shape.fill(text.opacity(configuration.isPressed ? 0.06 : 0))
+            })
+            .overlay(shape.strokeBorder(text.opacity(theme.isDark ? 0.24 : 0.18), lineWidth: 1.5))
+            .contentShape(shape)
     }
 }
 
