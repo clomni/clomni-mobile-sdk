@@ -42,11 +42,26 @@ struct CloseButton: View {
                 .frame(width: CGFloat(ClomniTheme.Size.closeGlyph), height: CGFloat(ClomniTheme.Size.closeGlyph))
                 .frame(width: CGFloat(ClomniTheme.Size.closeCircle), height: CGFloat(ClomniTheme.Size.closeCircle))
                 .background(Circle().fill(fill))
+                // Where the circle is laid out, for the test that holds every screen's button to one size.
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: CloseCircleFrame.self, value: proxy.frame(in: .named(CloseCircleFrame.space)))
+                })
                 .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel(Text(label))
+    }
+}
+
+/// The close button's circle as laid out, in the coordinate space named `space` around it.
+struct CloseCircleFrame: PreferenceKey {
+    static let space = "clomni.closeButton"
+    static let defaultValue = CGRect.zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next != .zero { value = next }
     }
 }
 
