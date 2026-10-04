@@ -78,25 +78,6 @@ struct CrossShape: Shape {
     }
 }
 
-/// "‹", the back button: the system's chevron in a 44 pt target.
-struct BackButton: View {
-    let label: String
-    let color: RGBColor
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "chevron.left")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(color.color)
-                .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityLabel(Text(label))
-    }
-}
-
 /// "‹" in the close button's circle (40 pt, the text colour at 6%, the chevron 20 in the text colour, 44 pt target):
 /// the pair of buttons of a centred bar.
 struct CircleBackButton: View {

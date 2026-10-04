@@ -74,7 +74,7 @@ struct NewsScreenView: View {
         VStack(spacing: 0) {
             ScreenBar(closeLabel: article?.closeLabel ?? model.home.header.closeLabel, theme: theme,
                       close: { coordinator.dismiss() }) {
-                BackButton(label: article?.backLabel ?? "", color: theme.colors.textPrimary, action: { coordinator.back() })
+                CircleBackButton(label: article?.backLabel ?? "", theme: theme, action: { coordinator.back() })
             }
             .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
             if let article {

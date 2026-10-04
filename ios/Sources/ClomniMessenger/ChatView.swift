@@ -269,7 +269,7 @@ struct ChatHeaderView: View {
     var body: some View {
         ScreenBar(closeLabel: header.closeLabel, theme: theme, close: close) {
             HStack(spacing: CGFloat(ClomniTheme.Space.s)) {
-                BackButton(label: header.backLabel, color: theme.colors.textPrimary, action: back)
+                CircleBackButton(label: header.backLabel, theme: theme, action: back)
                 lead
                     .frame(width: CGFloat(ClomniTheme.Size.headerLead), height: CGFloat(ClomniTheme.Size.headerLead))
                 VStack(alignment: .leading, spacing: 0) {
