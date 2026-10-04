@@ -69,7 +69,8 @@ struct HomeView: View {
             }
             .ignoresSafeArea(.container, edges: .top)
         }
-        .background(theme.colors.background.color.ignoresSafeArea())
+        // The page: canvas grey in light mode (the white cards stand on it, the fade ends in it), background in dark.
+        .background((theme.isDark ? theme.colors.background : theme.colors.canvas).color.ignoresSafeArea())
     }
 }
 
