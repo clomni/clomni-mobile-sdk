@@ -3,20 +3,19 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.QuickReplyBlock
 import ai.clomni.messenger.presentation.ReplyButton
-import ai.clomni.messenger.protocol.MessageContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -29,16 +28,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * The live step's buttons: end-aligned pills, one under another (vertical) or side by side and wrapping (chips), then
- * a grey "← Geri". A tap fades them out (200 ms) and the choice stays as the user's message.
+ * The live step's choices (operator, 2026-10-04): capsules aligned to the end, each on its own line whatever the
+ * step's layout, 8 apart, 12 under the last message; then a grey "← Geri". A tap fades them out (200 ms) and the
+ * choice stays as the user's message.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (String) -> Unit) {
     var chosen by remember(block.messageId) { mutableStateOf(false) }
@@ -49,55 +49,53 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
             tap(id)
         }
     }
-    // 40 dp pills 8 apart: their 48 dp targets meet without covering each other (brief 7.6, DESIGN-PASS-2 13).
-    val gap = Arrangement.spacedBy(8.dp, Alignment.End)
-    val rows = Arrangement.spacedBy(8.dp)
     val buttons = block.buttons + listOfNotNull(block.back)
-    val modifier = Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.s.dp).alpha(opacity)
-    Box(modifier, Alignment.CenterEnd) {
-        val inner = Modifier.widthIn(max = 240.dp)
-        if (block.layout == MessageContent.QuickRepliesLayout.CHIPS) {
-            FlowRow(inner, horizontalArrangement = gap, verticalArrangement = rows) {
-                for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
-            }
-        } else {
-            Column(inner, verticalArrangement = rows, horizontalAlignment = Alignment.End) {
-                for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
-            }
+    Box(Modifier.fillMaxWidth().padding(top = 12.dp).alpha(opacity), Alignment.CenterEnd) {
+        // A long choice wraps inside 85% of the width rather than running to the other edge.
+        Column(Modifier.fillMaxWidth(0.85f), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+            for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
         }
     }
 }
 
 /**
- * A pill (DESIGN-PASS-2 13): 40 dp high, white with a 1 dp border, text 15, 16 dp to its sides, radius 20; up to two
- * lines, then "…". Its tap target reaches 48 dp.
+ * A capsule: at least 44 high, white (surface in dark) with a 1.5 dp border in the text colour at 18% (24% in dark),
+ * 20 to its sides and 10 above and below, text 16 regular that wraps and is never cut; pressed, the text colour at
+ * 6%. Its tap target reaches 48 dp.
  */
 @Composable
 private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabled: Boolean, choose: (String) -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
-    val reach = 4.dp
+    val shape = RoundedCornerShape(50)
+    val reach = 2.dp
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val text = theme.colors.textPrimary.color
+    val fill = when {
+        pressed -> text.copy(alpha = 0.06f)
+        theme.isDark -> theme.colors.surface.color
+        else -> theme.colors.background.color
+    }
     val target = Modifier.bleed(vertical = reach).let {
-        if (enabled) it.button(button.accessibilityLabel) { choose(button.id) } else it
+        if (enabled) {
+            it.clickable(interaction, indication = null, role = Role.Button) { choose(button.id) }
+                .clearAndSetSemantics { contentDescription = button.accessibilityLabel }
+        } else {
+            it
+        }
     }
     Box(target.padding(vertical = reach).wrapContentWidth(Alignment.End)) {
         Box(
-            Modifier.heightIn(min = 40.dp)
+            Modifier.heightIn(min = 44.dp)
                 .clip(shape)
-                .background(theme.colors.background.color)
-                .border(1.dp, theme.colors.border.color, shape)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .background(fill)
+                .border(1.5.dp, text.copy(alpha = if (theme.isDark) 0.24f else 0.18f), shape)
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             Alignment.Center,
         ) {
             BasicText(
                 button.title,
-                style = clomniText(
-                    15f,
-                    if (isBack) theme.colors.textSecondary else theme.colors.textPrimary,
-                    if (isBack) FontWeight.Normal else FontWeight.Medium,
-                    lineHeight = 1.3f,
-                ).copy(textAlign = TextAlign.End),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                style = clomniText(16f, if (isBack) theme.colors.textSecondary else theme.colors.textPrimary, lineHeight = 1.3f)
+                    .copy(textAlign = TextAlign.Start),
             )
         }
     }
