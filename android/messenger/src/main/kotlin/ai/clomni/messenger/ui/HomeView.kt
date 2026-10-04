@@ -73,7 +73,7 @@ import coil.compose.AsyncImage
  */
 @Composable
 internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions) {
-    Box(Modifier.fillMaxSize().background(theme.colors.background.color)) {
+    Box(Modifier.fillMaxSize().background(homePage(theme).color)) {
         // The full brand colour reaches 16 dp under the greeting, then fades into the page over 160 dp: the text
         // always stands on the full colour, and a larger title_scale takes the colour further down with it.
         var greetingBottom by remember { mutableStateOf(0f) }
@@ -118,7 +118,7 @@ private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme,
     }
     val brand = theme.colors.headerFrom.color
     val light = lighter(theme.colors.headerFrom).color
-    val page = theme.colors.background.color
+    val page = homePage(theme).color
     return drawBehind {
         val fadeStart = greetingBottom + 16.dp.toPx()
         val end = fadeStart + 160.dp.toPx()
@@ -140,6 +140,12 @@ private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme,
         drawRect(Brush.verticalGradient(listOf(page.copy(alpha = 0f), page), startY = fadeStart, endY = end), size = area)
     }
 }
+
+/**
+ * Home's page under the cards and the fade: the light neutral grey (canvas, as the list) so the white cards keep their
+ * edge without leaning on a shadow; dark mode keeps iOS's tokens, the page background under surface cards.
+ */
+private fun homePage(theme: ClomniTheme) = if (theme.isDark) theme.colors.background else theme.colors.canvas
 
 private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
