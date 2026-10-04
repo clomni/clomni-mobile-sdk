@@ -199,8 +199,7 @@ package struct FormCard: Sendable, Equatable {
 package struct ChatComposer: Sendable, Equatable {
     package enum Mode: Sendable, Equatable {
         case open
-        /// The step waits for a button and takes no text: the field stays, greyed, "Yuxarıdan birini seçin", no
-        /// icons (DESIGN-PASS-2 13).
+        /// The step waits for a choice and takes no text: no composer at all (operator, 2026-10-04).
         case locked(String)
         /// "Söhbət bağlanıb · Yeni söhbət başlat"; writing anyway reopens it.
         case closed(text: String, action: String)

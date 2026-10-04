@@ -52,6 +52,11 @@ struct ChatView: View {
     @State private var pickingFile = false
     @State private var staged: StagedFile?
     @State private var screenWidth: CGFloat = 390
+    private var composerShown: Bool {
+        if case .locked = model.screen.composer.mode { return false }
+        return true
+    }
+
     /// The transcript has been scrolled to its end once.
     @State private var atBottom = false
     @State private var fullScreenImage: ImageURL?
@@ -82,10 +87,17 @@ struct ChatView: View {
             }
             transcript
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
-                         staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew)
+            // While a flow waits for a choice there is no composer at all (operator, 2026-10-04): the choices stand at
+            // the end of the conversation. It comes back, sliding up and fading in over 200 ms, when the flow takes
+            // text, ends, or an operator joins.
+            if composerShown {
+                ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
+                             staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .background(theme.colors.background.color.ignoresSafeArea())
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: composerShown)
         .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
         .environment(\.clomniScreenWidth, screenWidth)
         .background(GeometryReader { proxy in

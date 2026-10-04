@@ -22,9 +22,9 @@ struct StagedFile: Equatable {
 
 /// White, with a 1 pt line on top (DESIGN-PASS-2 11): the field (surface, radius 20, at least 44 high, up to 5 lines
 /// then it scrolls), the emoji and attach icons (24) inside it, and once there is something to send the round send
-/// button (36, brand colour) in the attach icon's place, coming in over 150 ms. A step that waits for a button keeps
-/// the field, greyed and saying so, without icons (13); a closed conversation offers a new one, and writing anyway
-/// reopens it. A picked file waits above it as a 64 pt square with its ×.
+/// button (36, brand colour) in the attach icon's place, coming in over 150 ms. A closed conversation offers a new one, and writing anyway
+/// reopens it. A picked file waits above it as a 64 pt square with its ×. (While a flow waits for a choice the
+/// conversation shows no composer at all.)
 struct ComposerView: View {
     let composer: ChatComposer
     let theme: ClomniTheme
@@ -56,17 +56,6 @@ struct ComposerView: View {
     @ViewBuilder
     private var content: some View {
         switch composer.mode {
-        case .locked(let hint):
-            // The field stays where it was, greyed: the step takes a button, not text.
-            Text(hint)
-                .clomniFont(ClomniTheme.FontSize.text)
-                .foregroundStyle(theme.colors.textSecondary.color)
-                .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.touchTarget), alignment: .leading)
-                .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
-                .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.input), style: .continuous)
-                    .fill(theme.colors.surface.color))
-                .opacity(0.6)
-                .accessibilityAddTraits(.isStaticText)
         case .closed(let closed, let action) where !writeAnyway:
             HStack(spacing: CGFloat(ClomniTheme.Space.xs)) {
                 Button {
