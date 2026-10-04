@@ -1,7 +1,5 @@
 package ai.clomni.messenger.ui
 
-import android.net.Uri
-import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ChatAvatar
 import ai.clomni.messenger.presentation.ChatController
 import ai.clomni.messenger.presentation.ChatHeader
@@ -13,6 +11,7 @@ import ai.clomni.messenger.presentation.toward
 import ai.clomni.messenger.protocol.MessengerConfig
 import android.content.Context
 import android.content.ContextWrapper
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistryOwner
@@ -22,7 +21,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +32,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -64,7 +61,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -237,7 +233,9 @@ internal fun ChatScreenView(
     picked: PickedPreview? = null,
 ) {
     Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
-        ChatHeaderView(screen.header, theme, actions)
+        // The bar's line shows once the transcript has something above what is on screen.
+        var scrolled by remember { mutableStateOf(false) }
+        ChatHeaderView(screen.header, theme, actions, scrolled)
         screen.offline?.let { OfflineStrip(it, theme) }
         val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
         when (screen.phase) {
@@ -249,7 +247,7 @@ internal fun ChatScreenView(
                 screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
             }
             HomeScreen.Phase.READY -> if (lazy) {
-                LazyTranscript(screen.items, theme, actions, body, loadingOlder, screen.loadingLabel)
+                LazyTranscript(screen.items, theme, actions, body, loadingOlder, screen.loadingLabel) { scrolled = it }
             } else {
                 Column(
                     body.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
@@ -276,6 +274,7 @@ private fun LazyTranscript(
     modifier: Modifier,
     loadingOlder: Boolean = false,
     loadingLabel: String = "",
+    scrolled: (Boolean) -> Unit = {},
 ) {
     // While older messages load, item 0 is their indicator and the messages follow it.
     val last = items.size - 1 + if (loadingOlder) 1 else 0
@@ -292,6 +291,8 @@ private fun LazyTranscript(
         placed = true
     }
     val reachedTop by rememberUpdatedState(actions.reachedTop)
+    val report by rememberUpdatedState(scrolled)
+    LaunchedEffect(state) { snapshotFlow { state.canScrollBackward }.collect { report(it) } }
     LaunchedEffect(state) {
         snapshotFlow { state.firstVisibleItemIndex == 0 && state.layoutInfo.totalItemsCount > 0 }
             .collect { atTop -> if (atTop) reachedTop() }
@@ -340,23 +341,15 @@ private fun Announcer(id: String?, text: String?) {
 }
 
 /**
- * White bar with the bottom hairline: the brand-coloured back arrow, who answers (team avatars 24, or the operator
- * 28 with the green dot), title 14.5/600 with the grey line 12 under it, ✕.
+ * The conversation's [TopBar]: in the middle who answers (avatar 32, with the green dot for an operator online), the
+ * name 17 semibold and the subtitle 13 under it.
  */
 @Composable
-internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: ChatActions) {
-    Column(Modifier.fillMaxWidth().background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
-        // One height whatever comes and goes in it (a subtitle, typing, the operator's dot, the team's faces): one
-        // line each, so only the user's font size changes it (DESIGN-PASS-2 10).
-        Row(
-            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).heightIn(min = 48.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val target = ClomniTheme.Size.touchTarget.dp
-            Box(Modifier.padding(start = 4.dp).size(target).button(header.backLabel, actions.back), Alignment.Center) {
-                Icon(R.drawable.clomni_ic_back, theme.colors.textPrimary, 10.dp, Modifier.size(10.dp, 17.dp))
-            }
-            Spacer(Modifier.width(4.dp))
+internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: ChatActions, scrolled: Boolean = false) {
+    // One height whatever comes and goes in it (a subtitle, typing, the operator's dot, the team's faces): one line
+    // each, so only the user's font size changes it (DESIGN-PASS-2 10).
+    TopBar(header.backLabel, actions.back, header.closeLabel, actions.close, theme, scrolled) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box {
                 val avatar = when (val lead = header.lead) {
                     is ChatHeader.Lead.Team -> ChatAvatar(lead.urls.firstOrNull(), "", false)
@@ -372,8 +365,8 @@ internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: Cha
                     )
                 }
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f, fill = false).semantics(mergeDescendants = true) { heading() }) {
                 BasicText(
                     header.title,
                     style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
@@ -387,10 +380,7 @@ internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: Cha
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.width(8.dp))
-            CloseButton(header.closeLabel, CloseStyle.ON_SURFACE, theme, actions.close, Modifier.padding(end = 12.dp))
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
     }
 }
 
