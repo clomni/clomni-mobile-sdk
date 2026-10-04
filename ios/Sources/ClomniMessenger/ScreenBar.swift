@@ -97,6 +97,29 @@ struct BackButton: View {
     }
 }
 
+/// "‹" in the close button's circle (40 pt, the text colour at 6%, the chevron 20 in the text colour, 44 pt target):
+/// the pair of buttons of a centred bar.
+struct CircleBackButton: View {
+    let label: String
+    let theme: ClomniTheme
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: CGFloat(ClomniTheme.Size.closeGlyph) - 2, weight: .semibold))
+                .frame(width: CGFloat(ClomniTheme.Size.closeGlyph), height: CGFloat(ClomniTheme.Size.closeGlyph))
+                .foregroundStyle(theme.colors.textPrimary.color)
+                .frame(width: CGFloat(ClomniTheme.Size.closeCircle), height: CGFloat(ClomniTheme.Size.closeCircle))
+                .background(Circle().fill(theme.colors.textPrimary.color.opacity(0.06)))
+                .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(Text(label))
+    }
+}
+
 /// Every screen's top bar: `leading` (back, the logo, who answers) and ✕ at the end, the buttons 16 pt from the sides
 /// and the 40 pt circle 12 pt under the safe area. The 44 pt targets reach 2 pt past the circle, so the bar's own
 /// padding is 2 pt less.
