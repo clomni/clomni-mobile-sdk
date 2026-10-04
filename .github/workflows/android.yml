@@ -34,7 +34,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       # Unit tests against protocol/fixtures, the Paparazzi screenshots against src/test/snapshots (each also checking
       # 48 dp tap targets), Protocol and Store coverage of at least 80% (lines and branches), the public API against
-      # messenger/api/messenger.api, the release AAR at most 1.5 MB, the device tests compiled, and the sample.
+      # messenger/api/messenger.api, the release AAR at most 1.75 MB, the device tests compiled, and the sample.
       - run: ./gradlew --no-daemon :messenger:verifyPaparazziDebug :messenger:koverVerifyDebug :messenger:koverXmlReportDebug :messenger:apiCheck :messenger:checkAarSize :messenger:assembleDebugAndroidTest :sample:assembleDebug
       - if: always()
         uses: actions/upload-artifact@v4
