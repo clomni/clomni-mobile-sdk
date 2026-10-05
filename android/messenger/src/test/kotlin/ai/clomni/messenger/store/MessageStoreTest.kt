@@ -211,6 +211,48 @@ class MessageStoreTest {
         assertFalse(store.canAnswer(store.message("msg_3")!!))
     }
 
+    private val stepButtons = listOf(MessageContent.Button("o_1", "Texniki problem", null, "node:T"))
+
+    private fun step(seq: Long, interactive: Boolean = true) = message(seq, interactive = interactive)
+        .copy(content = MessageContent.QuickReplies("Problem nədədir?", stepButtons, MessageContent.QuickRepliesLayout.VERTICAL, true, false))
+
+    /**
+     * Operator, 2026-10-05 (B1): the same message comes over the socket and again from the catch-up. Whichever copy
+     * arrives first, the one with buttons is shown once and keeps them.
+     */
+    @Test
+    fun choicesSurviveTheSocketAndTheCatchUp() {
+        store.putMessages("conv_1", listOf(message(1)), syncedThrough = 1)
+        // The socket's copy came without buttons; the catch-up page has them under the same id and seq.
+        assertEquals(1L, store.putMessage(message(3, interactive = true)))
+        store.putMessages("conv_1", listOf(message(2, clientId = "c_2", text = "Texniki problem"), step(3)), syncedThrough = 3)
+        assertEquals(listOf(1L, 2L, 3L), seqs())
+        assertTrue(store.message("msg_3")!!.content is MessageContent.QuickReplies)
+        assertTrue(store.canAnswer(store.message("msg_3")!!))
+        // The socket repeats it after the page: still one message, still answerable.
+        assertNull(store.putMessage(step(3)))
+        assertEquals(3, store.messages("conv_1").size)
+        assertTrue(store.canAnswer(store.message("msg_3")!!))
+    }
+
+    /** Two choice steps in a row: the first answered on this device, the next one arriving before the user's own copy. */
+    @Test
+    fun theNextStepIsAnswerableOnceThePreviousIsAnswered() {
+        store.putMessages("conv_1", listOf(message(1), step(2)), syncedThrough = 2)
+        store.markAnswered("msg_2")
+        // The bot's next step overtakes the server's copy of the user's choice.
+        assertEquals(2L, store.putMessage(step(4)))
+        assertFalse(store.canAnswer(store.message("msg_2")!!))
+        assertTrue(store.canAnswer(store.message("msg_4")!!))
+        store.putMessage(message(3, clientId = "c_3", text = "Texniki problem"))
+        store.putMessage(step(2, interactive = false))
+        assertEquals(listOf(1L, 2L, 3L, 4L), seqs())
+        assertTrue(store.canAnswer(store.message("msg_4")!!))
+        // The server's word decides: a copy it no longer waits on (flow.interactive false) shows no choices.
+        store.putMessage(step(4, interactive = false))
+        assertFalse(store.canAnswer(store.message("msg_4")!!))
+    }
+
     @Test
     fun keptOnDiskForTheNextLaunch() {
         val dir = folder.newFolder()
