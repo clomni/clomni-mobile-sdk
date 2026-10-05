@@ -7,6 +7,7 @@ import ai.clomni.messenger.ClomniThemeMode
 import ai.clomni.messenger.ClomniUser
 import ai.clomni.messenger.ConversationStartedListener
 import ai.clomni.messenger.FlowCompletedListener
+import ai.clomni.messenger.LinkListener
 import ai.clomni.messenger.MessengerClosedListener
 import ai.clomni.messenger.MessengerOpenedListener
 import ai.clomni.messenger.UnreadCountListener
@@ -58,6 +59,7 @@ class ClomniFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
         Clomni.onMessengerClosed(null)
         Clomni.onConversationStarted(null)
         Clomni.onFlowCompleted(null)
+        Clomni.onLink(null)
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -106,6 +108,11 @@ class ClomniFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
             "setTheme" -> Clomni.setTheme(call.argument<String>("primaryColor"),
                 call.argument<String>("typeface")?.let(::typeface),
                 call.argument<String>("mode")?.let { ClomniThemeMode.valueOf(it.uppercase()) })
+            "setSoundsEnabled" -> Clomni.setSoundsEnabled(call.arguments as Boolean)
+            "setLanguage" -> Clomni.setLanguage(call.arguments as String?)
+            // While Dart has an onLink listener, the messenger's links go to it as "link" and the SDK leaves them be.
+            "setLinkListener" -> Clomni.onLink(
+                if (call.arguments as Boolean) LinkListener { url -> send("link", text = url); true } else null)
             "present" -> Clomni.present(call.arguments as String?)
             "presentNewConversation" -> Clomni.presentNewConversation(call.arguments as String?)
             "presentConversation" -> Clomni.presentConversation(call.arguments as String)

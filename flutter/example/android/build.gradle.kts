@@ -2,7 +2,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        // ai.clomni:messenger from ../../scripts/publish-sdk-locally.gradle until it is on Maven Central.
+        // ai.clomni:messenger published locally (README, Install) until it is on Maven Central.
         mavenLocal()
     }
 }

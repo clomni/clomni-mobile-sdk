@@ -38,6 +38,7 @@ public final class ClomniFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHa
         Clomni.onMessengerClosed = nil
         Clomni.onConversationStarted = nil
         Clomni.onFlowCompleted = nil
+        Clomni.onLink = nil
     }
 
     public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
@@ -92,6 +93,19 @@ public final class ClomniFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHa
             let mode = name.flatMap { modes[$0] }
             if name != nil, mode == nil { return result(Self.badArguments(call)) }
             Clomni.setTheme(primaryColor: text("primaryColor"), typeface: text("typeface"), mode: mode)
+        case "setSoundsEnabled":
+            guard let enabled = call.arguments as? Bool else { return result(Self.badArguments(call)) }
+            Clomni.setSoundsEnabled(enabled)
+        case "setLanguage":
+            Clomni.setLanguage(call.arguments as? String)
+        case "setLinkListener":
+            // While Dart has an onLink listener, the messenger's links go to it as "link" and the SDK leaves them be.
+            guard let enabled = call.arguments as? Bool else { return result(Self.badArguments(call)) }
+            if enabled {
+                Clomni.onLink = { [weak self] url in self?.send("link", text: url.absoluteString) }
+            } else {
+                Clomni.onLink = nil
+            }
         case "present":
             Clomni.present(source: call.arguments as? String)
         case "presentNewConversation":

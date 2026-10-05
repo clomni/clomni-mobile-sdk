@@ -7,6 +7,7 @@ import ai.clomni.messenger.ClomniThemeMode
 import ai.clomni.messenger.ClomniUser
 import ai.clomni.messenger.ConversationStartedListener
 import ai.clomni.messenger.FlowCompletedListener
+import ai.clomni.messenger.LinkListener
 import ai.clomni.messenger.MessengerClosedListener
 import ai.clomni.messenger.MessengerOpenedListener
 import ai.clomni.messenger.UnreadCountListener
@@ -51,6 +52,7 @@ internal class ClomniModuleImpl(
         Clomni.onMessengerClosed(null)
         Clomni.onConversationStarted(null)
         Clomni.onFlowCompleted(null)
+        Clomni.onLink(null)
     }
 
     fun setup(appId: String, apiKey: String, region: String) {
@@ -93,6 +95,15 @@ internal class ClomniModuleImpl(
         val themeMode = ClomniThemeMode.values().firstOrNull { it.name.equals(mode, ignoreCase = true) }
         if (mode != null && themeMode == null) Log.w(TAG, "setTheme: unknown mode \"$mode\"; the panel's mode stays")
         Clomni.setTheme(primaryColor, typeface?.let(::typeface), themeMode)
+    }
+
+    fun setSoundsEnabled(enabled: Boolean) = Clomni.setSoundsEnabled(enabled)
+
+    fun setLanguage(language: String?) = Clomni.setLanguage(language)
+
+    /** While JS has an onLink listener, the messenger's links go to it as "link" and the SDK leaves them be. */
+    fun setLinkListener(enabled: Boolean) {
+        Clomni.onLink(if (enabled) LinkListener { url -> emit(event("link", text = url)); true } else null)
     }
 
     private fun typeface(familyName: String): Typeface =

@@ -129,6 +129,21 @@ RCT_EXPORT_METHOD(setTheme:(nullable NSString *)primaryColor
   [_clomni setTheme:primaryColor typeface:typeface mode:mode];
 }
 
+RCT_EXPORT_METHOD(setSoundsEnabled:(BOOL)enabled)
+{
+  [_clomni setSoundsEnabled:enabled];
+}
+
+RCT_EXPORT_METHOD(setLanguage:(nullable NSString *)language)
+{
+  [_clomni setLanguage:language];
+}
+
+RCT_EXPORT_METHOD(setLinkListener:(BOOL)enabled)
+{
+  [_clomni setLinkListener:enabled];
+}
+
 RCT_EXPORT_METHOD(present:(nullable NSString *)source)
 {
   [_clomni presentWithSource:source];

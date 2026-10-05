@@ -36,6 +36,7 @@ public final class ClomniBridge: NSObject, @unchecked Sendable {
         Clomni.onMessengerClosed = nil
         Clomni.onConversationStarted = nil
         Clomni.onFlowCompleted = nil
+        Clomni.onLink = nil
     }
 
     @objc(setupWithAppId:apiKey:region:)
@@ -85,6 +86,26 @@ public final class ClomniBridge: NSObject, @unchecked Sendable {
             NSLog("[Clomni] setTheme: unknown mode \"%@\"; the panel's mode stays", mode)
         }
         Clomni.setTheme(primaryColor: primaryColor, typeface: typeface, mode: themeMode)
+    }
+
+    @objc(setSoundsEnabled:)
+    public func setSoundsEnabled(_ enabled: Bool) {
+        Clomni.setSoundsEnabled(enabled)
+    }
+
+    @objc(setLanguage:)
+    public func setLanguage(_ language: String?) {
+        Clomni.setLanguage(language)
+    }
+
+    /// While JS has an onLink listener, the messenger's links go to it as "link" and the SDK leaves them be.
+    @objc(setLinkListener:)
+    public func setLinkListener(_ enabled: Bool) {
+        if enabled {
+            Clomni.onLink = { [weak self] url in self?.send("link", text: url.absoluteString) }
+        } else {
+            Clomni.onLink = nil
+        }
     }
 
     @objc(presentWithSource:)

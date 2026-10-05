@@ -13,5 +13,5 @@ Pod::Spec.new do |s|
   s.dependency 'ClomniMessenger', '~> 1.0'
   s.platform = :ios, '15.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
-  s.swift_version = '5.9'
+  s.swift_version = '5.0'
 end

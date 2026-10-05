@@ -43,12 +43,17 @@ class Clomni {
 
   static Stream<Map<Object?, Object?>>? _events;
 
+  static StreamSubscription<Map<Object?, Object?>>? _link;
+
   /// The SDK's events, `{name, count?, text?}`, shared by every stream below.
   static Stream<Map<Object?, Object?>> get _nativeEvents =>
       _events ??= events.receiveBroadcastStream().map((event) => event as Map<Object?, Object?>);
 
   @visibleForTesting
-  static void resetForTesting() => _events = null;
+  static void resetForTesting() {
+    _events = null;
+    _link = null;
+  }
 
   /// Prepares the connection and push; adds nothing to the app's screens. Call it once, at the app's start.
   static Future<void> initialize(String appId, String apiKey, {String region = 'eu'}) =>
@@ -93,6 +98,23 @@ class Clomni {
   }
 
   static final _hexColor = RegExp(r'^#[0-9A-Fa-f]{6}$');
+
+  /// The short sounds for a message received while the conversation is open and one sent. On unless the panel turns
+  /// them off; false turns them off whatever the panel says. They follow the phone's silent mode.
+  static Future<void> setSoundsEnabled(bool enabled) => methods.invokeMethod('setSoundsEnabled', enabled);
+
+  /// The language the messenger speaks: "az", "en" or "ru", used when the panel has it on; otherwise the phone's
+  /// language if it is on, else the panel's main language. null (the default) follows the phone.
+  static Future<void> setLanguage(String? language) => methods.invokeMethod('setLanguage', language);
+
+  /// A link the messenger is about to open (a news item's button: a web address or the app's own deep link) goes to
+  /// [listener], and the app opens it its own way. Without a listener the system opens it. One listener: each call
+  /// replaces the last, null removes it.
+  static Future<void> onLink(void Function(String url)? listener) async {
+    await _link?.cancel();
+    _link = listener == null ? null : _named('link').listen((event) => listener(event['text'] as String? ?? ''));
+    await methods.invokeMethod('setLinkListener', listener != null);
+  }
 
   /// Home. [source] says where in the app (for example "profile_support").
   static Future<void> present({String? source}) => methods.invokeMethod('present', source);
