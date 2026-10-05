@@ -8,12 +8,16 @@ import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
+import ai.clomni.messenger.protocol.SenderType
 import ai.clomni.messenger.store.PendingMessage
 import java.io.File
 import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
+
+/** A short sound of the conversation (DESIGN-PASS-3 A7). */
+internal enum class ChatSound { INCOMING, SENT }
 
 /** Runs [action] after [delayMs] on the UI thread; the answer cancels it. */
 internal fun interface Scheduler {
@@ -39,7 +43,16 @@ internal class ChatController(
     private val timeZone: TimeZone = TimeZone.getDefault(),
     private val now: () -> Long = System::currentTimeMillis,
     private val typingTimeoutMs: Long = 8_000,
+    /** Plays a sound, on [main]; called only while the panel allows sounds. */
+    private val playSound: (ChatSound) -> Unit = {},
 ) {
+    /** A message newer than this arrived while the screen was open: it gets the incoming sound. */
+    private val openedAt = now()
+
+    private fun sound(sound: ChatSound) {
+        if (snapshot.config?.sounds != false) playSound(sound)
+    }
+
     /** Changes when "Yeni söhbət başlat" opens a new conversation in place of a closed one. */
     @Volatile
     var conversationId: String = conversationId
@@ -131,6 +144,7 @@ internal class ChatController(
             runCatching { source.sendText(text, id).get() }
             source.setTyping(false, id)
         }
+        sound(ChatSound.SENT)
         return true
     }
 
@@ -145,6 +159,7 @@ internal class ChatController(
         val message = snapshot.messages.firstOrNull { it.id == messageId } ?: return
         val replies = message.content as? MessageContent.QuickReplies ?: return
         val id = conversationId
+        sound(ChatSound.SENT)
         worker.execute {
             runCatching {
                 if (buttonId == BACK) {
@@ -164,6 +179,7 @@ internal class ChatController(
         val errors = FormInput.errors(form, values, strings)
         if (errors.isNotEmpty()) return errors
         val id = conversationId
+        sound(ChatSound.SENT)
         worker.execute {
             runCatching { source.submitForm(message, FormInput.payload(form, values)).get() }
             publish(read(id))
@@ -252,6 +268,14 @@ internal class ChatController(
                             hideTyping?.invoke()
                             hideTyping = null
                             snapshot = snapshot.copy(typing = null)
+                        }
+                        // Something new from the other side while the conversation is on screen.
+                        val known = before.messages.mapTo(HashSet()) { it.id }
+                        if (state.messages.any {
+                                it.id !in known && it.createdAt >= openedAt && it.sender.type != SenderType.USER && it.type != "system"
+                            }
+                        ) {
+                            sound(ChatSound.INCOMING)
                         }
                     }
                     source.markRead(id)

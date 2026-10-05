@@ -13,6 +13,7 @@ import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.Scheduler
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.store.MessageStore
+import ai.clomni.messenger.ui.MessageSounds
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -91,7 +92,10 @@ internal object AndroidMessenger {
         conversationId: String,
         language: String?,
         known: Map<String, String> = emptyMap(),
+        /** For the message sounds; none without it. */
+        context: Context? = null,
     ): ChatController {
+        context?.let(MessageSounds::prepare)
         val ui = Handler(Looper.getMainLooper())
         val worker = SerialExecutor(pool)
         val scheduler = Scheduler { delayMs, action ->
@@ -99,7 +103,16 @@ internal object AndroidMessenger {
             ui.postDelayed(runnable, delayMs)
             return@Scheduler { ui.removeCallbacks(runnable) }
         }
-        return ChatController(engine, conversationId, language, worker, main = { ui.post(it) }, scheduler, known)
+        return ChatController(
+            engine,
+            conversationId,
+            language,
+            worker,
+            main = { ui.post(it) },
+            scheduler,
+            known,
+            playSound = { sound -> context?.let { MessageSounds.play(it, sound) } },
+        )
     }
 
     /** What the parser dropped is a warning; what it showed as its fallback (a newer server), information. */

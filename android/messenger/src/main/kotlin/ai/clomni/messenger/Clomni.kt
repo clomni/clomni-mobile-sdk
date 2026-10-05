@@ -7,6 +7,7 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.ThemeOverride
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.ui.ClomniFonts
+import ai.clomni.messenger.ui.MessageSounds
 import ai.clomni.messenger.ui.MessengerRuntime
 import android.content.Context
 import android.graphics.Typeface
@@ -221,6 +222,15 @@ public object Clomni {
             ClomniLog.error { "setTheme: primaryColor \"$primaryColor\" is not #RRGGBB; the panel's colour stays" }
         }
         return ThemeOverride(color, mode?.mode)
+    }
+
+    /**
+     * The short sounds for a message received while the conversation is open and one sent. On unless the panel turns
+     * them off; false here turns them off whatever the panel says. They follow the phone's silent mode.
+     */
+    @JvmStatic
+    public fun setSoundsEnabled(enabled: Boolean) {
+        MessageSounds.appEnabled = enabled
     }
 
     /** Lifts the launcher above the app's bottom navigation, in dp. */

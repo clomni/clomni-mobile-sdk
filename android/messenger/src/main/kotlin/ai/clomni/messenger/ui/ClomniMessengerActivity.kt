@@ -34,11 +34,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -54,7 +57,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 /**
  * The messenger, full screen in an activity of its own (brief 8·7.2): it slides up over the app and back down when
@@ -202,7 +207,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     val openLink: (String) -> Unit = { url ->
         if (runtime.events.link?.invoke(url) != true) runCatching { uriHandler.openUri(url) }
     }
-    MessengerSheet(theme, closing, closed) {
+    MessengerSheet(theme, closing, closed, dismiss = close) {
         if (!state.ready || route == null) {
             // Not ready yet: the grey skeleton, the indicator in the middle while there is no look kept, ✕ working.
             val snapshot = if (state.failed) {
@@ -240,7 +245,8 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
                     if (news != null) NewsView(news, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
                 }
                 is MessengerRoute.Conversation -> key(coordinator.screenKey(shown.id)) {
-                    val chat = remember { AndroidMessenger.chatController(engine, shown.id, null, runtime.known) }
+                    val context = LocalContext.current
+                    val chat = remember { AndroidMessenger.chatController(engine, shown.id, null, runtime.known, context.applicationContext) }
                     DisposableEffect(chat, state.offline) {
                         chat.isOffline = state.offline
                         onDispose {}
@@ -275,7 +281,13 @@ private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
  * backwards (250 ms), then [closed]. With "Remove animations", it fades.
  */
 @Composable
-private fun MessengerSheet(theme: ai.clomni.messenger.presentation.ClomniTheme, closing: Boolean, closed: () -> Unit, content: @Composable () -> Unit) {
+private fun MessengerSheet(
+    theme: ai.clomni.messenger.presentation.ClomniTheme,
+    closing: Boolean,
+    closed: () -> Unit,
+    dismiss: () -> Unit,
+    content: @Composable () -> Unit,
+) {
     val still = reduceMotion()
     val visible = remember { MutableTransitionState(false) }
     visible.targetState = !closing
@@ -289,7 +301,9 @@ private fun MessengerSheet(theme: ai.clomni.messenger.presentation.ClomniTheme, 
     )
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (shown) scrim else 0f))) {
+    val drag = rememberSheetDrag(dismiss)
+    // Pulled down, the app shows through as the scrim lifts.
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (shown) scrim * (1f - drag.fraction) else 0f))) {
         AnimatedVisibility(
             visible,
             enter = if (still) fadeIn(tween(200)) else slideInVertically(tween(350, easing = EmphasizedDecelerate)) { it },
@@ -299,9 +313,23 @@ private fun MessengerSheet(theme: ai.clomni.messenger.presentation.ClomniTheme, 
                 Modifier.fillMaxSize()
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(top = 12.dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .background(theme.colors.background.color),
-            ) { content() }
+                    .sheetDrag(drag),
+            ) {
+                Box(
+                    Modifier.fillMaxSize()
+                        .offset { IntOffset(0, drag.offset.value.roundToInt()) }
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                        .background(theme.colors.background.color),
+                ) {
+                    val tint = if (theme.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f)
+                    CompositionLocalProvider(LocalPressTint provides tint) { content() }
+                    // The handle: 36×4, the text colour at 20%.
+                    Box(
+                        Modifier.align(Alignment.TopCenter).padding(top = 6.dp).size(36.dp, 4.dp)
+                            .clip(RoundedCornerShape(2.dp)).background(theme.colors.textPrimary.color.copy(alpha = 0.2f)),
+                    )
+                }
+            }
         }
     }
 }

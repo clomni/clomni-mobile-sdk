@@ -149,6 +149,10 @@ above a bottom navigation:
 findViewById<Switch>(R.id.launcher).setOnCheckedChangeListener { _, on -> Clomni.setLauncherVisible(on) }
 ```
 
+Sounds: a short one for a message received while a conversation is open and one sent, muted by the phone's silent
+mode and never pausing music. The panel can turn them off; `Clomni.setSoundsEnabled(false)` turns them off whatever
+it says.
+
 ## 8. Events
 
 <!-- sample: kotlin/ai/clomni/messenger/sample/MainActivity.kt#L47-L48 -->
