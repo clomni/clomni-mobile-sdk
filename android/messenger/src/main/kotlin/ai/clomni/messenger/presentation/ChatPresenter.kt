@@ -86,7 +86,7 @@ internal class ChatPresenter(
         val mode = when {
             snapshot.conversation?.status == ConversationStatus.CLOSED ->
                 ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
-            replies?.inputDisabled == true -> ChatComposer.Mode.Locked(strings[Key.CHOOSE_ABOVE])
+            replies?.inputDisabled == true -> ChatComposer.Mode.Hidden
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(

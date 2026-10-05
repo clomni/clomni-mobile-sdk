@@ -3,6 +3,7 @@ package ai.clomni.messenger.store
 import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
+import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolJson
@@ -105,12 +106,19 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     @Synchronized
     fun isAnswered(messageId: String): Boolean = messageId in answered
 
-    /** Only the latest interactive message of a conversation has live buttons, and only until it is answered. */
+    /**
+     * Only the latest interactive message of a conversation has live buttons, and only until it is answered. Choices
+     * (operator, 2026-10-04) also need to be the conversation's last word: a message after them (the user's choice, an
+     * operator) answered or ended them, which is all a reloaded history can tell.
+     */
     @Synchronized
     fun canAnswer(message: Message): Boolean {
         if (message.flow?.interactive != true || message.id in answered) return false
-        val latest = messages(message.conversationId).lastOrNull { it.flow?.interactive == true }
-        return latest == null || latest.id == message.id
+        val list = messages(message.conversationId)
+        val latest = list.lastOrNull { it.flow?.interactive == true }
+        if (latest != null && latest.id != message.id) return false
+        if (message.content !is MessageContent.QuickReplies) return true
+        return list.dropWhile { it.id != message.id }.drop(1).all { it.content is MessageContent.System }
     }
 
     // Mutations

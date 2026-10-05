@@ -1,6 +1,7 @@
 package ai.clomni.messenger.ui
 
 import ai.clomni.messenger.presentation.ChatAvatar
+import ai.clomni.messenger.presentation.ChatComposer
 import ai.clomni.messenger.presentation.ChatController
 import ai.clomni.messenger.presentation.ChatHeader
 import ai.clomni.messenger.presentation.ChatItem
@@ -18,8 +19,13 @@ import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -32,11 +38,13 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -257,7 +265,17 @@ internal fun ChatScreenView(
                 }
             }
         }
-        ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
+        // While a step waits for a button nothing is under the conversation; the composer comes back (200 ms, fading
+        // in as it rises) for free text, at the flow's end or when an operator joins (operator, 2026-10-04).
+        val composing = screen.composer.mode != ChatComposer.Mode.Hidden
+        AnimatedVisibility(
+            composing,
+            enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { it },
+            exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { it },
+        ) {
+            ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
+        }
+        if (!composing) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         Announcer(screen.announcement?.id, screen.announcement?.text)
     }
 }

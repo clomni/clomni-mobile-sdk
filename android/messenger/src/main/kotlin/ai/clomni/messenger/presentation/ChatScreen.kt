@@ -200,8 +200,8 @@ internal data class ChatComposer(
     sealed interface Mode {
         data object Open : Mode
 
-        /** The step waits for a button: "Yuxarıdakı variantlardan birini seçin", no icons. */
-        data class Locked(val text: String) : Mode
+        /** The step waits for a button: no composer at all, the choices end the conversation (operator, 2026-10-04). */
+        data object Hidden : Mode
 
         /** "Söhbət bağlanıb · Yeni söhbət başlat"; writing anyway reopens it. */
         data class Closed(val text: String, val action: String) : Mode
