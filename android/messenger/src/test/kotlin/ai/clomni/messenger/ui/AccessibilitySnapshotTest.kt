@@ -101,7 +101,7 @@ class AccessibilitySnapshotTest {
 
     private fun conversation(vararg messages: Message, answerable: Set<String> = emptySet(), offline: Boolean = false) = ChatSnapshot(
         config = Fixture.aparConfig,
-        conversation = ChatFixture.conversation("bot"),
+        conversation = ChatFixture.botConversation(messages.toList(), answerable),
         messages = messages.toList(),
         answerable = answerable,
         load = MessengerSnapshot.Load.LOADED,

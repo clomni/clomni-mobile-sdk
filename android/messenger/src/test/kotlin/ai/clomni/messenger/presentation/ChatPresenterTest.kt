@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -34,11 +35,20 @@ internal object ChatFixture {
         return protocol.parseMessage(JsonObject(fields).toString()) ?: error(name)
     }
 
-    /** A conversation in a given state, for the header; [assignee] is JSON. */
-    fun conversation(status: String, assignee: String = "null", id: String = "conv_5521"): Conversation =
+    /** A conversation in a given state, for the header; [assignee] and [flow] are JSON. */
+    fun conversation(status: String, assignee: String = "null", id: String = "conv_5521", flow: String = "null"): Conversation =
         protocol.parseConversation(
-            """{"id":"$id","status":"$status","assignee":$assignee,"created_at":"2026-10-01T10:00:00Z"}""",
+            """{"id":"$id","status":"$status","assignee":$assignee,"flow":$flow,"created_at":"2026-10-01T10:00:00Z"}""",
         )!!
+
+    /** A bot conversation whose flow waits on the buttons or the form of the [answerable] message, as the server says. */
+    fun botConversation(messages: List<Message>, answerable: Set<String>): Conversation {
+        val waiting = messages.lastOrNull { it.id in answerable }?.content ?: return conversation("bot")
+        return conversation("bot", flow = flow(if (waiting is MessageContent.Form) "form" else "menu"))
+    }
+
+    /** conversation.flow while a flow drives the conversation and waits for [awaiting]. */
+    fun flow(awaiting: String?) = """{"active":true,"awaiting":${awaiting?.let { "\"$it\"" }},"flow_id":"flw_1","node_id":"S"}"""
 
     fun config(json: String) = protocol.parseConfig(json)!!
 
@@ -274,7 +284,6 @@ class ChatPresenterTest {
         assertEquals("the role says \"button\" itself", "Azərbaycan dili, 1-ci, cəmi 3", block.buttons[0].accessibilityLabel)
         assertEquals(MessageContent.QuickRepliesLayout.VERTICAL, block.layout)
         assertNull(block.back)
-        assertEquals("nothing under a step that waits for a choice", ChatComposer.Mode.Hidden, open.composer.mode)
         assertTrue(text(bubbles(open).first())!!.startsWith("Salam, Clomni-yə"))
         assertEquals("replies-msg_f07", open.items.last().id)
 
@@ -282,19 +291,18 @@ class ChatPresenterTest {
         val answered = screen(listOf(ChatFixture.message("08-language-select-answered.json")))
         assertTrue(answered.items.none { it is ChatItem.RepliesItem })
         assertEquals(1, bubbles(answered).size)
-        assertEquals("the flow still has it: no composer between steps", ChatComposer.Mode.Hidden, answered.composer.mode)
-        val handedOver = screen(listOf(ChatFixture.message("08-language-select-answered.json"))) {
-            it.copy(conversation = ChatFixture.conversation("queued"))
-        }
-        assertEquals("handed over: the composer is back", ChatComposer.Mode.Open, handedOver.composer.mode)
-        val ended = ChatFixture.message("08-language-select-answered.json", "flow" to mapOf("flow_id" to "flw_1", "node_id" to "END", "interactive" to false))
-        assertEquals("the flow ended", ChatComposer.Mode.Open, screen(listOf(ended)).composer.mode)
-        val question = ChatFixture.message("01-text-bot.json", "flow" to mapOf("flow_id" to "flw_1", "node_id" to "ask_name", "interactive" to true))
-        assertEquals("a question answered in words", ChatComposer.Mode.Open, screen(listOf(question)).composer.mode)
-        val statement = ChatFixture.message("01-text-bot.json")
-        assertEquals("a flow's statement: its next step follows", ChatComposer.Mode.Hidden, screen(listOf(statement)).composer.mode)
-        val operator = ChatFixture.message("02-text-operator-markdown.json", "seq" to 99)
-        assertEquals("a message from outside the flow", ChatComposer.Mode.Open, screen(listOf(statement, operator)).composer.mode)
+
+        // The composer goes by conversation.flow alone (operator, 2026-10-05).
+        fun mode(flow: String, messages: List<Message> = listOf(languages)) =
+            screen(messages) { it.copy(conversation = ChatFixture.conversation("bot", flow = flow), answerable = setOf(languages.id)) }.composer.mode
+        assertEquals("a menu", ChatComposer.Mode.Hidden, mode(ChatFixture.flow("menu")))
+        assertEquals("a form", ChatComposer.Mode.Hidden, mode(ChatFixture.flow("form")))
+        assertEquals("a wait step: its next step follows", ChatComposer.Mode.Hidden, mode(ChatFixture.flow(null)))
+        assertEquals("a value this SDK does not know is not text", ChatComposer.Mode.Hidden, mode(ChatFixture.flow("buttons")))
+        assertEquals("a question answered in words", ChatComposer.Mode.Open, mode(ChatFixture.flow("text")))
+        assertEquals("ended, stopped or handed over", ChatComposer.Mode.Open, mode("""{"active":false,"awaiting":null}"""))
+        assertEquals("no flow sent (an older server): open", ChatComposer.Mode.Open, mode("null"))
+        assertEquals("the earlier form reads as none", ChatComposer.Mode.Open, mode("""{"flow_id":"flw_1","node_id":"S"}"""))
 
         // Apar S: chips, the back button, no composer.
         val step = ChatFixture.message("10-apar-level2-S-chips.json")
@@ -302,7 +310,6 @@ class ChatPresenterTest {
         val chipsBlock = (chips.items.last() as ChatItem.RepliesItem).block
         assertEquals(MessageContent.QuickRepliesLayout.CHIPS, chipsBlock.layout)
         assertEquals(ReplyButton("back", "← Geri", "Geri"), chipsBlock.back)
-        assertEquals(ChatComposer.Mode.Hidden, chips.composer.mode)
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
         val long = ChatFixture.message("13-button-title-over-80.json")
@@ -315,7 +322,6 @@ class ChatPresenterTest {
         val bare = ChatFixture.message("15-quick-replies-no-text.json")
         val bareScreen = screen(listOf(bare)) { it.copy(answerable = setOf(bare.id)) }
         assertTrue("no text, no bubble", bubbles(bareScreen).isEmpty())
-        assertEquals("a waiting choice hides the composer even with input_disabled false", ChatComposer.Mode.Hidden, bareScreen.composer.mode)
     }
 
     @Test
@@ -488,6 +494,47 @@ class ChatPresenterTest {
     }
 
     /** Every message fixture, valid or not, reaches the screen as something. */
+    /** DESIGN-PASS-3 F2: the quote in the bubble, over the field, and who may be answered. */
+    @Test
+    fun replies() {
+        fun quoteOf(file: String) = bubbles(screen(listOf(ChatFixture.message(file)))).single().quote
+        assertEquals(
+            Bubble.Quote("msg_f65", "Leyla", "Ödənişi kartla etmisiniz, yoxsa balansdan? Qəbzin şəklini də göndərə bilərsiniz, yoxlayaq."),
+            quoteOf("66-reply-user-to-operator.json"),
+        )
+        assertEquals("the user's own message is \"Siz\"", Bubble.Quote("msg_f62", "Siz", "qebz.jpg"), quoteOf("67-reply-operator-to-image.json"))
+        assertEquals(Bubble.Quote("msg_f60", "Siz", "Mesaj silinib"), quoteOf("68-reply-to-deleted.json"))
+        assertNull("a broken reply_to: the message without its quote", quoteOf("70-invalid-reply-to-without-kind.json"))
+
+        // Answering: the quote over the field; the user's message while it is on its way shows it too.
+        val operator = ChatFixture.message("02-text-operator-markdown.json")
+        val answering = screen(listOf(operator)) { it.copy(conversation = ChatFixture.conversation("open"), replyingTo = operator.id) }
+        val quote = answering.composer.quote!!
+        assertEquals(operator.id, quote.messageId)
+        assertFalse("one line", quote.excerpt.contains('\n'))
+        assertEquals("Bağla", answering.composer.cancelQuoteLabel)
+        assertEquals(listOf("Cavabla", "Kopyala"), listOf(answering.replyLabel, answering.copyLabel))
+        val bubble = bubbles(answering).single()
+        assertTrue(bubble.replyable)
+        assertEquals(operator.id, bubble.messageId)
+        assertNotNull(bubble.copyText)
+        val sending = screen(listOf(operator)) {
+            it.copy(pending = listOf(pending(ClientMessage.Text("Bəli", replyTo = operator.id), "Bəli")))
+        }
+        val mine = bubbles(sending).last()
+        assertEquals(quote, mine.quote)
+        assertFalse("still on its way: nothing to answer yet", mine.replyable)
+        assertEquals("Bəli", mine.copyText)
+
+        // A flow waiting for a choice: no composer, so nothing is answered; copying still works.
+        val menu = screen(listOf(operator)) {
+            it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), replyingTo = operator.id)
+        }
+        assertNull(menu.composer.quote)
+        assertFalse(bubbles(menu).single().replyable)
+        assertNotNull(bubbles(menu).single().copyText)
+    }
+
     @Test
     fun everyMessageFixtureRenders() {
         val protocol = ProtocolJson()

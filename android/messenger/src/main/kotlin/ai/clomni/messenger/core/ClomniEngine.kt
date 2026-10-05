@@ -321,13 +321,13 @@ internal class ClomniEngine(
     // Sending
 
     /** Trimmed; an empty text, or one over the config's limit, is refused. */
-    override fun sendText(text: String, conversationId: String): Future<PendingMessage> = submit {
+    override fun sendText(text: String, conversationId: String, replyTo: String?): Future<PendingMessage> = submit {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) throw ClomniError.Rejected("empty text")
         if (trimmed.codePointCount(0, trimmed.length) > (store.config?.limits?.textChars ?: 4_000)) {
             throw ClomniError.Rejected("text over the limit")
         }
-        enqueue(ClientMessage.Text(trimmed), conversationId, trimmed)
+        enqueue(ClientMessage.Text(trimmed, replyTo = replyTo), conversationId, trimmed)
     }
 
     /** A flow button. The message's buttons go dead at once, so a second tap sends nothing. */
@@ -370,11 +370,12 @@ internal class ClomniEngine(
         mime: String,
         caption: String?,
         conversationId: String,
+        replyTo: String?,
     ): Future<PendingMessage> = submit {
         val limits = store.config?.limits
         val megabytes = if (mime.startsWith("image/")) limits?.imageMb ?: 10 else limits?.fileMb ?: 25
         if (data.size > megabytes * 1_048_576L) throw ClomniError.Rejected("file over $megabytes MB")
-        val message = ClientMessage.Attachment(uploadId = "", caption = caption)
+        val message = ClientMessage.Attachment(uploadId = "", caption = caption, replyTo = replyTo)
         val stored = store.outbox.stage(message.clientId, data) ?: throw ClomniError.Rejected("file not stored")
         val upload = PendingUpload(fileName, mime, data.size.toLong(), stored)
         val entry = PendingMessage(target(conversationId), message, caption, clock(), upload = upload, openedFrom = draftSources[conversationId])

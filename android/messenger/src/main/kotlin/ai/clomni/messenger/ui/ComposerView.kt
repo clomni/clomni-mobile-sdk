@@ -5,7 +5,8 @@ import ai.clomni.messenger.presentation.ChatComposer
 import ai.clomni.messenger.presentation.ChatPresenter
 import ai.clomni.messenger.presentation.ClomniTheme
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -95,7 +96,15 @@ internal fun ComposerView(
             .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        // M7: a quote, a picked file or another line of text: the bar's height follows over 220 ms (not without motion).
+        val grows = if (reduceMotion()) Modifier else Modifier.animateContentSize(tween(220, easing = Motion.EmphasizedDecelerate))
+        Column(Modifier.fillMaxWidth().then(grows).padding(horizontal = 16.dp, vertical = 8.dp)) {
+            // The message being answered, over the field; the bar grows to it (animateContentSize, M7).
+            composer.quote?.let { QuoteStrip(it, composer.cancelQuoteLabel, theme, actions.cancelReply) }
+            // Answering puts the cursor in the field.
+            LaunchedEffect(composer.quote?.messageId) {
+                if (composer.quote != null && composer.mode == ChatComposer.Mode.Open) runCatching { focus.requestFocus() }
+            }
             if (picked != null) {
                 Preview(picked, composer.removeLabel, theme, actions.removePicked)
             }
@@ -221,12 +230,18 @@ private fun Field(
                         emoji = true
                     }
                 }
-                // Send takes the attach icon's place once there is something to send.
+                // Send takes the attach icon's place once there is something to send: it comes in on a spring from
+                // 0.6 (M7); with the system's animations off it only fades.
+                val still = reduceMotion()
                 AnimatedContent(
                     canSend,
                     transitionSpec = {
-                        (scaleIn(tween(150), initialScale = 0.6f) + fadeIn(tween(150))) togetherWith
-                            (scaleOut(tween(150), targetScale = 0.6f) + fadeOut(tween(150)))
+                        if (still) {
+                            fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                        } else {
+                            (scaleIn(spring(dampingRatio = 0.6f, stiffness = 500f), initialScale = 0.6f) + fadeIn(tween(150))) togetherWith
+                                (scaleOut(tween(120), targetScale = 0.6f) + fadeOut(tween(120)))
+                        }
                     },
                     label = "send",
                 ) { sending ->

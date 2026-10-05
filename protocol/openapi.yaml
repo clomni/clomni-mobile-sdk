@@ -607,6 +607,11 @@ paths:
         A `button_reply` or `form_submit` is checked against the conversation: an answer to a message that is no
         longer the latest interactive one is `409 stale_interaction`, a second answer to the same message is
         `409 already_answered`. On a 409 the client disables the buttons and reloads the message.
+
+        A `text` or `attachment` may answer an earlier message: `content.reply_to` is its id. The panel shows it as
+        a reply, and the message comes back with `reply_to {id, sender, excerpt, kind}`, as does an operator's
+        reply from the panel. A message the user cannot see or that does not exist is `400` with
+        `fields.reply_to: invalid`.
       parameters:
         - $ref: '#/components/parameters/Sdk'
         - $ref: '#/components/parameters/ConversationId'
@@ -623,6 +628,13 @@ paths:
                   type: text
                   content:
                     text: Gedişim bitmədi, pul çıxılmağa davam edir
+              text_reply:
+                value:
+                  client_id: 0b7d4f2e-9a61-4c8b-b3f0-5e2d1a7c6b94
+                  type: text
+                  content:
+                    text: Bəli, kartla ödəmişdim
+                    reply_to: msg_f65
               button_reply:
                 value:
                   client_id: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
@@ -1182,17 +1194,7 @@ components:
             - type: 'null'
             - $ref: './schema/message.json'
         flow:
-          description: The flow step the conversation waits on, if any.
-          oneOf:
-            - type: 'null'
-            - type: object
-              required: [flow_id, node_id]
-              properties:
-                flow_id:
-                  type: string
-                  pattern: '^flw_.+'
-                node_id:
-                  type: string
+          $ref: './schema/event.json#/$defs/conversation_flow'
         opened_from:
           oneOf:
             - type: 'null'
@@ -1212,6 +1214,8 @@ components:
         unread_count: 1
         last_message: null
         flow:
+          active: true
+          awaiting: menu
           flow_id: flw_apar_az
           node_id: S
         opened_from: profile_support

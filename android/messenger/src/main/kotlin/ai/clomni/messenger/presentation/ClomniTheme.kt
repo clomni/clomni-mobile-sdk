@@ -47,10 +47,11 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     )
 
     object Radius {
-        val message = 18f
+        /** M9: soft, 20; 6 where bubbles of one run meet. */
+        val message = 20f
 
         /** The corner where messages of one group meet. */
-        val messageJoined = 5f
+        val messageJoined = 6f
         val pill = 18f
         val card = 12f
         val input = 20f
@@ -100,7 +101,8 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     /** shadow.card: two soft layers in light mode; dark mode draws a 1 dp border instead. */
     data class Shadow(val opacity: Double, val radius: Double, val y: Double) {
         companion object {
-            val card = listOf(Shadow(0.06, 2.0, 1.0), Shadow(0.05, 10.0, 2.0))
+            /** M9: very light, y 2, blur 8, 6%. */
+            val card = listOf(Shadow(0.06, 8.0, 2.0))
         }
     }
 
@@ -157,7 +159,8 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
                 // The brief's #737780 is 4.49:1 on white, and less on the grey canvas and bubbles where it also sits
                 // (the composer's placeholder, "Powered by Clomni"); #6A6E7A reaches 4.5 on all three.
                 textSecondary = hex(if (dark) "#9A9DA6" else "#6A6E7A"),
-                border = hex(if (dark) "#2A2C32" else "#E7E8EB"),
+                // M9: a line is never darker than the text colour at 8%.
+                border = hex(if (dark) "#F2F3F5" else "#1B1D21").over(background, 0.08),
                 unread = unread,
                 errorText = unread.readableOn(behindText),
                 badge = unread.readableOn(listOf(RgbColor.WHITE)),

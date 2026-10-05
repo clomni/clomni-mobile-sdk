@@ -32,7 +32,17 @@ internal fun Conversation.toJson(): JsonObject = buildJsonObject {
     put("assignee", assignee?.toJson() ?: JsonNull)
     put("unread_count", unreadCount)
     put("last_message", lastMessage?.toJson() ?: JsonNull)
-    put("flow", flow?.let { buildJsonObject { put("flow_id", it.flowId); put("node_id", it.nodeId) } } ?: JsonNull)
+    put(
+        "flow",
+        flow?.let {
+            buildJsonObject {
+                put("active", it.active)
+                put("awaiting", it.awaiting)
+                putIfPresent("flow_id", it.flowId)
+                putIfPresent("node_id", it.nodeId)
+            }
+        } ?: JsonNull,
+    )
     put("opened_from", openedFrom)
     put("created_at", Iso8601.format(createdAt))
 }
@@ -67,6 +77,25 @@ internal fun Message.toJson(): JsonObject = buildJsonObject {
     )
     put("content", content.toJson())
     put("fallback_text", fallbackText)
+    replyTo?.let { quoted ->
+        put(
+            "reply_to",
+            buildJsonObject {
+                put("id", quoted.id)
+                put(
+                    "sender",
+                    quoted.sender?.let { sender ->
+                        buildJsonObject {
+                            put("type", sender.type.wire)
+                            putIfPresent("name", sender.name)
+                        }
+                    } ?: JsonNull,
+                )
+                put("excerpt", quoted.excerpt)
+                put("kind", quoted.kind)
+            },
+        )
+    }
 }
 
 private fun Assignee.toJson(): JsonObject = buildJsonObject {

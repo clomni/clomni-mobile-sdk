@@ -65,11 +65,13 @@ class ChatFixtureSnapshotTest {
             if (entry.schema != "message.json") continue
             // A message the parser drops (no seq, say) has nothing to show.
             val message = protocol.parseMessage(ProtocolFiles.read(entry.path)) ?: continue
+            val answerable = if (message.flow?.interactive == true) setOf(message.id) else emptySet()
             val screen = present(
                 ChatSnapshot(
                     config = config,
+                    conversation = ChatFixture.botConversation(listOf(message), answerable).takeIf { answerable.isNotEmpty() },
                     messages = listOf(message),
-                    answerable = if (message.flow?.interactive == true) setOf(message.id) else emptySet(),
+                    answerable = answerable,
                     load = MessengerSnapshot.Load.LOADED,
                 ),
             )
@@ -136,7 +138,7 @@ class ChatSnapshotTest {
 
     private fun loaded(vararg messages: Message, answerable: Set<String> = emptySet()) = ChatSnapshot(
         config = Fixture.aparConfig,
-        conversation = ChatFixture.conversation("bot"),
+        conversation = ChatFixture.botConversation(messages.toList(), answerable),
         messages = messages.toList(),
         answerable = answerable,
         load = MessengerSnapshot.Load.LOADED,
@@ -167,6 +169,18 @@ class ChatSnapshotTest {
 
     @Test
     fun offline() = snap("chat_offline", loaded(ChatFixture.message("01-text-bot.json")).copy(isOffline = true))
+
+    /** DESIGN-PASS-3 F2: answering the operator, the quote over the field; an earlier answer quoted in its bubble. */
+    @Test
+    fun replying() {
+        val operator = ChatFixture.message("02-text-operator-markdown.json")
+        val answer = ChatFixture.message("66-reply-user-to-operator.json", "seq" to 99)
+        snap(
+            "chat_replying",
+            loaded(operator, answer).copy(conversation = ChatFixture.conversation("open", leyla), replyingTo = operator.id),
+            draft = "Bəli",
+        )
+    }
 
     @Test
     fun closedConversation() = snap(

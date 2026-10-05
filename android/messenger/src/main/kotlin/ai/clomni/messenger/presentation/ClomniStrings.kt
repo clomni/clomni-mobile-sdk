@@ -83,6 +83,11 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
 
         // Push (CM-075): the Android notification channel's name.
         SUPPORT_MESSAGES("support_messages"),
+
+        // Replies (DESIGN-PASS-3 F2): the long-press menu, and a quote whose message is gone.
+        REPLY("reply"),
+        COPY("copy"),
+        QUOTE_DELETED("quote_deleted"),
     }
 
     /** az, en or ru; anything else reads as az. */
@@ -171,6 +176,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.INVALID_PHONE to "Telefon nömrəsi düzgün deyil", Key.INVALID_NUMBER to "Rəqəm yazın",
                 Key.TOO_LONG to "Ən çox %d simvol", Key.CHOOSE_OPTION to "Variantlardan birini seçin",
                 Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)", Key.SUPPORT_MESSAGES to "Dəstək mesajları",
+                Key.REPLY to "Cavabla", Key.COPY to "Kopyala", Key.QUOTE_DELETED to "Mesaj silinib",
                 Key.OPTIONAL to "(istəyə görə)",
             ),
             "en" to mapOf(
@@ -197,6 +203,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.INVALID_PHONE to "Enter a valid phone number", Key.INVALID_NUMBER to "Enter a number",
                 Key.TOO_LONG to "At most %d characters", Key.CHOOSE_OPTION to "Choose one of the options",
                 Key.FILE_TOO_LARGE to "The file is too large (max %d MB)", Key.SUPPORT_MESSAGES to "Support messages",
+                Key.REPLY to "Reply", Key.COPY to "Copy", Key.QUOTE_DELETED to "Message deleted",
                 Key.OPTIONAL to "(optional)",
             ),
             "ru" to mapOf(
@@ -221,6 +228,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.INVALID_PHONE to "Неверный номер телефона", Key.INVALID_NUMBER to "Введите число",
                 Key.TOO_LONG to "Не больше %d символов", Key.CHOOSE_OPTION to "Выберите вариант",
                 Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)", Key.SUPPORT_MESSAGES to "Сообщения поддержки",
+                Key.REPLY to "Ответить", Key.COPY to "Копировать", Key.QUOTE_DELETED to "Сообщение удалено",
                 Key.OPTIONAL to "(необязательно)",
             ),
         )

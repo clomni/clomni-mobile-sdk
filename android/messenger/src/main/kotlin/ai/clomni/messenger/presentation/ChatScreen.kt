@@ -23,6 +23,9 @@ internal data class ChatScreen(
     val failure: HomeScreen.Failure?,
     /** The newest incoming message, for TalkBack to read out when it changes. */
     val announcement: Announcement?,
+    /** A message's long-press menu: "Cavabla", "Kopyala". */
+    val replyLabel: String = "",
+    val copyLabel: String = "",
 )
 
 internal data class Announcement(val id: String, val text: String)
@@ -92,7 +95,18 @@ internal data class Bubble(
     val accessibilityLabel: String,
     /** Over the first bubble of an incoming run: who, the brand for the bot ("Clomni"), "Leyla". */
     val author: String? = null,
+    /** The message this one answers, in a small block at the top of the bubble; a tap scrolls to it. */
+    val quote: Quote? = null,
+    /** The server's id; null while the message is still on its way. */
+    val messageId: String? = null,
+    /** A swipe to the right or "Cavabla" quotes it in the composer: only while there is a composer to write in. */
+    val replyable: Boolean = false,
+    /** What "Kopyala" copies: the text or the caption; null when there is nothing to copy. */
+    val copyText: String? = null,
 ) {
+    /** Who wrote the quoted message ("Siz", "Leyla", the brand) and one line of it, or "Mesaj silinib". */
+    data class Quote(val messageId: String, val author: String, val excerpt: String)
+
     enum class Side { INCOMING, OUTGOING }
 
     /** Where the bubble stands in a run of one sender's messages; the corners where bubbles meet are 5 dp. */
@@ -200,6 +214,9 @@ internal data class ChatComposer(
     val cameraLabel: String,
     val fileLabel: String,
     val removeLabel: String,
+    /** The message being answered, over the field with its ✕ ([cancelQuoteLabel]). */
+    val quote: Bubble.Quote? = null,
+    val cancelQuoteLabel: String = "",
 ) {
     sealed interface Mode {
         data object Open : Mode
@@ -231,4 +248,6 @@ internal data class ChatSnapshot(
     val isOffline: Boolean = false,
     /** The user's details for prefilling forms: name, email, phone. */
     val known: Map<String, String> = emptyMap(),
+    /** The message the user is answering (swipe or "Cavabla"), until it is sent or dismissed. */
+    val replyingTo: String? = null,
 )

@@ -197,12 +197,30 @@ internal class ChatController(
     fun send(text: String): Boolean {
         if (!ChatPresenter.canSend(text, screen.composer.limit)) return false
         val id = conversationId
+        val quoted = takeQuote()
         worker.execute {
-            runCatching { source.sendText(text, id).get() }
+            runCatching { source.sendText(text, id, quoted).get() }
             source.setTyping(false, id)
         }
         sound(ChatSound.SENT)
         return true
+    }
+
+    /**
+     * Swipe or "Cavabla": [messageId] is quoted over the field and goes with the next message, text or file; null
+     * (the ✕) drops it. On [main].
+     */
+    fun replyTo(messageId: String?) {
+        if (snapshot.replyingTo == messageId) return
+        snapshot = snapshot.copy(replyingTo = messageId)
+        render()
+    }
+
+    /** The quote the composer shows, which the message being sent takes with it. On [main]. */
+    private fun takeQuote(): String? {
+        val quoted = screen.composer.quote?.messageId ?: return null
+        replyTo(null)
+        return quoted
     }
 
     /** The composer's text changed: typing is on while there is some. */
@@ -265,12 +283,13 @@ internal class ChatController(
      */
     fun attach(done: (String?) -> Unit = {}, read: () -> PickedFile?) {
         val id = conversationId
+        val quoted = takeQuote()
         worker.execute {
             val file = runCatching(read).getOrNull()
             val failure = when {
                 file == null -> IllegalStateException("unreadable")
                 else -> try {
-                    source.sendFile(file.data, file.fileName, file.mime, file.caption, id).get()
+                    source.sendFile(file.data, file.fileName, file.mime, file.caption, id, quoted).get()
                     null
                 } catch (e: ExecutionException) {
                     e.cause

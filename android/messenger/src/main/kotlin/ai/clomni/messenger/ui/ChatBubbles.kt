@@ -11,8 +11,9 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.SystemLine
 import ai.clomni.messenger.presentation.TextRun
 import ai.clomni.messenger.presentation.TypingLine
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -21,12 +22,17 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,24 +41,31 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -66,10 +79,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import kotlin.math.PI
+import kotlin.math.sin
 
 /** What the transcript hands back. */
 internal class ChatActions(
@@ -91,6 +107,10 @@ internal class ChatActions(
     val retryLoad: () -> Unit = {},
     val openImage: (url: String) -> Unit = {},
     val reachedTop: () -> Unit = {},
+    /** A swipe or "Cavabla": the message to quote over the field. */
+    val reply: (messageId: String) -> Unit = {},
+    /** The ✕ on the quote over the field. */
+    val cancelReply: () -> Unit = {},
 )
 
 /** The styled runs as one text: bold and italic spans; links underlined and tappable (https, tel, mailto only). */
@@ -124,15 +144,6 @@ internal fun reduceMotion(): Boolean {
     return remember(context) { Motion.reduced(context) }
 }
 
-/** A new item fades in (220 ms, ease-out), nothing moves (DESIGN-PASS 5: no flying elements). */
-@Composable
-internal fun Modifier.appearing(animate: Boolean): Modifier {
-    if (!animate) return this
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { progress.animateTo(1f, tween(220, easing = FastOutSlowInEasing)) }
-    return graphicsLayer { alpha = progress.value }
-}
-
 @Composable
 internal fun ChatItemView(item: ChatItem, theme: ClomniTheme, actions: ChatActions) {
     when (item) {
@@ -147,6 +158,15 @@ internal fun ChatItemView(item: ChatItem, theme: ClomniTheme, actions: ChatActio
         is ChatItem.TypingItem -> TypingRow(item.line, theme)
     }
 }
+
+/** How a new item of the transcript comes in (M3, M4); the choices come in by themselves (M5). */
+internal val ChatItem.arrival: Motion.Arrival?
+    get() = when (this) {
+        is ChatItem.BubbleItem -> if (bubble.side == Bubble.Side.INCOMING) Motion.Arrival.INCOMING else Motion.Arrival.OUTGOING
+        is ChatItem.TypingItem -> Motion.Arrival.TYPING
+        is ChatItem.RepliesItem -> null
+        else -> Motion.Arrival.FADE
+    }
 
 /** 18 dp, 5 where bubbles of one run meet; the user's always keep the 5 dp bottom-end corner. */
 internal fun Bubble.shape(): RoundedCornerShape {
@@ -178,71 +198,133 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
     val top = if (startsRun) ClomniTheme.Space.xl.dp else ClomniTheme.Space.xxs.dp
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.78f
     val gutter = ClomniTheme.Size.avatar.dp + ClomniTheme.Space.s.dp
-    Column(
-        Modifier.fillMaxWidth().padding(top = top),
-        horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
-    ) {
-        bubble.author?.let { author ->
-            BasicText(
-                author,
-                Modifier.padding(start = gutter, bottom = 4.dp).clearAndSetSemantics {},
-                style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+    val links = LocalTranscript.current
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    // A quote led here: the row glows in the brand colour for a second.
+    val glow by animateColorAsState(
+        if (links.highlighted == bubble.id) theme.colors.primary.color.copy(alpha = 0.12f) else Color.Transparent,
+        tween(if (links.highlighted == bubble.id) 200 else 700),
+        label = "quoted",
+    )
+    var menu by remember { mutableStateOf(false) }
+    val swipe = remember { ReplySwipe() }
+    val messageId = bubble.messageId
+    val replyable = bubble.replyable && messageId != null
+    val longPress: (() -> Unit)? = if (bubble.hasMenu) {
+        {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            menu = true
         }
-        Row(verticalAlignment = Alignment.Bottom) {
-            if (incoming) {
-                val avatar = bubble.avatar
-                if (avatar != null) {
-                    ChatAvatarView(avatar, ClomniTheme.Size.avatar, theme)
-                } else {
-                    Spacer(Modifier.width(ClomniTheme.Size.avatar.dp))
-                }
-                Spacer(Modifier.width(ClomniTheme.Space.s.dp))
-            }
-            Box(Modifier.widthIn(max = maxWidth)) { BubbleBody(bubble, theme, actions) }
+    } else {
+        null
+    }
+    // TalkBack has no long press on a bubble: the menu's two actions are its own.
+    val a11y = listOfNotNull(
+        if (replyable) CustomAccessibilityAction(links.replyLabel) { actions.reply(messageId!!); true } else null,
+        bubble.copyText?.let { text -> CustomAccessibilityAction(links.copyLabel) { copyText(context, text); true } },
+    )
+    Box(Modifier.fillMaxWidth().padding(top = top).background(glow, RoundedCornerShape(12.dp))) {
+        if (incoming && replyable) ReplyArrow(swipe, theme, Modifier.align(Alignment.CenterStart))
+        Column(
+            Modifier.fillMaxWidth().swipeToReply(replyable, swipe) { messageId?.let(actions.reply) },
+            horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
+        ) {
+            BubbleColumn(bubble, theme, actions, incoming, gutter, maxWidth, swipe.takeIf { replyable }, longPress, a11y)
+            if (menu) MessageMenu(bubble, theme, actions.reply) { menu = false }
         }
-        bubble.meta?.let { meta ->
-            BasicText(
-                meta,
-                Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = gutter).clearAndSetSemantics {},
-                style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
-            )
-        }
-        bubble.status?.let { StatusLine(it, theme, actions.retry) }
     }
 }
 
-/** The bubble itself: text, image, file card or form. */
+/** Who, the avatar slot, the bubble, then when and the status: the parts of a [BubbleRow] that move with a swipe. */
 @Composable
-private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions) {
+private fun BubbleColumn(
+    bubble: Bubble,
+    theme: ClomniTheme,
+    actions: ChatActions,
+    incoming: Boolean,
+    gutter: Dp,
+    maxWidth: Dp,
+    swipe: ReplySwipe?,
+    longPress: (() -> Unit)?,
+    a11y: List<CustomAccessibilityAction>,
+) {
+    bubble.author?.let { author ->
+        BasicText(
+            author,
+            Modifier.padding(start = gutter, bottom = 4.dp).clearAndSetSemantics {},
+            style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+    Row(verticalAlignment = Alignment.Bottom) {
+        if (incoming) {
+            val avatar = bubble.avatar
+            if (avatar != null) {
+                ChatAvatarView(avatar, ClomniTheme.Size.avatar, theme)
+            } else {
+                Spacer(Modifier.width(ClomniTheme.Size.avatar.dp))
+            }
+            Spacer(Modifier.width(ClomniTheme.Space.s.dp))
+        }
+        Box(Modifier.widthIn(max = maxWidth)) {
+            if (!incoming && swipe != null) ReplyArrow(swipe, theme, Modifier.align(Alignment.CenterStart).offset(x = (-36).dp))
+            BubbleBody(bubble, theme, actions, longPress, a11y)
+        }
+    }
+    bubble.meta?.let { meta ->
+        BasicText(
+            meta,
+            Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = gutter).clearAndSetSemantics {},
+            style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
+        )
+    }
+    bubble.status?.let { StatusLine(it, theme, actions.retry) }
+}
+
+/** The bubble itself: text, image, file card or form; a quote at its top when it answers a message. */
+@Composable
+private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions, longPress: (() -> Unit)?, a11y: List<CustomAccessibilityAction>) {
     val incoming = bubble.side == Bubble.Side.INCOMING
     val fill = if (incoming) theme.colors.surface else theme.colors.primary
     val ink = if (incoming) theme.colors.textPrimary else theme.colors.onPrimary
     val shape = bubble.shape()
+    val quote = bubble.quote
     when (val body = bubble.body) {
-        is Bubble.TextBody -> BasicText(
-            attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
+        is Bubble.TextBody -> Column(
             Modifier.clip(shape)
                 .background(fill.color)
-                .padding(vertical = 10.dp, horizontal = 14.dp)
-                .clearAndSetSemantics { contentDescription = bubble.accessibilityLabel },
-            style = clomniText(ClomniTheme.FontSize.message, ink),
-        )
-        is Bubble.ImageBody -> ImageBubble(body, bubble.accessibilityLabel, theme, fill, ink, actions.openImage)
-        is Bubble.FileBody -> {
+                .then(if (longPress != null) Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { longPress() }) } else Modifier)
+                .padding(vertical = if (quote != null) 6.dp else 10.dp, horizontal = if (quote != null) 6.dp else 14.dp),
+        ) {
+            if (quote != null) QuoteBlock(quote, ink, !incoming, Modifier.padding(bottom = 4.dp))
+            BasicText(
+                attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
+                (if (quote != null) Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp) else Modifier)
+                    .clearAndSetSemantics {
+                        contentDescription = bubble.accessibilityLabel
+                        if (a11y.isNotEmpty()) customActions = a11y
+                    },
+                style = clomniText(ClomniTheme.FontSize.message, ink),
+            )
+        }
+        is Bubble.ImageBody -> Quoted(quote, shape, fill, ink, !incoming) {
+            ImageBubble(body, bubble.accessibilityLabel, theme, fill, ink, actions.openImage, longPress, a11y)
+        }
+        is Bubble.FileBody -> Quoted(quote, shape, fill, ink, !incoming) {
             val uriHandler = LocalUriHandler.current
             FileCard(
                 body,
                 ink,
                 Modifier.clip(shape).background(fill.color)
-                    .clickable(enabled = body.url != null, role = Role.Button) {
+                    .combinedClickable(enabled = body.url != null || longPress != null, role = Role.Button, onLongClick = longPress) {
                         body.url?.let { runCatching { uriHandler.openUri(it) } }
                     }
                     .clearAndSetSemantics {
                         contentDescription = bubble.accessibilityLabel
                         role = Role.Button
+                        if (a11y.isNotEmpty()) customActions = a11y
                     },
             )
         }
@@ -251,6 +333,17 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             theme,
             Modifier.clip(shape).background(fill.color),
         ) { values -> actions.submit(body.messageId, values) }
+    }
+}
+
+/** An image or file that answers a message: the quote over it, both in one bubble of its colour. */
+@Composable
+private fun Quoted(quote: Bubble.Quote?, shape: Shape, fill: RgbColor, ink: RgbColor, outgoing: Boolean, content: @Composable () -> Unit) {
+    if (quote == null) return content()
+    Column(Modifier.width(IntrinsicSize.Max).clip(shape).background(fill.color).padding(4.dp)) {
+        QuoteBlock(quote, ink, outgoing, Modifier.fillMaxWidth().padding(2.dp))
+        Spacer(Modifier.height(4.dp))
+        content()
     }
 }
 
@@ -266,6 +359,8 @@ private fun ImageBubble(
     fill: RgbColor,
     ink: RgbColor,
     open: (String) -> Unit,
+    longPress: (() -> Unit)? = null,
+    a11y: List<CustomAccessibilityAction> = emptyList(),
 ) {
     val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
     // Previews and screenshot tests load nothing (and have no loader to load with).
@@ -282,10 +377,11 @@ private fun ImageBubble(
     val target = image.fullUrl ?: image.url
     Column(
         Modifier.clip(shape)
-            .clickable(enabled = target != null, role = Role.Button) { target?.let(open) }
+            .combinedClickable(enabled = target != null || longPress != null, role = Role.Button, onLongClick = longPress) { target?.let(open) }
             .clearAndSetSemantics {
                 contentDescription = label
                 role = Role.Image
+                if (a11y.isNotEmpty()) customActions = a11y
             },
     ) {
         // A grey place of the bubble's size until the picture is here (DESIGN-PASS 5).
@@ -347,7 +443,10 @@ private fun StatusLine(status: Bubble.Status, theme: ClomniTheme, retry: (String
     val style = clomniText(ClomniTheme.FontSize.meta, if (status.isFailure) theme.colors.errorText else theme.colors.textSecondary)
     val retryId = status.retryId
     if (retryId == null) {
-        BasicText(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), style = style)
+        // "Göndərilir" → "Göndərildi" → "Oxundu": only the words cross-fade, nothing moves (M3, 150 ms).
+        Crossfade(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), tween(150), label = "status") { text ->
+            BasicText(text, style = style)
+        }
     } else {
         // The 15 dp line reaches a 48 dp target without moving anything.
         val reach = 16.dp
@@ -392,13 +491,14 @@ private fun SystemLineView(line: SystemLine, theme: ClomniTheme) {
 @Composable
 private fun TypingRow(line: TypingLine, theme: ClomniTheme) {
     val still = reduceMotion() || LocalInspectionMode.current
-    val pulse by if (still) {
-        remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    // M4: one wave through the three dots, 1.2 s round, each 0.15 s behind the one before; still, they rest.
+    val phase = if (still) {
+        null
     } else {
         rememberInfiniteTransition(label = "typing").animateFloat(
             0f,
             1f,
-            infiniteRepeatable(tween(600), RepeatMode.Reverse),
+            infiniteRepeatable(tween(TYPING_PERIOD_MS, easing = LinearEasing), RepeatMode.Restart),
             label = "dots",
         )
     }
@@ -414,16 +514,27 @@ private fun TypingRow(line: TypingLine, theme: ClomniTheme) {
                 .padding(vertical = 12.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            val lift = with(LocalDensity.current) { 2.dp.toPx() }
             for (index in 0 until 3) {
-                val rest = 0.5f + 0.2f * index
                 Box(
-                    Modifier.size(6.dp).alpha(rest + (0.9f - rest) * pulse).clip(CircleShape)
-                        .background(theme.colors.textSecondary.color),
+                    Modifier.size(6.dp).graphicsLayer {
+                        val t = phase?.value
+                        if (t == null) {
+                            alpha = 0.5f + 0.2f * index
+                        } else {
+                            val wave = (sin(2 * PI * (t - index * TYPING_LAG_MS / TYPING_PERIOD_MS.toFloat())).toFloat() + 1f) / 2f
+                            alpha = 0.4f + 0.5f * wave
+                            translationY = -lift * wave
+                        }
+                    }.clip(CircleShape).background(theme.colors.textSecondary.color),
                 )
             }
         }
     }
 }
+
+private const val TYPING_PERIOD_MS = 1_200
+private const val TYPING_LAG_MS = 150
 
 /** A person's face, or the bot's: a brand-coloured circle with its initial until its picture is here. */
 @Composable

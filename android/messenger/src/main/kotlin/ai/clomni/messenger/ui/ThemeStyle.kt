@@ -3,6 +3,7 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.ThemeOverride
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.heightIn
@@ -13,8 +14,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -73,12 +78,12 @@ internal fun clomniText(
 )
 
 /**
- * A card (DESIGN-PASS-2 5): white (the surface in dark mode), radius 16, padding 20, a shadow that is barely there
- * (y 1, blur 3, about 6%) and no border. With [onClick] the whole card is one button read out as [label].
+ * A card (DESIGN-PASS-2 5): white (the surface in dark mode), radius 16, padding 20, a very light shadow (M9: y 2,
+ * blur 8, 6%) and no border. With [onClick] the whole card is one button read out as [label].
  */
 internal fun Modifier.clomniCard(theme: ClomniTheme, label: String = "", onClick: (() -> Unit)? = null): Modifier {
     val shape = RoundedCornerShape(16.dp)
-    val lifted = if (theme.isDark) this else shadow(1.dp, shape, ambientColor = Color.Black.copy(alpha = 0.03f), spotColor = Color.Black.copy(alpha = 0.06f))
+    val lifted = if (theme.isDark) this else softShadow(16.dp, theme.colors.background.color)
     val clipped = lifted.clip(shape)
     // A tappable card is a 48 dp target even with one line in it.
     return (if (onClick != null) clipped.heightIn(min = ClomniTheme.Size.touchTarget.dp).button(label, shape, onClick = onClick) else clipped)
@@ -114,4 +119,26 @@ internal fun Modifier.bleed(horizontal: Dp = 0.dp, vertical: Dp = 0.dp): Modifie
     val width = (placeable.width - 2 * h).coerceAtLeast(0)
     val height = (placeable.height - 2 * v).coerceAtLeast(0)
     layout(width, height) { placeable.place(-h, -v) }
+}
+
+/**
+ * [ClomniTheme.Shadow.card] under a rounded rectangle of [radius]: drawn with a shadow layer, which the GPU draws for
+ * shapes from Android 9; before that an elevation shadow of about the same weight.
+ */
+internal fun Modifier.softShadow(radius: Dp, fill: Color): Modifier {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+        return shadow(1.dp, RoundedCornerShape(radius), ambientColor = Color.Black.copy(alpha = 0.03f), spotColor = Color.Black.copy(alpha = 0.06f))
+    }
+    val token = ClomniTheme.Shadow.card.first()
+    return drawWithCache {
+        // A CSS blur of 8 is a shadow layer of radius 6 (the layer's radius is about 0.75 of the blur).
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = fill.toArgb()
+            setShadowLayer((token.radius * 0.75).toFloat().dp.toPx(), 0f, token.y.toFloat().dp.toPx(), Color.Black.copy(alpha = token.opacity.toFloat()).toArgb())
+        }
+        val corner = radius.toPx()
+        onDrawBehind {
+            drawIntoCanvas { it.nativeCanvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint) }
+        }
+    }
 }

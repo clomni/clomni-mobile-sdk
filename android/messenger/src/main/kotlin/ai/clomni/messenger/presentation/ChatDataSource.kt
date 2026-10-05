@@ -40,7 +40,8 @@ internal interface ChatDataSource {
 
     fun setTyping(isTyping: Boolean, conversationId: String): Future<Unit>
 
-    fun sendText(text: String, conversationId: String): Future<PendingMessage>
+    /** [replyTo]: the message the user answers, quoted over the new one. */
+    fun sendText(text: String, conversationId: String, replyTo: String? = null): Future<PendingMessage>
 
     fun reply(message: Message, button: MessageContent.Button): Future<PendingMessage>
 
@@ -48,7 +49,14 @@ internal interface ChatDataSource {
 
     fun submitForm(message: Message, values: Map<String, JsonElement>): Future<PendingMessage>
 
-    fun sendFile(data: ByteArray, fileName: String, mime: String, caption: String?, conversationId: String): Future<PendingMessage>
+    fun sendFile(
+        data: ByteArray,
+        fileName: String,
+        mime: String,
+        caption: String?,
+        conversationId: String,
+        replyTo: String? = null,
+    ): Future<PendingMessage>
 
     fun retry(clientId: String): Future<Unit>
 

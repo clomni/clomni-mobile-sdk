@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -66,8 +65,8 @@ internal fun TopBar(
             }
             CloseButton(closeLabel, CloseStyle.ON_SURFACE, theme, close, Modifier.align(Alignment.CenterEnd).padding(end = TOP_BAR_EDGE))
         }
-        val hairline = with(LocalDensity.current) { 1f.toDp() }
-        Box(Modifier.fillMaxWidth().height(hairline).alpha(if (scrolled) 1f else 0f).background(theme.colors.border.color))
+        // M9: half a dp.
+        Box(Modifier.fillMaxWidth().height(0.5.dp).alpha(if (scrolled) 1f else 0f).background(theme.colors.border.color))
     }
 }
 

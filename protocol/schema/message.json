@@ -15,6 +15,7 @@
     "seq": { "type": "integer", "minimum": 1, "description": "Rises within the conversation; ordering uses it, never the id." },
     "lang": { "enum": ["az", "en", "ru"] },
     "flow": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/flow" }] },
+    "reply_to": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/reply_to" }], "description": "The message this one answers, quoted above the bubble; null when it answers none. On the first message of an album only." },
     "content": { "type": "object" },
     "fallback_text": { "type": "string" },
     "meta": { "type": "object" }
@@ -38,6 +39,22 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "avatar_url": { "type": ["string", "null"], "format": "uri" }
+      }
+    },
+    "reply_to": {
+      "type": "object",
+      "required": ["id", "sender", "excerpt", "kind"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^msg_.+", "description": "The quoted message; tapping the quote scrolls to it. A quoted album is its first message." },
+        "sender": {
+          "description": "null when the quoted message is not the user's to see or no longer exists.",
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "required": ["type"], "properties": { "type": { "enum": ["bot", "operator", "user", "system"] }, "name": { "type": "string" } } }
+          ]
+        },
+        "excerpt": { "type": ["string", "null"], "maxLength": 120, "description": "Plain text, on one line. null: the message was deleted or is not there; the quote reads quote_deleted." },
+        "kind": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, image, file. Any other value is shown as text." }
       }
     },
     "flow": {

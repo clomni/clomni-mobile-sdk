@@ -1,0 +1,16 @@
+{
+  "event": "conversation.updated",
+  "data": {
+    "id": "conv_5521",
+    "status": "bot",
+    "assignee": null,
+    "unread_count": 1,
+    "flow": {
+      "active": true,
+      "awaiting": "text",
+      "flow_id": "flw_apar_az",
+      "node_id": "U"
+    }
+  },
+  "ts": "2026-10-05T10:30:20Z"
+}

@@ -54,6 +54,27 @@ Text on the brand colour (`brand.on_primary_color`) is always sent. When the inb
 server picks white if white reaches a WCAG contrast of 4.5:1 on `primary_color`, otherwise black; the SDKs use
 the same rule for a config that lacks it.
 
+## Replies
+
+- The app sends `content.reply_to` (a message id) with a `text` or an `attachment`. The server keeps it where the
+  panel keeps an operator's reply, so the panel shows the quote; one the user cannot see is `400 reply_to invalid`.
+- Every message carries `reply_to`: null, or `{id, sender {type, name}, excerpt, kind}`. An operator replying in the
+  panel produces the same. `excerpt` is plain text, at most 120 characters (a file's or an image's name when it has no
+  caption); `kind` is `text`, `image` or `file`.
+- A deleted message keeps its `sender` and has `excerpt: null`; one the user never saw (a private note) or that is gone
+  also has `sender: null`. The SDK shows `strings.quote_deleted` for either. A quote is not re-sent when the quoted
+  message is deleted later: the app applies the deletion's `message.updated` to quotes of that id itself.
+
+## Flow and the composer
+
+- A conversation (REST) and every `conversation.updated` carry `flow {active, awaiting}`, plus `flow_id` and
+  `node_id` while it runs. The SDK shows or hides its composer by this alone.
+- `active: true`: a flow drives the conversation and the composer is hidden, except with `awaiting: "text"`.
+  `awaiting` is `menu` (buttons, a language question too), `text`, `form`, or null while nothing is asked yet (a wait
+  step).
+- `active: false` once the flow ends (with an END step or without one), stops because a person replied, or hands
+  over. Each of these sends `conversation.updated`; a new flow step sends it right after its message.
+
 ## Fixtures
 
 `fixtures/` is what Android and iOS both render in their screenshot tests (CM-070, CM-080); a renderer
@@ -74,6 +95,8 @@ saying what the screen must show.
 | `33`–`41` | WebSocket frames, including one unknown event |
 | `42`–`44` | config (full and minimal), push |
 | `45`–`49`, `51`–`52` | client messages: text, button, back, form, attachment, end, rating |
+| `66`–`70` | replies: the user to an operator, an operator (panel) to an image, to a deleted message, the client's `reply_to`, one that must fail |
+| `71`–`74` | `conversation.flow`: waiting on buttons, on text, ended; one that must fail |
 | `90`–`98` | must fail: they prove the schema refuses what it should |
 
 Each file stands alone: the fixtures are cases, not one recorded conversation, so their `seq` and

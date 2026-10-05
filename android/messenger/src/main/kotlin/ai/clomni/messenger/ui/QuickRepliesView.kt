@@ -28,6 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -36,29 +39,41 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The live step's choices (DESIGN-PASS-3 A3): capsules side by side, wrapping, aligned to the end, 8 apart both ways,
- * 12 under the last message; then a grey "← Geri". A tap fades them out (200 ms) and the
- * choice stays as the user's message.
+ * 12 under the last message; then a grey "← Geri". M5: new ones come 150 ms after their message, 40 ms apart, 6 up and
+ * fading in. A tap is a light tick; the chosen one goes at once while the others fade out (200 ms), and the choice
+ * comes in as the user's message.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (String) -> Unit) {
-    var chosen by remember(block.messageId) { mutableStateOf(false) }
-    val opacity by animateFloatAsState(if (chosen) 0f else 1f, tween(200), label = "replies")
+    var chosen by remember(block.messageId) { mutableStateOf<String?>(null) }
+    val haptic = LocalHapticFeedback.current
+    val arriving = LocalArriving.current
     val choose = { id: String ->
-        if (!chosen) {
-            chosen = true
+        if (chosen == null) {
+            chosen = id
+            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
             tap(id)
         }
     }
     val buttons = block.buttons + listOfNotNull(block.back)
-    Box(Modifier.fillMaxWidth().padding(top = 12.dp).alpha(opacity), Alignment.CenterEnd) {
+    Box(Modifier.fillMaxWidth().padding(top = 12.dp), Alignment.CenterEnd) {
         // Side by side, each as wide as its text, wrapping to the next line; a long choice wraps inside 85% of the width.
         FlowRow(
             Modifier.fillMaxWidth(0.85f),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
+            buttons.forEachIndexed { index, button ->
+                val opacity by animateFloatAsState(
+                    if (chosen == null) 1f else 0f,
+                    tween(if (chosen == button.id) 90 else 200),
+                    label = "choice",
+                )
+                Box(Modifier.entrance(arriving, 6f, 1f, 200, 150 + 40 * index).alpha(opacity)) {
+                    Pill(button, button === block.back, theme, enabled = chosen == null, choose)
+                }
+            }
         }
     }
 }
@@ -74,6 +89,8 @@ private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabl
     val reach = 2.dp
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val still = reduceMotion()
+    val squeeze by animateFloatAsState(if (pressed && !still) 0.96f else 1f, Motion.press(), label = "press")
     val text = theme.colors.textPrimary.color
     val fill = when {
         pressed -> text.copy(alpha = 0.06f)
@@ -88,7 +105,12 @@ private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabl
             it
         }
     }
-    Box(target.padding(vertical = reach)) {
+    Box(
+        target.padding(vertical = reach).graphicsLayer {
+            scaleX = squeeze
+            scaleY = squeeze
+        },
+    ) {
         Box(
             Modifier.heightIn(min = 44.dp)
                 .clip(shape)

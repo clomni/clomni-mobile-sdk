@@ -144,20 +144,22 @@ class ThemeTest {
         val light = ClomniTheme.make(null, dark = false)
         assertFalse(light.isDark)
         assertEquals(
-            listOf("#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#6A6E7A", "#E7E8EB", "#E5484D", "#FFF4CC", "#5C4400"),
-            light.colors.run { listOf(background, canvas, surface, textPrimary, textSecondary, border, unread, warning, onWarning) }.map { it.hex },
+            listOf("#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#6A6E7A", "#E5484D", "#FFF4CC", "#5C4400"),
+            light.colors.run { listOf(background, canvas, surface, textPrimary, textSecondary, unread, warning, onWarning) }.map { it.hex },
         )
         val dark = ClomniTheme.make(null, dark = true)
         assertTrue(dark.isDark)
         assertEquals(
-            listOf("#121316", "#0B0C0E", "#22242A", "#F2F3F5", "#9A9DA6", "#2A2C32", "#E5484D", "#3D3415", "#F2DC8B"),
-            dark.colors.run { listOf(background, canvas, surface, textPrimary, textSecondary, border, unread, warning, onWarning) }.map { it.hex },
+            listOf("#121316", "#0B0C0E", "#22242A", "#F2F3F5", "#9A9DA6", "#E5484D", "#3D3415", "#F2DC8B"),
+            dark.colors.run { listOf(background, canvas, surface, textPrimary, textSecondary, unread, warning, onWarning) }.map { it.hex },
         )
         // No config yet: grey, the header too; no brand colour that is not the app's.
         assertEquals("#6A6E7A", light.colors.primary.hex)
         assertEquals(listOf(light.colors.surface, light.colors.surface, light.colors.textPrimary), light.colors.run { listOf(headerFrom, headerTo, headerText) })
         assertEquals("setTheme's colour from the first frame", "#0A66C2", ClomniTheme.make(null, false, RgbColor.parse("#0A66C2")).colors.primary.hex)
         for (theme in listOf(light, dark)) {
+            // M9: a line is the text colour at 8%, never darker.
+            assertEquals(theme.colors.textPrimary.over(theme.colors.background, 0.08).hex, theme.colors.border.hex)
             assertTrue(theme.colors.warning.contrast(theme.colors.onWarning) >= 4.5)
             assertTrue(theme.colors.background.contrast(theme.colors.textPrimary) >= 4.5)
             // #6A6E7A instead of the brief's #737780 (4.49:1 on white): secondary text reaches AA on every background.
@@ -165,7 +167,8 @@ class ThemeTest {
         }
         assertEquals(12f, ClomniTheme.Radius.card)
         assertEquals(48f, ClomniTheme.Size.touchTarget)
-        assertEquals(listOf(2.0, 10.0), ClomniTheme.Shadow.card.map { it.radius })
+        assertEquals(listOf(ClomniTheme.Shadow(0.06, 8.0, 2.0)), ClomniTheme.Shadow.card)
+        assertEquals(listOf(20f, 6f), listOf(ClomniTheme.Radius.message, ClomniTheme.Radius.messageJoined))
     }
 
     /** onPrimary without the server's colours: white or black by WCAG 4.5:1. */
