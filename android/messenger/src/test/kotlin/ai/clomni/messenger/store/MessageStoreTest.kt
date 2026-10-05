@@ -87,6 +87,27 @@ class MessageStoreTest {
         assertEquals(listOf(ClomniChange.Messages("conv_1")), store.commit())
     }
 
+    /** The POST's answer and the socket's echo, in either order: the bubble is sent once, never left "sending". */
+    @Test
+    fun aPendingMessageIsSentWhicheverCopyComesFirst() {
+        store.putMessages("conv_1", listOf(message(1)), syncedThrough = 1)
+        val sent = message(2, clientId = "c1", text = "buyurun")
+
+        store.outbox.add(pending("c1", text = "buyurun"))
+        store.putMessage(sent) // the POST's 201
+        store.putMessage(sent) // its echo
+        assertEquals(emptyList<String>(), store.pending("conv_1").map { it.id })
+        assertEquals(listOf("msg_1", "msg_2"), store.messages("conv_1").map { it.id })
+
+        val echoed = message(3, clientId = "c2")
+        store.outbox.add(pending("c2"))
+        store.putMessage(echoed) // the echo first
+        assertEquals(emptyList<String>(), store.pending("conv_1").map { it.id })
+        store.putMessage(echoed) // then the POST's answer
+        assertEquals(listOf("msg_1", "msg_2", "msg_3"), store.messages("conv_1").map { it.id })
+        assertEquals(3L, store.syncedSeq("conv_1"))
+    }
+
     @Test
     fun aGapAsksForTheMissingRange() {
         store.putMessages("conv_1", (31L..40L).map { message(it) }, syncedThrough = 40)
