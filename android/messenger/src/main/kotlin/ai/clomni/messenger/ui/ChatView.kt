@@ -249,22 +249,27 @@ internal fun ChatScreenView(
         ChatHeaderView(screen.header, theme, actions, scrolled)
         screen.offline?.let { OfflineStrip(it, theme) }
         val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
-        when (screen.phase) {
-            // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
-            HomeScreen.Phase.LOADING -> Box(body, Alignment.Center) {
-                LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
-            }
-            HomeScreen.Phase.FAILED -> Column(body.padding(ClomniTheme.Space.xl.dp)) {
-                screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
-            }
-            HomeScreen.Phase.READY -> if (lazy) {
-                LazyTranscript(screen.items, theme, actions, body, loadingOlder, screen.loadingLabel) { scrolled = it }
-            } else {
-                Column(
-                    body.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
-                    verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
-                ) {
-                    for (item in screen.items) ChatItemView(item, theme, actions)
+        val inner = if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+        // What is not known yet shows nothing; once it is, all of it comes in one frame, fading in over 200 ms
+        // (DESIGN-PASS-3 C5). From the cache it is there in the first frame.
+        Crossfade(screen.phase, body, tween(200), label = "chat") { phase ->
+            when (phase) {
+                // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
+                HomeScreen.Phase.LOADING -> Box(inner, Alignment.Center) {
+                    LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
+                }
+                HomeScreen.Phase.FAILED -> Column(inner.padding(ClomniTheme.Space.xl.dp)) {
+                    screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
+                }
+                HomeScreen.Phase.READY -> if (lazy) {
+                    LazyTranscript(screen.items, theme, actions, inner, loadingOlder, screen.loadingLabel) { scrolled = it }
+                } else {
+                    Column(
+                        inner.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
+                        verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
+                    ) {
+                        for (item in screen.items) ChatItemView(item, theme, actions)
+                    }
                 }
             }
         }

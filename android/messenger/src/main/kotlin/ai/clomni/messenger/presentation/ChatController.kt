@@ -9,6 +9,7 @@ import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.store.Drafts
 import ai.clomni.messenger.store.PendingMessage
 import java.io.File
 import java.util.TimeZone
@@ -80,8 +81,14 @@ internal class ChatController(
     private var observation: UUID? = null
     private var hideTyping: (() -> Unit)? = null
 
+    /** Cancels the wait for a new conversation's flow ([FLOW_WAIT_MS]). */
+    private var flowWait: (() -> Unit)? = null
+
     init {
-        screen = ChatPresenter(ClomniStrings(language), timeZone, now()).screen(snapshot)
+        // The first frame is the cache's (DESIGN-PASS-3 C5): the store is in memory, so the screen opens as it was left,
+        // without a composer that the flow's buttons then take away.
+        snapshot = merged(snapshot, read(conversationId))
+        screen = ChatPresenter(strings, timeZone, now()).screen(snapshot)
     }
 
     private val strings: ClomniStrings
@@ -96,9 +103,33 @@ internal class ChatController(
             if (source.conversation(id) == null) runCatching { source.refreshConversation(id).get() }
             val loaded = runCatching { source.loadMessages(id).get() }.isSuccess
             publish(read(id)) {
-                snapshot = snapshot.copy(load = if (loaded) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED)
+                snapshot = snapshot.copy(
+                    load = when {
+                        !loaded -> MessengerSnapshot.Load.FAILED
+                        awaitsFlow(id) -> MessengerSnapshot.Load.LOADING.also { waitForFlow(id) }
+                        else -> MessengerSnapshot.Load.LOADED
+                    },
+                )
             }
             source.markRead(id)
+        }
+    }
+
+    /**
+     * A new conversation whose inbox starts with a flow is created at once and its first step comes with it: until then
+     * nothing is known about the composer, so the screen waits (C5). Offline, the user may write and queue instead.
+     */
+    private fun awaitsFlow(id: String): Boolean = Drafts.isDraft(id) && source.config?.startsWithFlow == true && !isOffline
+
+    /** On [main]: after [FLOW_WAIT_MS] without the conversation, the empty draft shows, its composer open. */
+    private fun waitForFlow(id: String) {
+        flowWait?.invoke()
+        flowWait = scheduler.after(FLOW_WAIT_MS) {
+            flowWait = null
+            if (conversationId == id && snapshot.load == MessengerSnapshot.Load.LOADING) {
+                snapshot = snapshot.copy(load = MessengerSnapshot.Load.LOADED)
+                render()
+            }
         }
     }
 
@@ -116,6 +147,8 @@ internal class ChatController(
         main.execute {
             hideTyping?.invoke()
             hideTyping = null
+            flowWait?.invoke()
+            flowWait = null
         }
         val id = conversationId
         worker.execute {
@@ -245,8 +278,11 @@ internal class ChatController(
         worker.execute { source.setTyping(false, previous) }
         hideTyping?.invoke()
         hideTyping = null
-        conversationId = source.draft(null)
-        snapshot = ChatSnapshot(config = snapshot.config, known = snapshot.known, load = MessengerSnapshot.Load.LOADED)
+        val draft = source.draft(null)
+        conversationId = draft
+        val load = if (awaitsFlow(draft)) MessengerSnapshot.Load.LOADING else MessengerSnapshot.Load.LOADED
+        snapshot = ChatSnapshot(config = snapshot.config, known = snapshot.known, load = load)
+        if (load == MessengerSnapshot.Load.LOADING) waitForFlow(draft)
         render()
     }
 
@@ -344,21 +380,23 @@ internal class ChatController(
         main.execute {
             if (state.conversationId == conversationId) {
                 val before = snapshot
-                snapshot = snapshot.copy(
-                    config = state.config,
-                    conversation = state.conversation,
-                    messages = state.messages,
-                    pending = state.pending,
-                    readUpTo = state.readUpTo,
-                    answerable = state.answerable,
-                    localFiles = state.localFiles,
-                )
+                snapshot = merged(snapshot, state)
                 update(before)
                 render()
             }
             after()
         }
     }
+
+    private fun merged(snapshot: ChatSnapshot, state: State) = snapshot.copy(
+        config = state.config,
+        conversation = state.conversation,
+        messages = state.messages,
+        pending = state.pending,
+        readUpTo = state.readUpTo,
+        answerable = state.answerable,
+        localFiles = state.localFiles,
+    )
 
     private fun render() {
         snapshot = snapshot.copy(isOffline = isOffline)
@@ -369,5 +407,8 @@ internal class ChatController(
     private companion object {
         /** The id [QuickReplyBlock.back] carries. */
         const val BACK = "back"
+
+        /** How long a new conversation waits for its flow's first step before it shows empty. */
+        const val FLOW_WAIT_MS = 8_000L
     }
 }

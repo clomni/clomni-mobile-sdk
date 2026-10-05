@@ -167,8 +167,8 @@ class ChatControllerTest {
     private val direct = Executor { it.run() }
     private var renders = 0
 
-    private fun controller(worker: Executor = direct, main: Executor = direct) = ChatController(
-        source, "conv_5521", "az", worker, main, timers,
+    private fun controller(worker: Executor = direct, main: Executor = direct, id: String = "conv_5521") = ChatController(
+        source, id, "az", worker, main, timers,
         known = mapOf("name" to "Aysel"), timeZone = TimeZone.getTimeZone("UTC"), now = { 1_790_850_720_000L },
     ).also { it.onChange = { renders++ } }
 
@@ -179,7 +179,8 @@ class ChatControllerTest {
     fun loadsCacheThenServerAndMarksRead() {
         source.set(listOf(ChatFixture.message("01-text-bot.json")))
         val chat = controller()
-        assertEquals(HomeScreen.Phase.LOADING, chat.screen.phase)
+        assertEquals("the cache draws the first frame", HomeScreen.Phase.READY, chat.screen.phase)
+        assertEquals(1, chat.screen.items.count { it is ChatItem.BubbleItem })
         chat.load()
         assertEquals(HomeScreen.Phase.READY, chat.screen.phase)
         assertEquals(2, renders)
@@ -350,7 +351,8 @@ class ChatControllerTest {
         chat.startNewConversation()
         assertEquals("draft_new", chat.conversationId)
         assertTrue(chat.screen.items.isEmpty())
-        assertTrue(timers.pending.isEmpty())
+        assertEquals("the typing timer is gone; Apar starts with a flow, so the screen waits for it", 1, timers.pending.size)
+        assertEquals(HomeScreen.Phase.LOADING, chat.screen.phase)
         assertEquals(false, source.typingStates.last())
         source.push(ClomniChange.Messages("conv_5521"))
         assertTrue("the old conversation is not this screen's any more", chat.screen.items.isEmpty())
@@ -361,6 +363,83 @@ class ChatControllerTest {
         assertEquals("conv_new", chat.conversationId)
         assertTrue("load conv_new" in source.calls)
         assertEquals(listOf("Gedişim bitmədi, pul çıxılmağa davam edir"), bubbleTexts(chat))
+    }
+
+    /** DESIGN-PASS-3 C5: from the first screen to the last, a conversation waiting for a choice has no composer. */
+    @Test
+    fun aFlowConversationNeverShowsTheComposer() {
+        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val modes = mutableListOf<ChatComposer.Mode>()
+
+        // Cached: right from the first frame.
+        source.set(listOf(step), answerable = setOf(step.id))
+        val cached = controller()
+        modes += cached.screen.composer.mode
+        cached.onChange = { modes += cached.screen.composer.mode }
+        cached.load()
+        assertEquals(HomeScreen.Phase.READY, cached.screen.phase)
+
+        // Not cached: nothing until the server answered, then the step.
+        source.set(emptyList())
+        source.conversations.clear()
+        val fresh = controller(id = "conv_9")
+        modes += fresh.screen.composer.mode
+        assertEquals(HomeScreen.Phase.LOADING, fresh.screen.phase)
+        fresh.onChange = { modes += fresh.screen.composer.mode }
+        source.set(listOf(step), id = "conv_9", answerable = setOf(step.id))
+        fresh.load()
+        assertEquals(HomeScreen.Phase.READY, fresh.screen.phase)
+
+        assertTrue(modes.size >= 5)
+        assertTrue("never shown: $modes", modes.all { it == ChatComposer.Mode.Hidden })
+    }
+
+    /** A new conversation that starts with a flow waits for its first step; the composer only if none comes. */
+    @Test
+    fun aNewFlowConversationWaitsForItsFirstStep() {
+        assertTrue("Apar starts with a flow", source.config?.startsWithFlow == true)
+        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val modes = mutableListOf<ChatComposer.Mode>()
+        val chat = controller(id = "draft_new")
+        modes += chat.screen.composer.mode
+        chat.onChange = { modes += chat.screen.composer.mode }
+        chat.load()
+        assertEquals(HomeScreen.Phase.LOADING, chat.screen.phase)
+        assertEquals("the wait has its limit", 1, timers.pending.size)
+        source.set(listOf(step), id = "conv_new", answerable = setOf(step.id))
+        source.push(ClomniChange.Started("draft_new", "conv_new"))
+        assertEquals(HomeScreen.Phase.READY, chat.screen.phase)
+        timers.fire()
+        assertEquals(HomeScreen.Phase.READY, chat.screen.phase)
+        assertTrue("never shown: $modes", modes.all { it == ChatComposer.Mode.Hidden })
+
+        // The step never came: after the wait, the empty conversation and its field.
+        val late = controller(id = "draft_late")
+        late.load()
+        assertEquals(ChatComposer.Mode.Hidden, late.screen.composer.mode)
+        timers.fire()
+        assertEquals(HomeScreen.Phase.READY, late.screen.phase)
+        assertEquals(ChatComposer.Mode.Open, late.screen.composer.mode)
+
+        // Offline the user may write at once; it waits in the queue.
+        val offline = controller(id = "draft_offline")
+        offline.isOffline = true
+        offline.load()
+        assertEquals(ChatComposer.Mode.Open, offline.screen.composer.mode)
+    }
+
+    /** Between a choice and the next step the field does not come up and go again. */
+    @Test
+    fun aChoiceOnItsWayKeepsTheComposerAway() {
+        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        source.set(listOf(step), answerable = setOf(step.id))
+        val chat = controller()
+        chat.load()
+        chat.tap("o_t", step.id)
+        assertEquals(ChatComposer.Mode.Hidden, chat.screen.composer.mode)
+        source.outbox.clear()
+        chat.load()
+        assertEquals(ChatComposer.Mode.Open, chat.screen.composer.mode)
     }
 
     @Test

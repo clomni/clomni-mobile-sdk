@@ -34,7 +34,7 @@ internal class ChatPresenter(
             loadingLabel = strings[Key.LOADING],
             header = header(snapshot),
             items = items(snapshot),
-            composer = composer(snapshot),
+            composer = composer(snapshot, phase == HomeScreen.Phase.READY),
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
             failure = if (phase == HomeScreen.Phase.FAILED) HomeScreen.Failure(strings[Key.ERROR], strings[Key.RETRY]) else null,
             announcement = lastIncoming?.let { Announcement(it.id, label(it, snapshot)) },
@@ -83,15 +83,21 @@ internal class ChatPresenter(
 
     // Composer
 
-    private fun composer(snapshot: ChatSnapshot): ChatComposer {
+    private fun composer(snapshot: ChatSnapshot, known: Boolean): ChatComposer {
         val config = snapshot.config
         val waiting = snapshot.messages.lastOrNull { it.id in snapshot.answerable }
         val replies = waiting?.content as? MessageContent.QuickReplies
         val mode = when {
+            // Not "shown" by default (DESIGN-PASS-3 C5): until the messages and their buttons are known there is none,
+            // so a flow's step never finds one to take away.
+            !known -> ChatComposer.Mode.Hidden
             snapshot.conversation?.status == ConversationStatus.CLOSED ->
                 ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
             // A step waiting for a choice has nothing under it: no field, no "choose above" (DESIGN-PASS-3 A4).
             replies != null -> ChatComposer.Mode.Hidden
+            // A choice on its way: the flow's next step follows it, so the field does not come up in between.
+            snapshot.pending.any { it.message is ClientMessage.ButtonReply && it.state == PendingMessage.State.SENDING } ->
+                ChatComposer.Mode.Hidden
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(
