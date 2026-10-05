@@ -60,6 +60,8 @@ struct HomeScreenRoot: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: model.ready)
+        // M1: the sheet itself is the system's (pageSheet, on its spring); its content fades in 120 ms after it.
+        .entrance(rise: 0, delay: 0.12)
         .task { await coordinator.prepare() }
     }
 }

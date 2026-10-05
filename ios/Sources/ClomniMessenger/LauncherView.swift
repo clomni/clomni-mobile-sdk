@@ -116,12 +116,11 @@ struct LauncherButton: View {
     }
 }
 
-/// Pressed, the launcher gives a little and comes back.
+/// Pressed, the launcher gives a little (0.97) and springs back (M6).
 private struct LauncherPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? CGFloat(LauncherState.pressedScale) : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .pressScale(configuration.isPressed, CGFloat(LauncherState.pressedScale))
     }
 }
 #endif

@@ -45,9 +45,10 @@ package struct ClomniTheme: Sendable, Equatable {
 
     /// pt (iOS) = dp (Android).
     package enum Radius {
-        package static let message: Double = 18
+        /// M9: soft, 20; 6 where bubbles of one run meet.
+        package static let message: Double = 20
         /// The corner where messages of one group meet.
-        package static let messageJoined: Double = 5
+        package static let messageJoined: Double = 6
         package static let pill: Double = 18
         package static let card: Double = 12
         /// Home's cards (DESIGN-PASS-2 5).
@@ -123,7 +124,8 @@ package struct ClomniTheme: Sendable, Equatable {
         package let radius: Double
         package let y: Double
 
-        package static let card = Shadow(opacity: 0.06, radius: 3, y: 1)
+        /// M9: very light, y 2, blur 8, 6%.
+        package static let card = Shadow(opacity: 0.06, radius: 8, y: 2)
     }
 
     /// Clomni's own colour, for a config that has none.
@@ -176,7 +178,8 @@ package struct ClomniTheme: Sendable, Equatable {
             textPrimary: hex(dark ? "#F2F3F5" : "#1B1D21"),
             // #707480 rather than the brief's #737780, which is 4.49:1 on white (decided in CM-082).
             textSecondary: hex(dark ? "#9A9DA6" : "#707480"),
-            border: hex(dark ? "#2A2C32" : "#E7E8EB"),
+            // M9: a line is never darker than the text colour at 8%.
+            border: hex(dark ? "#F2F3F5" : "#1B1D21").over(background, opacity: 0.08),
             unread: hex("#E5484D"),
             online: hex("#30C26B"),
             warning: hex(dark ? "#3D3415" : "#FFF4CC"),

@@ -163,17 +163,19 @@ final class ThemeTests: XCTestCase {
         let light = ClomniTheme.make(brand: nil, dark: false)
         XCTAssertFalse(light.isDark)
         XCTAssertEqual([light.colors.background, light.colors.canvas, light.colors.surface, light.colors.textPrimary,
-                        light.colors.textSecondary, light.colors.border, light.colors.unread].map(\.hex),
-                       ["#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#707480", "#E7E8EB", "#E5484D"])
+                        light.colors.textSecondary, light.colors.unread].map(\.hex),
+                       ["#FFFFFF", "#F5F6F8", "#F1F2F4", "#1B1D21", "#707480", "#E5484D"])
         XCTAssertEqual(light.colors.online.hex, "#30C26B")
         let dark = ClomniTheme.make(brand: nil, dark: true)
         XCTAssertTrue(dark.isDark)
         XCTAssertEqual([dark.colors.background, dark.colors.canvas, dark.colors.surface, dark.colors.textPrimary,
-                        dark.colors.textSecondary, dark.colors.border, dark.colors.unread].map(\.hex),
-                       ["#121316", "#0B0C0E", "#22242A", "#F2F3F5", "#9A9DA6", "#2A2C32", "#E5484D"])
+                        dark.colors.textSecondary, dark.colors.unread].map(\.hex),
+                       ["#121316", "#0B0C0E", "#22242A", "#F2F3F5", "#9A9DA6", "#E5484D"])
         XCTAssertEqual(light.colors.primary.hex, "#10A670", "Clomni's colour without a config")
         // Text reaches WCAG AA (4.5:1) on the background in both themes.
         for theme in [light, dark] {
+            // M9: a line is the text colour at 8%, never darker.
+            XCTAssertEqual(theme.colors.border, theme.colors.textPrimary.over(theme.colors.background, opacity: 0.08))
             XCTAssertGreaterThanOrEqual(theme.colors.warning.contrast(with: theme.colors.onWarning), 4.5)
             XCTAssertGreaterThanOrEqual(theme.colors.background.contrast(with: theme.colors.textPrimary), 4.5)
             XCTAssertGreaterThanOrEqual(theme.colors.background.contrast(with: theme.colors.textSecondary), 4.5)
@@ -185,7 +187,8 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(ClomniTheme.Radius.homeCard, 16)
         XCTAssertEqual([ClomniTheme.Size.closeCircle, ClomniTheme.Size.closeGlyph, ClomniTheme.Size.closeStroke,
                         ClomniTheme.Size.barEdge, ClomniTheme.Size.barTop, ClomniTheme.Size.barRow], [40, 20, 2, 16, 16, 48], "one close button")
-        XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.06, radius: 3, y: 1), "one, barely seen")
+        XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.06, radius: 8, y: 2), "one, very light")
+        XCTAssertEqual([ClomniTheme.Radius.message, ClomniTheme.Radius.messageJoined], [20, 6])
     }
 
     /// onPrimary, where the SDK derives it: white or black by WCAG 4.5:1.

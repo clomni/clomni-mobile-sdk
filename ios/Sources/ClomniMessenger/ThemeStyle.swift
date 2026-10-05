@@ -292,6 +292,7 @@ struct PressShapeStyle<S: Shape>: ButtonStyle {
             .clipShape(shape)
             .contentShape(shape)
             .opacity(configuration.isPressed ? 0.85 : 1)
+            .pressScale(configuration.isPressed)
     }
 }
 #endif

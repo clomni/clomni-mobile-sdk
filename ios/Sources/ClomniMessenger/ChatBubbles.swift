@@ -9,7 +9,8 @@ import ClomniCore
 import ClomniPresentation
 #endif
 
-/// Off in snapshot tests, so pictures from the network cannot make them flaky: placeholders stay.
+/// Off in snapshot tests, so pictures from the network cannot make them flaky: placeholders stay. Nothing waits to
+/// come in there either (`entrance`): a picture shows where things end.
 private struct LoadsRemoteImagesKey: EnvironmentKey {
     static let defaultValue = true
 }
@@ -76,13 +77,14 @@ struct ChatTranscript: View {
                 // the server's copy changes only its status, and scrolling back is not an insertion.
                 ChatItemView(item: item, theme: theme, actions: actions)
                     .id(item.id)
-                    .transition(.opacity)
+                    .transition(Motion.arrival(item, still: reduceMotion))
             }
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
         .padding(.top, CGFloat(ClomniTheme.Space.xl))
         .padding(.bottom, CGFloat(ClomniTheme.Space.s))
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: items.map(\.id))
+        // M3: new items come in on the emphasized easing and the rest move to their place; Reduce Motion: nothing moves.
+        .animation(reduceMotion ? nil : Motion.decelerate(0.2), value: items.map(\.id))
     }
 }
 
@@ -432,7 +434,9 @@ struct StatusLine: View {
             }
             .buttonStyle(PlainButtonStyle())
         } else {
-            label
+            // M3: a change of status only cross-fades, 150 ms.
+            ZStack { label.id(status.text).transition(.opacity) }
+                .animation(.easeOut(duration: 0.15), value: status.text)
         }
     }
 
@@ -477,20 +481,11 @@ struct SystemLineView: View {
 struct TypingRow: View {
     let line: TypingLine
     let theme: ClomniTheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulse = false
 
     var body: some View {
         HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
             ChatAvatarView(avatar: line.avatar, size: ClomniTheme.Size.avatar, theme: theme)
-            HStack(spacing: 4) {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(theme.colors.textSecondary.color)
-                        .frame(width: 6, height: 6)
-                        .opacity(pulse ? 0.9 : 0.5 + 0.2 * Double(index))
-                }
-            }
+            TypingDots(color: theme.colors.textSecondary.color)
             .padding(.vertical, CGFloat(ClomniTheme.Space.l))
             .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
             .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.message), style: .continuous)
@@ -499,9 +494,28 @@ struct TypingRow: View {
         .padding(.top, 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(line.accessibilityLabel))
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.6).repeatForever()) { pulse = true }
+    }
+}
+
+/// M4: three dots on one sine wave, 1.2 s round, each 0.15 s behind the one before; still with Reduce Motion.
+private struct TypingDots: View {
+    let color: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: nil, paused: reduceMotion)) { context in
+            let time = context.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    let wave = reduceMotion ? Double(index) / 2
+                        : (sin((time - 0.15 * Double(index)) / 1.2 * 2 * .pi) + 1) / 2
+                    Circle()
+                        .fill(color)
+                        .frame(width: 6, height: 6)
+                        .opacity(0.4 + 0.6 * wave)
+                        .scaleEffect(0.8 + 0.2 * wave)
+                }
+            }
         }
     }
 }

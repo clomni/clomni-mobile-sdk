@@ -138,7 +138,8 @@ struct ComposerView: View {
         .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
         .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.input), style: .continuous)
             .fill(theme.colors.surface.color))
-        .animation(.easeOut(duration: 0.15), value: canSend)
+        // M7: send springs in from 0.6.
+        .animation(reduceMotion ? nil : Motion.spring, value: canSend)
     }
 
     @ViewBuilder

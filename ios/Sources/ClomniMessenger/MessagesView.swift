@@ -103,7 +103,8 @@ struct MessagesTitleBar: View {
         .padding(.bottom, CGFloat(ClomniTheme.Size.barBottom))
         .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) {
-            Rectangle().fill(theme.colors.border.color).frame(height: 1).opacity(showsDivider ? 1 : 0)
+            // M9: half a point.
+            Rectangle().fill(theme.colors.border.color).frame(height: 0.5).opacity(showsDivider ? 1 : 0)
         }
         .animation(.easeOut(duration: 0.15), value: showsDivider)
     }

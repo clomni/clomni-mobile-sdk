@@ -43,7 +43,7 @@ package struct LauncherState: Sendable, Equatable {
     /// The operator's line mascot in the circle (DESIGN-PASS-3 E1).
     package static let mascotSize: Double = 30
     /// Pressed, the button gives a little: this scale, in 120 ms.
-    package static let pressedScale: Double = 0.94
+    package static let pressedScale: Double = 0.97
 
     /// White lines when `on_primary` is light, black ones when it is dark.
     package static func whiteMascot(on onPrimary: RGBColor) -> Bool {

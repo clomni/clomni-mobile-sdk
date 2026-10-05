@@ -45,7 +45,7 @@ struct NewsCardView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(SoftPressStyle())
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(item.accessibilityLabel))
                 .accessibilityAddTraits(.isButton)
@@ -141,7 +141,7 @@ struct NewsScreenView: View {
                         .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous)
                             .fill(theme.colors.primary.color))
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(SoftPressStyle())
                 .padding(.top, CGFloat(ClomniTheme.Space.s))
             }
         }

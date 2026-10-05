@@ -37,23 +37,28 @@ struct QuickRepliesView: View {
         }
     }
 
+    /// M5: 150 ms after their message, 40 ms apart, each rising 6 and fading in.
     @ViewBuilder
     private var pills: some View {
-        ForEach(block.buttons) { button in
+        ForEach(Array(block.buttons.enumerated()), id: \.element.id) { index, button in
             PillButton(title: button.title, accessibilityLabel: button.accessibilityLabel, isBack: false, theme: theme) {
                 choose(button.id)
             }
+            .entrance(rise: 6, delay: 0.15 + 0.04 * Double(index))
         }
         if let back = block.back {
             PillButton(title: back.title, accessibilityLabel: back.accessibilityLabel, isBack: true, theme: theme) {
                 choose(back.id)
             }
+            .entrance(rise: 6, delay: 0.15 + 0.04 * Double(block.buttons.count))
         }
     }
 
+    /// A light tick (M5); the choices fade out as the user's message comes in.
     private func choose(_ id: String) {
         guard !chosen else { return }
         chosen = true
+        Haptics.light()
         tap(id)
     }
 }
@@ -97,6 +102,7 @@ struct PillStyle: ButtonStyle {
             })
             .overlay(shape.strokeBorder(text.opacity(theme.isDark ? 0.24 : 0.18), lineWidth: 1.5))
             .contentShape(shape)
+            .pressScale(configuration.isPressed, 0.96)
     }
 }
 

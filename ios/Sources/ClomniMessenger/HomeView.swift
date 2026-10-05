@@ -300,28 +300,31 @@ struct HomeCardsView: View {
                     FailureView(failure: failure, theme: theme, retry: actions.retry)
                 }
             case .ready:
-                // In the panel's order.
-                ForEach(screen.order, id: \.self) { card in
-                    switch card {
-                    case .messages:
-                        MessagesCardView(card: screen.messagesCard, theme: theme, action: actions.openMessages)
-                    case .news:
-                        if let news = screen.news {
-                            NewsCardView(card: news, theme: theme, open: actions.openNews)
-                        }
-                    case .send:
-                        if let send = screen.newConversation {
-                            NewConversationCardView(card: send, theme: theme, action: actions.newConversation)
-                        }
-                    case .recent:
-                        if let recent = screen.recent {
-                            RecentCardView(card: recent, theme: theme, open: actions.openConversation)
-                        }
-                    case .channels:
-                        if let channels = screen.channels {
-                            ChannelsCardView(card: channels, theme: theme)
+                // In the panel's order; the first time they show, 30 ms apart, each rising 8 and fading in (M8).
+                ForEach(Array(screen.order.enumerated()), id: \.element) { index, card in
+                    Group {
+                        switch card {
+                        case .messages:
+                            MessagesCardView(card: screen.messagesCard, theme: theme, action: actions.openMessages)
+                        case .news:
+                            if let news = screen.news {
+                                NewsCardView(card: news, theme: theme, open: actions.openNews)
+                            }
+                        case .send:
+                            if let send = screen.newConversation {
+                                NewConversationCardView(card: send, theme: theme, action: actions.newConversation)
+                            }
+                        case .recent:
+                            if let recent = screen.recent {
+                                RecentCardView(card: recent, theme: theme, open: actions.openConversation)
+                            }
+                        case .channels:
+                            if let channels = screen.channels {
+                                ChannelsCardView(card: channels, theme: theme)
+                            }
                         }
                     }
+                    .entrance(rise: 8, delay: 0.03 * Double(index))
                 }
                 if let poweredBy = screen.poweredBy {
                     Text(verbatim: poweredBy)
@@ -375,7 +378,7 @@ struct MessagesCardView: View {
             .clomniCard(theme)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(SoftPressStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(card.accessibilityLabel))
         .accessibilityAddTraits(.isButton)
@@ -400,7 +403,7 @@ struct NewConversationCardView: View {
             .clomniCard(theme)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(SoftPressStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(card.accessibilityLabel))
         .accessibilityAddTraits(.isButton)
@@ -424,7 +427,7 @@ struct RecentCardView: View {
             .clomniCard(theme)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(SoftPressStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: "\(card.label). \(card.row.accessibilityLabel)"))
         .accessibilityAddTraits(.isButton)

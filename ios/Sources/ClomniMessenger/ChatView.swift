@@ -122,7 +122,8 @@ struct ChatView: View {
             }
         }
         .background(theme.colors.background.color.ignoresSafeArea())
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: composerShown)
+        // M7: the composer comes and goes by height and fade, 220 ms.
+        .animation(reduceMotion ? nil : Motion.decelerate(0.22), value: composerShown)
         .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
         .environment(\.clomniScreenWidth, screenWidth)
         .background(GeometryReader { proxy in
@@ -210,7 +211,7 @@ struct ChatView: View {
                 .onChange(of: model.screen.items.last?.id) { last in
                     guard let last else { return }
                     // Reduce Motion: the transcript jumps to the new message instead of sliding.
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) { proxy.scrollTo(last, anchor: .bottom) }
+                    withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(last, anchor: .bottom) }
                 }
             }
         }
@@ -330,7 +331,8 @@ struct ChatHeaderView: View {
         .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) {
             // The line only once the transcript has scrolled under the bar.
-            Rectangle().fill(theme.colors.border.color).frame(height: 1).opacity(showsDivider ? 1 : 0)
+            // M9: half a point.
+            Rectangle().fill(theme.colors.border.color).frame(height: 0.5).opacity(showsDivider ? 1 : 0)
         }
         .animation(.easeOut(duration: 0.15), value: showsDivider)
     }
