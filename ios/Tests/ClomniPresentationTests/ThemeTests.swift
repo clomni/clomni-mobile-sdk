@@ -184,7 +184,7 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(ClomniTheme.Radius.card, 12)
         XCTAssertEqual(ClomniTheme.Radius.homeCard, 16)
         XCTAssertEqual([ClomniTheme.Size.closeCircle, ClomniTheme.Size.closeGlyph, ClomniTheme.Size.closeStroke,
-                        ClomniTheme.Size.barEdge, ClomniTheme.Size.barTop], [40, 20, 2, 16, 12], "one close button")
+                        ClomniTheme.Size.barEdge, ClomniTheme.Size.barTop, ClomniTheme.Size.barRow], [40, 20, 2, 16, 16, 48], "one close button")
         XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.06, radius: 3, y: 1), "one, barely seen")
     }
 

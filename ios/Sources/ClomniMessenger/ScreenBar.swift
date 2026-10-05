@@ -101,8 +101,8 @@ struct CircleBackButton: View {
     }
 }
 
-/// Every screen's top bar: `leading` (back, the logo, who answers) and ✕ at the end, the buttons 16 pt from the sides
-/// and the 40 pt circle 12 pt under the safe area. The 44 pt targets reach 2 pt past the circle, so the bar's own
+/// Every screen's top bar: `leading` (back, the logo, who answers) and ✕ at the end, the buttons 16 pt from the sides,
+/// everything centred in one 48 pt row 16 pt under the safe area (DESIGN-PASS-3 A9). The 44 pt targets reach 2 pt past the circle, so the bar's own
 /// padding is 2 pt less.
 struct ScreenBar<Leading: View>: View {
     let closeLabel: String
@@ -123,10 +123,11 @@ struct ScreenBar<Leading: View>: View {
             Spacer(minLength: 0)
             CloseButton(label: closeLabel, style: closeStyle, theme: theme, action: close)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.barRow))
         .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge) - Self.overhang)
-        .padding(.top, CGFloat(ClomniTheme.Size.barTop) - Self.overhang)
-        .padding(.bottom, CGFloat(ClomniTheme.Space.s) - Self.overhang)
+        .padding(.top, CGFloat(ClomniTheme.Size.barTop))
+        // The circle 8 pt above the bar's end, as before the row grew to 48.
+        .padding(.bottom, CGFloat(ClomniTheme.Space.s - (ClomniTheme.Size.barRow - ClomniTheme.Size.closeCircle) / 2))
     }
 }
 #endif

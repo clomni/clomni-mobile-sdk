@@ -99,10 +99,11 @@ struct MessagesTitleBar: View {
                 .padding(.horizontal, CGFloat(ClomniTheme.Size.touchTarget + ClomniTheme.Space.s))
                 .accessibilityAddTraits(.isHeader)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.barRow))
         .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge) - ScreenBar<EmptyView>.overhang)
-        .padding(.top, CGFloat(ClomniTheme.Size.barTop) - ScreenBar<EmptyView>.overhang)
-        .padding(.bottom, CGFloat(ClomniTheme.Space.s) - ScreenBar<EmptyView>.overhang)
+        .padding(.top, CGFloat(ClomniTheme.Size.barTop))
+        // The circle 8 pt above the bar's end, as before the row grew to 48.
+        .padding(.bottom, CGFloat(ClomniTheme.Space.s - (ClomniTheme.Size.barRow - ClomniTheme.Size.closeCircle) / 2))
         .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) {
             Rectangle().fill(theme.colors.border.color).frame(height: 1).opacity(showsDivider ? 1 : 0)

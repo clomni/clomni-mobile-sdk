@@ -89,13 +89,15 @@ package struct ClomniTheme: Sendable, Equatable {
         /// The full logo's height on Home.
         package static let wordmark: Double = 32
         /// The close button on every screen (DESIGN-PASS-2 6): a 40 pt circle with a 20 pt ✕ drawn 2 pt thick, in a
-        /// 44 pt target, 16 pt from the screen's side and 12 pt under the safe area.
+        /// 44 pt target, 16 pt from the screen's side, centred in the bar's 48 pt row.
         package static let closeCircle: Double = 40
         package static let closeGlyph: Double = 20
         package static let closeStroke: Double = 2
-        /// Every screen's bar: its buttons this far from the side and under the safe area.
+        /// Every screen's bar: its buttons this far from the side; its 48 pt row (the logo, the avatars, back and ✕
+        /// on one centre line) 16 pt under the safe area (DESIGN-PASS-3 A9).
         package static let barEdge: Double = 16
-        package static let barTop: Double = 12
+        package static let barTop: Double = 16
+        package static let barRow: Double = 48
         /// The conversation header's avatar.
         package static let headerLead: Double = 32
         package static let headerAvatar: Double = 24

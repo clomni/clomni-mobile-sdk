@@ -126,7 +126,8 @@ extension RGBColor {
     var lighter: RGBColor { steps(1) }
 }
 
-/// The logo top left (nothing when there is none, as Intercom: no initial) and ✕ top right, on Home's colours.
+/// The logo top left (nothing when there is none, as Intercom: no initial), the team's faces 12 pt before ✕ top
+/// right, all on the bar's centre line, on Home's colours.
 struct HomeTopBar: View {
     let header: HomeScreen.Header
     let theme: ClomniTheme
@@ -147,6 +148,12 @@ struct HomeTopBar: View {
                 }
             }
             .padding(.leading, ScreenBar<EmptyView>.overhang)
+            if !header.teamAvatars.isEmpty {
+                Spacer(minLength: 0)
+                // 12 pt from ✕'s circle: the bar's 8 pt gap and the 2 pt its target reaches past the circle, plus 2.
+                TeamAvatars(urls: header.teamAvatars, ring: theme.colors.headerFrom, theme: theme)
+                    .padding(.trailing, 12 - CGFloat(ClomniTheme.Space.s) - ScreenBar<EmptyView>.overhang)
+            }
         }
     }
 }
