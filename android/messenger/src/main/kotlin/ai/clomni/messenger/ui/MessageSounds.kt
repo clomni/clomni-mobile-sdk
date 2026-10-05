@@ -8,18 +8,20 @@ import android.media.AudioManager
 import android.media.SoundPool
 
 /**
- * The web widget's two short sounds: a ding for a message that arrives while the conversation is open, a ping for one
- * the user sends. They play as UI sounds (sonification): silent and vibrate mode mute them, and they never take audio
+ * One short sound (Universfield, Pixabay Content License): at full volume for a message that arrives while the
+ * conversation is open, at 40% for one the user sends (DESIGN-PASS-3 B4). It plays as UI sounds (sonification): silent and vibrate mode mute them, and they never take audio
  * focus, so music keeps playing. Off when the panel says `sounds: false` or the app calls `setSoundsEnabled(false)`.
  */
 internal object MessageSounds {
     /** `Clomni.setSoundsEnabled`. */
     @Volatile var appEnabled: Boolean = true
 
-    private var pool: SoundPool? = null
-    private val ids = IntArray(2)
+    private const val SENT_VOLUME = 0.4f
 
-    /** Loads both sounds (a few KB) the first time a conversation opens; on the UI thread. */
+    private var pool: SoundPool? = null
+    private var id = 0
+
+    /** Loads the sound (50 KB) the first time a conversation opens; on the UI thread. */
     fun prepare(context: Context) {
         if (pool != null) return
         val attributes = AudioAttributes.Builder()
@@ -27,9 +29,7 @@ internal object MessageSounds {
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         pool = SoundPool.Builder().setMaxStreams(2).setAudioAttributes(attributes).build().also {
-            val app = context.applicationContext
-            ids[ChatSound.INCOMING.ordinal] = it.load(app, R.raw.clomni_ding, 1)
-            ids[ChatSound.SENT.ordinal] = it.load(app, R.raw.clomni_ping, 1)
+            id = it.load(context.applicationContext, R.raw.clomni_message, 1)
         }
     }
 
@@ -37,6 +37,7 @@ internal object MessageSounds {
         if (!appEnabled) return
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
-        pool?.play(ids[sound.ordinal], 1f, 1f, 1, 0, 1f)
+        val volume = if (sound == ChatSound.SENT) SENT_VOLUME else 1f
+        pool?.play(id, volume, volume, 1, 0, 1f)
     }
 }
