@@ -172,6 +172,23 @@ class MessengerCoordinatorTest {
         assertNull(fromPanel.launcher?.badge)
     }
 
+    /** DESIGN-PASS-3 C4: closing from a conversation, the sheet goes down showing it; the next opening is Home. */
+    @Test
+    fun theSheetKeepsItsScreenWhileItCloses() {
+        val messenger = coordinator()
+        val shown = ai.clomni.messenger.ui.ShownRoute()
+        messenger.present()
+        messenger.navigate(MessengerRoute.Conversation("conv_9"))
+        assertEquals(MessengerRoute.Conversation("conv_9"), shown.of(messenger.route))
+        messenger.dismiss()
+        assertNull(messenger.route)
+        assertEquals("still the conversation", MessengerRoute.Conversation("conv_9"), shown.of(messenger.route))
+        messenger.present()
+        assertEquals("a new sheet starts at Home", MessengerRoute.Home, ai.clomni.messenger.ui.ShownRoute().of(messenger.route))
+        messenger.back()
+        assertNull("back from the first screen closes", messenger.route)
+    }
+
     @Test
     fun presentingAndDismissing() {
         val messenger = coordinator()

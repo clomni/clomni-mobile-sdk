@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -181,7 +182,8 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     val engine = runtime.engine ?: return
     val state = runtime.root
     val theme = rememberTheme(state.config)
-    val route = state.route
+    val shownRoute = remember { ShownRoute() }
+    val route = shownRoute.of(state.route)
     LaunchedEffect(coordinator) { coordinator.prepare() }
     val window = (LocalContext.current as? Activity)?.window
     // The status bar is over the dimmed app, above the sheet: light icons; the navigation bar is the sheet's.
@@ -259,6 +261,20 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
 }
 
 /**
+ * The screen the sheet shows. Closing (pulled down, ✕, back out of the first screen) it goes down still showing what it
+ * showed: the coordinator is back at "closed" at once, the screen is not (DESIGN-PASS-3 C4). Each opening is a new
+ * activity, so a new one of these: it starts from the coordinator's route, Home.
+ */
+internal class ShownRoute {
+    private var last: MessengerRoute? = null
+
+    fun of(route: MessengerRoute?): MessengerRoute? {
+        if (route != null) last = route
+        return last
+    }
+}
+
+/**
  * Material 3's shared axis X: the new screen comes 30 dp from the end (from the start going back) while fading in
  * after the old one has faded; 300 ms. With "Remove animations", a plain fade.
  */
@@ -303,7 +319,8 @@ private fun MessengerSheet(
     LaunchedEffect(Unit) { shown = true }
     val drag = rememberSheetDrag(dismiss)
     // Pulled down, the app shows through as the scrim lifts.
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (shown) scrim * (1f - drag.fraction) else 0f))) {
+    // Drawn, not composed, so following the finger redraws one rectangle and recomposes nothing.
+    Box(Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = if (shown) scrim * (1f - drag.fraction) else 0f) }) {
         AnimatedVisibility(
             visible,
             enter = if (still) fadeIn(tween(200)) else slideInVertically(tween(350, easing = EmphasizedDecelerate)) { it },
@@ -317,7 +334,7 @@ private fun MessengerSheet(
             ) {
                 Box(
                     Modifier.fillMaxSize()
-                        .offset { IntOffset(0, drag.offset.value.roundToInt()) }
+                        .offset { IntOffset(0, drag.offset.roundToInt()) }
                         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                         .background(theme.colors.background.color),
                 ) {
