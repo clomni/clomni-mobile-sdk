@@ -30,7 +30,7 @@ Until the native SDKs are published, point both to a checkout of this repository
 
   ```sh
   cd path/to/clomni-mobile-sdk/android
-  ./gradlew --init-script ../flutter/scripts/publish-sdk-locally.gradle :messenger:publishReleasePublicationToMavenLocal
+  ./gradlew -Pclomni.version=1.0.0 :messenger:publishReleasePublicationToMavenLocal
   ```
 
 ## Use
@@ -85,6 +85,8 @@ final show = await Clomni.shouldShowForeground(data);
 | `setDeviceToken(token)`, `isClomniPush(data)`, `handlePush(data)`, `shouldShowForeground(data)` (iOS), `setNotificationIcon(name)` (Android) | push |
 | `setTheme({primaryColor, typeface, mode})` | the app's look over the panel's (below) |
 | `setLogLevel(ClomniLogLevel)`, `setTypeface(familyName)` | log and font (below) |
+| `setSoundsEnabled(enabled)`, `setLanguage(language)` | message sounds (on unless the panel turns them off); the messenger's language, `'az'`, `'en'`, `'ru'` or null for the phone's |
+| `onLink(listener)` | a news item's button: the link goes to the app, which opens it; null leaves it to the system |
 | `unreadCountStream`, `onMessengerOpened`, `onMessengerClosed`, `onConversationStarted`, `onFlowCompleted` | events, as streams |
 
 The plugin owns the SDK's native event callbacks; native code of the app should not set them as well.
@@ -113,10 +115,19 @@ mode over the panel's. Each call replaces the last; what is left out stays the p
 await Clomni.setTheme(primaryColor: '#0A66C2', mode: ClomniThemeMode.dark);
 ```
 
+### Links
+
+A news item's button carries a web address or the app's own deep link. With a listener the app opens it its own way;
+without one the system does.
+
+```dart
+await Clomni.onLink((url) => launchUrl(Uri.parse(url)));
+```
+
 ## Development
 
 Until `ai.clomni:messenger` is on Maven Central, the example (and any app) takes the Android SDK from the local Maven
-repository, published from this repository with `scripts/publish-sdk-locally.gradle` (see Install); with the SDK
+repository, published from this repository's `android/` as in Install; with the SDK
 published, `mavenLocal()` and that step go.
 
 ```sh

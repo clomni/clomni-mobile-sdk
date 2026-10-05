@@ -146,6 +146,40 @@ void main() {
     });
   });
 
+  group('sounds, language and links', () {
+    test('passes the sounds switch and the language; null language follows the phone', () async {
+      await Clomni.setSoundsEnabled(false);
+      await Clomni.setLanguage('az');
+      await Clomni.setLanguage(null);
+      expect(sent(), [
+        ['setSoundsEnabled', false],
+        ['setLanguage', 'az'],
+        ['setLanguage', null],
+      ]);
+    });
+
+    test('hands links to the one listener, then leaves them to the system', () async {
+      final first = <String>[];
+      final second = <String>[];
+      await Clomni.onLink(first.add);
+      await Clomni.onLink(second.add);
+      await pumpEventQueue();
+      sink!.success({'name': 'link', 'text': 'https://clomni.ai/news/1'});
+      sink!.success({'name': 'flowCompleted', 'text': 'flow_42'});
+      await pumpEventQueue();
+      await Clomni.onLink(null);
+      sink?.success({'name': 'link', 'text': 'myapp://orders/7'});
+      await pumpEventQueue();
+      expect(first, isEmpty);
+      expect(second, ['https://clomni.ai/news/1']);
+      expect(sent(), [
+        ['setLinkListener', true],
+        ['setLinkListener', true],
+        ['setLinkListener', false],
+      ]);
+    });
+  });
+
   group('push', () {
     const clomniPush = {'clomni': '1', 'type': 'message', 'conversation_id': 'conv_5521', 'unread_total': 2,
       'aps': {'alert': 'Salam'}};
