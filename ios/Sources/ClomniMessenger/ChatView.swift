@@ -279,8 +279,9 @@ struct ImageURL: Identifiable {
     var id: String { url.absoluteString }
 }
 
-/// The conversation's bar, one fixed height whatever it shows (DESIGN-PASS-2 10): back, the avatar (32), the name
-/// 17 semibold with the subtitle 13 under it (its line kept even when empty), and ✕ as on every screen. Nothing in it
+/// The conversation's bar, one fixed height whatever it shows (DESIGN-PASS-2 10): back, 8 after its circle who answers
+/// (the company's logo cut to a 32 circle, or the operator's 32 avatar with the green dot while online), the name 16
+/// semibold with the subtitle 13 under it (its line kept even when empty), and ✕ as on every screen (DESIGN-PASS-3 B3). Nothing in it
 /// changes size when the subtitle, typing or loading changes, so the transcript under it does not move.
 struct ChatHeaderView: View {
     let header: ChatHeader
@@ -292,7 +293,8 @@ struct ChatHeaderView: View {
 
     var body: some View {
         ScreenBar(closeLabel: header.closeLabel, theme: theme, close: close) {
-            HStack(spacing: CGFloat(ClomniTheme.Space.s)) {
+            // Who answers starts 8 after back's circle, whose target reaches 2 past it, and cuts with "…" before ✕.
+            HStack(spacing: CGFloat(ClomniTheme.Space.s) - ScreenBar<EmptyView>.overhang) {
                 CircleBackButton(label: header.backLabel, theme: theme, action: back)
                 // The company until an operator joins, then the operator: a 200 ms crossfade between the two.
                 ZStack {
@@ -322,7 +324,7 @@ struct ChatHeaderView: View {
                     .frame(width: CGFloat(ClomniTheme.Size.headerLead), height: CGFloat(ClomniTheme.Size.headerLead))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(header.title)
-                        .clomniFont(ClomniTheme.FontSize.brand, .semibold, relativeTo: .headline)
+                        .clomniFont(16, .semibold, relativeTo: .headline)
                         .foregroundStyle(theme.colors.textPrimary.color)
                         .lineLimit(1)
                     Text(header.subtitle.isEmpty ? " " : header.subtitle)

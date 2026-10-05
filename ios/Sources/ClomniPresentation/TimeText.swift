@@ -24,6 +24,11 @@ package struct TimeText: Sendable {
         }
     }
 
+    /// Under the last bubble of a run: "indi" within a minute, then the clock ("12:42").
+    package func stamp(_ date: Date, now: Date) -> String {
+        now.timeIntervalSince(date) < 60 ? strings[.now] : clock(date)
+    }
+
     /// For the conversation's time separators: "Bu gün 10:30", "Dünən 10:30", "1 oktyabr 10:30", and with the year
     /// when it is not this one.
     package func day(_ date: Date, now: Date) -> String {

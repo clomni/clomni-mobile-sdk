@@ -45,7 +45,7 @@ package struct ClomniTheme: Sendable, Equatable {
 
     /// pt (iOS) = dp (Android).
     package enum Radius {
-        package static let message: Double = 16
+        package static let message: Double = 18
         /// The corner where messages of one group meet.
         package static let messageJoined: Double = 5
         package static let pill: Double = 18
@@ -64,6 +64,8 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let brand: Double = 17
         package static let title: Double = 14.5
         package static let text: Double = 14
+        /// A message bubble's text.
+        package static let message: Double = 16
         package static let preview: Double = 13
         package static let secondary: Double = 12.5
         package static let label: Double = 12
@@ -98,6 +100,9 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let barEdge: Double = 16
         package static let barTop: Double = 16
         package static let barRow: Double = 48
+        /// Under the row of the list's, a conversation's and a news item's bar, so a two-line middle never touches
+        /// its end (72 in all).
+        package static let barBottom: Double = 8
         /// The conversation header's avatar.
         package static let headerLead: Double = 32
         package static let headerAvatar: Double = 24

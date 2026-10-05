@@ -30,15 +30,15 @@ package struct ChatHeader: Sendable, Equatable {
         /// Nobody has taken the conversation (the bot or a flow answers): the company's logo, its initial without
         /// one; never a person's face.
         case brand(ChatAvatar)
-        /// The operator, 28 pt, with the green dot while online.
+        /// The operator, 32 pt, with the green dot while online.
         case person(ChatAvatar, online: Bool)
     }
 
     package let lead: Lead
     /// The brand, or the operator's name.
     package let title: String
-    /// header_subtitle (the reply time unless the panel wrote its own), the reply time while queued, "Apar ·
-    /// onlayn", or that it is after hours.
+    /// header_subtitle (the reply time unless the panel wrote its own), the reply time while queued, the company
+    /// under an operator ("Apar"), or that it is after hours.
     package let subtitle: String
     package let backLabel: String
     package let closeLabel: String
@@ -121,9 +121,10 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     package let position: Position
     /// Next to the last bubble of an incoming run.
     package let avatar: ChatAvatar?
-    /// Over the first bubble of a bot's run, outside it (DESIGN-PASS-2 13): "Clomni · Bot".
+    /// Over the first bubble of an incoming run, outside it: who, the brand for the bot ("Clomni"), "Leyla"
+    /// (DESIGN-PASS-3 B2).
     package let nameLine: String?
-    /// Under the last bubble of an incoming run: "Leyla · indi"; a bot's run says only when, its name is above.
+    /// Under the last bubble of an incoming run: when, "indi" or "12:42".
     package let meta: String?
     /// Under the user's message when it is the last one, or when it failed.
     package let status: Status?

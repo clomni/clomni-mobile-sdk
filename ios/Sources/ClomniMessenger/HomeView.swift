@@ -135,7 +135,9 @@ struct HomeTopBar: View {
     let width: CGFloat
 
     var body: some View {
-        ScreenBar(closeLabel: header.closeLabel, closeStyle: .onBrand, theme: theme, close: close) {
+        // Its circle 8 pt above the bar's end, as before the row grew to 48.
+        ScreenBar(closeLabel: header.closeLabel, closeStyle: .onBrand, theme: theme, close: close,
+                  below: CGFloat(ClomniTheme.Space.s - (ClomniTheme.Size.barRow - ClomniTheme.Size.closeCircle) / 2)) {
             Group {
                 if let wordmark = header.wordmark {
                     WordmarkView(wordmark: wordmark, header: header, theme: theme, maxWidth: width * 0.6)

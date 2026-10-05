@@ -48,12 +48,17 @@ package struct ChatPresenter: Sendable {
         let config = snapshot.config
         let brand = config?.brand.name ?? ""
         let conversation = snapshot.conversation
-        if let assignee = conversation?.assignee, conversation?.status != .bot, conversation?.status != .queued {
-            let online = assignee.online ?? true
+        // Who answers, whatever the status: the assignee; without one, the last operator who wrote (no dot: nothing
+        // says they are online).
+        let wrote = snapshot.messages.last { $0.sender.type == .operator && !($0.sender.name ?? "").isEmpty }?.sender
+        let person: (name: String, avatarUrl: URL?, online: Bool)? = conversation?.assignee
+            .map { ($0.name, $0.avatarUrl, $0.online ?? true) } ?? wrote.map { ($0.name ?? "", $0.avatarUrl, false) }
+        if let person {
             return ChatHeader(
-                lead: .person(ChatAvatar(url: assignee.avatarUrl, initial: initial(assignee.name), isBot: false),
-                              online: online),
-                title: assignee.name, subtitle: online ? "\(brand) · \(strings[.online])" : brand,
+                lead: .person(ChatAvatar(url: person.avatarUrl, initial: initial(person.name), isBot: false),
+                              online: person.online),
+                // Only the company: being online is the green dot on the avatar, not a word (operator, 2026-10-05).
+                title: person.name, subtitle: brand,
                 backLabel: strings[.goBack], closeLabel: strings[.close])
         }
         let hours = config?.team.officeHours
@@ -61,7 +66,7 @@ package struct ChatPresenter: Sendable {
         let back = hours?.nextOpenAt.map { strings.format(.awayUntil, time.upcoming($0, now: now)) } ?? strings[.away]
         let subtitle = away ? back
             : conversation?.status == .queued ? config?.team.replyTime ?? strings[.headerSubtitle] : strings[.headerSubtitle]
-        // Nobody has taken it (the bot or a flow answers): the company, by its logo and name.
+        // No operator has taken it or written (the bot or a flow answers): the company, by its logo and name.
         return ChatHeader(lead: .brand(ChatAvatar(url: config?.brand.logoUrl, initial: initial(brand), isBot: true)),
                           title: brand, subtitle: subtitle,
                           backLabel: strings[.goBack], closeLabel: strings[.close])
@@ -102,9 +107,8 @@ package struct ChatPresenter: Sendable {
         let date: Date
         let body: Bubble.Body
         let avatar: ChatAvatar?
-        let metaName: String?
-        /// A bot's name, over its run.
-        let nameLine: String?
+        /// Who wrote it, over an incoming run: the brand for the bot, the operator's name; nil for the user.
+        let author: String?
         var status: Bubble.Status?
         let accessibilityLabel: String
     }
@@ -157,7 +161,7 @@ package struct ChatPresenter: Sendable {
             let text = pending.preview ?? (pending.upload?.fileName ?? strings[.back])
             entries.append(.draft(Draft(
                 id: pending.id, side: .outgoing, sender: "user", date: pending.createdAt, body: body, avatar: nil,
-                metaName: nil, nameLine: nil, status: status(pending),
+                author: nil, status: status(pending),
                 accessibilityLabel: "\(strings[.you]), \(time.clock(pending.createdAt)): \(text)")))
         }
         if let sender = snapshot.typing {
@@ -210,13 +214,13 @@ package struct ChatPresenter: Sendable {
                 let position: Bubble.Position = run.count == 1 ? .single
                     : offset == 0 ? .first : offset == run.count - 1 ? .last : .middle
                 let closesRun = offset == run.count - 1 && draft.side == .incoming
-                let ago = time.ago(draft.date, now: now)
-                let meta = draft.nameLine != nil ? ago : draft.metaName.map { "\($0) · \(ago)" }
+                // Under the last of a run only when ("indi", then "12:42"); who is over its first.
+                let meta = draft.author.map { _ in time.stamp(draft.date, now: now) }
                 let opensRun = (offset == 0) && draft.side == .incoming
                 let status = draft.status.flatMap { $0.isFailure ? nil : $0.text }
                 items.append(.bubble(Bubble(id: draft.id, side: draft.side, body: draft.body, position: position,
                                             avatar: closesRun ? draft.avatar : nil,
-                                            nameLine: opensRun ? draft.nameLine : nil, meta: closesRun ? meta : nil,
+                                            nameLine: opensRun ? draft.author : nil, meta: closesRun ? meta : nil,
                                             status: draft.status,
                                             accessibilityLabel: draft.accessibilityLabel + (status.map { ". \($0)" } ?? ""),
                                             accessibilityHint: hint(draft.body))))
@@ -233,8 +237,7 @@ package struct ChatPresenter: Sendable {
             id: message.id, side: outgoing ? .outgoing : .incoming,
             sender: outgoing ? "user" : "\(message.sender.type.rawValue) \(message.sender.id ?? message.sender.name ?? "")",
             date: message.createdAt, body: body, avatar: outgoing ? nil : who.avatar,
-            metaName: outgoing ? nil : who.name,
-            nameLine: message.sender.type == .bot ? "\(who.name) · \(strings[.bot])" : nil,
+            author: outgoing ? nil : who.name,
             status: nil, accessibilityLabel: label(message, snapshot))
     }
 
@@ -381,10 +384,10 @@ package struct ChatPresenter: Sendable {
     private func person(_ sender: Sender, _ snapshot: ChatSnapshot) -> (name: String, avatar: ChatAvatar) {
         let config = snapshot.config
         let brand = config?.brand.name ?? ""
-        let botName = config?.bot.name.isEmpty == false ? config?.bot.name : nil
         switch sender.type {
         case .bot:
-            let name = sender.name ?? botName ?? brand
+            // The bot speaks as the brand (DESIGN-PASS-3 B2): its own name in the panel is not shown.
+            let name = brand.isEmpty ? sender.name ?? config?.bot.name ?? "" : brand
             // The bot is the company: its logo first.
             return (name, ChatAvatar(url: config?.brand.logoUrl ?? config?.bot.avatarUrl ?? sender.avatarUrl, initial: initial(name),
                                      isBot: true))

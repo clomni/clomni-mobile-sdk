@@ -84,12 +84,12 @@ struct ChatItemView: View {
     var body: some View {
         switch item {
         case .time(_, let text):
+            // The day line 12; with the list's 4 pt, 16 over it.
             Text(text)
-                .clomniFont(11.5, relativeTo: .caption2)
+                .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption2)
                 .foregroundStyle(theme.colors.textSecondary.color)
                 .frame(maxWidth: .infinity)
-                .padding(.top, CGFloat(ClomniTheme.Space.xxs))
-                .padding(.bottom, CGFloat(ClomniTheme.Space.m))
+                .padding(.top, CGFloat(ClomniTheme.Space.m))
         case .bubble(let bubble):
             BubbleRow(bubble: bubble, theme: theme, actions: actions)
         case .system(let line):
@@ -102,7 +102,9 @@ struct ChatItemView: View {
     }
 }
 
-/// A bubble with its avatar slot, meta line and status, on its side of the screen.
+/// A bubble with its avatar slot (28, next to the last of a run), the author over the first of a run (13 medium), the
+/// time under the last (12), and the status, on its side of the screen. With the list's 4 pt, bubbles of a run are 4
+/// apart and runs 16 (DESIGN-PASS-3 B2).
 struct BubbleRow: View {
     let bubble: Bubble
     let theme: ClomniTheme
@@ -115,7 +117,7 @@ struct BubbleRow: View {
     /// DESIGN-PASS-2 13: a bubble is at most 78% of the screen wide.
     private var maxWidth: CGFloat { screenWidth * 0.78 }
 
-    /// 16 pt, 5 where bubbles of one run meet; the user's always keep the 5 pt bottom-trailing corner.
+    /// 18 pt, 5 where bubbles of one run meet; the user's always keep the 5 pt bottom-trailing corner.
     private var corners: (topLeading: CGFloat, topTrailing: CGFloat, bottomLeading: CGFloat, bottomTrailing: CGFloat) {
         let round = CGFloat(ClomniTheme.Radius.message)
         let joined = CGFloat(ClomniTheme.Radius.messageJoined)
@@ -142,9 +144,10 @@ struct BubbleRow: View {
             if let name = bubble.nameLine {
                 // Outside the bubble, over its run.
                 Text(name)
-                    .clomniFont(13, .semibold, relativeTo: .footnote)
+                    .clomniFont(13, .medium, relativeTo: .footnote)
                     .foregroundStyle(theme.colors.textSecondary.color)
-                    .padding(.leading, CGFloat(ClomniTheme.Size.headerAvatar + ClomniTheme.Space.s))
+                    .lineLimit(1)
+                    .padding(.leading, CGFloat(ClomniTheme.Size.avatar + ClomniTheme.Space.s))
                     .accessibilityHidden(true)
             }
             HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
@@ -158,10 +161,10 @@ struct BubbleRow: View {
             .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
             if let meta = bubble.meta {
                 Text(meta)
-                    .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
+                    .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption2)
                     .foregroundStyle(theme.colors.textSecondary.color)
                     // Under the bubble, past the avatar's slot.
-                    .padding(.leading, CGFloat(ClomniTheme.Size.headerAvatar + ClomniTheme.Space.s))
+                    .padding(.leading, CGFloat(ClomniTheme.Size.avatar + ClomniTheme.Space.s))
                     .accessibilityHidden(true)
             }
             if let status = bubble.status {
@@ -169,16 +172,16 @@ struct BubbleRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
-        // A new run starts a little apart: 4 pt for the other side, 8 pt for the user.
-        .padding(.top, bubble.position == .first || bubble.position == .single ? (incoming ? 4 : 8) : 0)
+        // A new run starts 16 pt apart, the list's 4 and 12.
+        .padding(.top, bubble.position == .first || bubble.position == .single ? CGFloat(ClomniTheme.Space.m) : 0)
     }
 
     @ViewBuilder
     private var avatarSlot: some View {
         if let avatar = bubble.avatar {
-            ChatAvatarView(avatar: avatar, size: ClomniTheme.Size.headerAvatar, theme: theme)
+            ChatAvatarView(avatar: avatar, size: ClomniTheme.Size.avatar, theme: theme)
         } else {
-            Color.clear.frame(width: CGFloat(ClomniTheme.Size.headerAvatar), height: 1)
+            Color.clear.frame(width: CGFloat(ClomniTheme.Size.avatar), height: 1)
         }
     }
 }
@@ -199,13 +202,13 @@ struct BubbleBody: View {
         switch bubble.body {
         case .text(let runs):
             Text(attributedText(runs))
-                .clomniFont(ClomniTheme.FontSize.text)
+                .clomniFont(ClomniTheme.FontSize.message)
                 .lineSpacing(3)
                 .foregroundStyle(ink)
                 .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.vertical, CGFloat(ClomniTheme.Space.s))
-                .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
                 .background(shape.fill(fill))
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityElement(children: .combine)
@@ -431,7 +434,7 @@ struct TypingRow: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
-            ChatAvatarView(avatar: line.avatar, size: ClomniTheme.Size.headerAvatar, theme: theme)
+            ChatAvatarView(avatar: line.avatar, size: ClomniTheme.Size.avatar, theme: theme)
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { index in
                     Circle()

@@ -54,13 +54,13 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(list.map(\.position), [.first, .last, .single], "70 s later starts a new run")
         XCTAssertNil(list[0].avatar)
         XCTAssertNil(list[0].meta)
-        // The bot's name over its run (DESIGN-PASS-2 13), when under it.
-        XCTAssertEqual(list.map(\.nameLine), ["Clomni · Bot", nil, "Clomni · Bot"])
-        XCTAssertEqual(list[1].meta, "indi")
-        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "C", isBot: true),
+        // The bot speaks as the brand over its run, with no "· Bot" (DESIGN-PASS-3 B2); when, under it.
+        XCTAssertEqual(list.map(\.nameLine), ["Apar", nil, "Apar"])
+        XCTAssertEqual(list[1].meta, "indi", "within a minute")
+        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true),
                        "the bot is the company: its logo")
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
-        XCTAssertEqual(list[0].accessibilityLabel, "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.")
+        XCTAssertEqual(list[0].accessibilityLabel, "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.")
     }
 
     func testTimeSeparators() {
@@ -78,7 +78,8 @@ final class ChatPresenterTests: XCTestCase {
     func testOperatorBubbleAndMarkdown() {
         let reply = bubbles(screen([Fixture.message("02-text-operator-markdown.json",
                                                     ["created_at": "2026-10-01T10:30:00Z"])])).first
-        XCTAssertEqual(reply?.meta, "Leyla · 2 dəq")
+        XCTAssertEqual(reply?.nameLine, "Leyla")
+        XCTAssertEqual(reply?.meta, "10:30", "a minute ago or more: the clock")
         XCTAssertEqual(reply?.avatar?.initial, "L")
         guard case .text(let runs)? = reply?.body else { return XCTFail() }
         XCTAssertEqual(runs.first, TextRun("Gedişinizi yoxladıq.", bold: true))
@@ -178,7 +179,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(open.lead, .person(ChatAvatar(url: URL(string: "https://app.clomni.ai/a/leyla.png"), initial: "L",
                                                      isBot: false), online: true))
         XCTAssertEqual(open.title, "Leyla")
-        XCTAssertEqual(open.subtitle, "Apar · onlayn")
+        XCTAssertEqual(open.subtitle, "Apar", "only the company: online is the dot")
 
         let away: JSONValue = ["name": "Leyla", "online": false]
         XCTAssertEqual(screen([]) { $0.conversation = Fixture.conversation(status: "open", assignee: away) }.header.subtitle,
@@ -200,6 +201,27 @@ final class ChatPresenterTests: XCTestCase {
             """##.utf8))
         let untilMorning = screen([]) { $0.config = nextOpen }.header
         XCTAssertEqual(untilMorning.subtitle, "Növbəti iş saatı: sabah 05:00", "local time; these tests run in UTC")
+    }
+
+    /// The assignee whatever the status; nobody assigned, the last operator who wrote, with no online dot; else the
+    /// company (operator, 2026-10-05).
+    func testTheHeaderNamesWhoAnswers() {
+        let leyla: JSONValue = ["name": "Leyla", "online": true]
+        let queued = screen([]) { $0.conversation = Fixture.conversation(status: "queued", assignee: leyla) }.header
+        XCTAssertEqual(queued.title, "Leyla", "the assignee while queued too")
+
+        let wrote = [Fixture.message("02-text-operator-markdown.json", ["id": "m1", "seq": 1]),
+                     Fixture.message("01-text-bot.json", ["id": "m2", "seq": 2])]
+        let unassigned = screen(wrote) { $0.conversation = Fixture.conversation(status: "queued") }.header
+        XCTAssertEqual(unassigned.lead, .person(ChatAvatar(url: URL(string: "https://app.clomni.ai/a/leyla.png"), initial: "L",
+                                                           isBot: false), online: false))
+        XCTAssertEqual(unassigned.title, "Leyla", "a bot's message after hers changes nothing")
+        XCTAssertEqual(unassigned.subtitle, "Apar")
+        let rauf: JSONValue = ["name": "Rauf", "online": true]
+        XCTAssertEqual(screen(wrote) { $0.conversation = Fixture.conversation(status: "open", assignee: rauf) }.header.title,
+                       "Rauf", "the assignee before the last writer")
+        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true))
+        XCTAssertEqual(screen(Array(wrote.dropFirst())).header.lead, logo, "only the bot wrote: the company")
     }
 
     /// Operator, 2026-10-04 (72): only the newest bot message's choices, while nothing answered it. Old choices in
@@ -405,7 +427,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(line.accessibilityLabel, "Leyla yazır")
         XCTAssertEqual(line.avatar.initial, "L")
         XCTAssertEqual(operatorTyping.announcement,
-                       Announcement(id: "msg_f01", text: "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."))
+                       Announcement(id: "msg_f01", text: "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."))
         XCTAssertNil(screen([Fixture.message("03-text-user.json")]).announcement, "the user's own message is not news")
 
         var loading = ChatSnapshot(config: nil)
