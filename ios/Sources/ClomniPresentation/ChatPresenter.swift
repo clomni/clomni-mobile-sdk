@@ -61,7 +61,9 @@ package struct ChatPresenter: Sendable {
         let back = hours?.nextOpenAt.map { strings.format(.awayUntil, time.upcoming($0, now: now)) } ?? strings[.away]
         let subtitle = away ? back
             : conversation?.status == .queued ? config?.team.replyTime ?? strings[.headerSubtitle] : strings[.headerSubtitle]
-        return ChatHeader(lead: .team(teamAvatars(config)), title: brand, subtitle: subtitle,
+        // Nobody has taken it (the bot or a flow answers): the company, by its logo and name.
+        return ChatHeader(lead: .brand(ChatAvatar(url: config?.brand.logoUrl, initial: initial(brand), isBot: true)),
+                          title: brand, subtitle: subtitle,
                           backLabel: strings[.goBack], closeLabel: strings[.close])
     }
 
@@ -77,8 +79,9 @@ package struct ChatPresenter: Sendable {
         var mode = ChatComposer.Mode.open
         if snapshot.conversation?.status == .closed {
             mode = .closed(text: strings[.closed], action: strings[.startNewConversation])
-        } else if case .quickReplies(let replies)? = waiting?.content, replies.inputDisabled {
-            mode = .locked(strings[.chooseAbove])
+        } else if case .quickReplies? = waiting?.content {
+            // A step waiting for a choice has nothing under it, whatever input_disabled says (DESIGN-PASS-3 A4).
+            mode = .hidden
         }
         return ChatComposer(
             mode: mode, placeholder: strings[.composerPlaceholder],
@@ -326,10 +329,22 @@ package struct ChatPresenter: Sendable {
                                accessibilityLabel: strings.buttonPosition(title: button.title, index: index + 1,
                                                                           count: replies.buttons.count))
         }
-        let back = replies.allowBack
+        // The flow's own "Yenidən başla" (or back) already takes the user back: no second one from the SDK.
+        let back = replies.allowBack && !replies.buttons.contains { Self.isRestart($0.title) }
             ? ReplyButton(id: "back", title: strings[.back], accessibilityLabel: strings[.goBack])
             : nil
         return QuickReplyBlock(messageId: messageId, layout: replies.layout, buttons: buttons, back: back)
+    }
+
+    /// A flow button with one of these titles (letters only, lower case) restarts or steps back by itself.
+    private static let restartTitles: Set<String> = [
+        "yenidən başla", "yenidən başlat", "əvvələ qayıt", "başa qayıt", "geri", "geri qayıt",
+        "start over", "restart", "back", "go back", "начать заново", "сначала", "назад",
+    ]
+
+    static func isRestart(_ title: String) -> Bool {
+        let letters = title.lowercased().filter { $0.isLetter || $0 == " " }
+        return restartTitles.contains(letters.split(separator: " ").joined(separator: " "))
     }
 
     private func card(_ messageId: String, _ form: MessageContent.Form, _ snapshot: ChatSnapshot) -> FormCard {
@@ -341,7 +356,8 @@ package struct ChatPresenter: Sendable {
                 FormCard.Field(id: field.key, type: field.type, label: field.label, required: field.required,
                                placeholder: field.placeholder, maxLength: field.maxLength, options: field.options,
                                accessibilityLabel: field.required ? "\(field.label), \(strings[.required])" : field.label,
-                               initialValue: prefill[field.key] ?? "")
+                               initialValue: prefill[field.key] ?? "",
+                               shownLabel: field.required ? field.label : "\(field.label) \(strings[.optional])")
             },
             submitTitle: form.submitTitle,
             readOnly: sent || !snapshot.answerable.contains(messageId),
@@ -369,7 +385,8 @@ package struct ChatPresenter: Sendable {
         switch sender.type {
         case .bot:
             let name = sender.name ?? botName ?? brand
-            return (name, ChatAvatar(url: config?.bot.avatarUrl ?? sender.avatarUrl ?? config?.brand.logoUrl, initial: initial(name),
+            // The bot is the company: its logo first.
+            return (name, ChatAvatar(url: config?.brand.logoUrl ?? config?.bot.avatarUrl ?? sender.avatarUrl, initial: initial(name),
                                      isBot: true))
         case .operator:
             let assignee = snapshot.conversation?.assignee

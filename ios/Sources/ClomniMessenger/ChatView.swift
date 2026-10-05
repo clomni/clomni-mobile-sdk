@@ -53,10 +53,12 @@ struct ChatView: View {
     @State private var staged: StagedFile?
     @State private var screenWidth: CGFloat = 390
     private var composerShown: Bool {
-        if case .locked = model.screen.composer.mode { return false }
+        if case .hidden = model.screen.composer.mode { return false }
         return true
     }
 
+    /// The transcript has moved under the bar: its line shows.
+    @State private var scrolled = false
     /// The transcript has been scrolled to its end once.
     @State private var atBottom = false
     @State private var fullScreenImage: ImageURL?
@@ -81,7 +83,7 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ChatHeaderView(header: model.screen.header, theme: theme, back: back, close: close)
+            ChatHeaderView(header: model.screen.header, theme: theme, showsDivider: scrolled, back: back, close: close)
             if let offline = model.screen.offline {
                 OfflineStrip(text: offline, theme: theme)
             }
@@ -167,6 +169,11 @@ struct ChatView: View {
                         LoadingIndicator(loading: loadingOlder, label: model.screen.loadingLabel, theme: theme, size: 20)
                             .padding(.top, CGFloat(ClomniTheme.Space.s))
                     }
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ScrollTopOffset.self,
+                                               value: proxy.frame(in: .named(ScrollTopOffset.space)).minY)
+                    }
+                    .frame(height: 0)
                     ChatTranscript(items: model.screen.items, theme: theme, actions: actions, reachedTop: loadOlder)
                         .onAppear {
                             if let last = model.screen.items.last?.id { proxy.scrollTo(last, anchor: .bottom) }
@@ -174,6 +181,8 @@ struct ChatView: View {
                             DispatchQueue.main.async { atBottom = true }
                         }
                 }
+                .coordinateSpace(name: ScrollTopOffset.space)
+                .onPreferenceChange(ScrollTopOffset.self) { top in scrolled = top < -1 }
                 .opacity(atBottom ? 1 : 0)
                 .onChange(of: model.screen.items.last?.id) { last in
                     guard let last else { return }
@@ -275,13 +284,39 @@ struct ImageURL: Identifiable {
 struct ChatHeaderView: View {
     let header: ChatHeader
     let theme: ClomniTheme
+    var showsDivider = false
     let back: () -> Void
     let close: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScreenBar(closeLabel: header.closeLabel, theme: theme, close: close) {
             HStack(spacing: CGFloat(ClomniTheme.Space.s)) {
                 CircleBackButton(label: header.backLabel, theme: theme, action: back)
+                // The company until an operator joins, then the operator: a 200 ms crossfade between the two.
+                ZStack {
+                    who
+                        .id(whoKey)
+                        .transition(.opacity)
+                }
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: whoKey)
+            }
+        }
+        .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
+        .overlay(alignment: .bottom) {
+            // The line only once the transcript has scrolled under the bar.
+            Rectangle().fill(theme.colors.border.color).frame(height: 1).opacity(showsDivider ? 1 : 0)
+        }
+        .animation(.easeOut(duration: 0.15), value: showsDivider)
+    }
+
+    private var whoKey: String {
+        if case .person = header.lead { return "person \(header.title)" }
+        return "brand"
+    }
+
+    private var who: some View {
+            HStack(spacing: CGFloat(ClomniTheme.Space.s)) {
                 lead
                     .frame(width: CGFloat(ClomniTheme.Size.headerLead), height: CGFloat(ClomniTheme.Size.headerLead))
                 VStack(alignment: .leading, spacing: 0) {
@@ -300,32 +335,15 @@ struct ChatHeaderView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
             }
-        }
-        .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(theme.colors.border.color).frame(height: 1)
-        }
     }
 
     /// The team's avatars, or the operator with the green dot: both in the same 32 pt.
     @ViewBuilder
     private var lead: some View {
         switch header.lead {
-        case .team(let urls):
-            if urls.isEmpty {
-                Color.clear
-            } else {
-                ZStack {
-                    ForEach(Array(urls.prefix(3).enumerated()), id: \.offset) { index, url in
-                        AvatarView(url: url, initial: "", size: 20, theme: theme)
-                            .padding(1)
-                            .background(Circle().fill(theme.colors.background.color))
-                            .offset(x: CGFloat(index - (min(urls.count, 3) - 1)) * 6 + 5,
-                                    y: CGFloat(index % 2 == 0 ? -4 : 4))
-                    }
-                }
+        case .brand(let logo):
+            ChatAvatarView(avatar: logo, size: ClomniTheme.Size.headerLead, theme: theme)
                 .accessibilityHidden(true)
-            }
         case .person(let avatar, let online):
             ChatAvatarView(avatar: avatar, size: ClomniTheme.Size.headerLead, theme: theme)
                 .overlay(alignment: .bottomTrailing) {

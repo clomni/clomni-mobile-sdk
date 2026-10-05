@@ -25,7 +25,6 @@ package struct ClomniStrings: Sendable, Equatable {
         case away
         case awayUntil = "away_until"
         case composerPlaceholder = "composer_placeholder"
-        case chooseAbove = "choose_above"
         case sending, sent, read, failed
         case closed
         case startNewConversation = "start_new_conversation"
@@ -46,6 +45,8 @@ package struct ClomniStrings: Sendable, Equatable {
         // VoiceOver (CM-087).
         case loading
         case required
+        /// After an optional form field's label: "E-poçt (istəyə görə)".
+        case optional
         case opensImage = "opens_image"
         case opensFile = "opens_file"
     }
@@ -121,9 +122,10 @@ package struct ClomniStrings: Sendable, Equatable {
             .hoursShort: "%d saat", .daysShort: "%d gün", .email: "E-poçt", .phone: "Telefon",
             .headerSubtitle: "Adətən bir neçə dəqiqəyə cavab veririk", .online: "onlayn", .away: "Hazırda iş saatı deyil",
             .awayUntil: "Növbəti iş saatı: %@",
-            .composerPlaceholder: "Mesaj yazın…", .chooseAbove: "Yuxarıdan birini seçin",
+            .composerPlaceholder: "Mesaj yazın…",
             .sending: "Göndərilir", .sent: "Göndərildi", .read: "Oxundu", .failed: "Göndərilmədi",
             .closed: "Söhbət bağlanıb", .startNewConversation: "Yeni söhbət başlat", .back: "← Geri",
+            .optional: "(istəyə görə)",
             .goBack: "Geri", .bot: "Bot", .typing: "yazır", .attach: "Fayl əlavə et",
             .emoji: "Emoji", .image: "Şəkil", .file: "Fayl", .fieldRequired: "Bu sahəni doldurun",
             .invalidEmail: "E-poçt düzgün deyil", .invalidPhone: "Telefon nömrəsi düzgün deyil",
@@ -142,10 +144,10 @@ package struct ClomniStrings: Sendable, Equatable {
             .hoursShort: "%d h", .daysShort: "%d d", .email: "Email", .phone: "Phone",
             .headerSubtitle: "Typically replies in a few minutes", .online: "online", .away: "Outside working hours",
             .awayUntil: "Next working hours: %@",
-            .composerPlaceholder: "Write a message…", .chooseAbove: "Choose an option above",
+            .composerPlaceholder: "Write a message…",
             .sending: "Sending", .sent: "Sent", .read: "Read", .failed: "Not sent",
             .closed: "Conversation closed", .startNewConversation: "Start a new conversation",
-            .back: "← Back", .goBack: "Back", .bot: "Bot", .typing: "is typing",
+            .back: "← Back", .optional: "(optional)", .goBack: "Back", .bot: "Bot", .typing: "is typing",
             .attach: "Attach a file", .emoji: "Emoji", .image: "Image", .file: "File",
             .fieldRequired: "Fill in this field", .invalidEmail: "Enter a valid email",
             .invalidPhone: "Enter a valid phone number", .invalidNumber: "Enter a number",
@@ -164,9 +166,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .minutesShort: "%d мин", .hoursShort: "%d ч", .daysShort: "%d дн", .email: "Почта", .phone: "Телефон",
             .headerSubtitle: "Обычно отвечаем в течение нескольких минут", .online: "в сети", .away: "Сейчас нерабочее время",
             .awayUntil: "Следующее рабочее время: %@",
-            .composerPlaceholder: "Напишите сообщение…", .chooseAbove: "Выберите вариант выше",
+            .composerPlaceholder: "Напишите сообщение…",
             .sending: "Отправляется", .sent: "Отправлено", .read: "Прочитано", .failed: "Не отправлено",
-            .closed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад",
+            .closed: "Диалог закрыт", .startNewConversation: "Начать новый диалог", .back: "← Назад", .optional: "(необязательно)",
             .goBack: "Назад", .bot: "Бот", .typing: "печатает", .attach: "Прикрепить файл",
             .emoji: "Эмодзи", .image: "Изображение", .file: "Файл", .fieldRequired: "Заполните это поле",
             .invalidEmail: "Неверный email", .invalidPhone: "Неверный номер телефона",

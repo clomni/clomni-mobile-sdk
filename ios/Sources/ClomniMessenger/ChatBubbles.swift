@@ -230,9 +230,8 @@ struct BubbleBody: View {
             .accessibilityLabel(Text(bubble.accessibilityLabel))
             .accessibilityHint(Text(bubble.accessibilityHint ?? ""))
         case .form(let card):
-            FormCardView(card: card, theme: theme, submit: { values in await actions.submit(card.messageId, values) })
-                .background(shape.fill(fill))
-                .frame(maxWidth: 260, alignment: .leading)
+            FormCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill,
+                         submit: { values in await actions.submit(card.messageId, values) })
         }
     }
 }

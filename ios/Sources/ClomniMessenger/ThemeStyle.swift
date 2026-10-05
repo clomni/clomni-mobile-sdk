@@ -245,3 +245,19 @@ struct FailureView: View {
     }
 }
 #endif
+
+#if canImport(SwiftUI) && canImport(UIKit)
+/// The press highlight cut to the element's own shape (DESIGN-PASS-3 A5): a capsule, a circle or the card's radius,
+/// never a square; the label dims a little as PlainButtonStyle does, and the tap area is the same shape.
+struct PressShapeStyle<S: Shape>: ButtonStyle {
+    let shape: S
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .overlay(shape.fill(Color.primary.opacity(configuration.isPressed ? 0.08 : 0)))
+            .clipShape(shape)
+            .contentShape(shape)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}
+#endif

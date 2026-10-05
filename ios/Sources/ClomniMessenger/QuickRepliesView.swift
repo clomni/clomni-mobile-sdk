@@ -8,8 +8,8 @@ import ClomniCore
 import ClomniPresentation
 #endif
 
-/// The live step's buttons: right-aligned pills, one under another (vertical) or side by side wrapping (chips), then
-/// a grey "← Geri". A tap fades them out; the choice stays as the user's message.
+/// The live step's buttons: right-aligned pills side by side, wrapping, then a grey "← Geri" unless the flow has its
+/// own restart. A tap fades them out; the choice stays as the user's message.
 struct QuickRepliesView: View {
     let block: QuickReplyBlock
     let theme: ClomniTheme
@@ -26,9 +26,15 @@ struct QuickRepliesView: View {
             .allowsHitTesting(!chosen)
     }
 
-    /// One under another, each on its own line, right-aligned (operator, 2026-10-04), whatever the layout says.
+    /// Side by side, each as wide as its text, wrapping onto the next line, right-aligned, 8 apart both ways
+    /// (DESIGN-PASS-3 A3). iOS 15 has no custom layout: one under another there.
+    @ViewBuilder
     private var layout: some View {
-        VStack(alignment: .trailing, spacing: CGFloat(ClomniTheme.Space.s)) { pills }
+        if #available(iOS 16.0, *) {
+            WrapLayout(spacing: CGFloat(ClomniTheme.Space.s)) { pills }
+        } else {
+            VStack(alignment: .trailing, spacing: CGFloat(ClomniTheme.Space.s)) { pills }
+        }
     }
 
     @ViewBuilder

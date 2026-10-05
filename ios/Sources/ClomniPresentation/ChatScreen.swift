@@ -27,8 +27,9 @@ package struct Announcement: Sendable, Equatable {
 /// White bar with the bottom hairline: back arrow, who is answering, ✕.
 package struct ChatHeader: Sendable, Equatable {
     package enum Lead: Sendable, Equatable {
-        /// Up to three team avatars, 24 pt, overlapping.
-        case team([URL])
+        /// Nobody has taken the conversation (the bot or a flow answers): the company's logo, its initial without
+        /// one; never a person's face.
+        case brand(ChatAvatar)
         /// The operator, 28 pt, with the green dot while online.
         case person(ChatAvatar, online: Bool)
     }
@@ -173,6 +174,8 @@ package struct FormCard: Sendable, Equatable {
         package let accessibilityLabel: String
         /// The logged-in user's known value, filled in before they type.
         package let initialValue: String
+        /// On screen: the label, with "(istəyə görə)" after an optional field's; a required one has no mark.
+        package let shownLabel: String
     }
 
     package struct Line: Sendable, Equatable {
@@ -199,8 +202,8 @@ package struct FormCard: Sendable, Equatable {
 package struct ChatComposer: Sendable, Equatable {
     package enum Mode: Sendable, Equatable {
         case open
-        /// The step waits for a choice and takes no text: no composer at all (operator, 2026-10-04).
-        case locked(String)
+        /// A step waits for a choice: no composer at all, no "choose above" (DESIGN-PASS-3 A4).
+        case hidden
         /// "Söhbət bağlanıb · Yeni söhbət başlat"; writing anyway reopens it.
         case closed(text: String, action: String)
     }

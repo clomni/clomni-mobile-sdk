@@ -57,7 +57,8 @@ final class ChatPresenterTests: XCTestCase {
         // The bot's name over its run (DESIGN-PASS-2 13), when under it.
         XCTAssertEqual(list.map(\.nameLine), ["Clomni · Bot", nil, "Clomni · Bot"])
         XCTAssertEqual(list[1].meta, "indi")
-        XCTAssertEqual(list[1].avatar, ChatAvatar(url: URL(string: "https://app.clomni.ai/a/bot.png"), initial: "C", isBot: true))
+        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "C", isBot: true),
+                       "the bot is the company: its logo")
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
         XCTAssertEqual(list[0].accessibilityLabel, "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.")
     }
@@ -157,7 +158,8 @@ final class ChatPresenterTests: XCTestCase {
 
     func testHeader() {
         let bot = screen([]).header
-        XCTAssertEqual(bot.lead, .team(Fixture.aparConfig.team.avatars))
+        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true))
+        XCTAssertEqual(bot.lead, logo, "no operator: the company's logo, never a person's face")
         XCTAssertEqual(bot.title, "Apar")
         XCTAssertEqual(bot.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk", "the config's header_subtitle, as it came")
         // Without one in the config, the SDK's own: the server's default, the minutes reply time.
@@ -190,7 +192,7 @@ final class ChatPresenterTests: XCTestCase {
             $0.conversation = Fixture.conversation(status: "queued")
         }.header
         XCTAssertEqual(afterHours.subtitle, "Hazırda iş saatı deyil", "no next_open_at: just that it is closed")
-        XCTAssertEqual(afterHours.lead, .team([]))
+        XCTAssertEqual(afterHours.lead, .brand(ChatAvatar(url: nil, initial: "A", isBot: true)))
 
         let nextOpen = ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"name":"Apar","primary_color":"#1F9D63"},
@@ -239,7 +241,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(block.buttons[0].accessibilityLabel, "Azərbaycan dili, 1-ci, cəmi 3")
         XCTAssertEqual(block.layout, .vertical)
         XCTAssertNil(block.back)
-        XCTAssertEqual(open.composer.mode, .open)
+        XCTAssertEqual(open.composer.mode, .hidden, "nothing under a step that waits for a choice")
         XCTAssertTrue(text(bubbles(open).first)?.hasPrefix("Salam, Clomni-yə") == true)
 
         // Answered (fixture 08): the buttons are gone, the text stays.
@@ -253,7 +255,7 @@ final class ChatPresenterTests: XCTestCase {
         guard case .replies(let chipsBlock)? = chips.items.last else { return XCTFail() }
         XCTAssertEqual(chipsBlock.layout, .chips)
         XCTAssertEqual(chipsBlock.back, ReplyButton(id: "back", title: "← Geri", accessibilityLabel: "Geri"))
-        XCTAssertEqual(chips.composer.mode, .locked("Yuxarıdan birini seçin"))
+        XCTAssertEqual(chips.composer.mode, .hidden)
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
         let long = Fixture.message("13-button-title-over-80.json")
@@ -268,7 +270,29 @@ final class ChatPresenterTests: XCTestCase {
         let bare = Fixture.message("15-quick-replies-no-text.json")
         let bareScreen = screen([bare]) { $0.answerable = [bare.id] }
         XCTAssertTrue(bubbles(bareScreen).isEmpty, "no text, no bubble")
-        XCTAssertEqual(bareScreen.composer.mode, .open, "input_disabled false")
+        XCTAssertEqual(bareScreen.composer.mode, .hidden, "a waiting choice hides it even with input_disabled false")
+    }
+
+    func testTheFlowsOwnRestartButtonLeavesNoSecondBack() {
+        let restart = Fixture.message("10-apar-level2-S-chips.json", ["content": [
+            "text": "Seçin", "allow_back": true,
+            "buttons": [["id": "a", "title": "Kart", "payload": "a"], ["id": "r", "title": "↺ Yenidən başla", "payload": "r"]],
+        ]])
+        guard case .replies(let block)? = screen([restart]) { $0.answerable = [restart.id] }.items.last else {
+            return XCTFail()
+        }
+        XCTAssertEqual(block.buttons.count, 2)
+        XCTAssertNil(block.back)
+        XCTAssertTrue(ChatPresenter.isRestart("Start over"))
+        XCTAssertFalse(ChatPresenter.isRestart("Kart"))
+    }
+
+    func testAnOptionalFieldSaysSo() {
+        let contact = Fixture.message("19-form-contact.json")
+        guard case .form(let card)? = bubbles(screen([contact]) { $0.answerable = [contact.id] }).first?.body else {
+            return XCTFail()
+        }
+        XCTAssertEqual(card.fields.map(\.shownLabel), ["Ad, soyad", "Telefon", "Email (istəyə görə)"])
     }
 
     func testForms() throws {

@@ -21,7 +21,7 @@ struct StagedFile: Equatable {
 }
 
 /// White, with a 1 pt line on top (DESIGN-PASS-2 11): the field (surface, radius 20, at least 44 high, up to 5 lines
-/// then it scrolls), the emoji and attach icons (24) inside it, and once there is something to send the round send
+/// then it scrolls), the emoji (its own sheet, DESIGN-PASS-3 A6) and attach icons (24, pressed as a 40 pt circle) inside it, and once there is something to send the round send
 /// button (36, brand colour) in the attach icon's place, coming in over 150 ms. A closed conversation offers a new one, and writing anyway
 /// reopens it. A picked file waits above it as a 64 pt square with its ×. (While a flow waits for a choice the
 /// conversation shows no composer at all.)
@@ -35,6 +35,9 @@ struct ComposerView: View {
     let attach: () -> Void
     let startNew: () -> Void
     @FocusState private var focused: Bool
+    @State private var choosingEmoji = false
+    /// Where the cursor stood when the emoji sheet opened (UTF-16), so the emoji goes there.
+    @State private var emojiAt: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
@@ -91,7 +94,11 @@ struct ComposerView: View {
         HStack(alignment: .center, spacing: CGFloat(ClomniTheme.Space.s)) {
             input
             if composer.showsEmoji {
-                iconButton("face.smiling", label: composer.emojiLabel) { focused = true }
+                iconButton("face.smiling", label: composer.emojiLabel) {
+                    emojiAt = focused ? TextInsertion.cursorOffset() : nil
+                    choosingEmoji = true
+                }
+                .sheet(isPresented: $choosingEmoji) { emojiSheet }
             }
             ZStack {
                 if canSend {
@@ -101,11 +108,11 @@ struct ComposerView: View {
                             .foregroundStyle(theme.colors.onPrimary.color)
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(theme.colors.primary.color))
-                            .frame(width: CGFloat(ClomniTheme.Size.touchTarget),
-                                   height: CGFloat(ClomniTheme.Size.touchTarget))
-                            .contentShape(Rectangle())
+                            .frame(width: 40, height: 40)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(PressShapeStyle(shape: Circle()))
+                    .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
+                    .contentShape(Rectangle())
                     .accessibilityLabel(Text(composer.sendLabel))
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
                 } else if composer.showsAttach {
@@ -148,11 +155,26 @@ struct ComposerView: View {
                 .font(.system(size: 20))
                 .frame(width: 24, height: 24)
                 .foregroundStyle(theme.colors.textSecondary.color)
-                .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
-                .contentShape(Rectangle())
+                .frame(width: 40, height: 40)
         }
-        .buttonStyle(PlainButtonStyle())
+        // The press is a 40 pt circle; the tap area stays 44.
+        .buttonStyle(PressShapeStyle(shape: Circle()))
+        .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
+        .contentShape(Rectangle())
         .accessibilityLabel(Text(label))
+    }
+
+    @ViewBuilder
+    private var emojiSheet: some View {
+        let sheet = EmojiPickerSheet(title: composer.emojiLabel, theme: theme) { emoji in
+            text = TextInsertion.insert(emoji, into: text, atUTF16: emojiAt)
+            emojiAt = emojiAt.map { $0 + emoji.utf16.count }
+        }
+        if #available(iOS 16.0, *) {
+            sheet.presentationDetents([.medium, .large])
+        } else {
+            sheet
+        }
     }
 }
 
