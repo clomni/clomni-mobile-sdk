@@ -212,9 +212,6 @@ class AccessibilitySnapshotTest {
                 "Azərbaycan dili, 1-ci, cəmi 3 [Button]",
                 "English, 2-ci, cəmi 3 [Button]",
                 "Русский, 3-cü, cəmi 3 [Button]",
-                "Mesaj yazın… [click]",
-                "Emoji [Button]",
-                "Fayl əlavə et [Button]",
             ),
         )
     }

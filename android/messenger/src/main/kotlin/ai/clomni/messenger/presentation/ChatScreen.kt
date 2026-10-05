@@ -36,8 +36,8 @@ internal data class ChatHeader(
     val closeLabel: String,
 ) {
     sealed interface Lead {
-        /** Up to three team avatars, 24 dp, overlapping. */
-        data class Team(val urls: List<String>) : Lead
+        /** Nobody has taken the conversation: the company's logo (its initial without one). */
+        data class Brand(val logo: ChatAvatar) : Lead
 
         /** The operator, 28 dp, with the green dot while online. */
         data class Person(val avatar: ChatAvatar, val online: Boolean) : Lead
@@ -176,6 +176,8 @@ internal data class FormCard(
         val options: List<MessageContent.FormField.Option>,
         /** The logged-in user's known value, filled in before they type. */
         val initialValue: String,
+        /** On screen: the label, with "(istəyə görə)" after an optional field's. */
+        val shownLabel: String = label,
     )
 
     data class Line(val label: String, val value: String)

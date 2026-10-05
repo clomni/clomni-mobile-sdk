@@ -81,7 +81,7 @@ internal fun Modifier.clomniCard(theme: ClomniTheme, label: String = "", onClick
     val lifted = if (theme.isDark) this else shadow(1.dp, shape, ambientColor = Color.Black.copy(alpha = 0.03f), spotColor = Color.Black.copy(alpha = 0.06f))
     val clipped = lifted.clip(shape)
     // A tappable card is a 48 dp target even with one line in it.
-    return (if (onClick != null) clipped.heightIn(min = ClomniTheme.Size.touchTarget.dp).button(label, onClick) else clipped)
+    return (if (onClick != null) clipped.heightIn(min = ClomniTheme.Size.touchTarget.dp).button(label, shape, onClick = onClick) else clipped)
         .background(if (theme.isDark) theme.colors.surface.color else theme.colors.background.color)
         .padding(20.dp)
 }

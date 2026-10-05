@@ -70,6 +70,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
 
         /** TalkBack, after a form field's name: "Ad, soyad, məcburi" (the screen shows "*"). */
         REQUIRED("required"),
+
+        /** After an optional form field's label: "E-poçt (istəyə görə)"; a required one has nothing. */
+        OPTIONAL("optional"),
         INVALID_EMAIL("invalid_email"),
         INVALID_PHONE("invalid_phone"),
         INVALID_NUMBER("invalid_number"),
@@ -167,6 +170,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.INVALID_PHONE to "Telefon nömrəsi düzgün deyil", Key.INVALID_NUMBER to "Rəqəm yazın",
                 Key.TOO_LONG to "Ən çox %d simvol", Key.CHOOSE_OPTION to "Variantlardan birini seçin",
                 Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)", Key.SUPPORT_MESSAGES to "Dəstək mesajları",
+                Key.OPTIONAL to "(istəyə görə)",
             ),
             "en" to mapOf(
                 Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
@@ -191,6 +195,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.INVALID_PHONE to "Enter a valid phone number", Key.INVALID_NUMBER to "Enter a number",
                 Key.TOO_LONG to "At most %d characters", Key.CHOOSE_OPTION to "Choose one of the options",
                 Key.FILE_TOO_LARGE to "The file is too large (max %d MB)", Key.SUPPORT_MESSAGES to "Support messages",
+                Key.OPTIONAL to "(optional)",
             ),
             "ru" to mapOf(
                 Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
@@ -214,6 +219,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.INVALID_PHONE to "Неверный номер телефона", Key.INVALID_NUMBER to "Введите число",
                 Key.TOO_LONG to "Не больше %d символов", Key.CHOOSE_OPTION to "Выберите вариант",
                 Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)", Key.SUPPORT_MESSAGES to "Сообщения поддержки",
+                Key.OPTIONAL to "(необязательно)",
             ),
         )
     }

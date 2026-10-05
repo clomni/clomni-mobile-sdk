@@ -150,11 +150,14 @@ private fun homePage(theme: ClomniTheme) = if (theme.isDark) theme.colors.backgr
 private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
 
-/** The logo (or the written logo) at the top start, the team's faces and ✕ at the top end; one 48 dp row. */
+/**
+ * The logo (or the written logo) at the top start, the team's faces and ✕ at the top end: one 48 dp row 16 under the
+ * safe area, everything on its centre line; the faces 12 from ✕'s circle (8 from its 48 dp target).
+ */
 @Composable
 private fun HomeTop(header: HomeScreen.Header, theme: ClomniTheme, close: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().closeButtonPlace().heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(start = HOME_START),
+        Modifier.fillMaxWidth().padding(top = 16.dp, end = 16.dp - 4.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(start = HOME_START),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val wordmark = (if (theme.isDark) header.wordmarkDarkUrl else null) ?: header.wordmarkUrl
@@ -164,7 +167,7 @@ private fun HomeTop(header: HomeScreen.Header, theme: ClomniTheme, close: () -> 
             Logo(header, theme, Modifier.weight(1f))
         }
         TeamAvatars(header.teamAvatars, theme.colors.headerFrom, theme)
-        if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(ClomniTheme.Space.l.dp))
+        if (header.teamAvatars.isNotEmpty()) Spacer(Modifier.width(12.dp - 4.dp))
         CloseButton(header.closeLabel, CloseStyle.ON_BRAND, theme, close)
     }
 }

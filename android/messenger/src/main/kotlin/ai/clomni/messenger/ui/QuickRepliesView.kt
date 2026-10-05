@@ -12,11 +12,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -35,10 +35,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
- * The live step's choices (operator, 2026-10-04): capsules aligned to the end, each on its own line whatever the
- * step's layout, 8 apart, 12 under the last message; then a grey "← Geri". A tap fades them out (200 ms) and the
+ * The live step's choices (DESIGN-PASS-3 A3): capsules side by side, wrapping, aligned to the end, 8 apart both ways,
+ * 12 under the last message; then a grey "← Geri". A tap fades them out (200 ms) and the
  * choice stays as the user's message.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (String) -> Unit) {
     var chosen by remember(block.messageId) { mutableStateOf(false) }
@@ -51,8 +52,12 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
     }
     val buttons = block.buttons + listOfNotNull(block.back)
     Box(Modifier.fillMaxWidth().padding(top = 12.dp).alpha(opacity), Alignment.CenterEnd) {
-        // A long choice wraps inside 85% of the width rather than running to the other edge.
-        Column(Modifier.fillMaxWidth(0.85f), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+        // Side by side, each as wide as its text, wrapping to the next line; a long choice wraps inside 85% of the width.
+        FlowRow(
+            Modifier.fillMaxWidth(0.85f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             for (button in buttons) Pill(button, button === block.back, theme, enabled = !chosen, choose)
         }
     }
@@ -83,7 +88,7 @@ private fun Pill(button: ReplyButton, isBack: Boolean, theme: ClomniTheme, enabl
             it
         }
     }
-    Box(target.padding(vertical = reach).wrapContentWidth(Alignment.End)) {
+    Box(target.padding(vertical = reach)) {
         Box(
             Modifier.heightIn(min = 44.dp)
                 .clip(shape)

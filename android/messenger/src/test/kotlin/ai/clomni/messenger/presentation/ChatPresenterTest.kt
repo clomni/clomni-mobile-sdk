@@ -46,6 +46,8 @@ internal object ChatFixture {
         is JsonElement -> value
         is String -> JsonPrimitive(value)
         is Number -> JsonPrimitive(value)
+        is Boolean -> JsonPrimitive(value)
+        is List<*> -> kotlinx.serialization.json.JsonArray(value.map { json(it!!) })
         is Map<*, *> -> JsonObject(value.entries.associate { (k, v) -> k.toString() to json(v!!) })
         else -> error("$value")
     }
@@ -98,7 +100,7 @@ class ChatPresenterTest {
         assertEquals("the author over the first of the run, the time under the last", "Clomni · Bot", list[0].author)
         assertNull(list[1].author)
         assertEquals("indi", list[1].meta)
-        assertEquals(ChatAvatar("https://app.clomni.ai/a/bot.png", "C", true), list[1].avatar)
+        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.aparConfig.brand.logoUrl, "C", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
         assertEquals("Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
     }
@@ -191,7 +193,8 @@ class ChatPresenterTest {
     @Test
     fun header() {
         val bot = screen(emptyList()).header
-        assertEquals(ChatHeader.Lead.Team(Fixture.aparConfig.team.avatars), bot.lead)
+        val logo = ChatHeader.Lead.Brand(ChatAvatar(Fixture.aparConfig.brand.logoUrl, "A", true))
+        assertEquals("no operator: the company's logo, never a person's face", logo, bot.lead)
         assertEquals("Apar", bot.title)
         assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", bot.subtitle)
         assertEquals("Geri", bot.backLabel)
@@ -218,7 +221,7 @@ class ChatPresenterTest {
             it.copy(config = closedHours, conversation = ChatFixture.conversation("queued"))
         }.header
         assertEquals("no next_open_at: just that it is closed", "Hazırda iş saatı deyil", afterHours.subtitle)
-        assertEquals(ChatHeader.Lead.Team(emptyList()), afterHours.lead)
+        assertEquals(ChatHeader.Lead.Brand(ChatAvatar(null, "A", true)), afterHours.lead)
 
         val nextOpen = ChatFixture.config(
             """{"brand":{"name":"Apar","primary_color":"#1F9D63"},
@@ -230,7 +233,7 @@ class ChatPresenterTest {
             screen(emptyList()) { it.copy(config = nextOpen) }.header.subtitle,
         )
         val hidden = Fixture.aparConfig.let { it.copy(team = it.team.copy(show = false)) }
-        assertEquals(ChatHeader.Lead.Team(emptyList()), screen(emptyList()) { it.copy(config = hidden) }.header.lead)
+        assertEquals(logo, screen(emptyList()) { it.copy(config = hidden) }.header.lead)
     }
 
     @Test
@@ -243,7 +246,7 @@ class ChatPresenterTest {
         assertEquals("the role says \"button\" itself", "Azərbaycan dili, 1-ci, cəmi 3", block.buttons[0].accessibilityLabel)
         assertEquals(MessageContent.QuickRepliesLayout.VERTICAL, block.layout)
         assertNull(block.back)
-        assertEquals(ChatComposer.Mode.Open, open.composer.mode)
+        assertEquals("nothing under a step that waits for a choice", ChatComposer.Mode.Hidden, open.composer.mode)
         assertTrue(text(bubbles(open).first())!!.startsWith("Salam, Clomni-yə"))
         assertEquals("replies-msg_f07", open.items.last().id)
 
@@ -272,7 +275,33 @@ class ChatPresenterTest {
         val bare = ChatFixture.message("15-quick-replies-no-text.json")
         val bareScreen = screen(listOf(bare)) { it.copy(answerable = setOf(bare.id)) }
         assertTrue("no text, no bubble", bubbles(bareScreen).isEmpty())
-        assertEquals("input_disabled false", ChatComposer.Mode.Open, bareScreen.composer.mode)
+        assertEquals("a waiting choice hides the composer even with input_disabled false", ChatComposer.Mode.Hidden, bareScreen.composer.mode)
+    }
+
+    @Test
+    fun theFlowsOwnRestartButtonLeavesNoSecondBack() {
+        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val withBack = (screen(listOf(step)) { it.copy(answerable = setOf(step.id)) }.items.last() as ChatItem.RepliesItem).block
+        assertEquals("← Geri", withBack.back?.title)
+        val restart = ChatFixture.message(
+            "10-apar-level2-S-chips.json",
+            "content" to mapOf(
+                "text" to "Seçin",
+                "allow_back" to true,
+                "buttons" to listOf(mapOf("id" to "a", "title" to "Kart", "payload" to "a"), mapOf("id" to "r", "title" to "↺ Yenidən başla", "payload" to "r")),
+            ),
+        )
+        val block = (screen(listOf(restart)) { it.copy(answerable = setOf(restart.id)) }.items.last() as ChatItem.RepliesItem).block
+        assertNull(block.back)
+    }
+
+    @Test
+    fun anOptionalFieldSaysSo() {
+        val form = ChatFixture.message("19-form-contact.json")
+        val card = bubbles(screen(listOf(form)) { it.copy(answerable = setOf(form.id)) }).first().body as FormCard
+        val labels = card.fields.map { it.shownLabel }
+        assertTrue(labels.any { it.endsWith(" (istəyə görə)") })
+        assertTrue("a required field has no mark", card.fields.filter { it.required }.all { it.shownLabel == it.label })
     }
 
     @Test

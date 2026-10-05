@@ -20,6 +20,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -367,37 +368,43 @@ internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: Cha
     // One height whatever comes and goes in it (a subtitle, typing, the operator's dot, the team's faces): one line
     // each, so only the user's font size changes it (DESIGN-PASS-2 10).
     TopBar(header.backLabel, actions.back, header.closeLabel, actions.close, theme, scrolled) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box {
-                val avatar = when (val lead = header.lead) {
-                    is ChatHeader.Lead.Team -> ChatAvatar(lead.urls.firstOrNull(), "", false)
-                    is ChatHeader.Lead.Person -> lead.avatar
-                }
-                ChatAvatarView(avatar, 32f, theme)
-                if ((header.lead as? ChatHeader.Lead.Person)?.online == true) {
-                    Box(
-                        Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp)
-                            .size(12.dp).clip(CircleShape)
-                            .background(theme.colors.background.color).padding(2.dp)
-                            .clip(CircleShape).background(theme.colors.online.color),
-                    )
-                }
+        // The company until an operator joins, then the operator: a 200 ms crossfade between the two.
+        Crossfade(header, animationSpec = tween(200), label = "header") { shown -> HeaderLead(shown, theme) }
+    }
+}
+
+@Composable
+private fun HeaderLead(header: ChatHeader, theme: ClomniTheme) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            val avatar = when (val lead = header.lead) {
+                is ChatHeader.Lead.Brand -> lead.logo
+                is ChatHeader.Lead.Person -> lead.avatar
             }
-            Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f, fill = false).semantics(mergeDescendants = true) { heading() }) {
-                BasicText(
-                    header.title,
-                    style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                BasicText(
-                    header.subtitle,
-                    style = clomniText(13f, theme.colors.textSecondary, lineHeight = 1.3f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            ChatAvatarView(avatar, 32f, theme)
+            if ((header.lead as? ChatHeader.Lead.Person)?.online == true) {
+                Box(
+                    Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp)
+                        .size(12.dp).clip(CircleShape)
+                        .background(theme.colors.background.color).padding(2.dp)
+                        .clip(CircleShape).background(theme.colors.online.color),
                 )
             }
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f, fill = false).semantics(mergeDescendants = true) { heading() }) {
+            BasicText(
+                header.title,
+                style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            BasicText(
+                header.subtitle,
+                style = clomniText(13f, theme.colors.textSecondary, lineHeight = 1.3f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

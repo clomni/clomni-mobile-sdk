@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.coil.compose)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.emoji.picker)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

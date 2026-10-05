@@ -34,6 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
@@ -53,9 +55,13 @@ import androidx.compose.ui.unit.dp
 
 private val target = ClomniTheme.Size.touchTarget.dp
 
-/** A tappable element read out as one button labelled [label]. */
-internal fun Modifier.button(label: String, onClick: () -> Unit): Modifier =
-    clickable(role = Role.Button, onClick = onClick).clearAndSetSemantics { contentDescription = label }
+/**
+ * A tappable element read out as one button labelled [label]. Pressed, it highlights in its own [shape] (a pill, a
+ * circle, a card's corners), [diameter] wide around the centre when the visible circle is smaller than the target.
+ */
+internal fun Modifier.button(label: String, shape: Shape = RectangleShape, diameter: Dp? = null, onClick: () -> Unit): Modifier =
+    clickable(interactionSource = null, indication = ShapedIndication(shape, diameter), role = Role.Button, onClick = onClick)
+        .clearAndSetSemantics { contentDescription = label }
 
 /**
  * A round avatar: the picture when it loads; until then (or without one) the initial on grey, or primary_soft where
@@ -128,7 +134,8 @@ internal fun FailureView(failure: HomeScreen.Failure, theme: ClomniTheme, retry:
         val message = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary).copy(textAlign = TextAlign.Center)
         BasicText(failure.message, style = message)
         Box(
-            Modifier.heightIn(min = target).button(failure.retry, retry).padding(horizontal = ClomniTheme.Space.l.dp),
+            Modifier.heightIn(min = target).button(failure.retry, RoundedCornerShape(ClomniTheme.Radius.card.dp), onClick = retry)
+                .padding(horizontal = ClomniTheme.Space.l.dp),
             Alignment.Center,
         ) {
             val retryStyle = clomniText(ClomniTheme.FontSize.text, theme.colors.primaryText, FontWeight.SemiBold)
@@ -178,7 +185,7 @@ internal fun CircleButton(
         CloseStyle.ON_SURFACE -> theme.colors.textPrimary.color.copy(alpha = 0.06f) to theme.colors.textPrimary.color
         CloseStyle.ON_MEDIA -> Color.White.copy(alpha = 0.2f) to Color.White
     }
-    Box(modifier.size(target).button(label, onClick), Alignment.Center) {
+    Box(modifier.size(target).button(label, CircleShape, CLOSE_CIRCLE, onClick), Alignment.Center) {
         Canvas(Modifier.size(CLOSE_CIRCLE)) {
             drawCircle(circle)
             glyph(ink)
@@ -276,7 +283,10 @@ private fun ChannelButton(item: ChannelItem, theme: ClomniTheme, open: () -> Uni
         is ChannelItem.Tint.Brand -> tint.color.color to RgbColor.WHITE
         ChannelItem.Tint.Neutral -> theme.colors.surface.color to theme.colors.textPrimary
     }
-    Box(Modifier.size(target).button(item.accessibilityLabel, open), Alignment.Center) {
+    Box(
+        Modifier.size(target).button(item.accessibilityLabel, RoundedCornerShape(ClomniTheme.Radius.channel.dp), ClomniTheme.Size.channel.dp, open),
+        Alignment.Center,
+    ) {
         Box(
             Modifier.size(ClomniTheme.Size.channel.dp)
                 .clip(RoundedCornerShape(ClomniTheme.Radius.channel.dp))

@@ -249,7 +249,7 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
         is ai.clomni.messenger.presentation.FormCard -> FormCardView(
             body,
             theme,
-            Modifier.widthIn(max = 260.dp).clip(shape).background(fill.color),
+            Modifier.clip(shape).background(fill.color),
         ) { values -> actions.submit(body.messageId, values) }
     }
 }

@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -25,12 +23,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -40,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -47,14 +54,16 @@ import java.util.Calendar
 import java.util.Locale
 
 /**
- * A form in a bot bubble: labels 12/600, inputs with radius 10, errors in red under their field, a full-width primary
- * "Göndər". Once sent it shows what was sent and "Göndərildi".
+ * A form as Intercom draws one: the bot's text in its bubble, then a card of its own under it (radius 16, 1 dp border,
+ * padding 16). Labels 13 medium in the muted grey, "(istəyə görə)" after an optional one; fields 44 high on the canvas
+ * grey without a border until focused (1.5 dp brand); the full-width brand "Göndər". Sent, the card keeps only the
+ * values as lines and a small ✓.
  */
 @Composable
 internal fun FormCardView(
     card: FormCard,
     theme: ClomniTheme,
-    modifier: Modifier,
+    bubble: Modifier,
     submit: (Map<String, String>) -> Map<String, String>,
 ) {
     val values = rememberSaveable(card.messageId, saver = mapSaver()) {
@@ -62,55 +71,57 @@ internal fun FormCardView(
     }
     val errors = rememberSaveable(card.messageId, saver = mapSaver()) { mutableStateMapOf<String, String>() }
     var sent by rememberSaveable(card.messageId) { mutableStateOf(false) }
-    Column(
-        modifier.padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp),
-        verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.s.dp)) {
         card.text?.let {
             BasicText(
                 attributedText(it, theme.colors.primaryText),
-                Modifier.clearAndSetSemantics { contentDescription = card.textAccessibilityLabel },
+                bubble.padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp)
+                    .clearAndSetSemantics { contentDescription = card.textAccessibilityLabel },
                 style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary),
             )
         }
-        if (card.readOnly && card.submitted.isNotEmpty()) {
-            for (line in card.submitted) {
-                Column(Modifier.semantics(mergeDescendants = true) {}) {
-                    BasicText(line.label, style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary, FontWeight.SemiBold))
-                    BasicText(line.value, Modifier.padding(top = 2.dp), style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary))
+        val cardShape = RoundedCornerShape(16.dp)
+        Column(
+            Modifier.fillMaxWidth().clip(cardShape).background(theme.colors.background.color)
+                .border(1.dp, theme.colors.border.color, cardShape).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (card.readOnly && card.submitted.isNotEmpty()) {
+                for (line in card.submitted) {
+                    Column(Modifier.semantics(mergeDescendants = true) {}) {
+                        BasicText(line.label, style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium))
+                        BasicText(line.value, Modifier.padding(top = 2.dp), style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary))
+                    }
                 }
-            }
-            card.sentLabel?.let { label ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(R.drawable.clomni_ic_check, theme.colors.textSecondary, 14.dp)
-                    Spacer(Modifier.width(4.dp))
-                    BasicText(label, style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary))
+                card.sentLabel?.let { label ->
+                    Box(Modifier.clearAndSetSemantics { contentDescription = label }) {
+                        Icon(R.drawable.clomni_ic_check, theme.colors.textSecondary, 14.dp)
+                    }
                 }
-            }
-        } else {
-            for (field in card.fields) {
-                FormFieldView(field, values[field.id].orEmpty(), errors[field.id], card.readOnly || sent, theme) { value ->
-                    values[field.id] = value
-                    errors.remove(field.id)
+            } else {
+                for (field in card.fields) {
+                    FormFieldView(field, values[field.id].orEmpty(), errors[field.id], card.readOnly || sent, theme) { value ->
+                        values[field.id] = value
+                        errors.remove(field.id)
+                    }
                 }
-            }
-            if (!card.readOnly) {
-                val enabled = !sent
-                Box(
-                    Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(theme.colors.primary.color.copy(alpha = if (enabled) 1f else 0.6f))
-                        .let { box ->
-                            if (!enabled) box else box.button(card.submitTitle) {
-                                val found = submit(values.toMap())
-                                errors.clear()
-                                errors.putAll(found)
-                                sent = found.isEmpty()
-                            }
-                        },
-                    Alignment.Center,
-                ) {
-                    BasicText(card.submitTitle, style = clomniText(ClomniTheme.FontSize.text, theme.colors.onPrimary, FontWeight.SemiBold))
+                if (!card.readOnly) {
+                    val enabled = !sent
+                    val shape = RoundedCornerShape(10.dp)
+                    Box(
+                        Modifier.fillMaxWidth().fieldBox(theme.colors.primary.color.copy(alpha = if (enabled) 1f else 0.6f))
+                            .let { box ->
+                                if (!enabled) box else box.button(card.submitTitle, shape) {
+                                    val found = submit(values.toMap())
+                                    errors.clear()
+                                    errors.putAll(found)
+                                    sent = found.isEmpty()
+                                }
+                            },
+                        Alignment.Center,
+                    ) {
+                        BasicText(card.submitTitle, style = clomniText(15f, theme.colors.onPrimary, FontWeight.SemiBold))
+                    }
                 }
             }
         }
@@ -137,19 +148,22 @@ private fun FormFieldView(
     theme: ClomniTheme,
     change: (String) -> Unit,
 ) {
-    val shape = RoundedCornerShape(10.dp)
-    val frame = Modifier.fillMaxWidth().heightIn(min = if (field.type == FormFieldType.TEXTAREA) 72.dp else ClomniTheme.Size.touchTarget.dp)
-        .clip(shape)
-        .background(theme.colors.background.color)
-        .border(1.dp, if (error == null) theme.colors.border.color else theme.colors.unread.color, shape)
+    var focused by remember { mutableStateOf(false) }
+    val edge = when {
+        error != null -> theme.colors.unread.color
+        focused -> theme.colors.primary.color
+        else -> Color.Transparent
+    }
+    val frame = Modifier.fillMaxWidth().fieldBox(theme.colors.canvas.color, edge, if (field.type == FormFieldType.TEXTAREA) 72.dp else 44.dp)
+        .onFocusChanged { focused = it.isFocused }
     val text = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary)
     val hint = clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Read with the field itself ("Ad, soyad, məcburi"), not as a line of its own.
         BasicText(
-            if (field.required) "${field.label} *" else field.label,
+            field.shownLabel,
             Modifier.clearAndSetSemantics {},
-            style = clomniText(ClomniTheme.FontSize.label, theme.colors.textPrimary, FontWeight.SemiBold),
+            style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium),
         )
         val described = Modifier.semantics {
             contentDescription = field.accessibilityLabel
@@ -194,7 +208,7 @@ private fun FormFieldView(
 }
 
 private fun keyboard(field: FormCard.Field) = when (field.type) {
-    FormFieldType.PHONE -> KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
+    FormFieldType.PHONE -> KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
     FormFieldType.EMAIL -> KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
     FormFieldType.NUMBER -> KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next)
     FormFieldType.TEXTAREA -> KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
@@ -217,7 +231,7 @@ private fun Choice(
     change: (String) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
-    Box(modifier.let { if (disabled) it else it.button("$name, ${chosen ?: placeholder.orEmpty()}") { open = true } }) {
+    Box(modifier.let { if (disabled) it else it.button("$name, ${chosen ?: placeholder.orEmpty()}", RoundedCornerShape(10.dp)) { open = true } }) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(horizontal = ClomniTheme.Space.m.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -282,7 +296,7 @@ private fun DateChoice(
         ).show()
     }
     Box(
-        modifier.let { if (disabled) it else it.button("$name, ${value.ifEmpty { placeholder.orEmpty() }}") { pick() } }
+        modifier.let { if (disabled) it else it.button("$name, ${value.ifEmpty { placeholder.orEmpty() }}", RoundedCornerShape(10.dp)) { pick() } }
             .padding(horizontal = ClomniTheme.Space.m.dp),
         Alignment.CenterStart,
     ) {
@@ -292,3 +306,19 @@ private fun DateChoice(
         )
     }
 }
+
+/**
+ * A field or the send button: [height] (44) drawn with radius 10 in [fill], [edge] 1.5 dp around it, while the tap
+ * target reaches 48 (2 dp above and below, laid over the 12 dp gaps).
+ */
+private fun Modifier.fieldBox(fill: Color, edge: Color = Color.Transparent, height: Dp = 44.dp): Modifier =
+    bleed(vertical = 2.dp).heightIn(min = height + 4.dp).drawBehind {
+        val inset = 2.dp.toPx()
+        val corner = CornerRadius(10.dp.toPx())
+        val area = Size(size.width, size.height - inset * 2)
+        drawRoundRect(fill, Offset(0f, inset), area, corner)
+        if (edge.alpha > 0f) {
+            val half = 0.75.dp.toPx()
+            drawRoundRect(edge, Offset(half, inset + half), Size(area.width - half * 2, area.height - half * 2), corner, Stroke(half * 2))
+        }
+    }

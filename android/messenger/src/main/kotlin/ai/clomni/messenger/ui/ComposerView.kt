@@ -55,8 +55,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -136,7 +138,7 @@ private fun Preview(picked: PickedPreview, removeLabel: String, theme: ClomniThe
             }
         }
         // The × reaches a 48 dp target around its 20 dp circle at the corner.
-        Box(Modifier.align(Alignment.TopEnd).offset(x = 18.dp, y = (-18).dp).size(48.dp).button(removeLabel, remove), Alignment.Center) {
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 18.dp, y = (-18).dp).size(48.dp).button(removeLabel, CircleShape, 32.dp, remove), Alignment.Center) {
             Box(Modifier.size(20.dp).clip(CircleShape).background(theme.colors.textPrimary.color), Alignment.Center) {
                 Icon(R.drawable.clomni_ic_close, theme.colors.background, 14.dp)
             }
@@ -153,11 +155,11 @@ private fun Closed(mode: ChatComposer.Mode.Closed, theme: ClomniTheme, startNew:
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val target = Modifier.heightIn(min = ClomniTheme.Size.touchTarget.dp)
-        Box(target.button(mode.text, writeAnyway), Alignment.Center) {
+        Box(target.button(mode.text, RoundedCornerShape(8.dp), onClick = writeAnyway), Alignment.Center) {
             BasicText(mode.text, style = clomniText(13f, theme.colors.textSecondary))
         }
         BasicText("·", Modifier.clearAndSetSemantics {}, style = clomniText(13f, theme.colors.textSecondary))
-        Box(target.button(mode.action, startNew), Alignment.Center) {
+        Box(target.button(mode.action, RoundedCornerShape(8.dp), onClick = startNew), Alignment.Center) {
             BasicText(mode.action, style = clomniText(13f, theme.colors.primaryText, FontWeight.SemiBold))
         }
     }
@@ -176,11 +178,18 @@ private fun Field(
     val keyboard = LocalSoftwareKeyboardController.current
     val canSend = hasPicked || ChatPresenter.canSend(text, composer.limit)
     var sheet by remember { mutableStateOf(false) }
+    var emoji by remember { mutableStateOf(false) }
+    // The field keeps its cursor, so a picked emoji goes where the cursor is; the text itself is the screen's.
+    var field by remember { mutableStateOf(TextFieldValue(text, TextRange(text.length))) }
+    if (field.text != text) field = TextFieldValue(text, TextRange(text.length))
     // The field is the 44 dp grey box; its target is 48, 2 dp of it above and below laying out over the bar's padding.
     val slack = (ClomniTheme.Size.touchTarget.dp - 44.dp) / 2
     BasicTextField(
-        text,
-        changeText,
+        field,
+        {
+            field = it
+            if (it.text != text) changeText(it.text)
+        },
         Modifier.fillMaxWidth().bleed(vertical = slack).heightIn(min = ClomniTheme.Size.touchTarget.dp)
             .focusRequester(focus).semantics { contentDescription = composer.placeholder },
         textStyle = clomniText(16f, theme.colors.textPrimary),
@@ -208,9 +217,8 @@ private fun Field(
                 }
                 if (composer.showsEmoji) {
                     IconButton(R.drawable.clomni_ic_emoji, composer.emojiLabel, theme) {
-                        // The keyboard's own emoji key does the rest.
-                        focus.requestFocus()
-                        keyboard?.show()
+                        keyboard?.hide()
+                        emoji = true
                     }
                 }
                 // Send takes the attach icon's place once there is something to send.
@@ -234,13 +242,21 @@ private fun Field(
     if (sheet) {
         AttachmentSheet(composer, theme, actions) { sheet = false }
     }
+    if (emoji) {
+        EmojiSheet(theme, pick = { picked ->
+            val at = field.selection
+            val next = field.text.replaceRange(at.min, at.max, picked)
+            field = TextFieldValue(next, TextRange(at.min + picked.length))
+            changeText(next)
+        }) { emoji = false }
+    }
 }
 
 /** 36 dp circle in the brand colour with the white arrow, in a 40 dp slot (its target reaches 48). */
 @Composable
 private fun SendButton(label: String, theme: ClomniTheme, send: () -> Unit) {
     val inset = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
-    Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, send), Alignment.Center) {
+    Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, CircleShape, 40.dp, send), Alignment.Center) {
         Box(Modifier.size(36.dp).clip(CircleShape).background(theme.colors.primary.color), Alignment.Center) {
             Icon(R.drawable.clomni_ic_send_up, theme.colors.onPrimary, 18.dp)
         }
@@ -251,7 +267,7 @@ private fun SendButton(label: String, theme: ClomniTheme, send: () -> Unit) {
 @Composable
 private fun IconButton(icon: Int, label: String, theme: ClomniTheme, action: () -> Unit) {
     val inset = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
-    Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, action), Alignment.Center) {
+    Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, CircleShape, 40.dp, action), Alignment.Center) {
         Icon(icon, theme.colors.textSecondary, 24.dp)
     }
 }

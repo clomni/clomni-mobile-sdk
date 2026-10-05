@@ -122,7 +122,7 @@ internal fun NewsView(screen: NewsScreen, theme: ClomniTheme, back: () -> Unit, 
                 Spacer(Modifier.height(24.dp))
                 Box(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp))
-                        .background(theme.colors.primary.color).button(button.text) { openLink(button.url) }
+                        .background(theme.colors.primary.color).button(button.text, RoundedCornerShape(24.dp)) { openLink(button.url) }
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     Alignment.Center,
                 ) {

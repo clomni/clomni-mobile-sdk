@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 /**
  * The bar on the list, a conversation and a news item: back at the start and ✕ at the end, both 40 dp circles in
  * 48 dp slots 12 from the edges; the middle centred on the screen, not between the buttons, so it keeps the same room
- * on both sides and cuts with "…". 56 high (8 + 48: the circles 12 under the safe area, as on Home); the 1 px line
+ * on both sides and cuts with "…". 64 high (16 + 48: the same row as Home's, DESIGN-PASS-3 A9); the 1 px line
  * under it shows only while the content is scrolled under it ([scrolled]).
  */
 @Composable
@@ -49,7 +49,7 @@ internal fun TopBar(
 ) {
     Column(Modifier.fillMaxWidth().background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
         // At the user's larger font sizes the middle may need more than 48: the bar grows instead of cutting it.
-        Box(Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
+        Box(Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
             BackButton(backLabel, theme, back, Modifier.align(Alignment.CenterStart).padding(start = TOP_BAR_EDGE))
             if (middle != null) {
                 Box(Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = TOP_BAR_MIDDLE), Alignment.Center) { middle() }

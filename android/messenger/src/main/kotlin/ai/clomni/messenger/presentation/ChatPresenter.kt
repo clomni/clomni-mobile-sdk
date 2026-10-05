@@ -65,8 +65,9 @@ internal class ChatPresenter(
             status == ConversationStatus.QUEUED -> config?.team?.replyTime ?: strings[Key.HEADER_SUBTITLE]
             else -> strings[Key.HEADER_SUBTITLE]
         }
+        // Nobody has taken it (the bot or a flow answers): the company, by its logo and name; never a person's face.
         return ChatHeader(
-            ChatHeader.Lead.Team(teamAvatars(config)),
+            ChatHeader.Lead.Brand(ChatAvatar(config?.brand?.logoUrl, initial(brand), true)),
             brand,
             subtitle,
             strings[Key.GO_BACK],
@@ -86,7 +87,8 @@ internal class ChatPresenter(
         val mode = when {
             snapshot.conversation?.status == ConversationStatus.CLOSED ->
                 ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
-            replies?.inputDisabled == true -> ChatComposer.Mode.Hidden
+            // A step waiting for a choice has nothing under it: no field, no "choose above" (DESIGN-PASS-3 A4).
+            replies != null -> ChatComposer.Mode.Hidden
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(
@@ -352,13 +354,17 @@ internal class ChatPresenter(
             val title = listOfNotNull(button.icon, button.title).joinToString(" ")
             ReplyButton(button.id, title, strings.buttonPosition(button.title, index + 1, replies.buttons.size))
         }
-        val back = if (replies.allowBack) {
+        // The flow's own "Yenidən başla" (or back) button already takes the user back: no second one from the SDK.
+        val back = if (replies.allowBack && replies.buttons.none { restartTitle(it.title) }) {
             ReplyButton("back", strings[Key.BACK], strings[Key.GO_BACK])
         } else {
             null
         }
         return QuickReplyBlock(messageId, replies.layout, buttons, back)
     }
+
+    private fun restartTitle(title: String): Boolean =
+        title.lowercase(Locale.ROOT).filter { it.isLetter() || it == ' ' }.trim().replace(Regex("\\s+"), " ") in RESTART_TITLES
 
     private fun card(message: Message, form: MessageContent.Form, snapshot: ChatSnapshot): FormCard {
         val messageId = message.id
@@ -379,6 +385,7 @@ internal class ChatPresenter(
                     maxLength = field.maxLength,
                     options = field.options,
                     initialValue = prefill[field.key].orEmpty(),
+                    shownLabel = if (field.required) field.label else "${field.label} ${strings[Key.OPTIONAL]}",
                 )
             },
             submitTitle = form.submitTitle,
@@ -405,7 +412,7 @@ internal class ChatPresenter(
         return when (sender.type) {
             SenderType.BOT -> {
                 val name = sender.name ?: config?.bot?.name?.takeIf { it.isNotEmpty() } ?: brand
-                name to ChatAvatar(config?.bot?.avatarUrl ?: sender.avatarUrl ?: config?.brand?.logoUrl, initial(name), true)
+                name to ChatAvatar(config?.brand?.logoUrl ?: config?.bot?.avatarUrl ?: sender.avatarUrl, initial(name), true)
             }
             SenderType.OPERATOR -> {
                 val assignee = snapshot.conversation?.assignee
@@ -426,6 +433,12 @@ internal class ChatPresenter(
 
         /** A longer pause gets a new time separator. */
         const val SEPARATOR_PAUSE_MS = 3_600_000L
+
+        /** A flow button with one of these titles (letters only, lower case) restarts or steps back by itself. */
+        private val RESTART_TITLES = setOf(
+            "yenidən başla", "yenidən başlat", "əvvələ qayıt", "başa qayıt", "geri", "geri qayıt",
+            "start over", "restart", "back", "go back", "начать заново", "сначала", "назад",
+        )
 
         /** The send button shows for text that is not blank and within the limit. */
         fun canSend(text: String, limit: Int): Boolean {

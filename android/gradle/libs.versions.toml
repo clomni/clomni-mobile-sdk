@@ -16,6 +16,9 @@ coil = "2.6.0"
 # The Photo Picker and file picker contracts. Compose UI already brings activity 1.7.0 at runtime; declaring the
 # same version adds nothing to an app's dependencies, it only puts the API on the compile classpath.
 activity = "1.7.0"
+# The emoji button's picker (EmojiPickerView: categories, recents, the system's emoji font). An app gets it through
+# the POM; it is not inside the AAR.
+emojiPicker = "1.5.0"
 # 2.0.0-alpha02: the last line on Java 17 that renders API 36 (layoutlib 15.2) with Compose 1.8.3; test-only.
 paparazzi = "2.0.0-alpha02"
 kover = "0.9.9"
@@ -36,6 +39,7 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
+androidx-emoji-picker = { module = "androidx.emoji2:emoji2-emojipicker", version.ref = "emojiPicker" }
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
