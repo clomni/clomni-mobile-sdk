@@ -93,9 +93,9 @@ class MessageStoreTest {
         assertEquals(40L, store.syncedSeq("conv_1"))
         assertNull(store.putMessage(message(41)))
         assertEquals(41L, store.syncedSeq("conv_1"))
-        // 42 never came over the socket.
+        // 42 never came over the socket: fetched once after 41; the mark is already at what was received.
         assertEquals(41L, store.putMessage(message(43)))
-        assertEquals(41L, store.syncedSeq("conv_1"))
+        assertEquals(43L, store.syncedSeq("conv_1"))
         store.putMessages("conv_1", listOf(message(42), message(43)), syncedThrough = 43)
         assertEquals(43L, store.syncedSeq("conv_1"))
         assertNull(store.putMessage(message(44)))
@@ -121,6 +121,21 @@ class MessageStoreTest {
         store.putMessages("conv_1", listOf(message(42)), syncedThrough = 42)
         assertNull(store.putMessage(message(43)))
         assertEquals(43L, store.syncedSeq("conv_1"))
+    }
+
+    @Test
+    fun leavingAndComingBackAsksOnlyForWhatIsNewAndNeverDoubles() {
+        // REST had 1-3 (the user's message is 3); the flow's two answers came over the socket, past a seq the user
+        // never sees (4).
+        store.putMessages("conv_1", (1L..3L).map { message(it) }, syncedThrough = 3)
+        assertEquals(3L, store.putMessage(message(5)))
+        assertNull(store.putMessage(message(6)))
+        assertEquals("the next catch-up is after_seq=6, not 3", 6L, store.syncedSeq("conv_1"))
+        // The catch-up and a replayed socket event bring the same messages again, one under another id.
+        store.putMessages("conv_1", listOf(message(5), message(6, id = "msg_6_copy")), syncedThrough = 6)
+        assertNull(store.putMessage(message(6, id = "msg_6_copy")))
+        assertEquals(listOf(1L, 2L, 3L, 5L, 6L), seqs())
+        assertEquals(6L, store.syncedSeq("conv_1"))
     }
 
     @Test

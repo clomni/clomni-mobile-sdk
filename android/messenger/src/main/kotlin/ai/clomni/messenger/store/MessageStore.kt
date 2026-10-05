@@ -24,10 +24,12 @@ import java.io.File
  * The user's conversations, their messages, the config and the [outbox], in memory and on disk, so the Messenger
  * shows the last known state the moment it opens.
  *
- * - A message is kept once per `id`, whether it came over REST, the socket or both; a newer copy (`message.updated`)
- *   replaces the old one. A message carrying the `client_id` of a pending message confirms it.
- * - Messages are ordered by `seq`. [syncedSeq] is how far a conversation is known without holes; a message beyond it
- *   ([putMessage] answers its value) means a gap the caller fills with `after_seq`.
+ * - A message is kept once per `id` and once per `seq`, whether it came over REST, the socket or both; a newer copy
+ *   (`message.updated`, or another id for the same `seq`) replaces the old one. A message carrying the `client_id` of
+ *   a pending message confirms it.
+ * - Messages are ordered by `seq`. [syncedSeq] is the highest `seq` received, from REST or the socket: reopening the
+ *   conversation asks only for what is newer. A socket message past a hole ([putMessage] answers where the hole
+ *   starts) makes the caller fetch that range once with `after_seq`.
  * - Mutations are collected and written by [commit], which answers what changed for the screens.
  */
 internal class MessageStore(private val dir: File?, private val protocol: ProtocolJson) {
@@ -154,12 +156,19 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         }
     }
 
-    /** A message from the socket. Answers the `after_seq` to fetch when it leaves a gap (40 → 42), otherwise null. */
+    /**
+     * A message from the socket: the mark rises to it. Answers the `after_seq` to fetch when it leaves a gap (40 → 42),
+     * otherwise null.
+     */
     @Synchronized
     fun putMessage(message: Message): Long? {
         insert(message)
-        val upTo = advance(message.conversationId) ?: return null
-        return if (message.seq > upTo + 1) upTo else null
+        val conversationId = message.conversationId
+        val upTo = advance(conversationId) ?: return null
+        if (message.seq <= upTo) return null
+        synced[conversationId] = message.seq
+        messagesDirty += conversationId
+        return upTo
     }
 
     /** `conversation.updated`; false for a conversation not known yet. */
@@ -328,6 +337,8 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     private fun insert(message: Message) {
         val conversationId = message.conversationId
         val known = messages.getOrPut(conversationId) { LinkedHashMap() }
+        // One message per seq: the same message under another id (a replayed or re-delivered copy) replaces it.
+        known.values.filter { it.seq == message.seq && it.id != message.id }.forEach { known.remove(it.id) }
         if (known[message.id] != message) {
             known[message.id] = message
             messagesDirty += conversationId
