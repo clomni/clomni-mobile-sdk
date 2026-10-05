@@ -68,19 +68,34 @@ struct ChatView: View {
     @State private var announced: String?
     @State private var hasOlder = true
     @State private var loadingOlder = false
+    /// The bubble a tapped quote led to, lit for a second.
+    @State private var lit: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
         ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
     }
 
-    private var actions: ChatActions {
+    private func actions(_ proxy: ScrollViewProxy) -> ChatActions {
         let controller = model.controller
+        let items = model.screen.items
         return ChatActions(
             tap: { buttonId, messageId in Task { @MainActor in await controller.tap(buttonId, in: messageId) } },
             submit: { messageId, values in await controller.submit(messageId, values: values) },
             retry: { clientId in Task { @MainActor in await controller.retrySending(clientId) } },
-            openImage: { url in fullScreenImage = ImageURL(url: url) })
+            openImage: { url in fullScreenImage = ImageURL(url: url) },
+            reply: { messageId in Task { @MainActor in controller.reply(to: messageId) } },
+            jump: { messageId in
+                // The quoted message, a third down the screen, lit for a second.
+                guard let target = items.first(where: {
+                    if case .bubble(let bubble) = $0 { return bubble.messageId == messageId }
+                    return false
+                })?.id else { return }
+                withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(target, anchor: UnitPoint(x: 0.5, y: 0.33)) }
+                lit = target
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { if lit == target { lit = nil } }
+            },
+            highlighted: lit, replyLabel: model.screen.replyLabel, copyLabel: model.screen.copyLabel)
     }
 
     var body: some View {
@@ -101,7 +116,8 @@ struct ChatView: View {
             // text, ends, or an operator joins.
             if composerShown {
                 ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
-                             staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew)
+                             staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew,
+                             cancelQuote: { model.controller.reply(to: nil) })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -181,7 +197,7 @@ struct ChatView: View {
                                                value: proxy.frame(in: .named(ScrollTopOffset.space)).minY)
                     }
                     .frame(height: 0)
-                    ChatTranscript(items: model.screen.items, theme: theme, actions: actions, reachedTop: loadOlder)
+                    ChatTranscript(items: model.screen.items, theme: theme, actions: actions(proxy), reachedTop: loadOlder)
                         .onAppear {
                             if let last = model.screen.items.last?.id { proxy.scrollTo(last, anchor: .bottom) }
                             // Shown once it stands at its end: the first frame is the bottom, nothing slides.

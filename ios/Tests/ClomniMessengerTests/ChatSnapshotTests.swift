@@ -88,6 +88,25 @@ final class ChatSnapshotTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(rendered, 35)
     }
 
+    /// DESIGN-PASS-3 F2: answering the operator, the quote over the field; an earlier answer quoted in its bubble.
+    func testReplying() throws {
+        func message(_ file: String) throws -> Message {
+            try XCTUnwrap(ProtocolJSON.parseMessage(Data(contentsOf: fixtures.appendingPathComponent(file))))
+        }
+        let leyla = try message("02-text-operator-markdown.json")
+        var snapshot = ChatSnapshot(messages: [leyla, try message("66-reply-user-to-operator.json")])
+        snapshot.load = .loaded
+        snapshot.replyingTo = leyla.id
+        let screen = ChatPresenter(strings: ClomniStrings(language: "az"), timeZone: TimeZone(identifier: "UTC")!,
+                                   now: now).screen(snapshot)
+        for variant in Variant.all where variant.size == .large {
+            let theme = ClomniTheme.make(brand: nil, dark: variant.dark)
+            let image = Snapshot.render(SnapshotScene(screen: screen, theme: theme, size: variant.size), width: 390,
+                                        dark: variant.dark)
+            try Snapshot.assert(image, named: "chat-replying" + variant.suffix)
+        }
+    }
+
     /// Home as the brief draws it, while it loads, and when getting ready failed ("Yenidən cəhd et").
     func testHome() throws {
         let screens: [(String, HomeScreen)] = [

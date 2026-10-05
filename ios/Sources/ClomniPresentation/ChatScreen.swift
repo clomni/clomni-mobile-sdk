@@ -19,6 +19,9 @@ package struct ChatScreen: Sendable, Equatable {
     package let announcement: Announcement?
     /// What VoiceOver reads over the skeleton: "Yüklənir".
     package let loadingLabel: String
+    /// A message's long-press menu: "Cavabla", "Kopyala".
+    package let replyLabel: String
+    package let copyLabel: String
 }
 
 package struct Announcement: Sendable, Equatable {
@@ -135,6 +138,21 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     package let accessibilityLabel: String
     /// What a tap does, where it is not plain: "Şəkli tam ekranda açır", "Faylı açır".
     package let accessibilityHint: String?
+    /// The message this one answers, in a small block at the top of the bubble; a tap scrolls to it.
+    package let quote: Quote?
+    /// The server's id; nil while the message is still on its way.
+    package let messageId: String?
+    /// A swipe to the right or "Cavabla" quotes it in the composer: only while there is a composer to write in.
+    package let replyable: Bool
+    /// What "Kopyala" copies: the text or the caption; nil when there is nothing to copy.
+    package let copyText: String?
+
+    /// Who wrote the quoted message ("Siz", "Leyla", the brand) and one line of it, or "Mesaj silinib".
+    package struct Quote: Sendable, Equatable {
+        package let messageId: String
+        package let author: String
+        package let excerpt: String
+    }
 }
 
 package struct SystemLine: Sendable, Equatable {
@@ -225,6 +243,9 @@ package struct ChatComposer: Sendable, Equatable {
     package let cameraLabel: String
     package let fileLabel: String
     package let removeAttachmentLabel: String
+    /// The message being answered, over the field with its ✕ (`cancelQuoteLabel`).
+    package let quote: Bubble.Quote?
+    package let cancelQuoteLabel: String
 }
 
 /// What the conversation screen is built from.
@@ -246,6 +267,8 @@ package struct ChatSnapshot: Sendable, Equatable {
     package var isOffline = false
     /// The user's details for prefilling forms: name, email, phone.
     package var known: [String: String] = [:]
+    /// The message the user is answering (swipe or "Cavabla"), until it is sent or dismissed.
+    package var replyingTo: String?
 
     package init(config: MessengerConfig? = nil, conversation: Conversation? = nil, messages: [Message] = []) {
         self.config = config

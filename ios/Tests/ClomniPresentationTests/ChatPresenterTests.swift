@@ -508,4 +508,51 @@ final class ChatPresenterTests: XCTestCase {
         }
         XCTAssertGreaterThanOrEqual(rendered, 35)
     }
+
+    /// DESIGN-PASS-3 F2: the quote in the bubble, over the field, and who may be answered.
+    func testReplies() {
+        func quoteOf(_ file: String) -> Bubble.Quote? { bubbles(screen([Fixture.message(file)])).first?.quote }
+        XCTAssertEqual(quoteOf("66-reply-user-to-operator.json"), Bubble.Quote(
+            messageId: "msg_f65", author: "Leyla",
+            excerpt: "Ödənişi kartla etmisiniz, yoxsa balansdan? Qəbzin şəklini də göndərə bilərsiniz, yoxlayaq."))
+        XCTAssertEqual(quoteOf("67-reply-operator-to-image.json"),
+                       Bubble.Quote(messageId: "msg_f62", author: "Siz", excerpt: "qebz.jpg"), "the user's own is \"Siz\"")
+        XCTAssertEqual(quoteOf("68-reply-to-deleted.json"),
+                       Bubble.Quote(messageId: "msg_f60", author: "Siz", excerpt: "Mesaj silinib"))
+        XCTAssertNil(quoteOf("70-invalid-reply-to-without-kind.json"), "a broken reply_to: the message without its quote")
+
+        // Answering: the quote over the field; the user's message on its way shows it too.
+        let fromLeyla = Fixture.message("02-text-operator-markdown.json")
+        let answering = screen([fromLeyla]) {
+            $0.conversation = Fixture.conversation(status: "open")
+            $0.replyingTo = fromLeyla.id
+        }
+        let quote = answering.composer.quote
+        XCTAssertEqual(quote?.messageId, fromLeyla.id)
+        XCTAssertEqual(quote?.excerpt.contains("\n"), false, "one line")
+        XCTAssertEqual(answering.composer.cancelQuoteLabel, "Bağla")
+        XCTAssertEqual([answering.replyLabel, answering.copyLabel], ["Cavabla", "Kopyala"])
+        let bubble = bubbles(answering).first
+        XCTAssertEqual(bubble?.replyable, true)
+        XCTAssertEqual(bubble?.messageId, fromLeyla.id)
+        XCTAssertNotNil(bubble?.copyText)
+        let sending = screen([fromLeyla]) {
+            $0.pending = [PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Bəli"),
+                                                                                              replyTo: fromLeyla.id),
+                                         preview: "Bəli", createdAt: self.now)]
+        }
+        let mine = bubbles(sending).last
+        XCTAssertEqual(mine?.quote, quote)
+        XCTAssertEqual(mine?.replyable, false, "still on its way: nothing to answer yet")
+        XCTAssertEqual(mine?.copyText, "Bəli")
+
+        // A flow waiting for a choice: no composer, so nothing is answered; copying still works.
+        let menu = screen([fromLeyla]) {
+            $0.conversation = Fixture.onAMenu
+            $0.replyingTo = fromLeyla.id
+        }
+        XCTAssertNil(menu.composer.quote)
+        XCTAssertEqual(bubbles(menu).first?.replyable, false)
+        XCTAssertNotNil(bubbles(menu).first?.copyText)
+    }
 }

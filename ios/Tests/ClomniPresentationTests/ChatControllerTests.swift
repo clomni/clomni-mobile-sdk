@@ -212,6 +212,28 @@ final class ChatControllerTests: XCTestCase {
         XCTAssertEqual(notAForm, [:])
     }
 
+    /// A swipe or "Cavabla" quotes the message over the field; the next message takes it, and the ✕ drops it.
+    func testAnsweringAMessage() async {
+        let fromLeyla = Fixture.message("02-text-operator-markdown.json")
+        await source.set([fromLeyla])
+        let chat = controller()
+        await chat.load()
+        chat.reply(to: fromLeyla.id)
+        XCTAssertEqual(chat.screen.composer.quote?.messageId, fromLeyla.id)
+        chat.reply(to: nil)
+        XCTAssertNil(chat.screen.composer.quote)
+        chat.reply(to: fromLeyla.id)
+        let sent = await chat.send("Bəli")
+        XCTAssertTrue(sent)
+        XCTAssertNil(chat.screen.composer.quote, "sent with the message")
+        await chat.send("Bir də")
+        chat.reply(to: fromLeyla.id)
+        _ = await chat.sendFile(Data("x".utf8), fileName: "a.pdf", mime: "application/pdf")
+        let made = await calls()
+        XCTAssertEqual(made.filter { $0.hasPrefix("text") || $0.hasPrefix("file") },
+                       ["text Bəli ↩ \(fromLeyla.id)", "text Bir də", "file a.pdf ↩ \(fromLeyla.id)"])
+    }
+
     func testSendingTextFilesAndRetry() async {
         let chat = controller()
         await chat.load()

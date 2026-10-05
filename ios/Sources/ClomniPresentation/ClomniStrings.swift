@@ -19,6 +19,9 @@ package struct ClomniStrings: Sendable, Equatable {
         case removeAttachment = "remove_attachment"
         case emptyList = "empty_list"
         case error, retry, offline, connected, now, you, close, unread, email, phone
+        // Replies (DESIGN-PASS-3 F2): the long-press menu, and a quote whose message is gone.
+        case reply, copy
+        case quoteDeleted = "quote_deleted"
         // The conversation (CM-083).
         case headerSubtitle = "header_subtitle"
         case online
@@ -115,7 +118,8 @@ package struct ClomniStrings: Sendable, Equatable {
             .today: "Bu gün", .yesterday: "Dünən", .tomorrow: "sabah", .send: "Göndər", .sendCardTitle: "Bizə mesaj göndərin",
             .greetingLine1: "Salam, {first_name}", .greetingLine1Anonymous: "Salam", .greetingLine2: "Necə kömək edə bilərik?", .recentMessage: "Ən son mesaj",
             .followUs: "Bizi izləyin", .messagesTitle: "Mesajlar", .newsTitle: "Xəbərlər", .pickMedia: "Şəkil və ya video",
-            .pickCamera: "Kamera", .pickFile: "Fayl", .removeAttachment: "Sil",
+            .pickCamera: "Kamera", .pickFile: "Fayl", .removeAttachment: "Sil", .reply: "Cavabla", .copy: "Kopyala",
+            .quoteDeleted: "Mesaj silinib",
             .emptyList: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
             .offline: "İnternet yoxdur", .connected: "Qoşuldu", .now: "indi", .you: "Siz",
             .close: "Bağla", .unread: "Oxunmamış", .unreadMessages: "Oxunmamış mesaj var", .minutesShort: "%d dəq",
@@ -137,7 +141,8 @@ package struct ClomniStrings: Sendable, Equatable {
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
             .greetingLine1: "Hi, {first_name}", .greetingLine1Anonymous: "Hi", .greetingLine2: "How can we help?", .recentMessage: "Recent message",
             .followUs: "Follow us", .messagesTitle: "Messages", .newsTitle: "News", .pickMedia: "Photo or video",
-            .pickCamera: "Camera", .pickFile: "File", .removeAttachment: "Remove",
+            .pickCamera: "Camera", .pickFile: "File", .removeAttachment: "Remove", .reply: "Reply", .copy: "Copy",
+            .quoteDeleted: "Message deleted",
             .emptyList: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
             .offline: "No internet connection", .connected: "Connected", .now: "now", .you: "You",
             .close: "Close", .unread: "Unread", .unreadMessages: "Unread messages", .minutesShort: "%d min",
@@ -159,7 +164,8 @@ package struct ClomniStrings: Sendable, Equatable {
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
             .greetingLine1: "Здравствуйте, {first_name}", .greetingLine1Anonymous: "Здравствуйте", .greetingLine2: "Чем можем помочь?", .recentMessage: "Последнее сообщение",
             .followUs: "Мы в соцсетях", .messagesTitle: "Сообщения", .newsTitle: "Новости", .pickMedia: "Фото или видео",
-            .pickCamera: "Камера", .pickFile: "Файл", .removeAttachment: "Удалить",
+            .pickCamera: "Камера", .pickFile: "Файл", .removeAttachment: "Удалить", .reply: "Ответить", .copy: "Копировать",
+            .quoteDeleted: "Сообщение удалено",
             .emptyList: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
             .offline: "Нет подключения к интернету", .connected: "Подключено", .now: "сейчас", .you: "Вы",
             .close: "Закрыть", .unread: "Не прочитано", .unreadMessages: "Есть непрочитанные сообщения",

@@ -214,11 +214,27 @@ package final class ChatController {
     /// false when the text cannot go (blank or over the limit); the composer keeps it then.
     @discardableResult
     package func send(_ text: String) async -> Bool {
-        guard ChatPresenter.canSend(text, limit: screen.composer.limit),
-              (try? await source.sendText(text, in: conversationId, replyTo: nil)) != nil else { return false }
+        guard ChatPresenter.canSend(text, limit: screen.composer.limit) else { return false }
+        let quoted = takeQuote()
+        guard (try? await source.sendText(text, in: conversationId, replyTo: quoted)) != nil else { return false }
         sound(.sent)
         await source.setTyping(false, in: conversationId)
         return true
+    }
+
+    /// Swipe or "Cavabla": `messageId` is quoted over the field and goes with the next message, text or file; nil (the
+    /// ✕) drops it.
+    package func reply(to messageId: String?) {
+        guard snapshot.replyingTo != messageId else { return }
+        snapshot.replyingTo = messageId
+        render()
+    }
+
+    /// The quote the composer shows, which the message being sent takes with it.
+    private func takeQuote() -> String? {
+        guard let quoted = screen.composer.quote?.messageId else { return nil }
+        reply(to: nil)
+        return quoted
     }
 
     /// The composer's text changed: typing is on while there is some.
@@ -260,9 +276,10 @@ package final class ChatController {
 
     /// An image (already scaled, see `Media.uploadSize`) or a file; returns the text to show when it is refused.
     package func sendFile(_ data: Data, fileName: String, mime: String, caption: String? = nil) async -> String? {
+        let quoted = takeQuote()
         do {
             _ = try await source.sendFile(data, fileName: fileName, mime: mime, caption: caption, in: conversationId,
-                                          replyTo: nil)
+                                          replyTo: quoted)
             sound(.sent)
             return nil
         } catch ClomniError.rejected {

@@ -34,13 +34,21 @@ struct ComposerView: View {
     let send: () -> Void
     let attach: () -> Void
     let startNew: () -> Void
+    /// The ✕ on the quote over the field.
+    var cancelQuote: () -> Void = {}
     @FocusState private var focused: Bool
     @State private var choosingEmoji = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Where the cursor stood when the emoji sheet opened (UTF-16), so the emoji goes there.
     @State private var emojiAt: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
+            // The message being answered, over the field; it comes and goes by growing and fading.
+            if let quote = composer.quote {
+                QuoteStrip(quote: quote, cancelLabel: composer.cancelQuoteLabel, theme: theme, cancel: cancelQuote)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
             if let staged, composer.mode == .open || writeAnyway {
                 StagedPreview(file: staged, removeLabel: composer.removeAttachmentLabel, theme: theme) {
                     self.staged = nil
@@ -54,6 +62,9 @@ struct ComposerView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(theme.colors.border.color).frame(height: 1)
         }
+        .animation(reduceMotion ? nil : Motion.decelerate(0.22), value: composer.quote)
+        // Answering puts the cursor in the field.
+        .onChange(of: composer.quote?.messageId) { id in if id != nil { focused = true } }
     }
 
     @ViewBuilder

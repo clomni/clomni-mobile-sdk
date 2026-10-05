@@ -27,6 +27,14 @@ struct ChatActions {
     var submit: (_ messageId: String, _ values: [String: String]) async -> [String: String] = { _, _ in [:] }
     var retry: (_ clientId: String) -> Void = { _ in }
     var openImage: (URL) -> Void = { _ in }
+    /// A swipe or "Cavabla": the message to quote over the field.
+    var reply: (_ messageId: String) -> Void = { _ in }
+    /// A tap on a quote: scroll to the quoted message.
+    var jump: (_ messageId: String) -> Void = { _ in }
+    /// The bubble a quote has just led to, lit for a second.
+    var highlighted: String?
+    var replyLabel = ""
+    var copyLabel = ""
 }
 
 /// The styled runs as one text: bold and italic through presentation intents, links underlined and tappable.
@@ -113,8 +121,10 @@ struct BubbleRow: View {
     let actions: ChatActions
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.clomniScreenWidth) private var screenWidth
+    @State private var pulled: CGFloat = 0
 
     private var incoming: Bool { bubble.side == .incoming }
+    private var lit: Bool { actions.highlighted == bubble.id }
 
     /// DESIGN-PASS-2 13: a bubble is at most 78% of the screen wide.
     private var maxWidth: CGFloat { screenWidth * 0.78 }
@@ -158,9 +168,17 @@ struct BubbleRow: View {
                 }
                 // At most 78% of the screen's width, never at its edge (the transcript keeps 16 pt on each side).
                 BubbleBody(bubble: bubble, theme: theme, shape: shape, actions: actions)
+                    .modifier(MessageMenu(bubble: bubble, actions: actions))
+                    .overlay(alignment: .leading) {
+                        if !incoming { ReplyArrow(pulled: pulled, theme: theme).offset(x: -36) }
+                    }
                     .frame(maxWidth: maxWidth, alignment: incoming ? .leading : .trailing)
             }
             .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
+            .modifier(SwipeToReply(enabled: bubble.replyable && bubble.messageId != nil, pulled: $pulled) {
+                if let id = bubble.messageId { actions.reply(id) }
+            })
+            .background(alignment: .leading) { if incoming { ReplyArrow(pulled: pulled, theme: theme) } }
             if let meta = bubble.meta {
                 Text(meta)
                     .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption2)
@@ -174,6 +192,10 @@ struct BubbleRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
+        // A quote led here: the row glows in the brand colour for a second.
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(theme.colors.primary.color.opacity(lit ? 0.12 : 0))
+            .animation(.easeOut(duration: lit ? 0.2 : 0.7), value: lit))
         // A new run starts 16 pt apart, the list's 4 and 12.
         .padding(.top, bubble.position == .first || bubble.position == .single ? CGFloat(ClomniTheme.Space.m) : 0)
     }
@@ -203,40 +225,64 @@ struct BubbleBody: View {
     var body: some View {
         switch bubble.body {
         case .text(let runs):
-            Text(attributedText(runs))
-                .clomniFont(ClomniTheme.FontSize.message)
-                .lineSpacing(3)
-                .foregroundStyle(ink)
-                .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 14)
-                .background(shape.fill(fill))
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(Text(bubble.accessibilityLabel))
+            // With a quote: 6 around, the quote, then the text 8 in.
+            VStack(alignment: .leading, spacing: 4) {
+                if let quote = bubble.quote {
+                    QuoteBlock(quote: quote, ink: ink, outgoing: !incoming, jump: actions.jump)
+                }
+                Text(attributedText(runs))
+                    .clomniFont(ClomniTheme.FontSize.message)
+                    .lineSpacing(3)
+                    .foregroundStyle(ink)
+                    .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(bubble.quote == nil ? EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+                             : EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
+                    .accessibilityLabel(Text(bubble.accessibilityLabel))
+            }
+            .padding(bubble.quote == nil ? 0 : 6)
+            .background(shape.fill(fill))
+            .fixedSize(horizontal: false, vertical: true)
         case .image(let image):
             // Brief 7.4: an image is rounded 12 all round, not cut to the bubble's shape.
-            ImageBubble(image: image, theme: theme, fill: fill, ink: ink, open: actions.openImage)
+            quoted(ImageBubble(image: image, theme: theme, fill: fill, ink: ink, open: actions.openImage)
                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(bubble.accessibilityLabel))
                 .accessibilityHint(Text(bubble.accessibilityHint ?? ""))
                 .accessibilityAddTraits([.isImage, .isButton])
-                .accessibilityAction { if let url = image.fullUrl ?? image.url { actions.openImage(url) } }
+                .accessibilityAction { if let url = image.fullUrl ?? image.url { actions.openImage(url) } })
         case .file(let file):
-            Button {
+            quoted(Button {
                 if let url = file.url { openURL(url) }
             } label: {
                 FileCard(file: file, theme: theme, ink: ink)
-                    .background(shape.fill(fill))
+                    .background(shape.fill(bubble.quote == nil ? fill : .clear))
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel(Text(bubble.accessibilityLabel))
-            .accessibilityHint(Text(bubble.accessibilityHint ?? ""))
+            .accessibilityHint(Text(bubble.accessibilityHint ?? "")))
         case .form(let card):
             FormCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill,
                          submit: { values in await actions.submit(card.messageId, values) })
+        }
+    }
+}
+
+extension BubbleBody {
+    /// An image or file that answers a message: the quote over it, both in one bubble of its colour.
+    @ViewBuilder
+    func quoted<V: View>(_ content: V) -> some View {
+        if let quote = bubble.quote {
+            VStack(alignment: .leading, spacing: 4) {
+                QuoteBlock(quote: quote, ink: ink, outgoing: !incoming, jump: actions.jump)
+                    .padding(2)
+                content
+            }
+            .padding(4)
+            .background(shape.fill(fill))
+        } else {
+            content
         }
     }
 }

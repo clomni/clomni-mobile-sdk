@@ -31,16 +31,18 @@ package struct ChatPresenter: Sendable {
         let phase: HomeScreen.Phase = hasContent || snapshot.load == .loaded ? .ready
             : snapshot.load == .failed ? .failed : .loading
         let lastIncoming = snapshot.messages.last { $0.sender.type != .user && $0.type != "system" }
+        let composer = composer(snapshot, known: phase == .ready)
         return ChatScreen(
             phase: phase,
             header: header(snapshot),
-            items: items(snapshot),
-            composer: composer(snapshot, known: phase == .ready),
+            // No reply while a flow waits for a choice: there is no composer to write the answer in.
+            items: items(snapshot, canReply: composer.mode == .open),
+            composer: composer,
             offline: snapshot.isOffline ? strings[.offline] : nil,
             connected: strings[.connected],
             failure: phase == .failed ? HomeScreen.Failure(message: strings[.error], retry: strings[.retry]) : nil,
             announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) },
-            loadingLabel: strings[.loading])
+            loadingLabel: strings[.loading], replyLabel: strings[.reply], copyLabel: strings[.copy])
     }
 
     // MARK: - Header
@@ -99,7 +101,10 @@ package struct ChatPresenter: Sendable {
             showsAttach: config?.composer.attachments ?? true, showsEmoji: config?.composer.emoji ?? true,
             limit: config?.limits.textChars ?? 4_000, sendLabel: strings[.send], attachLabel: strings[.attach],
             emojiLabel: strings[.emoji], mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
-            fileLabel: strings[.pickFile], removeAttachmentLabel: strings[.removeAttachment])
+            fileLabel: strings[.pickFile], removeAttachmentLabel: strings[.removeAttachment],
+            quote: mode == .open ? snapshot.replyingTo.flatMap { id in snapshot.messages.first { $0.id == id } }
+                .map { quote($0, snapshot) } : nil,
+            cancelQuoteLabel: strings[.close])
     }
 
     // MARK: - Transcript
@@ -117,6 +122,10 @@ package struct ChatPresenter: Sendable {
         let author: String?
         var status: Bubble.Status?
         let accessibilityLabel: String
+        var quote: Bubble.Quote?
+        var messageId: String?
+        var replyable = false
+        var copyText: String?
     }
 
     private enum Entry {
@@ -127,7 +136,7 @@ package struct ChatPresenter: Sendable {
         case typing(TypingLine)
     }
 
-    private func items(_ snapshot: ChatSnapshot) -> [ChatItem] {
+    private func items(_ snapshot: ChatSnapshot, canReply: Bool) -> [ChatItem] {
         var entries: [Entry] = []
         var previous: Date?
         func separate(_ id: String, _ date: Date) {
@@ -154,7 +163,12 @@ package struct ChatPresenter: Sendable {
                 continue
             }
             if let body = body(message, snapshot) {
-                entries.append(.draft(draft(message, body, snapshot)))
+                var draft = draft(message, body, snapshot)
+                draft.quote = message.replyTo.map { quote($0, snapshot) }
+                draft.messageId = message.id
+                if case .form = body {} else { draft.replyable = canReply }
+                draft.copyText = copyText(message.content)
+                entries.append(.draft(draft))
             }
             if case .quickReplies(let replies) = message.content, message.id == choicesFor,
                snapshot.answerable.contains(message.id) {
@@ -168,7 +182,12 @@ package struct ChatPresenter: Sendable {
             entries.append(.draft(Draft(
                 id: pending.id, side: .outgoing, sender: "user", date: pending.createdAt, body: body, avatar: nil,
                 author: nil, status: status(pending),
-                accessibilityLabel: "\(strings[.you]), \(time.clock(pending.createdAt)): \(text)")))
+                accessibilityLabel: "\(strings[.you]), \(time.clock(pending.createdAt)): \(text)",
+                quote: pending.message.replyTo.map { id in
+                    snapshot.messages.first { $0.id == id }.map { quote($0, snapshot) }
+                        ?? Bubble.Quote(messageId: id, author: "", excerpt: strings[.quoteDeleted])
+                },
+                copyText: pending.preview)))
         }
         if let sender = snapshot.typing {
             let who = person(sender, snapshot)
@@ -229,7 +248,9 @@ package struct ChatPresenter: Sendable {
                                             nameLine: opensRun ? draft.author : nil, meta: closesRun ? meta : nil,
                                             status: draft.status,
                                             accessibilityLabel: draft.accessibilityLabel + (status.map { ". \($0)" } ?? ""),
-                                            accessibilityHint: hint(draft.body))))
+                                            accessibilityHint: hint(draft.body), quote: draft.quote,
+                                            messageId: draft.messageId, replyable: draft.replyable,
+                                            copyText: draft.copyText)))
             }
             index += run.count
         }
@@ -391,6 +412,48 @@ package struct ChatPresenter: Sendable {
             return []
         }
     }
+
+    // MARK: - Replies
+
+    /// The server's description of the quoted message.
+    private func quote(_ ref: ReplyRef, _ snapshot: ChatSnapshot) -> Bubble.Quote {
+        let excerpt = ref.excerpt.map(oneLine) ?? ""
+        return Bubble.Quote(messageId: ref.id, author: ref.sender.map { author($0, snapshot) } ?? "",
+                            excerpt: excerpt.isEmpty ? strings[.quoteDeleted] : excerpt)
+    }
+
+    /// A message here being quoted: over the field, and in the user's bubble until the server's copy comes.
+    private func quote(_ message: Message, _ snapshot: ChatSnapshot) -> Bubble.Quote {
+        let excerpt: String
+        switch message.content {
+        case .image(let image): excerpt = image.caption ?? strings[.image]
+        case .file(let file): excerpt = file.name
+        default: excerpt = readable(message)
+        }
+        return Bubble.Quote(messageId: message.id, author: author(message.sender, snapshot),
+                            excerpt: String(oneLine(excerpt).prefix(Self.excerptLength)))
+    }
+
+    private func author(_ sender: Sender, _ snapshot: ChatSnapshot) -> String {
+        sender.type == .user ? strings[.you] : person(sender, snapshot).name
+    }
+
+    private func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    /// What "Kopyala" copies.
+    private func copyText(_ content: MessageContent) -> String? {
+        switch content {
+        case .text(let text): return LimitedMarkdown.plainText(text)
+        case .image(let image): return image.caption
+        case .quickReplies(let replies): return replies.text.map(LimitedMarkdown.plainText)
+        default: return nil
+        }
+    }
+
+    /// The server's excerpts are at most this long; a local quote is cut to the same.
+    private static let excerptLength = 120
 
     /// The name and face of a sender as the conversation shows them.
     private func person(_ sender: Sender, _ snapshot: ChatSnapshot) -> (name: String, avatar: ChatAvatar) {
