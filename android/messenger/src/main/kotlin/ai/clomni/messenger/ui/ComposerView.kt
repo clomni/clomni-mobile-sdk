@@ -44,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -74,9 +73,8 @@ internal class PickedPreview(
  * A white strip with the top hairline over the navigation bar, rising with the keyboard (DESIGN-PASS-2 11): a picked
  * file's 64 dp preview with its ×, then the field (surface, radius 20, at least 44 high, up to 5 lines, then it
  * scrolls) with the emoji and attach icons (24) inside it at the end; once there is something to send, the 36 dp send
- * button in the brand colour takes the attach icon's place (150 ms, scale and fade). A step that waits for a button
- * keeps the field, greyed, with "Yuxarıdan birini seçin" and no icons; a closed conversation offers a new one, and
- * writing anyway reopens it.
+ * button in the brand colour takes the attach icon's place (150 ms, scale and fade). A closed conversation offers a new
+ * one, and writing anyway reopens it. While a step waits for a button there is no composer (see ChatScreenView).
  */
 @Composable
 internal fun ComposerView(
@@ -96,11 +94,12 @@ internal fun ComposerView(
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            if (picked != null && composer.mode !is ChatComposer.Mode.Locked) {
+            if (picked != null) {
                 Preview(picked, composer.removeLabel, theme, actions.removePicked)
             }
             when (val mode = composer.mode) {
-                is ChatComposer.Mode.Locked -> Locked(mode.text, theme)
+                // Not shown: ChatScreenView leaves the composer out while a step waits for a button.
+                ChatComposer.Mode.Hidden -> Unit
                 is ChatComposer.Mode.Closed -> if (writeAnyway) {
                     Field(composer, theme, text, changeText, actions, focus, picked != null)
                     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -112,20 +111,6 @@ internal fun ComposerView(
                 ChatComposer.Mode.Open -> Field(composer, theme, text, changeText, actions, focus, picked != null)
             }
         }
-    }
-}
-
-/** The field while a step waits for a button: there, greyed (60%), "Yuxarıdan birini seçin", nothing to tap. */
-@Composable
-private fun Locked(text: String, theme: ClomniTheme) {
-    Box(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).alpha(0.6f)
-            .clip(RoundedCornerShape(20.dp))
-            .background(theme.colors.surface.color)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        Alignment.CenterStart,
-    ) {
-        BasicText(text, style = clomniText(16f, theme.colors.textSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

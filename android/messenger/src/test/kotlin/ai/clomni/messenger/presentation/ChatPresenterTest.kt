@@ -251,14 +251,15 @@ class ChatPresenterTest {
         val answered = screen(listOf(ChatFixture.message("08-language-select-answered.json")))
         assertTrue(answered.items.none { it is ChatItem.RepliesItem })
         assertEquals(1, bubbles(answered).size)
+        assertEquals("the flow went on: the composer is back", ChatComposer.Mode.Open, answered.composer.mode)
 
-        // Apar S: chips, the back button, the composer locked.
+        // Apar S: chips, the back button, no composer.
         val step = ChatFixture.message("10-apar-level2-S-chips.json")
         val chips = screen(listOf(step)) { it.copy(answerable = setOf(step.id)) }
         val chipsBlock = (chips.items.last() as ChatItem.RepliesItem).block
         assertEquals(MessageContent.QuickRepliesLayout.CHIPS, chipsBlock.layout)
         assertEquals(ReplyButton("back", "← Geri", "Geri"), chipsBlock.back)
-        assertEquals(ChatComposer.Mode.Locked("Yuxarıdan birini seçin"), chips.composer.mode)
+        assertEquals(ChatComposer.Mode.Hidden, chips.composer.mode)
 
         // 13: the long title whole (the view wraps it to two lines); 14: ten buttons; 15: buttons without text.
         val long = ChatFixture.message("13-button-title-over-80.json")
