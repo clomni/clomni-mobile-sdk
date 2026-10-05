@@ -21,7 +21,10 @@
     "text": {
       "type": "object",
       "required": ["text"],
-      "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 4000 } }
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "reply_to": { "type": "string", "pattern": "^msg_.+", "description": "Optional: the message the user answers (swipe or long press). One the user cannot see is refused (400, reply_to invalid)." }
+      }
     },
     "button_reply": {
       "type": "object",
@@ -46,7 +49,8 @@
       "required": ["upload_id"],
       "properties": {
         "upload_id": { "type": "string", "pattern": "^upl_.+" },
-        "caption": { "type": ["string", "null"], "maxLength": 4000 }
+        "caption": { "type": ["string", "null"], "maxLength": 4000 },
+        "reply_to": { "type": "string", "pattern": "^msg_.+", "description": "Optional, as for text." }
       }
     },
     "rating_submit": {

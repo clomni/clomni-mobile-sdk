@@ -60,7 +60,19 @@
             { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "avatar_url": { "type": ["string", "null"], "format": "uri" }, "online": { "type": "boolean" } } }
           ]
         },
-        "unread_count": { "type": "integer", "minimum": 0 }
+        "unread_count": { "type": "integer", "minimum": 0 },
+        "flow": { "$ref": "#/$defs/conversation_flow" }
+      }
+    },
+    "conversation_flow": {
+      "description": "Whether a flow drives the conversation; always sent. The SDK goes by this alone: while active it hides the composer, unless awaiting is text. A flow that ended (with an END step or without), stopped because a person replied, or handed over is active: false, and the change arrives as conversation.updated.",
+      "type": "object",
+      "required": ["active", "awaiting"],
+      "properties": {
+        "active": { "type": "boolean" },
+        "awaiting": { "enum": ["menu", "text", "form", null], "description": "menu: buttons (a language question too); text: typed text, the composer is shown; form: a form; null: nothing yet, e.g. a wait step, or the flow is inactive." },
+        "flow_id": { "type": "string", "pattern": "^flw_.+", "description": "While active." },
+        "node_id": { "type": "string", "description": "While active: the step it stands on." }
       }
     },
     "unread_changed": {

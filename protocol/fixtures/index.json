@@ -422,5 +422,52 @@
     "schema": "appearance.json",
     "note": "Səhv: əsas dil (az) açıq dillərin içində deyil",
     "valid": false
+  },
+  {
+    "file": "66-reply-user-to-operator.json",
+    "schema": "message.json",
+    "note": "İstifadəçinin cavabı: bubble-ın içində, yuxarıda sitat bloku (fon text 6%, radius 10), operatorun adı + excerpt 2 sətir; basanda msg_f65-ə sürüşür və 1 s vurğulayır"
+  },
+  {
+    "file": "67-reply-operator-to-image.json",
+    "schema": "message.json",
+    "note": "Operatorun paneldən cavabı, istifadəçinin şəklinə: sitatda \"Siz\" (strings.you) və şəkil adı, kind image"
+  },
+  {
+    "file": "68-reply-to-deleted.json",
+    "schema": "message.json",
+    "note": "Silinmiş mesaja cavab: excerpt null, sitatda strings.quote_deleted (\"Mesaj silinib\")"
+  },
+  {
+    "file": "69-client-text-reply.json",
+    "schema": "client-message.json",
+    "note": "Cavab kimi göndərilən mətn: content.reply_to"
+  },
+  {
+    "file": "70-invalid-reply-to-without-kind.json",
+    "schema": "message.json",
+    "note": "Səhv: reply_to-da kind yoxdur",
+    "valid": false
+  },
+  {
+    "file": "71-event-flow-menu.json",
+    "schema": "event.json",
+    "note": "Flow düymə gözləyir: composer gizlidir"
+  },
+  {
+    "file": "72-event-flow-text.json",
+    "schema": "event.json",
+    "note": "Flow mətn gözləyir (awaiting text): composer görünür"
+  },
+  {
+    "file": "73-event-flow-ended.json",
+    "schema": "event.json",
+    "note": "Flow bitdi, dayandı və ya handoff oldu (active false): composer qayıdır"
+  },
+  {
+    "file": "74-invalid-flow-awaiting-unknown.json",
+    "schema": "event.json",
+    "note": "Səhv: awaiting menu, text, form və ya null olmalıdır",
+    "valid": false
   }
 ]

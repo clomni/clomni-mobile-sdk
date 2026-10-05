@@ -1,0 +1,18 @@
+{
+  "event": "conversation.updated",
+  "data": {
+    "id": "conv_5521",
+    "status": "open",
+    "assignee": {
+      "name": "Leyla",
+      "avatar_url": "https://app.clomni.ai/a/leyla.png",
+      "online": true
+    },
+    "unread_count": 1,
+    "flow": {
+      "active": false,
+      "awaiting": null
+    }
+  },
+  "ts": "2026-10-05T10:31:00Z"
+}
