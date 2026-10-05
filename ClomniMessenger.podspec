@@ -23,7 +23,7 @@ Pod::Spec.new do |s|
   # declared `package` (SwiftPM shares it between its four modules); here the package is this module alone, so
   # the app sees only the `public` facade.
   s.source_files = 'ios/Sources/**/*.swift'
-  # Release is optimised for size: the SDK lives inside someone else's app (DoD 11, at most 3 MB).
+  # Release is optimised for size: the SDK lives inside someone else's app (DoD 11, at most 3.5 MB).
   s.pod_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => '$(inherited) -package-name ClomniMessenger',
                             'SWIFT_OPTIMIZATION_LEVEL[config=Release]' => '-Osize' }
   # What the SDK collects and which required-reason APIs it calls (none), for the app's privacy report.
