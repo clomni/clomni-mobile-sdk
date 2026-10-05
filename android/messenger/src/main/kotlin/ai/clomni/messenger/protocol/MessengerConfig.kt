@@ -5,6 +5,13 @@ package ai.clomni.messenger.protocol
  * Every field the server leaves out, or sends broken, has a default here, so a minimal config is enough to open the
  * messenger.
  */
+/**
+ * The language the Messenger speaks with this config (DESIGN-PASS-3 D1): [host]'s (`Clomni.setLanguage`) if the panel
+ * has it on, else the device's if on, else the panel's main language.
+ */
+internal fun MessengerConfig?.speaks(host: String?, device: String? = java.util.Locale.getDefault().language): String =
+    (this?.languages ?: MessengerConfig.Languages()).pick(host, device)
+
 internal data class MessengerConfig(
     /** The published appearance's version; 0 when the server does not say. */
     val version: Int,
@@ -14,8 +21,8 @@ internal data class MessengerConfig(
     val home: Home,
     val theme: ThemeSettings,
     val composer: Composer,
-    /** As sent; never empty (`az` when the server sends none). */
-    val languages: List<String>,
+    /** The languages the panel turned on and the one to fall back to (DESIGN-PASS-3 D1). */
+    val languages: Languages = Languages(),
     /** The selected language's texts: protocol/strings.json with the panel's overrides; the SDK fills any gap. */
     val strings: Map<String, String>,
     val limits: Limits,
@@ -26,6 +33,22 @@ internal data class MessengerConfig(
     /** Short sounds for a sent and a received message; the app can still turn them off. */
     val sounds: Boolean = true,
 ) {
+    /**
+     * `languages {enabled, default}`; absent, all three are on and az is the default. The Messenger speaks the host's
+     * language when it is on, else the device's when it is on, else [default] ([pick]); with one on, always that one.
+     */
+    data class Languages(val enabled: List<String> = ALL, val default: String = "az") {
+        fun pick(host: String?, device: String?): String =
+            listOfNotNull(host, device).map { base(it) }.firstOrNull { it in enabled } ?: default
+
+        companion object {
+            val ALL = listOf("az", "en", "ru")
+
+            /** "en-GB", "ru_RU" → "en", "ru". */
+            fun base(tag: String): String = tag.lowercase(java.util.Locale.ROOT).substringBefore('-').substringBefore('_')
+        }
+    }
+
     data class Brand(
         val name: String,
         val logoUrl: String?,

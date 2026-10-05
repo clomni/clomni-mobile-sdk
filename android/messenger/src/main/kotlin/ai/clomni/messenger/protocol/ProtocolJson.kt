@@ -226,6 +226,21 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
     private fun sender(o: JsonObject) =
         Sender(SenderType.from(o.requireString("type")), o.string("id"), o.string("name"), o.string("avatar_url"))
 
+    /**
+     * `{enabled, default}` (D1); the earlier array is read as the enabled list with its first as the default. Unknown
+     * languages are dropped, a default that is not on falls to the first enabled one; nothing usable: all three, az.
+     */
+    private fun languages(element: JsonElement?): MessengerConfig.Languages {
+        val all = MessengerConfig.Languages.ALL
+        val (enabled, default) = when (element) {
+            is JsonObject -> (element["enabled"] as? JsonArray)?.strings().orEmpty() to element.string("default")
+            is JsonArray -> element.strings() to null
+            else -> emptyList<String>() to null
+        }
+        val on = enabled.filter { it in all }.distinct().ifEmpty { return MessengerConfig.Languages() }
+        return MessengerConfig.Languages(on, default?.takeIf { it in on } ?: on.first())
+    }
+
     private fun flow(o: JsonObject) = FlowRef(
         flowId = o.requireString("flow_id"),
         nodeId = o.requireString("node_id"),
@@ -554,7 +569,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 attachments = composer.boolean("attachments") ?: true,
                 emoji = composer.boolean("emoji") ?: true,
             ),
-            languages = (o["languages"] as? JsonArray)?.strings().orEmpty().ifEmpty { listOf("az") },
+            languages = languages(o["languages"]),
             strings = o.section("strings").let { strings ->
                 strings.keys.mapNotNull { key -> strings.string(key)?.let { key to it } }.toMap()
             },

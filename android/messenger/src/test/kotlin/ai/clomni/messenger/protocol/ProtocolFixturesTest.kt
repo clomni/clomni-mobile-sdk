@@ -141,6 +141,7 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/99-invalid-conversation-start-client-id-empty.json" to JsonObject::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
+            "fixtures/65-invalid-appearance-default-language-off.json" to JsonObject::class,
             "fixtures/86-invalid-appearance-whatsapp-url.json" to JsonObject::class,
             "fixtures/87-invalid-appearance-cards-without-send.json" to JsonObject::class,
             "fixtures/88-invalid-appearance-unknown-text.json" to JsonObject::class,

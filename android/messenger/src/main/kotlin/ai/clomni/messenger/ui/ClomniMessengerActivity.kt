@@ -6,6 +6,7 @@ import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.HomePresenter
 import ai.clomni.messenger.presentation.MessengerRoute
 import ai.clomni.messenger.presentation.MessengerSnapshot
+import ai.clomni.messenger.protocol.speaks
 import android.app.Activity
 import android.os.Build
 import android.os.Bundle
@@ -190,7 +191,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     SideEffect { window?.barIcons(darkStatus = false, darkNavigation = !theme.isDark) }
     val close = coordinator::dismiss
     val back = coordinator::back
-    val home = remember(engine) { AndroidMessenger.homeController(engine, null, runtime.identity?.name) }
+    val home = remember(engine) { AndroidMessenger.homeController(engine, runtime.language, runtime.identity?.name) }
     DisposableEffect(home, state.offline) {
         home.isOffline = state.offline
         onDispose {}
@@ -217,7 +218,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
             } else {
                 MessengerSnapshot(isOffline = state.offline)
             }
-            val presenter = HomePresenter(ClomniStrings(state.config?.languages?.firstOrNull()), now = System.currentTimeMillis())
+            val presenter = HomePresenter(ClomniStrings(state.config.speaks(runtime.language)), now = System.currentTimeMillis())
             val skeleton = presenter.home(snapshot)
             HomeView(skeleton, theme, MessengerActions(close = close, retry = { coordinator.prepare() }))
             if (state.config == null) {
@@ -248,7 +249,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
                 }
                 is MessengerRoute.Conversation -> key(coordinator.screenKey(shown.id)) {
                     val context = LocalContext.current
-                    val chat = remember { AndroidMessenger.chatController(engine, shown.id, null, runtime.known, context.applicationContext) }
+                    val chat = remember { AndroidMessenger.chatController(engine, shown.id, runtime.language, runtime.known, context.applicationContext) }
                     DisposableEffect(chat, state.offline) {
                         chat.isOffline = state.offline
                         onDispose {}

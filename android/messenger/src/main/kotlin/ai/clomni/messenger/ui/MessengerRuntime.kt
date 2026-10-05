@@ -16,6 +16,7 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.ThemeOverride
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.ProtocolJson
+import ai.clomni.messenger.protocol.speaks
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -68,6 +69,10 @@ internal object MessengerRuntime {
     var identity: UserIdentity? = null
         private set
 
+    /** `Clomni.setLanguage`: the host's language, null to follow the phone (DESIGN-PASS-3 D1). */
+    var language: String? = null
+        private set
+
     /** `Clomni.setNotificationIcon`; 0 is the app's own icon. */
     @Volatile
     var notificationIcon: Int = 0
@@ -89,7 +94,7 @@ internal object MessengerRuntime {
         if (engine != null) return ClomniLog.warning { "initialize was called before; the first call stays" }
         val app = context.applicationContext as Application
         val engine = AndroidMessenger.create(app, appId, apiKey, baseUrl)
-        val coordinator = MessengerCoordinator(engine, null, waits, { main.post(it) }, { line -> ClomniLog.warning { line } }, events)
+        val coordinator = MessengerCoordinator(engine, language, waits, { main.post(it) }, { line -> ClomniLog.warning { line } }, events)
         coordinator.onChange = ::render
         launcherVisible?.let(coordinator::setLauncherVisible)
         bottomPadding?.let(coordinator::setBottomPadding)
@@ -145,7 +150,7 @@ internal object MessengerRuntime {
         val push = protocol.parsePush(data)
         if (coordinator?.received(push) == false) return
         val config = coordinator?.config
-        val strings = ClomniStrings(config?.languages?.firstOrNull() ?: Locale.getDefault().language, config?.strings.orEmpty())
+        val strings = ClomniStrings(config.speaks(language), config?.strings.orEmpty())
         val label = context.applicationInfo.loadLabel(context.packageManager).toString()
         val notification = PushNotification.of(push, data, strings, label)
         val color = (AppTheme.override.primaryColor ?: config?.brand?.primaryColor?.let(RgbColor::parse))?.argb
@@ -167,6 +172,11 @@ internal object MessengerRuntime {
     fun setTheme(override: ThemeOverride) {
         AppTheme.override = override
         render()
+    }
+
+    fun setLanguage(language: String?) {
+        this.language = language
+        coordinator?.setLanguage(language)
     }
 
     fun setBottomPadding(padding: Int) {

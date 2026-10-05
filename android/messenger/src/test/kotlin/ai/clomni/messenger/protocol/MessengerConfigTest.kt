@@ -117,6 +117,24 @@ class MessengerConfigTest {
     }
 
     @Test
+    fun languagesFromThePanel() {
+        val minimal = config(ProtocolFiles.read("fixtures/43-config-minimal.json"))
+        assertEquals(MessengerConfig.Languages(listOf("az"), "az"), minimal.languages)
+        assertEquals("one language on: always it", "az", minimal.languages.pick("en", "ru"))
+        val apar = config(ProtocolFiles.read("fixtures/42-config-apar.json")).languages
+        assertEquals("the host's first", "ru", apar.pick("ru", "en"))
+        assertEquals("then the phone's", "en", apar.pick("de", "en-GB"))
+        assertEquals("then the default", "az", apar.pick(null, "tr_TR"))
+        val two = config("""{"languages":{"enabled":["en","ru"],"default":"ru"}}""").languages
+        assertEquals("a language that is off is not spoken", "ru", two.pick("az", "az"))
+        assertEquals("no config yet: the phone", "ru", (null as MessengerConfig?).speaks(null, "ru-RU"))
+        // The earlier array, a default that is off, nothing usable.
+        assertEquals(MessengerConfig.Languages(listOf("en", "az"), "en"), config("""{"languages":["en","az","xx"]}""").languages)
+        assertEquals("en", config("""{"languages":{"enabled":["en"],"default":"az"}}""").languages.default)
+        assertEquals(MessengerConfig.Languages(), config("""{"languages":{"enabled":[],"default":"az"}}""").languages)
+    }
+
+    @Test
     fun anEmptyObjectIsAConfigOfDefaults() {
         val config = config("{}")
         assertEquals(0, config.version)
@@ -128,7 +146,7 @@ class MessengerConfigTest {
         assertNull(config.team.replyTimeOffline)
         assertEquals(MessengerConfig.ThemeMode.SYSTEM, config.theme.mode)
         assertFalse(config.theme.launcher.enabled)
-        assertEquals(listOf("az"), config.languages)
+        assertEquals("all three, az the default", MessengerConfig.Languages(), config.languages)
         assertTrue(config.poweredBy)
         assertFalse(config.startsWithFlow)
         assertTrue(config.sounds)

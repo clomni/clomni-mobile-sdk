@@ -233,6 +233,15 @@ public object Clomni {
         MessageSounds.appEnabled = enabled
     }
 
+    /**
+     * The language the messenger speaks: "az", "en" or "ru", used when the panel has it on; otherwise the phone's
+     * language if it is on, else the panel's main language. Null (the default) follows the phone.
+     */
+    @JvmStatic
+    public fun setLanguage(language: String?) {
+        onMain { MessengerRuntime.setLanguage(language) }
+    }
+
     /** Lifts the launcher above the app's bottom navigation, in dp. */
     @JvmStatic
     public fun setBottomPadding(dp: Int) {

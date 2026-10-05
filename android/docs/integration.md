@@ -153,6 +153,10 @@ Sounds: a short one for a message received while a conversation is open and one 
 mode and never pausing music. The panel can turn them off; `Clomni.setSoundsEnabled(false)` turns them off whatever
 it says.
 
+Language: the messenger speaks the languages turned on in the panel (Appearance, Languages). `Clomni.setLanguage("en")`
+picks one of them for your app; without it, or for a language that is off, it follows the phone, and falls back to
+the panel's main language. With one language on, that one is always used.
+
 ## 8. Events
 
 <!-- sample: kotlin/ai/clomni/messenger/sample/MainActivity.kt#L47-L48 -->

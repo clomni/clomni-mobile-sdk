@@ -5,10 +5,11 @@ import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.PushPayload
-import kotlinx.serialization.json.JsonObject
+import ai.clomni.messenger.protocol.speaks
 import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.Future
+import kotlinx.serialization.json.JsonObject
 
 /** What opening the messenger needs from the SDK below; `ClomniEngine` is one, tests use a fake. */
 internal interface MessengerSession {
@@ -99,13 +100,17 @@ internal class MessengerEvents {
  */
 internal class MessengerCoordinator(
     private val session: MessengerSession,
-    private val language: String?,
+    /** The host's language (`Clomni.setLanguage`), spoken when the panel has it on; [setLanguage] changes it. */
+    language: String?,
     private val worker: Executor,
     private val main: Executor,
     private val log: (String) -> Unit = {},
     /** The app's callbacks; the runtime keeps them, so callbacks set before `initialize` are not lost. */
     val events: MessengerEvents = MessengerEvents(),
 ) {
+    /** On [main]. */
+    private var hostLanguage: String? = language
+
     enum class Readiness {
         NOT_READY,
         READY,
@@ -150,7 +155,7 @@ internal class MessengerCoordinator(
     private val finished = HashMap<String, Set<String>>()
 
     private val strings: ClomniStrings
-        get() = ClomniStrings(language ?: config?.languages?.firstOrNull(), config?.strings.orEmpty())
+        get() = ClomniStrings(config.speaks(hostLanguage), config?.strings.orEmpty())
 
     /** Whether the app should hold any Clomni view: only while the messenger is open or the launcher shows. */
     val wantsAnyView: Boolean get() = route != null || launcher != null
@@ -202,7 +207,7 @@ internal class MessengerCoordinator(
                 session.isAppDisabled -> Readiness.DISABLED
                 session.isLoggedIn -> {
                     runCatching { session.connect().get() }
-                    fresh = runCatching { session.refreshConfig(language).get() }.getOrNull()
+                    fresh = runCatching { session.refreshConfig(session.config.speaks(hostLanguage)).get() }.getOrNull()
                     if (session.isAppDisabled) Readiness.DISABLED else Readiness.READY
                 }
                 else -> null
@@ -239,7 +244,7 @@ internal class MessengerCoordinator(
                 var fresh: MessengerConfig? = null
                 if (failure == null && !session.isAppDisabled) {
                     runCatching { session.connect().get() }
-                    fresh = runCatching { session.refreshConfig(language).get() }.getOrNull()
+                    fresh = runCatching { session.refreshConfig(session.config.speaks(hostLanguage)).get() }.getOrNull()
                 }
                 val disabled = session.isAppDisabled
                 val unread = session.unreadTotal
@@ -274,6 +279,15 @@ internal class MessengerCoordinator(
             updateUnread(unread)
             changed()
         }
+    }
+
+    /** `Clomni.setLanguage` (on [main]): the texts in the language now spoken, from the server once it answers. */
+    fun setLanguage(language: String?) {
+        if (language == hostLanguage) return
+        hostLanguage = language
+        changed()
+        if (readiness != Readiness.READY) return
+        worker.execute { runCatching { session.refreshConfig(session.config.speaks(language)).get() } }
     }
 
     private fun refuse(disabled: Boolean, reason: String?) {

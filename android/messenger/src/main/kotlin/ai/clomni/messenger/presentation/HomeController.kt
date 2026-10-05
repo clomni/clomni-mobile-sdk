@@ -4,6 +4,7 @@ import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.NewsItem
+import ai.clomni.messenger.protocol.speaks
 import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.Executor
@@ -90,7 +91,7 @@ internal class HomeController(
             news = source.news,
         )
         val config = snapshot.config
-        val presenter = HomePresenter(ClomniStrings(language ?: config?.languages?.firstOrNull(), config?.strings.orEmpty()), timeZone, now())
+        val presenter = HomePresenter(ClomniStrings(config.speaks(language), config?.strings.orEmpty()), timeZone, now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)
     }
@@ -100,9 +101,9 @@ internal class HomeController(
         worker.execute {
             publish(state())
             if (observation == null) observation = source.observe(::changed)
-            val config = runCatching { source.refreshConfig(language).get() }.getOrNull()
+            val config = runCatching { source.refreshConfig(source.config.speaks(language)).get() }.getOrNull()
             val conversations = runCatching { source.refreshConversations().get() }.isSuccess
-            runCatching { source.refreshNews(language).get() }
+            runCatching { source.refreshNews(source.config.speaks(language)).get() }
             publish(state()) {
                 snapshot = snapshot.copy(
                     configLoad = if (config != null) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
@@ -124,7 +125,7 @@ internal class HomeController(
     /** A news item's screen as it is now; null when it is no longer published. */
     fun newsScreen(id: String): NewsScreen? {
         val config = snapshot.config
-        val strings = ClomniStrings(language ?: config?.languages?.firstOrNull(), config?.strings.orEmpty())
+        val strings = ClomniStrings(config.speaks(language), config?.strings.orEmpty())
         return HomePresenter(strings, timeZone, now()).news(snapshot, id)
     }
 
@@ -178,7 +179,7 @@ internal class HomeController(
     private fun render() {
         snapshot = snapshot.copy(userName = userName, isOffline = isOffline)
         val config = snapshot.config
-        val strings = ClomniStrings(language ?: config?.languages?.firstOrNull(), config?.strings.orEmpty())
+        val strings = ClomniStrings(config.speaks(language), config?.strings.orEmpty())
         val presenter = HomePresenter(strings, timeZone, now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)

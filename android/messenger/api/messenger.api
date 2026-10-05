@@ -26,6 +26,7 @@ public final class ai/clomni/messenger/Clomni {
 	public static final fun removeUnreadCountListener (Lai/clomni/messenger/UnreadCountListener;)V
 	public static final fun setBottomPadding (I)V
 	public static final fun setDeviceToken (Ljava/lang/String;)V
+	public static final fun setLanguage (Ljava/lang/String;)V
 	public static final fun setLauncherVisible (Z)V
 	public static final fun setLogLevel (Lai/clomni/messenger/ClomniLogLevel;)V
 	public static final fun setNotificationIcon (I)V
