@@ -152,9 +152,15 @@ const show = Clomni.shouldShowForeground(data);
 | `setDeviceToken(token)`, `isClomniPush(data)`, `handlePush(data)`, `shouldShowForeground(data)` (iOS), `setNotificationIcon(name)` (Android) | push |
 | `setTheme({ primaryColor?, typeface?, mode? })` | the app's look over the panel's: `'#RRGGBB'`, a font family, `'light' \| 'dark' \| 'system'`; each call replaces the last |
 | `setLogLevel('none' \| 'error' \| 'warning' \| 'info' \| 'debug')`, `setTypeface(familyName \| null)` | log and font |
+| `setSoundsEnabled(enabled)`, `setLanguage('az' \| 'en' \| 'ru' \| null)` | message sounds (on unless the panel turns them off); the messenger's language, null follows the phone |
+| `onLink(listener \| null)` | a news item's button: the link goes to the app, which opens it; without a listener the system does |
 | `addEventListener(name, listener)` → `{ remove() }` | `unreadCountChanged`, `messengerOpened`, `messengerClosed`, `conversationStarted`, `flowCompleted` |
 
 The module owns the SDK's native event callbacks; native code of the app should not set them as well.
+
+```ts
+Clomni.onLink((url) => Linking.openURL(url)); // or the app's own router for its deep links
+```
 
 ## Development
 

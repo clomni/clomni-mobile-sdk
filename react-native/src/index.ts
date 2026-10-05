@@ -59,6 +59,9 @@ export type ClomniEvents = {
 
 export type ClomniEventName = keyof ClomniEvents;
 
+/** For `Clomni.onLink`: the link a news item's button opens (https:// or the app's own deep link). */
+export type ClomniLinkListener = (url: string) => void;
+
 export type ClomniSubscription = {
   remove(): void;
 };
@@ -73,6 +76,7 @@ const NOT_LINKED =
   'With Expo, make a development build (npx expo prebuild); Expo Go cannot load it.';
 
 let resolved: Spec | undefined;
+let linkSubscription: ClomniSubscription | undefined;
 
 /**
  * The native module: the TurboModule in the New Architecture, NativeModules.Clomni in the old one. Looked up on the
@@ -189,6 +193,38 @@ export const Clomni = {
       mode = null;
     }
     native().setTheme(primaryColor, theme.typeface ?? null, mode);
+  },
+
+  /**
+   * The short sounds for a message received while the conversation is open and one sent. On unless the panel turns
+   * them off; false turns them off whatever the panel says. They follow the phone's silent mode.
+   */
+  setSoundsEnabled(enabled: boolean): void {
+    native().setSoundsEnabled(enabled);
+  },
+
+  /**
+   * The language the messenger speaks: "az", "en" or "ru", used when the panel has it on; otherwise the phone's
+   * language if it is on, else the panel's main language. null (the default) follows the phone.
+   */
+  setLanguage(language: string | null): void {
+    native().setLanguage(language ?? null);
+  },
+
+  /**
+   * A link the messenger is about to open (a news item's button: a web address or the app's own deep link) goes to
+   * `listener`, and the app opens it its own way. Without a listener the system opens it. One listener: each call
+   * replaces the last, null removes it.
+   */
+  onLink(listener: ClomniLinkListener | null): void {
+    linkSubscription?.remove();
+    linkSubscription = undefined;
+    if (listener) {
+      linkSubscription = subscribe((event) => {
+        if (event.name === 'link') listener(event.text ?? '');
+      });
+    }
+    native().setLinkListener(Boolean(listener));
   },
 
   /** Home. `source` says where in the app (for example "profile_support"). */

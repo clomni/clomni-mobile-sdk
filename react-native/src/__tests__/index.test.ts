@@ -145,6 +145,40 @@ describe('setTheme', () => {
   });
 });
 
+describe('sounds, language and links', () => {
+  it('passes the sounds switch and the language; null language follows the phone', () => {
+    Clomni.setSoundsEnabled(false);
+    Clomni.setSoundsEnabled(true);
+    Clomni.setLanguage('az');
+    Clomni.setLanguage(null);
+    expect(calls()).toEqual([
+      ['setSoundsEnabled', false],
+      ['setSoundsEnabled', true],
+      ['setLanguage', 'az'],
+      ['setLanguage', null],
+    ]);
+  });
+
+  it.each(['new', 'old'] as const)('hands links to the one listener, then to the system (%s architecture)', (arch) => {
+    load('android', arch);
+    const first: string[] = [];
+    const second: string[] = [];
+    Clomni.onLink((url) => first.push(url));
+    Clomni.onLink((url) => second.push(url));
+    rn.fake.emit({ name: 'link', text: 'https://clomni.ai/news/1' });
+    rn.fake.emit({ name: 'flowCompleted', text: 'flow_42' });
+    Clomni.onLink(null);
+    rn.fake.emit({ name: 'link', text: 'myapp://orders/7' });
+    expect(first).toEqual([]);
+    expect(second).toEqual(['https://clomni.ai/news/1']);
+    expect(calls().filter(([name]) => name === 'setLinkListener')).toEqual([
+      ['setLinkListener', true],
+      ['setLinkListener', true],
+      ['setLinkListener', false],
+    ]);
+  });
+});
+
 describe('push', () => {
   const clomniPush = { clomni: '1', type: 'message', conversation_id: 'conv_5521', title: 'Leyla · Apar', body: 'Salam' };
   const ownPush = { order_id: '7', aps: { alert: 'Sifarişiniz yoldadır' } };

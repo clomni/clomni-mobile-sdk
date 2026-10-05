@@ -49,6 +49,15 @@ class ClomniModule(context: ReactApplicationContext) : ReactContextBaseJavaModul
     fun setTheme(primaryColor: String?, typeface: String?, mode: String?) = impl.setTheme(primaryColor, typeface, mode)
 
     @ReactMethod
+    fun setSoundsEnabled(enabled: Boolean) = impl.setSoundsEnabled(enabled)
+
+    @ReactMethod
+    fun setLanguage(language: String?) = impl.setLanguage(language)
+
+    @ReactMethod
+    fun setLinkListener(enabled: Boolean) = impl.setLinkListener(enabled)
+
+    @ReactMethod
     fun present(source: String?) = impl.present(source)
 
     @ReactMethod

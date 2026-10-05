@@ -32,6 +32,12 @@ class ClomniModule(context: ReactApplicationContext) : NativeClomniSpec(context)
     override fun setTheme(primaryColor: String?, typeface: String?, mode: String?) =
         impl.setTheme(primaryColor, typeface, mode)
 
+    override fun setSoundsEnabled(enabled: Boolean) = impl.setSoundsEnabled(enabled)
+
+    override fun setLanguage(language: String?) = impl.setLanguage(language)
+
+    override fun setLinkListener(enabled: Boolean) = impl.setLinkListener(enabled)
+
     override fun present(source: String?) = impl.present(source)
 
     override fun presentNewConversation(source: String?) = impl.presentNewConversation(source)

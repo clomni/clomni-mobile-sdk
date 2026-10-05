@@ -21,6 +21,10 @@ export interface Spec extends TurboModule {
   setLogLevel(level: string): void;
   setTypeface(familyName: string | null): void;
   setTheme(primaryColor: string | null, typeface: string | null, mode: string | null): void;
+  setSoundsEnabled(enabled: boolean): void;
+  setLanguage(language: string | null): void;
+  // true while JS has an onLink listener: the messenger's links come as the "link" event and the SDK leaves them.
+  setLinkListener(enabled: boolean): void;
 
   present(source: string | null): void;
   presentNewConversation(source: string | null): void;
