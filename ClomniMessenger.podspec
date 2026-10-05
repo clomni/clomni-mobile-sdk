@@ -25,10 +25,10 @@ Pod::Spec.new do |s|
   s.source_files = 'ios/Sources/**/*.swift'
   s.pod_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => '$(inherited) -package-name ClomniMessenger' }
   # What the SDK collects and which required-reason APIs it calls (none), for the app's privacy report.
-  # Clomni's own two message sounds (generated for the SDK, no third-party audio).
+  # The message sound (Universfield, Pixabay Content License; see LICENSE).
   s.resource_bundles = {
     'ClomniMessenger_Privacy' => ['ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'],
-    'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.wav'],
+    'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.mp3'],
   }
   s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers', 'UserNotifications', 'AVFoundation'
 end

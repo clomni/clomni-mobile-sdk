@@ -111,13 +111,14 @@ final class PrivacyManifestTests: XCTestCase {
         XCTAssertTrue(podspec.contains("'ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'"))
     }
 
-    /// The two message sounds ship the same way (CocoaPods: the ClomniMessenger_Sounds bundle).
-    func testTheSoundsShipAsResources() throws {
-        for name in ["clomni_ding", "clomni_ping"] {
-            let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: "wav"), name)
-            XCTAssertEqual(try Data(contentsOf: url).prefix(4), Data("RIFF".utf8), name)
-        }
+    /// The message sound ships the same way (CocoaPods: the ClomniMessenger_Sounds bundle).
+    func testTheSoundShipsAsAResource() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "clomni_message", withExtension: "mp3"))
+        // An MPEG audio frame's sync word.
+        let head = try Data(contentsOf: url).prefix(2)
+        XCTAssertEqual(head.first, 0xFF)
+        XCTAssertEqual((head.last ?? 0) & 0xE0, 0xE0)
         let podspec = try String(contentsOf: root.appendingPathComponent("ClomniMessenger.podspec"), encoding: .utf8)
-        XCTAssertTrue(podspec.contains("'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.wav']"))
+        XCTAssertTrue(podspec.contains("'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.mp3']"))
     }
 }
