@@ -105,6 +105,22 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertNil(bubbles(screen([mine])).last?.meta)
     }
 
+    /// The user's message is one item from the moment it is written: the server's copy changes only its status, so
+    /// the bubble neither flickers nor fades in again.
+    func testASentMessageKeepsItsPlaceInTheTranscript() {
+        let sending = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Gedişim bitmədi")),
+                                     preview: "Gedişim bitmədi", createdAt: now)
+        let before = bubbles(screen([]) { $0.pending = [sending] }).first
+        let confirmed = Fixture.message("03-text-user.json", ["client_id": .string(sending.id)])
+        let after = bubbles(screen([confirmed])).first
+        XCTAssertEqual(before?.id, sending.id)
+        XCTAssertEqual(after?.id, before?.id, "the same key")
+        XCTAssertEqual(before?.status?.text, "Göndərilir")
+        XCTAssertEqual(after?.status?.text, "Göndərildi")
+        let bot = Fixture.message("01-text-bot.json")
+        XCTAssertEqual(bubbles(screen([bot])).first?.id, bot.id, "without a client_id, its id")
+    }
+
     func testPendingMessages() {
         let mine = Fixture.message("03-text-user.json")
         let sending = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Hələ yoldadır")),

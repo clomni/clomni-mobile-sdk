@@ -141,7 +141,7 @@ package struct ChatPresenter: Sendable {
         let choicesFor = answeredLater ? nil : lastOther?.id
 
         for message in snapshot.messages {
-            separate(message.id, message.createdAt)
+            separate(key(message), message.createdAt)
             if case .system(let system) = message.content {
                 entries.append(.system(SystemLine(id: message.id, text: system.text,
                                                   avatars: systemAvatars(system.event, snapshot))))
@@ -181,7 +181,7 @@ package struct ChatPresenter: Sendable {
         if snapshot.pending.contains(where: { $0.id == last.id }) {
             text = strings[.sending]
         } else {
-            let seq = snapshot.messages.first { $0.id == last.id }?.seq ?? 0
+            let seq = snapshot.messages.first { key($0) == last.id }?.seq ?? 0
             text = snapshot.readUpTo.map { $0 >= seq } == true ? strings[.read] : strings[.sent]
         }
         last.status = Bubble.Status(text: text, isFailure: false, retryId: nil)
@@ -230,11 +230,17 @@ package struct ChatPresenter: Sendable {
         return items
     }
 
+    /// A message's place in the transcript: its `client_id` when it has one, so the user's message keeps it from the
+    /// moment it is written to the server's copy, and only its status changes; otherwise its id.
+    private func key(_ message: Message) -> String {
+        message.clientId ?? message.id
+    }
+
     private func draft(_ message: Message, _ body: Bubble.Body, _ snapshot: ChatSnapshot) -> Draft {
         let outgoing = message.sender.type == .user
         let who = person(message.sender, snapshot)
         return Draft(
-            id: message.id, side: outgoing ? .outgoing : .incoming,
+            id: key(message), side: outgoing ? .outgoing : .incoming,
             sender: outgoing ? "user" : "\(message.sender.type.rawValue) \(message.sender.id ?? message.sender.name ?? "")",
             date: message.createdAt, body: body, avatar: outgoing ? nil : who.avatar,
             author: outgoing ? nil : who.name,

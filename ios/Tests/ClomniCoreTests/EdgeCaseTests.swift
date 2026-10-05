@@ -224,6 +224,24 @@ final class EdgeCaseTests: EngineTestCase {
         XCTAssertEqual(count, 2)
     }
 
+    /// The socket's echo before the POST's answer: one message, and the outbox is empty at once, not left "sending".
+    func testAPendingMessageIsSentWhicheverCopyComesFirst() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        await phone.online()
+        server.hold("POST", "/messages")
+        let pending = try await phone.engine.sendText("Buyurun", in: id)
+        await expect { self.server.heldCount == 1 }
+        server.emit("message.created", try XCTUnwrap(userMessages(id).last))
+        await expect { await phone.pending(id).isEmpty }
+        server.release()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        let copies = await phone.messages(id).filter { $0.clientId == pending.id }.count
+        XCTAssertEqual(copies, 1)
+        let left = await phone.pending(id)
+        XCTAssertTrue(left.isEmpty)
+    }
+
     /// "seq boşluğu (40 → 42)": 41 is fetched over REST.
     func testASeqGapIsFetched() async throws {
         let phone = await device()

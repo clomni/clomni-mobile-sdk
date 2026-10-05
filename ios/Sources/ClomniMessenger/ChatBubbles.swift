@@ -64,6 +64,8 @@ struct ChatTranscript: View {
                 .onAppear(perform: reachedTop)
                 .accessibilityHidden(true)
             ForEach(items) { item in
+                // Fades in once, when it is new: an item is keyed by its client id from the moment it is written, so
+                // the server's copy changes only its status, and scrolling back is not an insertion.
                 ChatItemView(item: item, theme: theme, actions: actions)
                     .id(item.id)
                     .transition(.opacity)
