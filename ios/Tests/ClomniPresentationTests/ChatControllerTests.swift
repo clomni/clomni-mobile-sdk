@@ -37,8 +37,12 @@ actor FakeChat: ChatDataSource {
 
     func refreshConversation(_ id: String) async throws {
         calls.append("refreshConversation \(id)")
-        conversations[id] = Fixture.conversation(status: "bot")
+        conversations[id] = served ?? Fixture.conversation(status: "bot")
     }
+
+    /// What `refreshConversation` brings: a bot conversation unless a test says otherwise.
+    var served: Conversation?
+    func setConversation(_ conversation: Conversation) { served = conversation }
 
     func messages(in conversationId: String) -> [Message] { stored[conversationId] ?? [] }
     func pending(in conversationId: String) -> [PendingMessage] { outbox.filter { $0.conversationId == conversationId } }
@@ -62,9 +66,9 @@ actor FakeChat: ChatDataSource {
     func markRead(in conversationId: String) { calls.append("read \(conversationId)") }
     func setTyping(_ isTyping: Bool, in conversationId: String) { typingStates.append(isTyping) }
 
-    func sendText(_ text: String, in conversationId: String) throws -> PendingMessage {
-        calls.append("text \(text)")
-        return queue(.text(text), in: conversationId, preview: text)
+    func sendText(_ text: String, in conversationId: String, replyTo: String?) throws -> PendingMessage {
+        calls.append("text \(text)" + (replyTo.map { " ↩ \($0)" } ?? ""))
+        return queue(.text(text), in: conversationId, preview: text, replyTo: replyTo)
     }
 
     func reply(to message: Message, with button: MessageContent.Button) throws -> PendingMessage {
@@ -86,10 +90,11 @@ actor FakeChat: ChatDataSource {
     }
 
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
-                  in conversationId: String) throws -> PendingMessage {
+                  in conversationId: String, replyTo: String?) throws -> PendingMessage {
         guard data.count <= 10 else { throw ClomniError.rejected("file over 10 MB") }
-        calls.append("file \(fileName)")
-        var entry = queue(.attachment(uploadId: "", caption: caption), in: conversationId, preview: caption)
+        calls.append("file \(fileName)" + (replyTo.map { " ↩ \($0)" } ?? ""))
+        var entry = queue(.attachment(uploadId: "", caption: caption), in: conversationId, preview: caption,
+                          replyTo: replyTo)
         entry.upload = PendingUpload(fileName: fileName, mime: mime, size: data.count, storedAs: "upload-1")
         outbox[outbox.count - 1] = entry
         return entry
@@ -110,8 +115,9 @@ actor FakeChat: ChatDataSource {
 
     func stopObserving(_ token: UUID) { observers[token] = nil }
 
-    private func queue(_ content: ClientMessage.Content, in conversationId: String, preview: String?) -> PendingMessage {
-        let entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content),
+    private func queue(_ content: ClientMessage.Content, in conversationId: String, preview: String?,
+                       replyTo: String? = nil) -> PendingMessage {
+        let entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content, replyTo: replyTo),
                                    preview: preview, createdAt: Date(timeIntervalSince1970: 1_790_850_700))
         outbox.append(entry)
         return entry
@@ -169,6 +175,7 @@ final class ChatControllerTests: XCTestCase {
     func testButtonsBackAndASecondTap() async {
         let step = Fixture.message("10-apar-level2-S-chips.json")
         await source.set([step], answerable: [step.id])
+        await source.setConversation(Fixture.onAMenu)
         let chat = controller()
         await chat.load()
         XCTAssertEqual(chat.screen.composer.mode, .hidden)

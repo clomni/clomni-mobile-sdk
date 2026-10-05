@@ -20,12 +20,12 @@ package protocol ChatDataSource: Sendable {
     func loadOlder(in conversationId: String) async throws -> Bool
     func markRead(in conversationId: String) async
     func setTyping(_ isTyping: Bool, in conversationId: String) async
-    func sendText(_ text: String, in conversationId: String) async throws -> PendingMessage
+    func sendText(_ text: String, in conversationId: String, replyTo: String?) async throws -> PendingMessage
     func reply(to message: Message, with button: MessageContent.Button) async throws -> PendingMessage
     func goBack(from message: Message) async throws -> PendingMessage
     func submitForm(_ message: Message, values: [String: JSONValue]) async throws -> PendingMessage
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
-                  in conversationId: String) async throws -> PendingMessage
+                  in conversationId: String, replyTo: String?) async throws -> PendingMessage
     func retry(_ clientId: String) async throws
     func draftConversation(openedFrom: String?) async -> String
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
@@ -215,7 +215,7 @@ package final class ChatController {
     @discardableResult
     package func send(_ text: String) async -> Bool {
         guard ChatPresenter.canSend(text, limit: screen.composer.limit),
-              (try? await source.sendText(text, in: conversationId)) != nil else { return false }
+              (try? await source.sendText(text, in: conversationId, replyTo: nil)) != nil else { return false }
         sound(.sent)
         await source.setTyping(false, in: conversationId)
         return true
@@ -261,7 +261,8 @@ package final class ChatController {
     /// An image (already scaled, see `Media.uploadSize`) or a file; returns the text to show when it is refused.
     package func sendFile(_ data: Data, fileName: String, mime: String, caption: String? = nil) async -> String? {
         do {
-            _ = try await source.sendFile(data, fileName: fileName, mime: mime, caption: caption, in: conversationId)
+            _ = try await source.sendFile(data, fileName: fileName, mime: mime, caption: caption, in: conversationId,
+                                          replyTo: nil)
             sound(.sent)
             return nil
         } catch ClomniError.rejected {

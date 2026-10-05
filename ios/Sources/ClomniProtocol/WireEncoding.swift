@@ -22,6 +22,8 @@ extension Message: Codable {
             "type": .string(type), "sender": sender.json, "created_at": .string(ISOTime.format(createdAt)),
             "seq": .int(seq), "lang": .string(lang), "flow": flow?.json ?? .null, "content": content.json,
             "fallback_text": .string(fallbackText),
+            "reply_to": replyTo.map { ["id": .string($0.id), "sender": $0.sender?.json ?? .null,
+                                       "excerpt": .orNull($0.excerpt), "kind": .string($0.kind)] } ?? .null,
         ]
     }
 }

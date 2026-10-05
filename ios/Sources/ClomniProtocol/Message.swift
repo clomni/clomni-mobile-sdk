@@ -17,10 +17,12 @@ package struct Message: Sendable, Equatable, Identifiable {
     package let flow: FlowRef?
     package let content: MessageContent
     package let fallbackText: String
+    /// The message this one answers, quoted at the top of its bubble; nil when it answers none.
+    package let replyTo: ReplyRef?
 
     package init(id: String, clientId: String? = nil, conversationId: String, type: String, sender: Sender,
                 createdAt: Date, seq: Int, lang: String, flow: FlowRef? = nil, content: MessageContent,
-                fallbackText: String) {
+                fallbackText: String, replyTo: ReplyRef? = nil) {
         self.id = id
         self.clientId = clientId
         self.conversationId = conversationId
@@ -32,6 +34,25 @@ package struct Message: Sendable, Equatable, Identifiable {
         self.flow = flow
         self.content = content
         self.fallbackText = fallbackText
+        self.replyTo = replyTo
+    }
+}
+
+/// `reply_to`: the quoted message as the server describes it, so it shows even when it is not loaded here.
+package struct ReplyRef: Sendable, Equatable {
+    package let id: String
+    /// nil when the quoted message is not the user's to see or no longer exists.
+    package let sender: Sender?
+    /// One line of plain text; nil when the message was deleted or is not there (the quote reads quote_deleted).
+    package let excerpt: String?
+    /// text, image, file, or a kind added later (shown as text).
+    package let kind: String
+
+    package init(id: String, sender: Sender?, excerpt: String?, kind: String) {
+        self.id = id
+        self.sender = sender
+        self.excerpt = excerpt
+        self.kind = kind
     }
 }
 
@@ -93,10 +114,21 @@ extension Message {
                 ClomniLog.warning("\(id): \(error); shown without its flow")
             }
         }
+        var replyTo: ReplyRef?
+        if let value = f["reply_to"], value != .null {
+            do {
+                let q = try JSONFields(value, path: "\(f.path).reply_to")
+                replyTo = ReplyRef(id: try q.string("id"), sender: try? Sender(q.object("sender")),
+                                   excerpt: q.optionalString("excerpt"), kind: try q.string("kind"))
+            } catch {
+                ClomniLog.warning("\(id): \(error); shown without its quote")
+            }
+        }
         // Content last, so a message rejected for its envelope does not also log about its content.
         self.init(id: id, clientId: f.optionalString("client_id"), conversationId: conversationId, type: type,
                   sender: sender, createdAt: createdAt, seq: seq, lang: lang, flow: flow,
-                  content: MessageContent(type: type, json: content, messageId: id), fallbackText: fallbackText)
+                  content: MessageContent(type: type, json: content, messageId: id), fallbackText: fallbackText,
+                  replyTo: replyTo)
     }
 }
 

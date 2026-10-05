@@ -420,11 +420,12 @@ package actor ClomniEngine {
     // MARK: - Sending
 
     @discardableResult
-    package func sendText(_ text: String, in conversationId: String) throws -> PendingMessage {
+    /// `replyTo`: the message the user answers, quoted over the new one.
+    package func sendText(_ text: String, in conversationId: String, replyTo: String? = nil) throws -> PendingMessage {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw ClomniError.rejected("empty text") }
         guard text.count <= config?.limits.textChars ?? 4000 else { throw ClomniError.rejected("text over the limit") }
-        return enqueue(.text(text), in: conversationId, preview: text)
+        return enqueue(.text(text), in: conversationId, preview: text, replyTo: replyTo)
     }
 
     /// A flow button. The message's buttons go dead at once, so a second tap sends nothing.
@@ -472,11 +473,11 @@ package actor ClomniEngine {
     /// the message, so a lost connection or a restart does not lose it: the outbox uploads it, then sends it.
     @discardableResult
     package func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
-                         in conversationId: String) throws -> PendingMessage {
+                         in conversationId: String, replyTo: String? = nil) throws -> PendingMessage {
         let conversationId = resolved(conversationId)
         let megabytes = mime.hasPrefix("image/") ? config?.limits.imageMb ?? 10 : config?.limits.fileMb ?? 25
         guard data.count <= megabytes * 1_048_576 else { throw ClomniError.rejected("file over \(megabytes) MB") }
-        let message = ClientMessage(content: .attachment(uploadId: "", caption: caption))
+        let message = ClientMessage(content: .attachment(uploadId: "", caption: caption), replyTo: replyTo)
         let stored = "upload-\(message.clientId)"
         cache.write(data, stored)
         guard cache.contains(stored) else { throw ClomniError.rejected("file not stored") }
@@ -542,10 +543,11 @@ package actor ClomniEngine {
         store.markAnswered(message.id)
     }
 
-    private func enqueue(_ content: ClientMessage.Content, in conversationId: String, preview: String?) -> PendingMessage {
+    private func enqueue(_ content: ClientMessage.Content, in conversationId: String, preview: String?,
+                         replyTo: String? = nil) -> PendingMessage {
         let conversationId = resolved(conversationId)
-        var entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content), preview: preview,
-                                   createdAt: time.now())
+        var entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content, replyTo: replyTo),
+                                   preview: preview, createdAt: time.now())
         entry.openedFrom = drafts[conversationId] ?? nil
         outbox.add(entry)
         changed(conversationId)
@@ -582,7 +584,8 @@ package actor ClomniEngine {
                     $0.upload?.uploadId = uploaded.uploadId
                     if case .attachment(_, let caption) = $0.message.content {
                         $0.message = ClientMessage(clientId: $0.message.clientId,
-                                                   content: .attachment(uploadId: uploaded.uploadId, caption: caption))
+                                                   content: .attachment(uploadId: uploaded.uploadId, caption: caption),
+                                                   replyTo: $0.message.replyTo)
                     }
                 }
                 save()

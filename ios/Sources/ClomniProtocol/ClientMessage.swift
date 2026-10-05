@@ -5,10 +5,13 @@ package struct ClientMessage: Sendable, Equatable {
     /// UUID v4. A retry sends the same one, and the server never handles one client id twice.
     package let clientId: String
     package let content: Content
+    /// A text or an attachment answering a message (swipe or long press): its server id.
+    package let replyTo: String?
 
-    package init(clientId: String = ClientMessage.newClientId(), content: Content) {
+    package init(clientId: String = ClientMessage.newClientId(), content: Content, replyTo: String? = nil) {
         self.clientId = clientId
         self.content = content
+        self.replyTo = replyTo
     }
 
     package enum Content: Sendable, Equatable {
@@ -45,7 +48,7 @@ package struct ClientMessage: Sendable, Equatable {
 
 extension ClientMessage {
     var json: JSONValue {
-        let content: [String: JSONValue]
+        var content: [String: JSONValue]
         switch self.content {
         case .text(let text):
             content = ["text": .string(text)]
@@ -59,6 +62,7 @@ extension ClientMessage {
             content = ["reply_to": .string(replyTo), "score": .number(Double(score)),
                        "comment": comment.map(JSONValue.string) ?? .null]
         }
+        if let replyTo, type == "text" || type == "attachment" { content["reply_to"] = .string(replyTo) }
         return ["client_id": .string(clientId), "type": .string(type), "content": .object(content)]
     }
 
@@ -84,5 +88,6 @@ extension ClientMessage {
             throw ParseError("\(f.path).type: unknown client message type \"\(type)\"")
         }
         clientId = try f.string("client_id")
+        replyTo = type == "text" || type == "attachment" ? c.optionalString("reply_to") : nil
     }
 }

@@ -19,6 +19,13 @@ extension Fixture {
                                "created_at": "2026-10-01T10:00:00Z"]
         return ProtocolJSON.parseConversation(ProtocolJSON.encode(json))!
     }
+
+    /// A bot conversation whose flow waits on buttons, as the server says (conversation.flow).
+    static var onAMenu: Conversation {
+        var conversation = conversation(status: "bot")
+        conversation.flow = .init(active: true, awaiting: "menu", flowId: "flw_1", nodeId: "S")
+        return conversation
+    }
 }
 
 final class ChatPresenterTests: XCTestCase {
@@ -271,7 +278,10 @@ final class ChatPresenterTests: XCTestCase {
 
     func testQuickReplies() throws {
         let languages = Fixture.message("07-language-select.json")
-        let open = screen([languages]) { $0.answerable = [languages.id] }
+        let open = screen([languages]) {
+            $0.answerable = [languages.id]
+            $0.conversation = Fixture.onAMenu
+        }
         guard case .replies(let block)? = open.items.last else { return XCTFail("\(open.items)") }
         XCTAssertEqual(block.buttons.map(\.title), ["🇦🇿 Azərbaycan dili", "🇬🇧 English", "🇷🇺 Русский"])
         XCTAssertEqual(block.buttons.map(\.id), ["az", "en", "ru"])
@@ -289,7 +299,10 @@ final class ChatPresenterTests: XCTestCase {
 
         // Apar S: chips, the back button, the composer locked.
         let step = Fixture.message("10-apar-level2-S-chips.json")
-        let chips = screen([step]) { $0.answerable = [step.id] }
+        let chips = screen([step]) {
+            $0.answerable = [step.id]
+            $0.conversation = Fixture.onAMenu
+        }
         guard case .replies(let chipsBlock)? = chips.items.last else { return XCTFail() }
         XCTAssertEqual(chipsBlock.layout, .chips)
         XCTAssertEqual(chipsBlock.back, ReplyButton(id: "back", title: "← Geri", accessibilityLabel: "Geri"))
@@ -306,9 +319,12 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(tenBlock.buttons.count, 10)
         XCTAssertEqual(tenBlock.buttons[9].accessibilityLabel, "Variant 10, 10-cu, cəmi 10")
         let bare = Fixture.message("15-quick-replies-no-text.json")
-        let bareScreen = screen([bare]) { $0.answerable = [bare.id] }
+        let bareScreen = screen([bare]) {
+            $0.answerable = [bare.id]
+            $0.conversation = Fixture.onAMenu
+        }
         XCTAssertTrue(bubbles(bareScreen).isEmpty, "no text, no bubble")
-        XCTAssertEqual(bareScreen.composer.mode, .hidden, "a waiting choice hides it even with input_disabled false")
+        XCTAssertEqual(bareScreen.composer.mode, .hidden, "the flow's menu hides it even with input_disabled false")
     }
 
     func testTheFlowsOwnRestartButtonLeavesNoSecondBack() {
@@ -435,9 +451,8 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertFalse(ChatPresenter.canSend("12345678901", limit: 10))
     }
 
-    /// Operator, 2026-10-05: while a flow runs the conversation there is no composer, between a choice and the next
-    /// step too; it comes for a question answered in words, at the flow's end, on a handover, or after a message
-    /// from outside the flow.
+    /// Operator, 2026-10-05: the composer goes by conversation.flow alone. While a flow waits for a button, a form or
+    /// its next step there is none; for a question answered in words, at its end or on a handover it is back.
     func testTheFlowHoldsTheComposerUntilItWaitsForWords() {
         let statement = Fixture.message("01-text-bot.json")
         func mode(_ flow: Conversation.FlowState?) -> ChatComposer.Mode {
@@ -446,31 +461,14 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(mode(.init(active: true, awaiting: "menu")), .hidden)
         XCTAssertEqual(mode(.init(active: true)), .hidden, "between steps")
         XCTAssertEqual(mode(.init(active: true, awaiting: "form")), .hidden)
+        XCTAssertEqual(mode(.init(active: true, awaiting: "buttons")), .hidden, "a value this SDK does not know is not text")
         XCTAssertEqual(mode(.init(active: true, awaiting: "text")), .open, "a question answered in words")
         XCTAssertEqual(mode(.init(active: false)), .open, "ended or handed over")
+        XCTAssertEqual(mode(nil), .open, "no flow sent (an older server)")
         XCTAssertEqual(screen([statement]) {
             $0.conversation = Fixture.conversation(status: "queued")
             $0.conversation?.flow = .init(active: true, awaiting: "menu")
         }.composer.mode, .hidden, "the field decides, not the status")
-
-        // A copy kept from before the field: the status and the other side's latest step.
-        XCTAssertEqual(mode(nil), .hidden, "a flow's statement: its next step follows")
-        let ended = Fixture.message("08-language-select-answered.json",
-                                    ["flow": ["flow_id": "flw_1", "node_id": "END", "interactive": false]])
-        XCTAssertEqual(screen([ended]).composer.mode, .open, "the flow ended")
-        let question = Fixture.message("01-text-bot.json",
-                                       ["flow": ["flow_id": "flw_1", "node_id": "ask_name", "interactive": true]])
-        XCTAssertEqual(screen([question]).composer.mode, .open, "a question answered in words")
-        XCTAssertEqual(screen([statement]) { $0.conversation = Fixture.conversation(status: "queued") }.composer.mode,
-                       .open, "handed over")
-        let fromOutside = Fixture.message("02-text-operator-markdown.json", ["seq": 99])
-        XCTAssertEqual(screen([statement, fromOutside]).composer.mode, .open, "a message from outside the flow")
-
-        // A choice on its way: the next step follows it. Nothing known yet: no composer to take away.
-        let choice = PendingMessage(conversationId: "conv_5521",
-                                    message: ClientMessage(content: .buttonReply(replyTo: "m", buttonId: "b", payload: "p")),
-                                    preview: "Bəli", createdAt: now)
-        XCTAssertEqual(screen([]) { $0.pending = [choice] }.composer.mode, .hidden)
         XCTAssertEqual(screen([]) { $0.load = .loading }.composer.mode, .hidden)
     }
 
