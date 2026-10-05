@@ -234,9 +234,6 @@ class AccessibilitySnapshotTest {
                 "Telefon, məcburi [click]",
                 "Email [click]",
                 "Göndər [Button]",
-                "Mesaj yazın… [click]",
-                "Emoji [Button]",
-                "Fayl əlavə et [Button]",
             ),
         )
     }

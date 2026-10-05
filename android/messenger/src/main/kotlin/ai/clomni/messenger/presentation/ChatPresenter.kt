@@ -57,7 +57,8 @@ internal class ChatPresenter(
             return ChatHeader(
                 lead = ChatHeader.Lead.Person(ChatAvatar(assignee.avatarUrl, initial(assignee.name), false), online),
                 title = assignee.name,
-                subtitle = if (online) "$brand · ${strings[Key.ONLINE]}" else brand,
+                // Only the company: being online is the green dot on the avatar, not a word (operator, 2026-10-05).
+                subtitle = brand,
                 backLabel = strings[Key.GO_BACK],
                 closeLabel = strings[Key.CLOSE],
             )
@@ -96,6 +97,7 @@ internal class ChatPresenter(
                 ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
             // A step waiting for a choice has nothing under it: no field, no "choose above" (DESIGN-PASS-3 A4).
             replies != null -> ChatComposer.Mode.Hidden
+            flowHasIt(snapshot) -> ChatComposer.Mode.Hidden
             // A choice on its way: the flow's next step follows it, so the field does not come up in between.
             snapshot.pending.any { it.message is ClientMessage.ButtonReply && it.state == PendingMessage.State.SENDING } ->
                 ChatComposer.Mode.Hidden
@@ -115,6 +117,20 @@ internal class ChatPresenter(
             fileLabel = strings[Key.PICK_FILE],
             removeLabel = strings[Key.REMOVE_ATTACHMENT],
         )
+    }
+
+    /**
+     * A flow is running the conversation (operator, 2026-10-05): its status is `bot` and the other side's latest
+     * message is a flow step that is neither the END node nor a question answered in words (interactive, plain text).
+     * Between a choice and the next step too, then, there is no field; it comes when an operator takes the
+     * conversation (queued, open), when the flow ends, for a text answer, or after a message from outside the flow.
+     */
+    private fun flowHasIt(snapshot: ChatSnapshot): Boolean {
+        if (snapshot.conversation?.status != ConversationStatus.BOT) return false
+        val step = snapshot.messages.lastOrNull { it.sender.type != SenderType.USER && it.content !is MessageContent.System }
+        val flow = step?.flow ?: return false
+        if (flow.nodeId == END_NODE) return false
+        return !(flow.interactive && step.content is MessageContent.Text)
     }
 
     // Transcript
@@ -151,7 +167,7 @@ internal class ChatPresenter(
         }
 
         for (message in snapshot.messages) {
-            separate(message.id, message.createdAt)
+            separate(key(message), message.createdAt)
             val content = message.content
             if (content is MessageContent.System) {
                 entries += Entry.System(SystemLine(message.id, content.text, systemAvatars(content.event, snapshot)))
@@ -192,7 +208,7 @@ internal class ChatPresenter(
         val text = if (snapshot.pending.any { it.id == last.id }) {
             strings[Key.SENDING]
         } else {
-            val seq = snapshot.messages.firstOrNull { it.id == last.id }?.seq ?: 0
+            val seq = snapshot.messages.firstOrNull { key(it) == last.id }?.seq ?: 0
             if (snapshot.readUpTo?.let { it >= seq } == true) strings[Key.READ] else strings[Key.SENT]
         }
         entries[index] = Entry.Draw(last.copy(status = Bubble.Status(text, isFailure = false, retryId = null)))
@@ -250,11 +266,17 @@ internal class ChatPresenter(
         is Entry.Draw -> null
     }
 
+    /**
+     * A message's place in the transcript: its `client_id` when it has one, so the user's message keeps it from the
+     * moment it is written to the server's copy, and only its status changes; otherwise its id.
+     */
+    private fun key(message: Message): String = message.clientId ?: message.id
+
     private fun draft(message: Message, body: Bubble.Body, snapshot: ChatSnapshot): Draft {
         val outgoing = message.sender.type == SenderType.USER
         val (name, avatar) = person(message.sender, snapshot)
         return Draft(
-            id = message.id,
+            id = key(message),
             side = if (outgoing) Bubble.Side.OUTGOING else Bubble.Side.INCOMING,
             sender = if (outgoing) "user" else "${message.sender.type.wire} ${message.sender.id ?: message.sender.name.orEmpty()}",
             date = message.createdAt,
@@ -443,6 +465,9 @@ internal class ChatPresenter(
 
         /** A longer pause gets a new time separator. */
         const val SEPARATOR_PAUSE_MS = 3_600_000L
+
+        /** The node a flow's last message comes from (the server's convention, fixture 50). */
+        private const val END_NODE = "END"
 
         /** A flow button with one of these titles (letters only, lower case) restarts or steps back by itself. */
         private val RESTART_TITLES = setOf(

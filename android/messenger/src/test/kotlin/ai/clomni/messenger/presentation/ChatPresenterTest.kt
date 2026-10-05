@@ -145,6 +145,20 @@ class ChatPresenterTest {
         assertNull(alone.meta)
     }
 
+    /** The user's message is one item from the moment it is written: the server's copy changes only its status. */
+    @Test
+    fun aSentMessageKeepsItsPlaceInTheTranscript() {
+        val sending = pending(ClientMessage.Text("Gedişim bitmədi"), "Gedişim bitmədi")
+        val before = bubbles(screen(emptyList()) { it.copy(pending = listOf(sending)) }).single()
+        val confirmed = ChatFixture.message("03-text-user.json", "client_id" to sending.id)
+        val after = bubbles(screen(listOf(confirmed))).single()
+        assertEquals("the same key", before.id, after.id)
+        assertEquals("Göndərilir", before.status?.text)
+        assertEquals("Göndərildi", after.status?.text)
+        val bot = ChatFixture.message("01-text-bot.json")
+        assertEquals("without a client_id, its id", bot.id, bubbles(screen(listOf(bot))).single().id)
+    }
+
     @Test
     fun pendingMessages() {
         val mine = ChatFixture.message("03-text-user.json", "created_at" to "2026-10-01T10:31:30Z")
@@ -207,7 +221,7 @@ class ChatPresenterTest {
         val open = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", leyla)) }.header
         assertEquals(ChatHeader.Lead.Person(ChatAvatar("https://app.clomni.ai/a/leyla.png", "L", false), true), open.lead)
         assertEquals("Leyla", open.title)
-        assertEquals("Apar · onlayn", open.subtitle)
+        assertEquals("only the company: online is the dot", "Apar", open.subtitle)
 
         val away = """{"name":"Leyla","online":false}"""
         assertEquals("Apar", screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", away)) }.header.subtitle)
@@ -268,7 +282,19 @@ class ChatPresenterTest {
         val answered = screen(listOf(ChatFixture.message("08-language-select-answered.json")))
         assertTrue(answered.items.none { it is ChatItem.RepliesItem })
         assertEquals(1, bubbles(answered).size)
-        assertEquals("the flow went on: the composer is back", ChatComposer.Mode.Open, answered.composer.mode)
+        assertEquals("the flow still has it: no composer between steps", ChatComposer.Mode.Hidden, answered.composer.mode)
+        val handedOver = screen(listOf(ChatFixture.message("08-language-select-answered.json"))) {
+            it.copy(conversation = ChatFixture.conversation("queued"))
+        }
+        assertEquals("handed over: the composer is back", ChatComposer.Mode.Open, handedOver.composer.mode)
+        val ended = ChatFixture.message("08-language-select-answered.json", "flow" to mapOf("flow_id" to "flw_1", "node_id" to "END", "interactive" to false))
+        assertEquals("the flow ended", ChatComposer.Mode.Open, screen(listOf(ended)).composer.mode)
+        val question = ChatFixture.message("01-text-bot.json", "flow" to mapOf("flow_id" to "flw_1", "node_id" to "ask_name", "interactive" to true))
+        assertEquals("a question answered in words", ChatComposer.Mode.Open, screen(listOf(question)).composer.mode)
+        val statement = ChatFixture.message("01-text-bot.json")
+        assertEquals("a flow's statement: its next step follows", ChatComposer.Mode.Hidden, screen(listOf(statement)).composer.mode)
+        val operator = ChatFixture.message("02-text-operator-markdown.json", "seq" to 99)
+        assertEquals("a message from outside the flow", ChatComposer.Mode.Open, screen(listOf(statement, operator)).composer.mode)
 
         // Apar S: chips, the back button, no composer.
         val step = ChatFixture.message("10-apar-level2-S-chips.json")

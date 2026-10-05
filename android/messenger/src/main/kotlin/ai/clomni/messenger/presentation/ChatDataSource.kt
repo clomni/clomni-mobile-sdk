@@ -15,6 +15,9 @@ import java.util.concurrent.Future
 internal interface ChatDataSource {
     val config: MessengerConfig?
 
+    /** The socket is connected and delivering: no need to ask for new messages by hand. */
+    val isLive: Boolean
+
     fun conversation(id: String): Conversation?
 
     fun refreshConversation(id: String): Future<Unit>

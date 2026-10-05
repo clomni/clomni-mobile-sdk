@@ -342,7 +342,9 @@ private fun LazyTranscript(
             }
         }
         items(items, key = { it.id }) { item ->
-            Box(Modifier.appearing(item.id !in known)) { ChatItemView(item, theme, actions) }
+            // Fades in the first time it is ever shown only: not again when it scrolls back into view.
+            val fresh = remember(item.id) { known.add(item.id) }
+            Box(Modifier.appearing(fresh)) { ChatItemView(item, theme, actions) }
         }
     }
 }

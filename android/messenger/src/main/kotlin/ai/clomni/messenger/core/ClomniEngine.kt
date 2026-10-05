@@ -451,7 +451,10 @@ internal class ClomniEngine(
     override fun onEvent(event: RealtimeEvent) {
         try {
             when (val data = event.data) {
-                is RealtimeEvent.Payload.Ready -> catchUp()
+                is RealtimeEvent.Payload.Ready -> {
+                    live = true
+                    catchUp()
+                }
                 is RealtimeEvent.Payload.MessageCreated -> receive(data.message)
                 is RealtimeEvent.Payload.MessageUpdated -> receive(data.message)
                 is RealtimeEvent.Payload.Typing ->
@@ -480,7 +483,15 @@ internal class ClomniEngine(
         }
     }
 
-    override fun onDisconnected() = Unit
+    override fun onDisconnected() {
+        live = false
+    }
+
+    /** `ready` came and the socket has not dropped since. */
+    @Volatile
+    private var live = false
+
+    override val isLive: Boolean get() = live && realtime.state == RealtimeClient.State.OPEN
 
     // On the worker thread
 

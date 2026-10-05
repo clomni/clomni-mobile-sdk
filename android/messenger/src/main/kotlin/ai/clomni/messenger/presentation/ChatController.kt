@@ -31,7 +31,7 @@ internal fun interface Scheduler {
  * behaviour as the iOS SDK's ChatController.
  *
  * [known] is the user's name, email and phone, filled into forms. The typing indicator hides itself after
- * [typingTimeoutMs] (8 s) without news.
+ * [typingTimeoutMs] (6 s) without a new "typing" from the same sender.
  */
 internal class ChatController(
     private val source: ChatDataSource,
@@ -43,9 +43,11 @@ internal class ChatController(
     known: Map<String, String> = emptyMap(),
     private val timeZone: TimeZone = TimeZone.getDefault(),
     private val now: () -> Long = System::currentTimeMillis,
-    private val typingTimeoutMs: Long = 8_000,
+    private val typingTimeoutMs: Long = 6_000,
     /** Plays a sound, on [main]; called only while the panel allows sounds. */
     private val playSound: (ChatSound) -> Unit = {},
+    /** The timer of the stand-in for the socket ([POLL_MS]); tests keep it apart from the others. */
+    private val poll: Scheduler = scheduler,
 ) {
     /** A message newer than this arrived while the screen was open: it gets the incoming sound. */
     private val openedAt = now()
@@ -81,6 +83,24 @@ internal class ChatController(
     private var observation: UUID? = null
     private var hideTyping: (() -> Unit)? = null
 
+    /** Cancels the next check for messages while the socket is down. */
+    private var polling: (() -> Unit)? = null
+
+    /**
+     * On [main], while the screen is open: every [POLL_MS] the messages after the last known `seq` are asked for,
+     * unless the socket is connected and brings them itself. A socket that cannot connect (a wrong `ws_url`, a proxy)
+     * then costs liveliness, not messages.
+     */
+    private fun schedulePoll() {
+        polling?.invoke()
+        polling = poll.after(POLL_MS) {
+            polling = null
+            val id = conversationId
+            if (!source.isLive) worker.execute { runCatching { source.loadMessages(id).get() } }
+            schedulePoll()
+        }
+    }
+
     /** Cancels the wait for a new conversation's flow ([FLOW_WAIT_MS]). */
     private var flowWait: (() -> Unit)? = null
 
@@ -97,6 +117,7 @@ internal class ChatController(
     /** The cache at once, then the server; marks the conversation read. */
     fun load() {
         val id = conversationId
+        if (polling == null) schedulePoll()
         worker.execute {
             publish(read(id))
             if (observation == null) observation = source.observe(::changed)
@@ -149,6 +170,8 @@ internal class ChatController(
             hideTyping = null
             flowWait?.invoke()
             flowWait = null
+            polling?.invoke()
+            polling = null
         }
         val id = conversationId
         worker.execute {
@@ -295,20 +318,17 @@ internal class ChatController(
                 worker.execute {
                     val state = read(id)
                     publish(state) { before ->
-                        // A message from whoever was typing ends the indicator.
+                        // A message from whoever was typing ends the indicator at once (operator, 2026-10-05).
                         val typing = snapshot.typing
-                        val last = state.messages.lastOrNull()
-                        if (typing != null && last != null && last.id != before.messages.lastOrNull()?.id &&
-                            last.sender.type == typing.type
-                        ) {
+                        val seen = before.messages.mapTo(HashSet()) { it.id }
+                        if (typing != null && state.messages.any { it.id !in seen && wrote(it.sender, typing) }) {
                             hideTyping?.invoke()
                             hideTyping = null
                             snapshot = snapshot.copy(typing = null)
                         }
                         // Something new from the other side while the conversation is on screen.
-                        val known = before.messages.mapTo(HashSet()) { it.id }
                         if (state.messages.any {
-                                it.id !in known && it.createdAt >= openedAt && it.sender.type != SenderType.USER && it.type != "system"
+                                it.id !in seen && it.createdAt >= openedAt && it.sender.type != SenderType.USER && it.type != "system"
                             }
                         ) {
                             sound(ChatSound.INCOMING)
@@ -317,7 +337,8 @@ internal class ChatController(
                     source.markRead(id)
                 }
             }
-            is ClomniChange.Typing -> if (change.conversationId == id) {
+            // The user's own typing, echoed back, is not someone else writing.
+            is ClomniChange.Typing -> if (change.conversationId == id && change.sender.type != SenderType.USER) {
                 main.execute { showTyping(if (change.isTyping) change.sender else null) }
             }
             is ClomniChange.Read -> if (change.conversationId == id) worker.execute { publish(read(id)) }
@@ -335,6 +356,10 @@ internal class ChatController(
             }
         }
     }
+
+    /** [message]'s sender is the one shown typing: the same kind, and the same person when both are named. */
+    private fun wrote(sender: Sender, typing: Sender): Boolean =
+        sender.type == typing.type && (sender.id == null || typing.id == null || sender.id == typing.id)
 
     /** On [main]. */
     private fun showTyping(sender: Sender?) {
@@ -407,6 +432,9 @@ internal class ChatController(
     private companion object {
         /** The id [QuickReplyBlock.back] carries. */
         const val BACK = "back"
+
+        /** How often the messages are asked for while the socket is not connected. */
+        const val POLL_MS = 5_000L
 
         /** How long a new conversation waits for its flow's first step before it shows empty. */
         const val FLOW_WAIT_MS = 8_000L

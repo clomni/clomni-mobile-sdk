@@ -39,6 +39,8 @@ private class FakeChat : ChatDataSource {
 
     override val config: MessengerConfig? get() = cachedConfig
 
+    override var isLive: Boolean = true
+
     fun set(messages: List<Message>, id: String = "conv_5521", answerable: Set<String> = emptySet(), loadFails: Boolean = false) {
         stored[id] = messages
         this.answerable = answerable.toMutableSet()
@@ -152,9 +154,11 @@ private class FakeChat : ChatDataSource {
 /** Timers the test fires by hand. */
 private class Timers : Scheduler {
     val pending = mutableListOf<() -> Unit>()
+    val delays = mutableListOf<Long>()
 
     override fun after(delayMs: Long, action: () -> Unit): () -> Unit {
         pending += action
+        delays += delayMs
         return { pending.remove(action) }
     }
 
@@ -164,12 +168,13 @@ private class Timers : Scheduler {
 class ChatControllerTest {
     private val source = FakeChat()
     private val timers = Timers()
+    private val polls = Timers()
     private val direct = Executor { it.run() }
     private var renders = 0
 
     private fun controller(worker: Executor = direct, main: Executor = direct, id: String = "conv_5521") = ChatController(
         source, id, "az", worker, main, timers,
-        known = mapOf("name" to "Aysel"), timeZone = TimeZone.getTimeZone("UTC"), now = { 1_790_850_720_000L },
+        known = mapOf("name" to "Aysel"), timeZone = TimeZone.getTimeZone("UTC"), now = { 1_790_850_720_000L }, poll = polls,
     ).also { it.onChange = { renders++ } }
 
     private fun bubbleTexts(chat: ChatController) = chat.screen.items.filterIsInstance<ChatItem.BubbleItem>()
@@ -288,6 +293,9 @@ class ChatControllerTest {
         source.push(ClomniChange.Typing("conv_other", leyla, true))
         assertTrue("typing shows", chat.screen.items.last() is ChatItem.TypingItem)
         assertEquals(1, timers.pending.size)
+        source.push(ClomniChange.Typing("conv_5521", leyla, true))
+        assertEquals("a new \"typing\" starts the 6 s again", listOf(6_000L, 6_000L), timers.delays)
+        assertEquals(1, timers.pending.size)
         timers.fire()
         assertFalse("hidden after the timeout", chat.screen.items.last() is ChatItem.TypingItem)
 
@@ -313,6 +321,10 @@ class ChatControllerTest {
         source.push(ClomniChange.Typing("conv_5521", leyla, false))
         assertFalse("off is off", chat.screen.items.last() is ChatItem.TypingItem)
         assertTrue(timers.pending.isEmpty())
+
+        // The user's own typing, echoed back by the server, is nobody writing to them.
+        source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.USER, "usr_12345"), true))
+        assertFalse(chat.screen.items.last() is ChatItem.TypingItem)
     }
 
     @Test
@@ -428,18 +440,59 @@ class ChatControllerTest {
         assertEquals(ChatComposer.Mode.Open, offline.screen.composer.mode)
     }
 
-    /** Between a choice and the next step the field does not come up and go again. */
+    /**
+     * Operator, 2026-10-05: while the flow runs the conversation there is no field, between a choice and the next step
+     * too; a handover brings it.
+     */
     @Test
-    fun aChoiceOnItsWayKeepsTheComposerAway() {
+    fun theFlowKeepsTheComposerUntilAHandover() {
         val step = ChatFixture.message("10-apar-level2-S-chips.json")
         source.set(listOf(step), answerable = setOf(step.id))
         val chat = controller()
+        val modes = mutableListOf(chat.screen.composer.mode)
+        chat.onChange = { modes += chat.screen.composer.mode }
         chat.load()
+        assertEquals("bot", source.conversation("conv_5521")?.status?.wire)
         chat.tap("o_t", step.id)
-        assertEquals(ChatComposer.Mode.Hidden, chat.screen.composer.mode)
+        // The server has the choice; the next step has not come yet.
         source.outbox.clear()
-        chat.load()
+        source.stored["conv_5521"] = listOf(step, ChatFixture.message("03-text-user.json", "seq" to 1_000))
+        source.push(ClomniChange.Messages("conv_5521"))
+        val next = ChatFixture.message("11-apar-level3-U.json", "seq" to 1_001)
+        source.set(source.stored.getValue("conv_5521") + next, answerable = setOf(next.id))
+        source.push(ClomniChange.Messages("conv_5521"))
+        assertTrue("never shown: $modes", modes.all { it == ChatComposer.Mode.Hidden })
+
+        // Handed over to the team: the field comes (fading in as it rises, ChatScreenView).
+        source.set(source.stored.getValue("conv_5521"))
+        source.conversations["conv_5521"] = ChatFixture.conversation("queued")
+        source.push(ClomniChange.Conversations)
         assertEquals(ChatComposer.Mode.Open, chat.screen.composer.mode)
+    }
+
+    /** The socket is down (a wrong ws_url on dev, a proxy): the open conversation asks every 5 s instead. */
+    @Test
+    fun withoutTheSocketTheConversationAsksEveryFiveSeconds() {
+        source.set(listOf(ChatFixture.message("01-text-bot.json")))
+        source.isLive = false
+        val chat = controller()
+        chat.load()
+        chat.load()
+        assertEquals("one timer however often it loads", listOf(5_000L), polls.delays)
+        val loads = { source.calls.count { it == "load conv_5521" } }
+        val before = loads()
+        polls.fire()
+        assertEquals("asked once more", before + 1, loads())
+        assertEquals("and again in 5 s", 1, polls.pending.size)
+
+        // Connected: the socket brings the messages, nothing is asked.
+        source.isLive = true
+        polls.fire()
+        assertEquals(before + 1, loads())
+        assertEquals(1, polls.pending.size)
+
+        chat.stop()
+        assertTrue("gone with the screen", polls.pending.isEmpty())
     }
 
     @Test

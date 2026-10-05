@@ -34,8 +34,9 @@ import androidx.compose.ui.unit.dp
  * The bar on the list, a conversation and a news item: back at the start and ✕ at the end, both 40 dp circles in
  * 48 dp slots 12 from the edges. The middle is centred on the screen, not between the buttons, so it keeps the same
  * room on both sides and cuts with "…"; with [leading] (the conversation) it starts 8 after back's circle instead and
- * takes the room up to ✕. 64 high (16 + 48: the same row as Home's, DESIGN-PASS-3 A9); the 1 px line
- * under it shows only while the content is scrolled under it ([scrolled]).
+ * takes the room up to ✕. The row is Home's (16 + 48, DESIGN-PASS-3 A9), centring back, the middle and ✕ on one
+ * line, with 8 under it so a two-line middle never touches the bottom (72 in all); the 1 px line under it shows only
+ * while the content is scrolled under it ([scrolled]).
  */
 @Composable
 internal fun TopBar(
@@ -51,7 +52,7 @@ internal fun TopBar(
 ) {
     Column(Modifier.fillMaxWidth().background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
         // At the user's larger font sizes the middle may need more than 48: the bar grows instead of cutting it.
-        Box(Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
+        Box(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
             BackButton(backLabel, theme, back, Modifier.align(Alignment.CenterStart).padding(start = TOP_BAR_EDGE))
             if (middle != null) {
                 if (leading) {
