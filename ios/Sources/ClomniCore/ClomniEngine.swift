@@ -262,6 +262,11 @@ package actor ClomniEngine {
 
     // MARK: - Reading
 
+    /// The socket is open and `ready` came: new messages arrive by themselves.
+    package var isLive: Bool {
+        get async { await realtime.state == .connected }
+    }
+
     package var unreadTotal: Int { store.unreadTotal }
 
     package func conversations() -> [Conversation] {

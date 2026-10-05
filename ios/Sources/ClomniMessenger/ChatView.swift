@@ -88,8 +88,15 @@ struct ChatView: View {
             if let offline = model.screen.offline {
                 OfflineStrip(text: offline, theme: theme)
             }
-            transcript
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // What is not known yet shows nothing; once it is, all of it comes at once, fading in over 200 ms
+            // (DESIGN-PASS-3 C5). From the cache it is there in the first frames.
+            ZStack {
+                transcript
+                    .transition(.opacity)
+                    .id(model.screen.phase)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.screen.phase)
             // While a flow waits for a choice there is no composer at all (operator, 2026-10-04): the choices stand at
             // the end of the conversation. It comes back, sliding up and fading in over 200 ms, when the flow takes
             // text, ends, or an operator joins.

@@ -79,6 +79,7 @@ struct MessageStore: Codable, Equatable {
         conversation.status = update.status
         conversation.assignee = update.assignee
         if let unread = update.unreadCount { conversation.unreadCount = unread }
+        if let flow = update.flow { conversation.flow = flow }
         conversations[update.id] = conversation
     }
 

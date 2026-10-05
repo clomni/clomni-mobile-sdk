@@ -7,6 +7,8 @@ import ClomniCore
 /// What the conversation screen reads and does; `ClomniEngine` is one, tests use a fake.
 package protocol ChatDataSource: Sendable {
     var config: MessengerConfig? { get async }
+    /// The socket is connected and delivering: no need to ask for new messages by hand.
+    var isLive: Bool { get async }
     func conversation(_ id: String) async -> Conversation?
     func refreshConversation(_ id: String) async throws
     func messages(in conversationId: String) async -> [Message]
@@ -68,18 +70,33 @@ package final class ChatController {
     private var observation: UUID?
     private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
     private let sleep: @Sendable (TimeInterval) async throws -> Void
+    private let poll: @Sendable (TimeInterval) async throws -> Void
     /// Hides the typing indicator after `typingTimeout` without news.
     package private(set) var typingHide: Task<Void, Never>?
+    /// A new conversation's wait for its flow's first step (`flowWaitTime`).
+    package private(set) var flowWait: Task<Void, Never>?
+    /// Asks for new messages while the socket is down (`pollInterval`).
+    private var polling: Task<Void, Never>?
+
+    /// How often the messages are asked for while the socket is not connected.
+    package static let pollInterval: TimeInterval = 5
+    /// How long a new conversation waits for its flow's first step before it shows empty.
+    package static let flowWaitTime: TimeInterval = 8
 
     /// `known`: the user's name, email and phone, filled into forms. The typing indicator hides itself after
-    /// `typingTimeout` (8 s) without news, measured by `sleep`.
+    /// `typingTimeout` (6 s) without a new "typing" from the same sender, measured by `sleep`, as is the wait for a
+    /// new conversation's flow; `poll` measures the checks for messages while the socket is down.
     package init(source: ChatDataSource, conversationId: String, language: String?, known: [String: String] = [:],
                 timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() },
-                typingTimeout: TimeInterval = 8,
+                typingTimeout: TimeInterval = 6,
                 sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+                    try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                },
+                poll: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
                     try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 }) {
         self.sleep = sleep
+        self.poll = poll
         self.source = source
         self.conversationId = conversationId
         self.language = language
@@ -97,8 +114,10 @@ package final class ChatController {
         ClomniStrings(language: language ?? snapshot.config?.languages.first, overrides: snapshot.config?.strings ?? [:])
     }
 
-    /// The cache at once, then the server; marks the conversation read.
+    /// The cache at once, then the server; marks the conversation read. Until the messages and their buttons are
+    /// known there is no composer (DESIGN-PASS-3 C5), so a flow's step never finds one to take away.
     package func load() async {
+        startPolling()
         await read()
         render()
         if observation == nil {
@@ -109,13 +128,57 @@ package final class ChatController {
         }
         do {
             try await source.loadMessages(in: conversationId)
-            snapshot.load = .loaded
+            snapshot.load = awaitsFlow(conversationId) ? .loading : .loaded
+            if snapshot.load == .loading { waitForFlow() }
         } catch {
             snapshot.load = .failed
         }
         await read()
         render()
         await source.markRead(in: conversationId)
+    }
+
+    /// A new conversation whose inbox starts with a flow is created at once and its first step comes with it: until
+    /// then nothing is known about the composer, so the screen waits. Offline, the user may write and queue instead.
+    private func awaitsFlow(_ id: String) -> Bool {
+        ClomniEngine.isDraft(id) && snapshot.config?.startsWithFlow == true && !isOffline
+    }
+
+    /// After `flowWaitTime` without the flow's first step, the empty conversation shows, its composer open.
+    private func waitForFlow() {
+        flowWait?.cancel()
+        let wait = Self.flowWaitTime
+        flowWait = Task { [weak self, sleep] in
+            do {
+                try await sleep(wait)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self, self.snapshot.load == .loading else { return }
+            self.snapshot.load = .loaded
+            self.render()
+        }
+    }
+
+    /// While the screen is open, every `pollInterval` the messages after the last known `seq` are asked for, unless
+    /// the socket is connected and brings them itself: a socket that cannot connect (a wrong `ws_url`, a proxy) then
+    /// costs liveliness, not messages.
+    private func startPolling() {
+        guard polling == nil else { return }
+        let interval = Self.pollInterval
+        polling = Task { [weak self, poll] in
+            while !Task.isCancelled {
+                do {
+                    try await poll(interval)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled, let self else { return }
+                if !(await self.source.isLive) {
+                    try? await self.source.loadMessages(in: self.conversationId)
+                }
+            }
+        }
     }
 
     /// "Yenidən cəhd et" after a failed first load.
@@ -128,6 +191,9 @@ package final class ChatController {
     /// When the screen goes away.
     package func stop() async {
         typingHide?.cancel()
+        flowWait?.cancel()
+        polling?.cancel()
+        polling = nil
         if let observation {
             self.observation = nil
             await source.stopObserving(observation)
@@ -210,6 +276,7 @@ package final class ChatController {
     /// first message.
     package func startNewConversation() async {
         typingHide?.cancel()
+        flowWait?.cancel()
         await source.setTyping(false, in: conversationId)
         conversationId = await source.draftConversation(openedFrom: nil)
         let known = snapshot.known
@@ -228,7 +295,6 @@ package final class ChatController {
     func changed(_ change: ClomniChange) async {
         switch change {
         case .messages(let id) where id == conversationId:
-            let before = snapshot.messages.last?.id
             let known = Set(snapshot.messages.map(\.id))
             await read()
             // Something new from the other side while the conversation is on screen.
@@ -237,14 +303,16 @@ package final class ChatController {
             }) {
                 sound(.incoming)
             }
-            // A message from whoever was typing ends the indicator.
-            if let typing = snapshot.typing, let last = snapshot.messages.last, last.id != before,
-               last.sender.type == typing.type {
+            // A message from whoever was typing ends the indicator at once (operator, 2026-10-05).
+            if let typing = snapshot.typing,
+               snapshot.messages.contains(where: { !known.contains($0.id) && Self.wrote($0.sender, typing) }) {
+                typingHide?.cancel()
                 snapshot.typing = nil
             }
             render()
             await source.markRead(in: conversationId)
-        case .typing(let id, let sender, let isTyping) where id == conversationId:
+        // The user's own typing, echoed back, is not someone else writing.
+        case .typing(let id, let sender, let isTyping) where id == conversationId && sender.type != .user:
             showTyping(isTyping ? sender : nil)
         case .read(let id, _) where id == conversationId:
             await read()
@@ -259,6 +327,11 @@ package final class ChatController {
         default:
             return
         }
+    }
+
+    /// `sender` is the one shown typing: the same kind, and the same person when both are named.
+    private static func wrote(_ sender: Sender, _ typing: Sender) -> Bool {
+        sender.type == typing.type && (sender.id == nil || typing.id == nil || sender.id == typing.id)
     }
 
     private func showTyping(_ sender: Sender?) {

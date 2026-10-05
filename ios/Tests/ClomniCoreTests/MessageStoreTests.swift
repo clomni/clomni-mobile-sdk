@@ -119,6 +119,15 @@ final class MessageStoreTests: XCTestCase {
         store.markSeen("conv_1")
         XCTAssertEqual(store.conversations["conv_1"]?.unreadCount, 0)
 
+        // The flow's state comes with the update; an update without it keeps what the conversation had.
+        let running = ProtocolJSON.parseEvent(FakeServer.frame("conversation.updated", [
+            "id": "conv_1", "status": "bot", "assignee": nil, "flow": ["active": true, "awaiting": "menu", "node_id": "S"]]))
+        guard case .conversationUpdated(let flow)? = running?.data else { return XCTFail() }
+        store.apply(flow)
+        XCTAssertEqual(store.conversations["conv_1"]?.flow, Conversation.FlowState(active: true, awaiting: "menu", nodeId: "S"))
+        store.apply(change)
+        XCTAssertEqual(store.conversations["conv_1"]?.flow?.active, true)
+
         let unknown = ProtocolJSON.parseEvent(FakeServer.frame("conversation.updated", ["id": "conv_9", "status": "open"]))
         guard case .conversationUpdated(let other)? = unknown?.data else { return XCTFail() }
         store.apply(other)

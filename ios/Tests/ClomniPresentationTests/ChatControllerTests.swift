@@ -12,6 +12,7 @@ actor FakeChat: ChatDataSource {
     var outbox: [PendingMessage] = []
     var answerable: Set<String> = []
     var loadFails = false
+    var isLive = false
     var calls: [String] = []
     var typingStates: [Bool] = []
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
@@ -26,6 +27,7 @@ actor FakeChat: ChatDataSource {
     }
 
     func setConfig(_ config: MessengerConfig?) { cachedConfig = config }
+    func setLive(_ live: Bool) { isLive = live }
 
     func push(_ change: ClomniChange) {
         observers.values.forEach { $0(change) }
@@ -122,13 +124,16 @@ final class ChatControllerTests: XCTestCase {
     private var renders = 0
 
     private let timer = ManualTimer()
+    /// The checks for messages while the socket is down, kept apart from the other timers.
+    private let pollTimer = ManualTimer()
 
-    private func controller() -> ChatController {
+    private func controller(_ id: String = "conv_5521") -> ChatController {
         let timer = timer
-        let chat = ChatController(source: source, conversationId: "conv_5521", language: "az",
+        let pollTimer = pollTimer
+        let chat = ChatController(source: source, conversationId: id, language: "az",
                                   known: ["name": "Aysel"], timeZone: TimeZone(identifier: "UTC")!,
                                   now: { Date(timeIntervalSince1970: 1_790_850_720) },
-                                  sleep: { try await timer.sleep($0) })
+                                  sleep: { try await timer.sleep($0) }, poll: { try await pollTimer.sleep($0) })
         chat.onChange = { [weak self] in self?.renders += 1 }
         return chat
     }
@@ -262,8 +267,10 @@ final class ChatControllerTests: XCTestCase {
         await source.push(.typing(conversationId: "conv_other", sender: leyla, isTyping: true))
         await chat.settled()
         guard case .typing? = chat.screen.items.last else { return XCTFail("typing shows") }
-        // The timeout passes (on the test's clock).
+        // The timeout passes (on the test's clock): 6 s without a new "typing".
         await timer.waitForSleepers(1)
+        let timeout = await timer.durations
+        XCTAssertEqual(timeout, [6])
         await timer.fire()
         await chat.typingHide?.value
         if case .typing? = chat.screen.items.last { XCTFail("hidden after the timeout") }
@@ -282,6 +289,47 @@ final class ChatControllerTests: XCTestCase {
         await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: false))
         await chat.settled()
         if case .typing? = chat.screen.items.last { XCTFail("off is off") }
+
+        // The user's own typing, echoed back, is not someone else writing.
+        await source.push(.typing(conversationId: "conv_5521", sender: Sender(type: .user), isTyping: true))
+        await chat.settled()
+        if case .typing? = chat.screen.items.last { XCTFail("the user's own typing shows nothing") }
+    }
+
+    /// With the socket down the open conversation asks for newer messages every 5 s; connected, it stops.
+    func testWithoutTheSocketItAsksForMessagesEveryFiveSeconds() async {
+        let chat = controller()
+        await chat.load()
+        await pollTimer.waitForSleepers(1)
+        let every = await pollTimer.durations
+        XCTAssertEqual(every, [5])
+        await pollTimer.fire()
+        await pollTimer.waitForSleepers(1)
+        var made = await calls()
+        XCTAssertEqual(made.filter { $0 == "load conv_5521" }.count, 2, "the first load and one check")
+        await source.setLive(true)
+        await pollTimer.fire()
+        await pollTimer.waitForSleepers(1)
+        made = await calls()
+        XCTAssertEqual(made.filter { $0 == "load conv_5521" }.count, 2, "the socket brings them")
+        await chat.stop()
+    }
+
+    /// A new conversation that starts with a flow shows nothing and no composer until its first step; after 8 s
+    /// without it, the empty conversation with the composer open.
+    func testANewConversationWaitsForItsFlow() async {
+        let chat = controller("draft_1")
+        XCTAssertEqual(chat.screen.composer.mode, .hidden, "the first frame has no composer to take away")
+        await chat.load()
+        XCTAssertEqual(chat.screen.phase, .loading)
+        XCTAssertEqual(chat.screen.composer.mode, .hidden)
+        await timer.waitForSleepers(1)
+        let waited = await timer.durations
+        XCTAssertEqual(waited, [8])
+        await timer.fire()
+        await chat.flowWait?.value
+        XCTAssertEqual(chat.screen.phase, .ready)
+        XCTAssertEqual(chat.screen.composer.mode, .open)
     }
 
     func testOtherChangesAndStop() async throws {
@@ -338,8 +386,11 @@ final class ChatControllerTests: XCTestCase {
 actor ManualTimer {
     private var sleepers: [CheckedContinuation<Void, Error>] = []
     private var arrivals: [(count: Int, waiter: CheckedContinuation<Void, Never>)] = []
+    /// How long each sleep asked for.
+    private(set) var durations: [TimeInterval] = []
 
     func sleep(_ seconds: TimeInterval) async throws {
+        durations.append(seconds)
         try await withCheckedThrowingContinuation { (sleeper: CheckedContinuation<Void, Error>) in
             sleepers.append(sleeper)
             let ready = arrivals.filter { $0.count <= sleepers.count }

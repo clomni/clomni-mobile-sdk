@@ -35,7 +35,7 @@ package struct ChatPresenter: Sendable {
             phase: phase,
             header: header(snapshot),
             items: items(snapshot),
-            composer: composer(snapshot),
+            composer: composer(snapshot, known: phase == .ready),
             offline: snapshot.isOffline ? strings[.offline] : nil,
             failure: phase == .failed ? HomeScreen.Failure(message: strings[.error], retry: strings[.retry]) : nil,
             announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) },
@@ -78,14 +78,26 @@ package struct ChatPresenter: Sendable {
 
     // MARK: - Composer
 
-    private func composer(_ snapshot: ChatSnapshot) -> ChatComposer {
+    private func composer(_ snapshot: ChatSnapshot, known: Bool) -> ChatComposer {
         let config = snapshot.config
         let waiting = snapshot.messages.last { snapshot.answerable.contains($0.id) }
         var mode = ChatComposer.Mode.open
-        if snapshot.conversation?.status == .closed {
+        if !known {
+            // Not "shown" by default (DESIGN-PASS-3 C5): until the messages and their buttons are known there is none,
+            // so a flow's step never finds one to take away.
+            mode = .hidden
+        } else if snapshot.conversation?.status == .closed {
             mode = .closed(text: strings[.closed], action: strings[.startNewConversation])
         } else if case .quickReplies? = waiting?.content {
             // A step waiting for a choice has nothing under it, whatever input_disabled says (DESIGN-PASS-3 A4).
+            mode = .hidden
+        } else if Self.flowHoldsTheConversation(snapshot) {
+            mode = .hidden
+        } else if snapshot.pending.contains(where: {
+            guard case .buttonReply = $0.message.content else { return false }
+            return $0.state == .sending
+        }) {
+            // A choice on its way: the flow's next step follows it, so the field does not come up in between.
             mode = .hidden
         }
         return ChatComposer(
@@ -95,6 +107,27 @@ package struct ChatPresenter: Sendable {
             emojiLabel: strings[.emoji], mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
             fileLabel: strings[.pickFile], removeAttachmentLabel: strings[.removeAttachment])
     }
+
+    /// A flow is running the conversation (operator, 2026-10-05): there is no field, between a choice and the next
+    /// step too. It comes when an operator takes the conversation, when the flow ends, for a question answered in
+    /// words, or after a message from outside the flow. The conversation's `flow {active, awaiting}` says so: active
+    /// and not waiting for text.
+    package static func flowHoldsTheConversation(_ snapshot: ChatSnapshot) -> Bool {
+        if let flow = snapshot.conversation?.flow { return flow.holdsTheComposer }
+        // A copy kept from before the server sent it: the status (`bot`) and the other side's latest message, a flow
+        // step that is neither the END node nor interactive plain text.
+        guard snapshot.conversation?.status == .bot,
+              let step = snapshot.messages.last(where: {
+                  if case .system = $0.content { return false }
+                  return $0.sender.type != .user
+              }),
+              let flow = step.flow, flow.nodeId != endNode else { return false }
+        if flow.interactive, case .text = step.content { return false }
+        return true
+    }
+
+    /// The node a flow's last message comes from (the server's convention, fixture 50).
+    private static let endNode = "END"
 
     // MARK: - Transcript
 

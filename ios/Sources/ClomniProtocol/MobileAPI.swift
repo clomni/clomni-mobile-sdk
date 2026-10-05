@@ -21,14 +21,29 @@ package struct Conversation: Sendable, Equatable, Identifiable {
     package var assignee: Assignee?
     package var unreadCount: Int
     package var lastMessage: Message?
-    /// The flow step the conversation waits on.
-    package var flow: FlowStep?
+    /// Whether a flow runs the conversation and what it waits for; nil when the copy does not say (one kept from
+    /// before the server sent it).
+    package var flow: FlowState?
     package let openedFrom: String?
     package let createdAt: Date
 
-    package struct FlowStep: Sendable, Equatable {
-        package let flowId: String
-        package let nodeId: String
+    /// `flow {active, awaiting, flow_id?, node_id?}`, in the conversation and in `conversation.updated`.
+    package struct FlowState: Sendable, Equatable {
+        package let active: Bool
+        /// "menu", "text", "form"; nil between steps.
+        package let awaiting: String?
+        package let flowId: String?
+        package let nodeId: String?
+
+        package init(active: Bool, awaiting: String? = nil, flowId: String? = nil, nodeId: String? = nil) {
+            self.active = active
+            self.awaiting = awaiting
+            self.flowId = flowId
+            self.nodeId = nodeId
+        }
+
+        /// While a flow runs and does not wait for words there is no composer.
+        package var holdsTheComposer: Bool { active && awaiting != "text" }
     }
 }
 
@@ -126,10 +141,7 @@ extension Conversation {
         assignee = try f.optionalObject("assignee").map { try Assignee($0) }
         unreadCount = f.optionalInt("unread_count") ?? 0
         lastMessage = try f.optionalObject("last_message").map { try Message($0) }
-        flow = f.optionalObject("flow").flatMap { step in
-            guard let flowId = step.optionalString("flow_id"), let nodeId = step.optionalString("node_id") else { return nil }
-            return FlowStep(flowId: flowId, nodeId: nodeId)
-        }
+        flow = f.optionalObject("flow").flatMap(FlowState.init)
         openedFrom = f.optionalString("opened_from")
         createdAt = try f.date("created_at")
     }
@@ -137,8 +149,21 @@ extension Conversation {
     var json: JSONValue {
         ["id": .string(id), "status": .string(status.rawValue), "assignee": assignee?.json ?? .null,
          "unread_count": .int(unreadCount), "last_message": lastMessage?.json ?? .null,
-         "flow": flow.map { ["flow_id": .string($0.flowId), "node_id": .string($0.nodeId)] } ?? .null,
+         "flow": flow?.json ?? .null,
          "opened_from": .orNull(openedFrom), "created_at": .string(ISOTime.format(createdAt))]
+    }
+}
+
+extension Conversation.FlowState {
+    /// nil without `active`: the earlier `{flow_id, node_id}` says nothing about the composer.
+    init?(_ f: JSONFields) {
+        guard let active = f.optionalBool("active") else { return nil }
+        self.init(active: active, awaiting: f.optionalString("awaiting"), flowId: f.optionalString("flow_id"),
+                  nodeId: f.optionalString("node_id"))
+    }
+
+    var json: JSONValue {
+        ["active": .bool(active), "awaiting": .orNull(awaiting), "flow_id": .orNull(flowId), "node_id": .orNull(nodeId)]
     }
 }
 

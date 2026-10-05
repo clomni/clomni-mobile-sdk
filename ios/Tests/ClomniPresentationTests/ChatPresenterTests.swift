@@ -435,6 +435,45 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertFalse(ChatPresenter.canSend("12345678901", limit: 10))
     }
 
+    /// Operator, 2026-10-05: while a flow runs the conversation there is no composer, between a choice and the next
+    /// step too; it comes for a question answered in words, at the flow's end, on a handover, or after a message
+    /// from outside the flow.
+    func testTheFlowHoldsTheComposerUntilItWaitsForWords() {
+        let statement = Fixture.message("01-text-bot.json")
+        func mode(_ flow: Conversation.FlowState?) -> ChatComposer.Mode {
+            screen([statement]) { $0.conversation?.flow = flow }.composer.mode
+        }
+        XCTAssertEqual(mode(.init(active: true, awaiting: "menu")), .hidden)
+        XCTAssertEqual(mode(.init(active: true)), .hidden, "between steps")
+        XCTAssertEqual(mode(.init(active: true, awaiting: "form")), .hidden)
+        XCTAssertEqual(mode(.init(active: true, awaiting: "text")), .open, "a question answered in words")
+        XCTAssertEqual(mode(.init(active: false)), .open, "ended or handed over")
+        XCTAssertEqual(screen([statement]) {
+            $0.conversation = Fixture.conversation(status: "queued")
+            $0.conversation?.flow = .init(active: true, awaiting: "menu")
+        }.composer.mode, .hidden, "the field decides, not the status")
+
+        // A copy kept from before the field: the status and the other side's latest step.
+        XCTAssertEqual(mode(nil), .hidden, "a flow's statement: its next step follows")
+        let ended = Fixture.message("08-language-select-answered.json",
+                                    ["flow": ["flow_id": "flw_1", "node_id": "END", "interactive": false]])
+        XCTAssertEqual(screen([ended]).composer.mode, .open, "the flow ended")
+        let question = Fixture.message("01-text-bot.json",
+                                       ["flow": ["flow_id": "flw_1", "node_id": "ask_name", "interactive": true]])
+        XCTAssertEqual(screen([question]).composer.mode, .open, "a question answered in words")
+        XCTAssertEqual(screen([statement]) { $0.conversation = Fixture.conversation(status: "queued") }.composer.mode,
+                       .open, "handed over")
+        let fromOutside = Fixture.message("02-text-operator-markdown.json", ["seq": 99])
+        XCTAssertEqual(screen([statement, fromOutside]).composer.mode, .open, "a message from outside the flow")
+
+        // A choice on its way: the next step follows it. Nothing known yet: no composer to take away.
+        let choice = PendingMessage(conversationId: "conv_5521",
+                                    message: ClientMessage(content: .buttonReply(replyTo: "m", buttonId: "b", payload: "p")),
+                                    preview: "Bəli", createdAt: now)
+        XCTAssertEqual(screen([]) { $0.pending = [choice] }.composer.mode, .hidden)
+        XCTAssertEqual(screen([]) { $0.load = .loading }.composer.mode, .hidden)
+    }
+
     func testTypingStatesAndAnnouncement() {
         let operatorTyping = screen([Fixture.message("01-text-bot.json")]) {
             $0.typing = Sender(type: .operator, name: "Leyla")

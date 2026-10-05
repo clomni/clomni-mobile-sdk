@@ -25,6 +25,8 @@ package struct RealtimeEvent: Sendable, Equatable {
         /// nil while no operator has the conversation.
         package let assignee: Assignee?
         package let unreadCount: Int?
+        /// nil when the event does not carry it: the conversation keeps what it had.
+        package let flow: Conversation.FlowState?
     }
 }
 
@@ -88,6 +90,7 @@ extension RealtimeEvent.ConversationUpdate {
         status = ConversationStatus(rawValue: try f.string("status")) ?? .unknown
         assignee = try f.optionalObject("assignee").map { try Assignee($0) }
         unreadCount = f.optionalInt("unread_count")
+        flow = f.optionalObject("flow").flatMap(Conversation.FlowState.init)
     }
 }
 
