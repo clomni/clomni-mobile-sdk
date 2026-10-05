@@ -18,7 +18,7 @@ package struct ClomniStrings: Sendable, Equatable {
         case pickFile = "pick_file"
         case removeAttachment = "remove_attachment"
         case emptyList = "empty_list"
-        case error, retry, offline, now, you, close, unread, email, phone
+        case error, retry, offline, connected, now, you, close, unread, email, phone
         // The conversation (CM-083).
         case headerSubtitle = "header_subtitle"
         case online
@@ -117,7 +117,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .followUs: "Bizi izləyin", .messagesTitle: "Mesajlar", .newsTitle: "Xəbərlər", .pickMedia: "Şəkil və ya video",
             .pickCamera: "Kamera", .pickFile: "Fayl", .removeAttachment: "Sil",
             .emptyList: "Hələ söhbət yoxdur", .error: "Nəsə səhv getdi", .retry: "Yenidən cəhd et",
-            .offline: "İnternet yoxdur", .now: "indi", .you: "Siz",
+            .offline: "İnternet yoxdur", .connected: "Qoşuldu", .now: "indi", .you: "Siz",
             .close: "Bağla", .unread: "Oxunmamış", .unreadMessages: "Oxunmamış mesaj var", .minutesShort: "%d dəq",
             .hoursShort: "%d saat", .daysShort: "%d gün", .email: "E-poçt", .phone: "Telefon",
             .headerSubtitle: "Adətən bir neçə dəqiqəyə cavab veririk", .online: "onlayn", .away: "Hazırda iş saatı deyil",
@@ -139,7 +139,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .followUs: "Follow us", .messagesTitle: "Messages", .newsTitle: "News", .pickMedia: "Photo or video",
             .pickCamera: "Camera", .pickFile: "File", .removeAttachment: "Remove",
             .emptyList: "No conversations yet", .error: "Something went wrong", .retry: "Try again",
-            .offline: "No internet connection", .now: "now", .you: "You",
+            .offline: "No internet connection", .connected: "Connected", .now: "now", .you: "You",
             .close: "Close", .unread: "Unread", .unreadMessages: "Unread messages", .minutesShort: "%d min",
             .hoursShort: "%d h", .daysShort: "%d d", .email: "Email", .phone: "Phone",
             .headerSubtitle: "Typically replies in a few minutes", .online: "online", .away: "Outside working hours",
@@ -161,7 +161,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .followUs: "Мы в соцсетях", .messagesTitle: "Сообщения", .newsTitle: "Новости", .pickMedia: "Фото или видео",
             .pickCamera: "Камера", .pickFile: "Файл", .removeAttachment: "Удалить",
             .emptyList: "Пока нет переписки", .error: "Что-то пошло не так", .retry: "Повторить",
-            .offline: "Нет подключения к интернету", .now: "сейчас", .you: "Вы",
+            .offline: "Нет подключения к интернету", .connected: "Подключено", .now: "сейчас", .you: "Вы",
             .close: "Закрыть", .unread: "Не прочитано", .unreadMessages: "Есть непрочитанные сообщения",
             .minutesShort: "%d мин", .hoursShort: "%d ч", .daysShort: "%d дн", .email: "Почта", .phone: "Телефон",
             .headerSubtitle: "Обычно отвечаем в течение нескольких минут", .online: "в сети", .away: "Сейчас нерабочее время",

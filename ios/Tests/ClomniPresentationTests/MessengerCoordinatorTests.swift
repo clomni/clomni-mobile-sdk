@@ -16,6 +16,9 @@ actor FakeSession: MessengerSession {
     var flowBound = true
     var stored: [String: [Message]] = [:]
     var calls: [String] = []
+    /// What `probe` saw each time the socket was asked for, before it answered.
+    var seenAtConnect: [MessengerCoordinator.Readiness] = []
+    private var probe: (@Sendable () async -> MessengerCoordinator.Readiness)?
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
 
     var isLoggedIn: Bool { loggedIn }
@@ -58,7 +61,12 @@ actor FakeSession: MessengerSession {
         self.offline = offline
     }
 
-    func connect() async { calls.append("connect") }
+    func connect() async {
+        calls.append("connect")
+        if let probe { seenAtConnect.append(await probe()) }
+    }
+
+    func probe(_ probe: @escaping @Sendable () async -> MessengerCoordinator.Readiness) { self.probe = probe }
 
     func draftConversation(openedFrom: String?) async -> String {
         calls.append("draft \(openedFrom ?? "-")")
@@ -165,6 +173,28 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertFalse(messenger.wantsAnyView, "no overlay, no window, nothing")
         let made = await calls()
         XCTAssertEqual(made, ["connect", "config"])
+    }
+
+    /// DESIGN-PASS-3 C1, C2: logged in with a kept look, the messenger is ready before the network has answered.
+    func testReadyOnTheCacheBeforeTheNetwork() async {
+        await session.set(loggedIn: true, unread: 3, cached: Fixture.aparConfig)
+        let messenger = coordinator()
+        await session.probe { await MainActor.run { messenger.readiness } }
+        await messenger.start()
+        await messenger.prepare()
+        let seen = await session.seenAtConnect
+        XCTAssertEqual(seen, [.ready, .ready])
+        XCTAssertEqual(messenger.unreadTotal, 3)
+
+        // Nothing kept: it waits for the server, as before.
+        let bare = FakeSession()
+        await bare.set(loggedIn: true, cached: nil)
+        let fresh = MessengerCoordinator(session: bare, language: "az")
+        await bare.probe { await MainActor.run { fresh.readiness } }
+        await fresh.start()
+        let waited = await bare.seenAtConnect
+        XCTAssertEqual(waited, [.notReady])
+        XCTAssertEqual(fresh.readiness, .ready)
     }
 
     func testTheLauncherRule() async throws {

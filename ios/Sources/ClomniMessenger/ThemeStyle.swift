@@ -201,20 +201,54 @@ struct SkeletonBlock: View {
     }
 }
 
-/// The thin yellow strip: "İnternet yoxdur".
+/// The thin strip under the header (DESIGN-PASS-3 C1): 32 high on the text colour at 6%, a small icon and "İnternet
+/// yoxdur" in 13 text_muted, opening and closing in 200 ms; the screen under it stays as the cache has it. When the
+/// connection is back it says `connected` ("Qoşuldu") for a second, then closes. `below` is room under it while it
+/// shows.
 struct OfflineStrip: View {
-    let text: String
+    let offline: String?
+    let connected: String
     let theme: ClomniTheme
+    var below: CGFloat = 0
+    @State private var back = false
+    /// Bumped by every change, so an earlier second cannot close a later "Qoşuldu".
+    @State private var generation = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var text: String? { offline ?? (back ? connected : nil) }
 
     var body: some View {
-        Text(text)
-            .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption)
-            .foregroundStyle(theme.colors.onWarning.color)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, CGFloat(ClomniTheme.Space.xs))
-            .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
-            .background(theme.colors.warning.color)
+        VStack(spacing: 0) {
+            if let text {
+                HStack(spacing: 6) {
+                    Image(systemName: offline != nil ? "wifi.slash" : "checkmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(text)
+                        .clomniFont(13, relativeTo: .footnote)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(theme.colors.textSecondary.color)
+                .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .background(theme.colors.textPrimary.color.opacity(0.06))
+                .padding(.bottom, below)
+                .accessibilityElement(children: .combine)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .clipped()
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: text)
+        .onChange(of: offline != nil) { isOffline in
+            generation += 1
+            back = !isOffline
+            if let text { UIAccessibility.post(notification: .announcement, argument: text) }
+            guard !isOffline else { return }
+            let shown = generation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                if generation == shown { back = false }
+            }
+        }
     }
 }
 

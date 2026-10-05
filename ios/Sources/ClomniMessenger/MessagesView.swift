@@ -23,9 +23,7 @@ struct MessagesView: View {
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: closeLabel, backLabel: backLabel, theme: theme,
                              showsDivider: scrolled, back: actions.back, close: actions.close)
-            if let offline = screen.offline {
-                OfflineStrip(text: offline, theme: theme)
-            }
+            OfflineStrip(offline: screen.offline, connected: screen.connected, theme: theme)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }

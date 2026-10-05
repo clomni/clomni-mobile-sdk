@@ -24,6 +24,7 @@ final class ChatModel: ObservableObject {
         config = controller.config
         controller.onChange = { [weak self] in self?.sync() }
         controller.playSound = { MessageSounds.play($0) }
+        NetworkMonitor.shared.follow(controller) { $0.isOffline = $1 }
     }
 
     convenience init(engine: ClomniEngine, conversationId: String, language: String?, known: [String: String] = [:]) {
@@ -85,9 +86,7 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             ChatHeaderView(header: model.screen.header, theme: theme, showsDivider: scrolled, back: back, close: close)
-            if let offline = model.screen.offline {
-                OfflineStrip(text: offline, theme: theme)
-            }
+            OfflineStrip(offline: model.screen.offline, connected: model.screen.connected, theme: theme)
             // What is not known yet shows nothing; once it is, all of it comes at once, fading in over 200 ms
             // (DESIGN-PASS-3 C5). From the cache it is there in the first frames.
             ZStack {

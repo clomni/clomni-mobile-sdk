@@ -30,5 +30,5 @@ Pod::Spec.new do |s|
     'ClomniMessenger_Privacy' => ['ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'],
     'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.mp3'],
   }
-  s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers', 'UserNotifications', 'AVFoundation'
+  s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers', 'UserNotifications', 'AVFoundation', 'Network'
 end

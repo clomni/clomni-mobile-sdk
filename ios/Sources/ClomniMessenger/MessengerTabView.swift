@@ -24,6 +24,7 @@ final class MessengerModel: ObservableObject {
         messages = controller.messages
         config = controller.config
         controller.onChange = { [weak self] in self?.sync() }
+        NetworkMonitor.shared.follow(controller) { $0.isOffline = $1 }
     }
 
     convenience init(engine: ClomniEngine, language: String?, userName: String?, config: MessengerConfig? = nil) {

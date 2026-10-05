@@ -10,8 +10,10 @@ package struct ChatScreen: Sendable, Equatable {
     package let header: ChatHeader
     package let items: [ChatItem]
     package let composer: ChatComposer
-    /// The thin yellow strip under the header.
+    /// The thin strip under the header while offline (DESIGN-PASS-3 C1).
     package let offline: String?
+    /// "Qoşuldu": the strip's word for a second once the connection is back.
+    package let connected: String
     package let failure: HomeScreen.Failure?
     /// The newest incoming message, for VoiceOver to read out when it changes.
     package let announcement: Announcement?

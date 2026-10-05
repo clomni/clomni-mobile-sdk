@@ -37,6 +37,7 @@ package struct ChatPresenter: Sendable {
             items: items(snapshot),
             composer: composer(snapshot, known: phase == .ready),
             offline: snapshot.isOffline ? strings[.offline] : nil,
+            connected: strings[.connected],
             failure: phase == .failed ? HomeScreen.Failure(message: strings[.error], retry: strings[.retry]) : nil,
             announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) },
             loadingLabel: strings[.loading])

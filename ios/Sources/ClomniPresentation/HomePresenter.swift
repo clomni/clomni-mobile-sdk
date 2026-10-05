@@ -131,8 +131,10 @@ package struct HomeScreen: Sendable, Equatable {
     package let channels: ChannelsCard?
     package let messagesCard: MessagesCard
     package let news: NewsCard?
-    /// The thin yellow strip under the header.
+    /// The thin strip under the header while offline (DESIGN-PASS-3 C1).
     package let offline: String?
+    /// "Qoşuldu": the strip's word for a second once the connection is back.
+    package let connected: String
     package let failure: Failure?
     /// What VoiceOver reads over the skeleton: "Yüklənir".
     package let loadingLabel: String
@@ -165,6 +167,7 @@ package struct MessagesScreen: Sendable, Equatable {
     package let empty: String?
     package let newConversation: HomeScreen.NewConversationCard
     package let offline: String?
+    package let connected: String
     package let failure: HomeScreen.Failure?
     package let loadingLabel: String
     /// VoiceOver's name for the back button.
@@ -229,6 +232,7 @@ package struct HomePresenter: Sendable {
             messagesCard: messagesCard(snapshot),
             news: news,
             offline: snapshot.isOffline ? strings[.offline] : nil,
+            connected: strings[.connected],
             failure: failed ? failure : nil,
             loadingLabel: strings[.loading],
             order: cards.filter { card in
@@ -260,6 +264,7 @@ package struct HomePresenter: Sendable {
             empty: phase == .ready && rows.isEmpty ? strings[.emptyList] : nil,
             newConversation: newConversation(snapshot.config),
             offline: snapshot.isOffline ? strings[.offline] : nil,
+            connected: strings[.connected],
             failure: failed ? failure : nil,
             loadingLabel: strings[.loading],
             backLabel: strings[.goBack])

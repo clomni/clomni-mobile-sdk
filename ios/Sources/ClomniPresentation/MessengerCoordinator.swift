@@ -137,6 +137,7 @@ package final class MessengerCoordinator {
         if await session.isAppDisabled {
             readiness = .disabled
         } else if await session.isLoggedIn {
+            await openOnCache()
             await session.connect()
             config = await session.refreshConfig(language: language) ?? config
             readiness = await session.isAppDisabled ? .disabled : .ready
@@ -156,6 +157,7 @@ package final class MessengerCoordinator {
             changed()
         }
         await listen()
+        if await session.isLoggedIn { await openOnCache() }
         if !(await session.isLoggedIn) {
             do {
                 try await session.loginUnidentifiedUser()
@@ -171,6 +173,18 @@ package final class MessengerCoordinator {
         updateUnread(await session.unreadTotal)
         changed()
         return true
+    }
+
+    /// Logged in with a kept look, the messenger is ready now, on the cache (DESIGN-PASS-3 C1, C2); the socket and the
+    /// config's ETag check follow, and a changed config redraws the screens when it comes. Offline, or on a slow
+    /// network, the user sees what they saw last time instead of skeletons.
+    private func openOnCache() async {
+        guard readiness == .notReady, !(await session.isAppDisabled),
+              let cached = await session.config ?? session.cachedConfigFromDisk() else { return }
+        config = config ?? cached
+        readiness = .ready
+        updateUnread(await session.unreadTotal)
+        changed()
     }
 
     private func refuse(_ disabled: Bool, _ reason: String) -> Bool {

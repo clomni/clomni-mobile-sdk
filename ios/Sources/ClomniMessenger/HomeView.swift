@@ -51,10 +51,8 @@ struct HomeView: View {
                             .onChange(of: measured.size.height) { block = $0 }
                     })
                     .padding(.bottom, Self.fullPast)
-                    if let offline = screen.offline {
-                        OfflineStrip(text: offline, theme: theme)
-                            .padding(.bottom, CGFloat(ClomniTheme.Space.l))
-                    }
+                    OfflineStrip(offline: screen.offline, connected: screen.connected, theme: theme,
+                                 below: CGFloat(ClomniTheme.Space.l))
                     HomeCardsView(screen: screen, theme: theme, actions: actions)
                         .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
                         .padding(.bottom, CGFloat(ClomniTheme.Space.xxl))
