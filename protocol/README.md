@@ -54,6 +54,19 @@ Text on the brand colour (`brand.on_primary_color`) is always sent. When the inb
 server picks white if white reaches a WCAG contrast of 4.5:1 on `primary_color`, otherwise black; the SDKs use
 the same rule for a config that lacks it.
 
+## Identity (`user_hash`)
+
+`POST /v1/mobile/sessions` checks `user_hash` by the inbox's identity mode:
+
+| Mode | No hash | Wrong hash |
+|---|---|---|
+| `off` | accepted, not verified | ignored |
+| `recommended` | accepted, not verified; `403` for a user who has logged in verified before | `403`, for a new user too |
+| `enforced` | `403` | `403` |
+
+`403` is `identity_verification_failed`. A wrong hash is never accepted, so a mistake in `identity_secret` shows at
+the first login instead of leaving users unverified.
+
 ## Replies
 
 - The app sends `content.reply_to` (a message id) with a `text` or an `attachment`. The server keeps it where the

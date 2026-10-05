@@ -196,8 +196,10 @@ paths:
         Identified user: send `user` with `user_hash = hex(HMAC-SHA256(identity_secret, user_id))`, lower case. Without a
         `user_id` the hash is taken over the email, lower-cased and trimmed. The comparison is constant-time.
 
-        The inbox's identity mode decides what an absent or wrong hash means: `off` ignores it, `recommended` accepts
-        the user unverified, `enforced` answers `403 identity_verification_failed`.
+        The inbox's identity mode decides what the hash means. `off` ignores it. `recommended`: a hash that is sent must
+        be right, for a new user too, or the answer is `403 identity_verification_failed`; without a hash the user is
+        accepted unverified, unless they have logged in verified before. `enforced`: a missing or wrong hash is
+        `403 identity_verification_failed`.
 
         Anonymous visitor: omit `user`. The server creates an anonymous user and returns its id. Sending that id back as
         `anonymous_id` on a later session resumes the same user, but only from the device that created it
@@ -1364,8 +1366,9 @@ components:
               message: api_key is wrong or not for this platform
               request_id: req_5f2c
     Forbidden:
-      description: '`identity_verification_failed` (wrong `user_hash` in enforced mode) or `app_disabled` (the inbox is
-        switched off: the SDK hides the launcher and `present()` does nothing)'
+      description: '`identity_verification_failed` (a wrong `user_hash` in `recommended` or `enforced` mode, or a missing
+        one where it is required) or `app_disabled` (the inbox is switched off: the SDK hides the launcher and `present()`
+        does nothing)'
       content:
         application/json:
           schema:
