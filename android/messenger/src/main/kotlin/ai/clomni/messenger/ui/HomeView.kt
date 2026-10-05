@@ -32,6 +32,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -258,14 +260,28 @@ private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                 }
                 HomeScreen.Phase.FAILED -> screen.failure?.let { FailureView(it, theme, actions.retry) }
                 HomeScreen.Phase.READY -> {
+                    // M8: the first time the messenger opens, the cards come in one after another (30 ms apart, 8 up,
+                    // fading in); coming back to Home they are simply there.
+                    val intro = LocalHomeIntro.current
+                    val animate = remember { !intro.played }
+                    LaunchedEffect(Unit) { intro.played = true }
+                    var index = 0
                     for (card in screen.order) {
                         when (card) {
-                            MessengerConfig.HomeCard.MESSAGES -> MessagesCard(screen.messagesCard, theme, actions.openMessages)
-                            MessengerConfig.HomeCard.SEND ->
-                                screen.newConversation?.let { SendCard(it, theme, actions.newConversation) }
-                            MessengerConfig.HomeCard.RECENT -> screen.recent?.let { LatestCard(it, theme, actions.openConversation) }
-                            MessengerConfig.HomeCard.CHANNELS -> screen.channels?.let { ChannelsCardView(it, theme) }
-                            MessengerConfig.HomeCard.NEWS -> for (news in screen.news) NewsCardView(news, theme, actions.openNews)
+                            MessengerConfig.HomeCard.MESSAGES ->
+                                MessagesCard(screen.messagesCard, theme, actions.openMessages, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                            MessengerConfig.HomeCard.SEND -> screen.newConversation?.let {
+                                SendCard(it, theme, actions.newConversation, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                            }
+                            MessengerConfig.HomeCard.RECENT -> screen.recent?.let {
+                                LatestCard(it, theme, actions.openConversation, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                            }
+                            MessengerConfig.HomeCard.CHANNELS -> screen.channels?.let {
+                                ChannelsCardView(it, theme, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                            }
+                            MessengerConfig.HomeCard.NEWS -> for (news in screen.news) {
+                                NewsCardView(news, theme, actions.openNews, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                            }
                         }
                     }
                     screen.poweredBy?.let {
@@ -281,14 +297,19 @@ private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
     }
 }
 
+/** Whether Home's cards have come in once since the messenger opened (M8); none outside the messenger. */
+internal class HomeIntro(var played: Boolean)
+
+internal val LocalHomeIntro = compositionLocalOf { HomeIntro(played = true) }
+
 /** A Home card's title: 17 semibold. */
 @Composable
 private fun cardTitle(theme: ClomniTheme) = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.3f)
 
 /** "Mesajlar" and the conversation icon: the list. A red dot while something is unread. */
 @Composable
-private fun MessagesCard(card: HomeScreen.MessagesCard, theme: ClomniTheme, open: () -> Unit) {
-    Row(Modifier.fillMaxWidth().homeCard(theme, card.accessibilityLabel, open), verticalAlignment = Alignment.CenterVertically) {
+private fun MessagesCard(card: HomeScreen.MessagesCard, theme: ClomniTheme, open: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().homeCard(theme, card.accessibilityLabel, open), verticalAlignment = Alignment.CenterVertically) {
         BasicText(card.title, Modifier.weight(1f), style = cardTitle(theme))
         if (card.unread) {
             Box(Modifier.size(ClomniTheme.Size.unreadDot.dp).clip(CircleShape).background(theme.colors.unread.color))
@@ -300,8 +321,8 @@ private fun MessagesCard(card: HomeScreen.MessagesCard, theme: ClomniTheme, open
 
 /** "Bizə mesaj göndərin" and an arrow in the brand colour: a new conversation. */
 @Composable
-private fun SendCard(card: HomeScreen.NewConversationCard, theme: ClomniTheme, start: () -> Unit) {
-    Row(Modifier.fillMaxWidth().homeCard(theme, card.accessibilityLabel, start), verticalAlignment = Alignment.CenterVertically) {
+private fun SendCard(card: HomeScreen.NewConversationCard, theme: ClomniTheme, start: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().homeCard(theme, card.accessibilityLabel, start), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             BasicText(card.title, style = cardTitle(theme))
             card.subtitle?.let {
@@ -315,9 +336,9 @@ private fun SendCard(card: HomeScreen.NewConversationCard, theme: ClomniTheme, s
 
 /** "Son mesaj": the newest conversation, its avatar, who and when on one line, the message under it. */
 @Composable
-private fun LatestCard(card: HomeScreen.RecentCard, theme: ClomniTheme, open: (String) -> Unit) {
+private fun LatestCard(card: HomeScreen.RecentCard, theme: ClomniTheme, open: (String) -> Unit, modifier: Modifier = Modifier) {
     val row = card.row
-    Column(Modifier.fillMaxWidth().homeCard(theme, "${card.label}. ${row.accessibilityLabel}") { open(row.id) }) {
+    Column(modifier.fillMaxWidth().homeCard(theme, "${card.label}. ${row.accessibilityLabel}") { open(row.id) }) {
         BasicText(card.label, Modifier.padding(bottom = 12.dp), style = cardTitle(theme))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Avatar(row.avatarUrl, row.initial, 40f, theme)

@@ -19,10 +19,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -210,6 +212,8 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     val openLink: (String) -> Unit = { url ->
         if (runtime.events.link?.invoke(url) != true) runCatching { uriHandler.openUri(url) }
     }
+    val intro = remember { HomeIntro(played = false) }
+    CompositionLocalProvider(LocalHomeIntro provides intro) {
     MessengerSheet(theme, closing, closed, dismiss = close) {
         if (!state.ready || route == null) {
             // Not ready yet: the grey skeleton, the indicator in the middle while there is no look kept, ✕ working.
@@ -233,7 +237,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         AnimatedContent(
             route,
             Modifier.fillMaxSize(),
-            transitionSpec = { sharedAxisX(forward, still) },
+            transitionSpec = { pushPop(forward, still) },
             // A draft that became a conversation is the same screen: no transition for it.
             contentKey = { (it as? MessengerRoute.Conversation)?.let { open -> "chat:" + coordinator.screenKey(open.id) } ?: it },
             label = "screen",
@@ -259,6 +263,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
             }
         }
     }
+    }
 }
 
 /**
@@ -276,21 +281,23 @@ internal class ShownRoute {
 }
 
 /**
- * Material 3's shared axis X: the new screen comes 30 dp from the end (from the start going back) while fading in
- * after the old one has faded; 300 ms. With "Remove animations", a plain fade.
+ * M2, push and pop: 300 ms, emphasized decelerate. The new screen comes 24% of the width from the end, fading in, over
+ * the old one, which goes 8% the other way and dims to 0.9. Going back is the same played backwards: the screen on
+ * top leaves to the end. With "Remove animations", a plain fade.
  */
-private fun sharedAxisX(forward: Boolean, still: Boolean): ContentTransform {
+private fun pushPop(forward: Boolean, still: Boolean): ContentTransform {
     if (still) return fadeIn(tween(150)) togetherWith fadeOut(tween(150))
-    val distance = 90
-    val easing = FastOutSlowInEasing
-    val sign = if (forward) 1 else -1
-    return (slideInHorizontally(tween(300, easing = easing)) { sign * distance } + fadeIn(tween(210, delayMillis = 90))) togetherWith
-        (slideOutHorizontally(tween(300, easing = easing)) { -sign * distance } + fadeOut(tween(90)))
+    val move = tween<IntOffset>(300, easing = Motion.EmphasizedDecelerate)
+    val fade = tween<Float>(300, easing = Motion.EmphasizedDecelerate)
+    val top = { width: Int -> (width * 0.24f).roundToInt() }
+    val under = { width: Int -> -(width * 0.08f).roundToInt() }
+    return if (forward) {
+        (slideInHorizontally(move, top) + fadeIn(fade)) togetherWith (slideOutHorizontally(move, under) + fadeOut(fade, targetAlpha = 0.9f))
+    } else {
+        ((slideInHorizontally(move, under) + fadeIn(fade, initialAlpha = 0.9f)) togetherWith (slideOutHorizontally(move, top) + fadeOut(fade)))
+            .apply { targetContentZIndex = -1f }
+    }
 }
-
-/** Material 3's emphasized decelerate and accelerate. */
-private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
-private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
 /**
  * The messenger as a sheet over the app: it slides up from the bottom (350 ms, emphasized decelerate) while a scrim
@@ -311,21 +318,34 @@ private fun MessengerSheet(
     LaunchedEffect(visible.currentState, visible.isIdle) {
         if (closing && visible.isIdle && !visible.currentState) closed()
     }
+    // M1: the scrim 0 → 32% in 250 ms; the sheet on a spring (0.86, 400); its content fades in 180 ms, 120 ms after
+    // it starts. Closing plays it backwards; pulled down and let go, the sheet keeps the finger's speed (SheetDrag).
     val scrim by animateFloatAsState(
         if (closing) 0f else 0.32f,
-        tween(if (closing) 250 else 350, easing = if (closing) EmphasizedAccelerate else EmphasizedDecelerate),
+        tween(250, easing = if (closing) Motion.EmphasizedAccelerate else Motion.EmphasizedDecelerate),
         label = "scrim",
     )
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
+    val inside by animateFloatAsState(
+        if (shown && !closing) 1f else 0f,
+        if (closing || still) tween(120) else tween(180, delayMillis = 120),
+        label = "content",
+    )
     val drag = rememberSheetDrag(dismiss)
+    drag.still = still
     // Pulled down, the app shows through as the scrim lifts.
     // Drawn, not composed, so following the finger redraws one rectangle and recomposes nothing.
     Box(Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = if (shown) scrim * (1f - drag.fraction) else 0f) }) {
         AnimatedVisibility(
             visible,
-            enter = if (still) fadeIn(tween(200)) else slideInVertically(tween(350, easing = EmphasizedDecelerate)) { it },
-            exit = if (still) fadeOut(tween(200)) else slideOutVertically(tween(250, easing = EmphasizedAccelerate)) { it },
+            enter = if (still) fadeIn(tween(200)) else slideInVertically(Motion.sheet(IntOffset.VisibilityThreshold)) { it },
+            // Pulled all the way down, it is gone already (read only then: following the finger recomposes nothing).
+            exit = when {
+                still -> fadeOut(tween(200))
+                closing && drag.fraction >= 1f -> ExitTransition.None
+                else -> slideOutVertically(spring(stiffness = 400f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it }
+            },
         ) {
             Box(
                 Modifier.fillMaxSize()
@@ -340,7 +360,9 @@ private fun MessengerSheet(
                         .background(theme.colors.background.color),
                 ) {
                     val tint = if (theme.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f)
-                    CompositionLocalProvider(LocalPressTint provides tint) { content() }
+                    CompositionLocalProvider(LocalPressTint provides tint) {
+                        Box(Modifier.fillMaxSize().graphicsLayer { alpha = inside }) { content() }
+                    }
                     // The handle: 36×4, the text colour at 20%, 4 over the bar's title block (DESIGN-PASS-3 B3); the bar
                     // itself stays where it is on every screen, so ✕ does not move.
                     Box(

@@ -23,11 +23,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -80,6 +81,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -249,8 +251,6 @@ internal fun ChatScreenView(
     /** A picked file waiting over the field. */
     picked: PickedPreview? = null,
 ) {
-    val links = TranscriptLinks(screen.replyLabel, screen.copyLabel)
-    CompositionLocalProvider(LocalTranscript provides links) {
     Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
         // The bar's line shows once the transcript has something above what is on screen.
         var scrolled by remember { mutableStateOf(false) }
@@ -270,7 +270,7 @@ internal fun ChatScreenView(
                     screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
                 }
                 HomeScreen.Phase.READY -> if (lazy) {
-                    LazyTranscript(screen.items, theme, actions, inner, loadingOlder, screen.loadingLabel) { scrolled = it }
+                    LazyTranscript(screen, theme, actions, inner, loadingOlder) { scrolled = it }
                 } else {
                     Column(
                         inner.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
@@ -281,19 +281,19 @@ internal fun ChatScreenView(
                 }
             }
         }
-        // While a step waits for a button nothing is under the conversation; the composer comes back (200 ms, fading
-        // in as it rises) for free text, at the flow's end or when an operator joins (operator, 2026-10-04).
+        // While a step waits for a button nothing is under the conversation; the composer comes back for free text, at
+        // the flow's end or when an operator joins (operator, 2026-10-04). M7: its height and its opacity, 220 ms.
         val composing = screen.composer.mode != ChatComposer.Mode.Hidden
+        val still = reduceMotion()
         AnimatedVisibility(
             composing,
-            enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { it },
-            exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { it },
+            enter = if (still) fadeIn(tween(150)) else expandVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeIn(tween(220)),
+            exit = if (still) fadeOut(tween(150)) else shrinkVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeOut(tween(220)),
         ) {
             ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
         }
         if (!composing) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         Announcer(screen.announcement?.id, screen.announcement?.text)
-    }
     }
 }
 
@@ -303,14 +303,15 @@ internal fun ChatScreenView(
  */
 @Composable
 private fun LazyTranscript(
-    items: List<ChatItem>,
+    screen: ChatScreen,
     theme: ClomniTheme,
     actions: ChatActions,
     modifier: Modifier,
     loadingOlder: Boolean = false,
-    loadingLabel: String = "",
     scrolled: (Boolean) -> Unit = {},
 ) {
+    val items = screen.items
+    val loadingLabel = screen.loadingLabel
     // While older messages load, item 0 is their indicator and the messages follow it.
     val last = items.size - 1 + if (loadingOlder) 1 else 0
     val state = rememberLazyListState(initialFirstVisibleItemIndex = last.coerceAtLeast(0))
@@ -328,8 +329,7 @@ private fun LazyTranscript(
     // A tap on a quote: the quoted message is scrolled to (a third down the screen) and lit for a second.
     val scope = rememberCoroutineScope()
     var lit by remember { mutableStateOf<String?>(null) }
-    val base = LocalTranscript.current
-    val links = TranscriptLinks(base.replyLabel, base.copyLabel, lit) { messageId ->
+    val links = TranscriptLinks(screen.replyLabel, screen.copyLabel, lit) { messageId ->
         val index = items.indexOfFirst { (it as? ChatItem.BubbleItem)?.bubble?.messageId == messageId }
         if (index >= 0) {
             scope.launch {
@@ -370,8 +370,14 @@ private fun LazyTranscript(
         items(items, key = { it.id }) { item ->
             // Fades in the first time it is ever shown only: not again when it scrolls back into view.
             val fresh = remember(item.id) { known.add(item.id) }
-            CompositionLocalProvider(LocalTranscript provides links) {
-                Box(Modifier.appearing(fresh)) { ChatItemView(item, theme, actions) }
+            // M3: a new item comes in its own way (ChatItemView); one that moves slides to its place.
+            CompositionLocalProvider(LocalTranscript provides links, LocalArriving provides fresh) {
+                Box(
+                    Modifier.animateItem(fadeInSpec = null, placementSpec = if (still) null else Motion.sheet(IntOffset.VisibilityThreshold))
+                        .arriving(fresh, item.arrival),
+                ) {
+                    ChatItemView(item, theme, actions)
+                }
             }
         }
     }

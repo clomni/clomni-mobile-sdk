@@ -11,24 +11,9 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.SystemLine
 import ai.clomni.messenger.presentation.TextRun
 import ai.clomni.messenger.presentation.TypingLine
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.unit.Dp
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -37,12 +22,17 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,24 +41,31 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -82,10 +79,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import kotlin.math.PI
+import kotlin.math.sin
 
 /** What the transcript hands back. */
 internal class ChatActions(
@@ -144,15 +144,6 @@ internal fun reduceMotion(): Boolean {
     return remember(context) { Motion.reduced(context) }
 }
 
-/** A new item fades in (220 ms, ease-out), nothing moves (DESIGN-PASS 5: no flying elements). */
-@Composable
-internal fun Modifier.appearing(animate: Boolean): Modifier {
-    if (!animate) return this
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { progress.animateTo(1f, tween(220, easing = FastOutSlowInEasing)) }
-    return graphicsLayer { alpha = progress.value }
-}
-
 @Composable
 internal fun ChatItemView(item: ChatItem, theme: ClomniTheme, actions: ChatActions) {
     when (item) {
@@ -167,6 +158,15 @@ internal fun ChatItemView(item: ChatItem, theme: ClomniTheme, actions: ChatActio
         is ChatItem.TypingItem -> TypingRow(item.line, theme)
     }
 }
+
+/** How a new item of the transcript comes in (M3, M4); the choices come in by themselves (M5). */
+internal val ChatItem.arrival: Motion.Arrival?
+    get() = when (this) {
+        is ChatItem.BubbleItem -> if (bubble.side == Bubble.Side.INCOMING) Motion.Arrival.INCOMING else Motion.Arrival.OUTGOING
+        is ChatItem.TypingItem -> Motion.Arrival.TYPING
+        is ChatItem.RepliesItem -> null
+        else -> Motion.Arrival.FADE
+    }
 
 /** 18 dp, 5 where bubbles of one run meet; the user's always keep the 5 dp bottom-end corner. */
 internal fun Bubble.shape(): RoundedCornerShape {
@@ -208,7 +208,7 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
         label = "quoted",
     )
     var menu by remember { mutableStateOf(false) }
-    var pulled by remember { mutableFloatStateOf(0f) }
+    val swipe = remember { ReplySwipe() }
     val messageId = bubble.messageId
     val replyable = bubble.replyable && messageId != null
     val longPress: (() -> Unit)? = if (bubble.hasMenu) {
@@ -225,12 +225,12 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
         bubble.copyText?.let { text -> CustomAccessibilityAction(links.copyLabel) { copyText(context, text); true } },
     )
     Box(Modifier.fillMaxWidth().padding(top = top).background(glow, RoundedCornerShape(12.dp))) {
-        if (incoming) ReplyArrow(pulled, theme, Modifier.align(Alignment.CenterStart))
+        if (incoming && replyable) ReplyArrow(swipe, theme, Modifier.align(Alignment.CenterStart))
         Column(
-            Modifier.fillMaxWidth().swipeToReply(replyable, bubble.id, { messageId?.let(actions.reply) }) { pulled = it },
+            Modifier.fillMaxWidth().swipeToReply(replyable, swipe) { messageId?.let(actions.reply) },
             horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
         ) {
-            BubbleColumn(bubble, theme, actions, incoming, gutter, maxWidth, pulled, longPress, a11y)
+            BubbleColumn(bubble, theme, actions, incoming, gutter, maxWidth, swipe.takeIf { replyable }, longPress, a11y)
             if (menu) MessageMenu(bubble, theme, actions.reply) { menu = false }
         }
     }
@@ -245,7 +245,7 @@ private fun BubbleColumn(
     incoming: Boolean,
     gutter: Dp,
     maxWidth: Dp,
-    pulled: Float,
+    swipe: ReplySwipe?,
     longPress: (() -> Unit)?,
     a11y: List<CustomAccessibilityAction>,
 ) {
@@ -269,7 +269,7 @@ private fun BubbleColumn(
             Spacer(Modifier.width(ClomniTheme.Space.s.dp))
         }
         Box(Modifier.widthIn(max = maxWidth)) {
-            if (!incoming) ReplyArrow(pulled, theme, Modifier.align(Alignment.CenterStart).offset(x = (-36).dp))
+            if (!incoming && swipe != null) ReplyArrow(swipe, theme, Modifier.align(Alignment.CenterStart).offset(x = (-36).dp))
             BubbleBody(bubble, theme, actions, longPress, a11y)
         }
     }
@@ -443,7 +443,10 @@ private fun StatusLine(status: Bubble.Status, theme: ClomniTheme, retry: (String
     val style = clomniText(ClomniTheme.FontSize.meta, if (status.isFailure) theme.colors.errorText else theme.colors.textSecondary)
     val retryId = status.retryId
     if (retryId == null) {
-        BasicText(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), style = style)
+        // "Göndərilir" → "Göndərildi" → "Oxundu": only the words cross-fade, nothing moves (M3, 150 ms).
+        Crossfade(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), tween(150), label = "status") { text ->
+            BasicText(text, style = style)
+        }
     } else {
         // The 15 dp line reaches a 48 dp target without moving anything.
         val reach = 16.dp
@@ -488,13 +491,14 @@ private fun SystemLineView(line: SystemLine, theme: ClomniTheme) {
 @Composable
 private fun TypingRow(line: TypingLine, theme: ClomniTheme) {
     val still = reduceMotion() || LocalInspectionMode.current
-    val pulse by if (still) {
-        remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    // M4: one wave through the three dots, 1.2 s round, each 0.15 s behind the one before; still, they rest.
+    val phase = if (still) {
+        null
     } else {
         rememberInfiniteTransition(label = "typing").animateFloat(
             0f,
             1f,
-            infiniteRepeatable(tween(600), RepeatMode.Reverse),
+            infiniteRepeatable(tween(TYPING_PERIOD_MS, easing = LinearEasing), RepeatMode.Restart),
             label = "dots",
         )
     }
@@ -510,16 +514,27 @@ private fun TypingRow(line: TypingLine, theme: ClomniTheme) {
                 .padding(vertical = 12.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            val lift = with(LocalDensity.current) { 2.dp.toPx() }
             for (index in 0 until 3) {
-                val rest = 0.5f + 0.2f * index
                 Box(
-                    Modifier.size(6.dp).alpha(rest + (0.9f - rest) * pulse).clip(CircleShape)
-                        .background(theme.colors.textSecondary.color),
+                    Modifier.size(6.dp).graphicsLayer {
+                        val t = phase?.value
+                        if (t == null) {
+                            alpha = 0.5f + 0.2f * index
+                        } else {
+                            val wave = (sin(2 * PI * (t - index * TYPING_LAG_MS / TYPING_PERIOD_MS.toFloat())).toFloat() + 1f) / 2f
+                            alpha = 0.4f + 0.5f * wave
+                            translationY = -lift * wave
+                        }
+                    }.clip(CircleShape).background(theme.colors.textSecondary.color),
                 )
             }
         }
     }
 }
+
+private const val TYPING_PERIOD_MS = 1_200
+private const val TYPING_LAG_MS = 150
 
 /** A person's face, or the bot's: a brand-coloured circle with its initial until its picture is here. */
 @Composable

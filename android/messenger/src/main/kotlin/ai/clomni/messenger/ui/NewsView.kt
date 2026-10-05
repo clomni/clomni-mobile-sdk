@@ -41,8 +41,8 @@ import androidx.compose.ui.unit.dp
  * semibold and the short text 14 grey, two lines each. A tap opens the item.
  */
 @Composable
-internal fun NewsCardView(card: HomeScreen.NewsCard, theme: ClomniTheme, open: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().clomniCard(theme, card.accessibilityLabel) { open(card.id) }) {
+internal fun NewsCardView(card: HomeScreen.NewsCard, theme: ClomniTheme, open: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().clomniCard(theme, card.accessibilityLabel) { open(card.id) }) {
         card.imageUrl?.let { url ->
             RemoteImage(
                 url,

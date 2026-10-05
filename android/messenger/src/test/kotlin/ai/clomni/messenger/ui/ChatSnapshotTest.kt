@@ -170,6 +170,18 @@ class ChatSnapshotTest {
     @Test
     fun offline() = snap("chat_offline", loaded(ChatFixture.message("01-text-bot.json")).copy(isOffline = true))
 
+    /** DESIGN-PASS-3 F2: answering the operator, the quote over the field; an earlier answer quoted in its bubble. */
+    @Test
+    fun replying() {
+        val operator = ChatFixture.message("02-text-operator-markdown.json")
+        val answer = ChatFixture.message("66-reply-user-to-operator.json", "seq" to 99)
+        snap(
+            "chat_replying",
+            loaded(operator, answer).copy(conversation = ChatFixture.conversation("open", leyla), replyingTo = operator.id),
+            draft = "Bəli",
+        )
+    }
+
     @Test
     fun closedConversation() = snap(
         "chat_closed",

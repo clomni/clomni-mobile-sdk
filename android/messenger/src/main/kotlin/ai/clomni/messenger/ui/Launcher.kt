@@ -21,6 +21,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowInsets
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 
 /**
@@ -109,7 +111,7 @@ internal class ActivityLauncherSurface : LauncherOverlay.Surface<Activity> {
  * The optional floating button (DESIGN-PASS-3 E1): a 56 dp circle in the brand colour at the bottom corner with the
  * operator's line mascot in it, 30 dp, white lines when on_primary is white and black ones when it is dark (the
  * original drawings, only shrunk; the asset puts their optical centre in the middle). A soft shadow (y 4, blur 12,
- * 18%), 0.94 while pressed (120 ms), and the unread count in an 18 dp red badge at the top end ("99+"). A plain View,
+ * 18%), 0.97 while pressed (M6: on a spring), and the unread count in an 18 dp red badge at the top end ("99+"). A plain View,
  * so it works on any activity, Compose or not.
  */
 @SuppressLint("ViewConstructor")
@@ -178,11 +180,15 @@ internal class LauncherView(context: Context) : View(context) {
         invalidate()
     }
 
-    /** Pressed, it gives a little: 0.94 in 120 ms, and back. */
+    /**
+     * Pressed, it gives a little (0.97) and springs back when let go, overshooting a touch (M6); with the system's
+     * animations off it stays as it is.
+     */
     override fun setPressed(pressed: Boolean) {
-        if (pressed != isPressed) {
+        if (pressed != isPressed && !Motion.reduced(context)) {
             val scale = if (pressed) PRESSED_SCALE else 1f
-            animate().scaleX(scale).scaleY(scale).setDuration(PRESS_MS).start()
+            animate().scaleX(scale).scaleY(scale).setDuration(PRESS_MS)
+                .setInterpolator(if (pressed) DecelerateInterpolator() else OvershootInterpolator(3f)).start()
         }
         super.setPressed(pressed)
     }
@@ -254,8 +260,8 @@ internal class LauncherView(context: Context) : View(context) {
 
     private companion object {
         const val MASCOT = 30f
-        const val PRESSED_SCALE = 0.94f
-        const val PRESS_MS = 120L
+        const val PRESSED_SCALE = 0.97f
+        const val PRESS_MS = 220L
 
         /** Black at 18%. */
         const val SHADOW = 0x2E000000

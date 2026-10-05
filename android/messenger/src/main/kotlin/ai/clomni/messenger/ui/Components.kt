@@ -312,9 +312,9 @@ internal fun ConversationRowView(row: ConversationRow, theme: ClomniTheme) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme) {
+internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme, modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
-    Column(Modifier.fillMaxWidth().clomniCard(theme)) {
+    Column(modifier.fillMaxWidth().clomniCard(theme)) {
         BasicText(
             card.label,
             Modifier.padding(bottom = ClomniTheme.Space.m.dp).semantics { heading() },

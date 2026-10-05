@@ -1,7 +1,7 @@
 package ai.clomni.messenger.ui
 
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
@@ -19,10 +19,10 @@ import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 /**
  * Pulling the messenger sheet down (DESIGN-PASS-3 A8, C3): [offset] is how far it is, in px; [fraction] of its height.
@@ -42,12 +42,24 @@ internal class SheetDrag(private val scope: CoroutineScope, private val dismiss:
         offset = (offset + delta).coerceIn(0f, height)
     }
 
+    /** With the system's animations off it closes or goes back at once. */
+    var still = false
+
+    /** Let go: on a spring that starts at the finger's speed (M1), down and closed, or back up. */
     fun settle(velocity: Float) {
         if (offset <= 0f) return
-        if (offset > height / 3 || velocity > FLICK) {
-            dismiss()
-        } else {
-            back = scope.launch { animate(offset, 0f, animationSpec = tween(200)) { value, _ -> offset = value } }
+        val closes = offset > height / 3 || velocity > FLICK
+        if (still) {
+            if (closes) dismiss() else offset = 0f
+            return
+        }
+        back = scope.launch {
+            if (closes) {
+                animate(offset, height, velocity, spring(stiffness = 400f)) { value, _ -> offset = value }
+                dismiss()
+            } else {
+                animate(offset, 0f, velocity, Motion.sheet()) { value, _ -> offset = value.coerceAtLeast(0f) }
+            }
         }
     }
 
