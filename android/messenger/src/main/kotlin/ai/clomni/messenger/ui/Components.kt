@@ -305,7 +305,11 @@ internal fun ConversationRowView(row: ConversationRow, theme: ClomniTheme) {
     }
 }
 
-/** "Bizi izləyin": 30 dp squares (radius 8) in each platform's colour, 20 dp apart in 48 dp targets. */
+/**
+ * "Bizi izləyin" (DESIGN-PASS-3 D2): the title 17 semibold, then at most five 44 dp circles 12 apart from the start,
+ * each the network's monochrome mark (22 dp) in the text colour on canvas, on background in dark mode. Pressed, the
+ * circle is the text colour at 10%. Each sits in a 48 dp target; a long row wraps.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme) {
@@ -313,12 +317,12 @@ internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme)
     Column(Modifier.fillMaxWidth().clomniCard(theme)) {
         BasicText(
             card.label,
-            Modifier.padding(bottom = ClomniTheme.Space.s.dp).semantics { heading() },
-            style = clomniText(ClomniTheme.FontSize.label, theme.colors.textPrimary, FontWeight.SemiBold),
+            Modifier.padding(bottom = ClomniTheme.Space.m.dp).semantics { heading() },
+            style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold),
         )
-        // The 30 dp squares 20 apart: their 48 dp targets side by side, none covering its neighbour; a long list wraps.
-        val bleed = (target - ClomniTheme.Size.channel.dp) / 2
-        val gap = Arrangement.spacedBy(ClomniTheme.Space.xxl.dp - bleed * 2)
+        // The 48 dp targets overlap the 12 dp gaps by 2 on each side, so the circles start where the title does.
+        val bleed = (target - CHANNEL) / 2
+        val gap = Arrangement.spacedBy(12.dp - bleed * 2)
         FlowRow(Modifier.bleed(bleed, bleed), horizontalArrangement = gap, verticalArrangement = gap) {
             for (item in card.items) {
                 ChannelButton(item, theme) { runCatching { uriHandler.openUri(item.url) } }
@@ -327,24 +331,25 @@ internal fun ChannelsCardView(card: HomeScreen.ChannelsCard, theme: ClomniTheme)
     }
 }
 
+private val CHANNEL = 44.dp
+
 @Composable
 private fun ChannelButton(item: ChannelItem, theme: ClomniTheme, open: () -> Unit) {
-    val (background, mark) = when (val tint = item.tint) {
-        is ChannelItem.Tint.Brand -> tint.color.color to RgbColor.WHITE
-        ChannelItem.Tint.Neutral -> theme.colors.surface.color to theme.colors.textPrimary
-    }
+    val press = remember { MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
+    val rest = if (theme.isDark) theme.colors.background else theme.colors.canvas
     Box(
-        Modifier.size(target).button(item.accessibilityLabel, RoundedCornerShape(ClomniTheme.Radius.channel.dp), ClomniTheme.Size.channel.dp, open),
+        Modifier.size(target)
+            .clickable(interactionSource = press, indication = null, role = Role.Button, onClick = open)
+            .clearAndSetSemantics { contentDescription = item.accessibilityLabel },
         Alignment.Center,
     ) {
         Box(
-            Modifier.size(ClomniTheme.Size.channel.dp)
-                .clip(RoundedCornerShape(ClomniTheme.Radius.channel.dp))
-                .background(background),
+            Modifier.size(CHANNEL).clip(CircleShape)
+                .background(if (pressed) theme.colors.textPrimary.color.copy(alpha = 0.10f) else rest.color),
             Alignment.Center,
         ) {
-            val brand = item.tint is ChannelItem.Tint.Brand || item.icon == ChannelItem.Icon.X
-            Icon(item.icon.drawable, mark, if (brand) 16.dp else 18.dp)
+            Icon(item.icon.drawable, theme.colors.textPrimary, 22.dp)
         }
     }
 }
@@ -362,5 +367,5 @@ internal val ChannelItem.Icon.drawable: Int
         ChannelItem.Icon.X -> R.drawable.clomni_brand_x
         ChannelItem.Icon.EMAIL -> R.drawable.clomni_ic_mail
         ChannelItem.Icon.PHONE -> R.drawable.clomni_ic_call
-        ChannelItem.Icon.LINK -> R.drawable.clomni_ic_link
+        ChannelItem.Icon.LINK -> R.drawable.clomni_ic_globe
     }
