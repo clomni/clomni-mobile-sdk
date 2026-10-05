@@ -1,6 +1,7 @@
 package ai.clomni.messenger.presentation
 
 import ai.clomni.messenger.presentation.ClomniStrings.Key
+import ai.clomni.messenger.protocol.Assignee
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.ConversationStatus
 import ai.clomni.messenger.protocol.Message
@@ -46,9 +47,11 @@ internal class ChatPresenter(
         val config = snapshot.config
         val brand = config?.brand?.name.orEmpty()
         val conversation = snapshot.conversation
-        val assignee = conversation?.assignee
         val status = conversation?.status
-        if (assignee != null && status != ConversationStatus.BOT && status != ConversationStatus.QUEUED) {
+        // Who answers: the assignee; without one, the last operator who wrote (no dot: nothing says they are online).
+        val assignee = conversation?.assignee ?: snapshot.messages.lastOrNull { it.sender.type == SenderType.OPERATOR && !it.sender.name.isNullOrEmpty() }
+            ?.sender?.let { Assignee(it.name!!, it.avatarUrl, online = false) }
+        if (assignee != null) {
             val online = assignee.online ?: true
             return ChatHeader(
                 lead = ChatHeader.Lead.Person(ChatAvatar(assignee.avatarUrl, initial(assignee.name), false), online),
@@ -65,7 +68,7 @@ internal class ChatPresenter(
             status == ConversationStatus.QUEUED -> config?.team?.replyTime ?: strings[Key.HEADER_SUBTITLE]
             else -> strings[Key.HEADER_SUBTITLE]
         }
-        // Nobody has taken it (the bot or a flow answers): the company, by its logo and name; never a person's face.
+        // No operator has taken it or written (the bot or a flow answers): the company, by its logo and name.
         return ChatHeader(
             ChatHeader.Lead.Brand(ChatAvatar(config?.brand?.logoUrl, initial(brand), true)),
             brand,

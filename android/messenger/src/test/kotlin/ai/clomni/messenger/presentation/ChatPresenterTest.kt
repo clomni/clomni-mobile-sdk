@@ -212,7 +212,21 @@ class ChatPresenterTest {
         val away = """{"name":"Leyla","online":false}"""
         assertEquals("Apar", screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", away)) }.header.subtitle)
         val queuedWithLeyla = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("queued", leyla)) }.header
-        assertEquals("still the team while queued", "Apar", queuedWithLeyla.title)
+        assertEquals("the assignee whatever the status", "Leyla", queuedWithLeyla.title)
+
+        // Nobody assigned: the last operator who wrote, with no online dot; a bot's message after it changes nothing.
+        val wrote = listOf(
+            ChatFixture.message("02-text-operator-markdown.json", "id" to "m1", "seq" to 1),
+            ChatFixture.message("01-text-bot.json", "id" to "m2", "seq" to 2),
+        )
+        val unassigned = screen(wrote) { it.copy(conversation = ChatFixture.conversation("queued")) }.header
+        assertEquals(ChatHeader.Lead.Person(ChatAvatar("https://app.clomni.ai/a/leyla.png", "L", false), false), unassigned.lead)
+        assertEquals("Leyla", unassigned.title)
+        assertEquals("Apar", unassigned.subtitle)
+        val rauf = """{"name":"Rauf","online":true}"""
+        val assigned = screen(wrote) { it.copy(conversation = ChatFixture.conversation("open", rauf)) }.header
+        assertEquals("the assignee before the last writer", "Rauf", assigned.title)
+        assertEquals("only the bot wrote: the company", logo, screen(wrote.drop(1)).header.lead)
 
         val closedHours = ChatFixture.config(
             """{"brand":{"name":"Apar","primary_color":"#1F9D63"},"team":{"office_hours":{"open_now":false},"reply_time":"Tez"}}""",
