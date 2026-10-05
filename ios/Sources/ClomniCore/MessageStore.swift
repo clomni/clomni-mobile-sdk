@@ -3,8 +3,9 @@ import Foundation
 import ClomniProtocol
 #endif
 
-/// Conversations and messages as this device knows them. A message is kept once by its id, however it arrived (REST,
-/// socket, both), and messages are in `seq` order. Saved to disk so the next launch shows them at once.
+/// Conversations and messages as this device knows them. A message is kept once by its id and once by its seq, however
+/// it arrived (REST, socket, both), and messages are in `seq` order. Reopening a conversation asks only for what is
+/// newer than the highest seq received (`lastSeq`), not the last one without a hole. Saved to disk so the next launch shows them at once.
 struct MessageStore: Codable, Equatable {
     private(set) var conversations: [String: Conversation] = [:]
     private(set) var messages: [String: [Message]] = [:]
@@ -33,12 +34,14 @@ struct MessageStore: Codable, Equatable {
         }
     }
 
-    /// Adds a message or replaces the copy with its id (`message.updated`). With `detectGap`, a message that skips
+    /// Adds a message or replaces the copy with its id (`message.updated`) or its seq (the same message re-delivered
+    /// under another id). With `detectGap`, a message that skips
     /// ahead of the newest one known returns that newest seq: 40 then 42 returns 40, and 41 is to be fetched.
     @discardableResult
     mutating func insert(_ message: Message, detectGap: Bool = false) -> Int? {
         var list = messages[message.conversationId] ?? []
         var gap: Int?
+        list.removeAll { $0.seq == message.seq && $0.id != message.id }
         if let index = list.firstIndex(where: { $0.id == message.id }) {
             list[index] = message
             list.sort(by: Self.inOrder)

@@ -37,6 +37,19 @@ final class MessageStoreTests: XCTestCase {
         XCTAssertEqual(store.message("msg_2", in: "conv_1")?.seq, 2)
     }
 
+    func testACopyUnderAnotherIdReplacesTheMessageOfItsSeq() {
+        var store = MessageStore()
+        store.insert(message("msg_1", seq: 1))
+        store.insert(message("msg_2", seq: 2, text: "first"))
+        store.insert(message("msg_2b", seq: 2, text: "again"), detectGap: true)
+        XCTAssertEqual(store.messages(in: "conv_1").map(\.id), ["msg_1", "msg_2b"])
+        XCTAssertEqual(store.messages(in: "conv_1").map(\.content), [.text("x"), .text("again")])
+        // The reopen cursor is the highest seq received, past a hole the user never sees: the flow's answers that
+        // came over the socket are not asked for again.
+        XCTAssertEqual(store.insert(message("msg_5", seq: 5), detectGap: true), 2)
+        XCTAssertEqual(store.lastSeq(in: "conv_1"), 5)
+    }
+
     func testAnUpdateReplacesTheMessage() {
         var store = MessageStore()
         store.insert(message("msg_1", seq: 1, interactive: true, text: "before"))
