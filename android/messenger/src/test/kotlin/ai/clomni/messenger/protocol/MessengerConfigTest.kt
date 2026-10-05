@@ -130,6 +130,16 @@ class MessengerConfigTest {
         assertFalse(config.theme.launcher.enabled)
         assertEquals(listOf("az"), config.languages)
         assertTrue(config.poweredBy)
+        assertFalse(config.startsWithFlow)
+        assertTrue(config.sounds)
+    }
+
+    @Test
+    fun aNewConversationThatStartsWithItsFlowAndTheSounds() {
+        assertTrue(config(apar).startsWithFlow)
+        assertFalse(config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).startsWithFlow)
+        assertTrue(config(apar).sounds)
+        assertFalse(config("""{"sounds":false}""").sounds)
     }
 
     /** brand.logo_style "wordmark" with its picture; the mark otherwise, also for a style without a picture. */

@@ -239,9 +239,18 @@ internal class ClomniEngine(
 
     /**
      * A new conversation to write in, created on the server only by its first message ([Drafts]): opening the
-     * messenger and closing it again leaves nothing behind. Touches nothing; any thread.
+     * messenger and closing it again leaves nothing behind. When the inbox starts new conversations with a flow
+     * (`conversation.starts_with_flow`) it is created right away, with the draft's `client_id`, so the flow's first
+     * messages arrive without the user writing first. Any thread.
      */
-    override fun draft(openedFrom: String?): String = Drafts.new().also { if (openedFrom != null) draftSources[it] = openedFrom }
+    override fun draft(openedFrom: String?): String {
+        val draft = Drafts.new()
+        if (openedFrom != null) draftSources[draft] = openedFrom
+        if (store.config?.startsWithFlow == true) {
+            submit { if (!createdDrafts.containsKey(draft)) create(draft, openedFrom) }
+        }
+        return draft
+    }
 
     private val draftSources = ConcurrentHashMap<String, String>()
 
@@ -708,14 +717,20 @@ internal class ClomniEngine(
     private fun started(entry: PendingMessage): PendingMessage {
         val draft = entry.conversationId
         if (!Drafts.isDraft(draft)) return entry
-        val created = authed { api.createConversation(entry.openedFrom, Drafts.startId(draft)) }
+        val id = createdDrafts[draft] ?: create(draft, entry.openedFrom)
+        return store.outbox.entry(entry.id) ?: entry.copy(conversationId = id)
+    }
+
+    /** POST /conversations for [draft] (its `client_id` makes a repeat answer the same one); the outbox moves over. */
+    private fun create(draft: String, openedFrom: String?): String {
+        val created = authed { api.createConversation(openedFrom, Drafts.startId(draft)) }
         store.outbox.moveConversation(draft, created.conversation.id)
         createdDrafts[draft] = created.conversation.id
         apply(created)
         draftSources.remove(draft)
         store.changed(ClomniChange.Started(draft, created.conversation.id))
         store.changed(ClomniChange.Messages(draft))
-        return store.outbox.entry(entry.id) ?: entry.copy(conversationId = created.conversation.id)
+        return created.conversation.id
     }
 
     /**

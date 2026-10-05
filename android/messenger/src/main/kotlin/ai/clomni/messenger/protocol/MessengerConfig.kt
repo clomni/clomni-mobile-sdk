@@ -21,6 +21,10 @@ internal data class MessengerConfig(
     val limits: Limits,
     /** "Powered by Clomni" under Home; false only where the plan allows. */
     val poweredBy: Boolean,
+    /** `conversation.starts_with_flow`: a new conversation starts a flow, so it is created as soon as it opens. */
+    val startsWithFlow: Boolean = false,
+    /** Short sounds for a sent and a received message; the app can still turn them off. */
+    val sounds: Boolean = true,
 ) {
     data class Brand(
         val name: String,

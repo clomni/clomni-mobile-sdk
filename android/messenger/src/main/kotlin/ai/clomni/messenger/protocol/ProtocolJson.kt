@@ -564,6 +564,8 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 textChars = limits.int("text_chars")?.takeIf { it > 0 } ?: 4000,
             ),
             poweredBy = o.boolean("powered_by") ?: true,
+            startsWithFlow = o.section("conversation").boolean("starts_with_flow") ?: false,
+            sounds = o.boolean("sounds") ?: true,
         )
     }
 
