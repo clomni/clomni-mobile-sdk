@@ -11,6 +11,8 @@ import android.widget.TextView
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -59,11 +61,18 @@ class LauncherSnapshotTest {
     fun itsSizeAndLabel() {
         val view = LauncherView(paparazzi.context).apply { bind(state, ClomniTheme.make(null, false)) {} }
         val density = paparazzi.context.resources.displayMetrics.density
-        assertEquals("56 dp and room for the badge", ((56 + 12) * density).toInt(), view.layoutParams.width)
+        assertEquals("56 dp and room for the badge and the shadow", ((56 + 32) * density).toInt(), view.layoutParams.width)
         assertEquals("Bizə mesaj göndərin, Oxunmamış mesaj var", view.contentDescription)
         val params = view.layoutParams as FrameLayout.LayoutParams
         assertEquals(Gravity.BOTTOM or Gravity.END, params.gravity)
-        assertEquals("20 dp from the edge, minus the badge's room", ((20 - 6) * density).toInt(), params.marginEnd)
-        assertEquals(((20 - 6 + 20) * density).toInt(), params.bottomMargin)
+        assertEquals("20 dp from the edge, minus that room", ((20 - 16) * density).toInt(), params.marginEnd)
+        assertEquals(((20 - 16 + 20) * density).toInt(), params.bottomMargin)
+        assertEquals("it gives from its centre", ((16 + 28) * density), view.pivotX, 0.5f)
+        view.isPressed = true
+        assertTrue(view.isPressed)
+        assertTrue("white lines on the default dark brand", view.whiteLines)
+        val light = ai.clomni.messenger.presentation.ChatFixture.config("""{"brand":{"primary_color":"#FFE14D"}}""").brand
+        val onLight = LauncherView(paparazzi.context).apply { bind(state, ClomniTheme.make(light, false)) {} }
+        assertFalse("black lines where on_primary is dark", onLight.whiteLines)
     }
 }

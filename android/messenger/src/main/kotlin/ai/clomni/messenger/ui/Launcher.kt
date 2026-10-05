@@ -12,10 +12,10 @@ import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Outline
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -106,8 +106,11 @@ internal class ActivityLauncherSurface : LauncherOverlay.Surface<Activity> {
 }
 
 /**
- * The optional floating button: a 56 dp brand-coloured circle at the bottom corner with the chat mark, the unread
- * count on it ("99+"). A plain View, so it works on any activity, Compose or not.
+ * The optional floating button (DESIGN-PASS-3 E1): a 56 dp circle in the brand colour at the bottom corner with the
+ * operator's line mascot in it, 30 dp, white lines when on_primary is white and black ones when it is dark (the
+ * original drawings, only shrunk; the asset puts their optical centre in the middle). A soft shadow (y 4, blur 12,
+ * 18%), 0.94 while pressed (120 ms), and the unread count in an 18 dp red badge at the top end ("99+"). A plain View,
+ * so it works on any activity, Compose or not.
  */
 @SuppressLint("ViewConstructor")
 internal class LauncherView(context: Context) : View(context) {
@@ -121,7 +124,12 @@ internal class LauncherView(context: Context) : View(context) {
         // Sized with the circle, not with the user's font scale.
         textSize = 11 * resources.displayMetrics.density
     }
-    private val icon = context.getDrawable(R.drawable.clomni_ic_chat_filled)?.mutate()
+    private val whiteMascot = context.getDrawable(R.drawable.clomni_launcher_mascot_white)
+    private val blackMascot = context.getDrawable(R.drawable.clomni_launcher_mascot_black)
+    private var mascot: Drawable? = whiteMascot
+
+    /** The white drawing is in the circle (for tests). */
+    internal val whiteLines: Boolean get() = mascot === whiteMascot
     private var state: LauncherState? = null
     private val badgeBox = RectF()
     private val ringBox = RectF()
@@ -130,15 +138,23 @@ internal class LauncherView(context: Context) : View(context) {
     /** The system bars' insets at the start and the end side (right first in a right-to-left layout). */
     private var sideInsets = 0 to 0
 
-    /** The badge may stand out of the circle: the view is a little larger than it. */
-    private val margin = (6 * density)
+    /** The badge and the shadow stand out of the circle: the view is larger than it. */
+    private val margin = (16 * density)
     private val circle = LauncherState.SIZE * density
 
     init {
         isClickable = true
         isFocusable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+        // Above the app's own raised views; the shadow is drawn with the circle, softer than the platform's.
         elevation = 6 * density
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            outlineAmbientShadowColor = android.graphics.Color.TRANSPARENT
+            outlineSpotShadowColor = android.graphics.Color.TRANSPARENT
+            circlePaint.setShadowLayer(10 * density, 0f, 4 * density, SHADOW)
+        }
+        pivotX = margin + circle / 2
+        pivotY = margin + circle / 2
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setOval(margin.toInt(), margin.toInt(), (margin + circle).toInt(), (margin + circle).toInt())
@@ -154,12 +170,21 @@ internal class LauncherView(context: Context) : View(context) {
         badgePaint.color = theme.colors.badge.argb
         ringPaint.color = theme.colors.background.argb
         textPaint.color = 0xFFFFFFFF.toInt()
-        icon?.colorFilter = PorterDuffColorFilter(theme.colors.onPrimary.argb, PorterDuff.Mode.SRC_IN)
+        mascot = if (theme.colors.onPrimary.luminance > 0.5) whiteMascot else blackMascot
         textPaint.typeface = Typeface.create(ClomniFonts.typeface ?: Typeface.DEFAULT, Typeface.BOLD)
         contentDescription = state.accessibilityLabel
         setOnClickListener { tap() }
         place()
         invalidate()
+    }
+
+    /** Pressed, it gives a little: 0.94 in 120 ms, and back. */
+    override fun setPressed(pressed: Boolean) {
+        if (pressed != isPressed) {
+            val scale = if (pressed) PRESSED_SCALE else 1f
+            animate().scaleX(scale).scaleY(scale).setDuration(PRESS_MS).start()
+        }
+        super.setPressed(pressed)
     }
 
     @Deprecated("Deprecated in Java")
@@ -200,8 +225,8 @@ internal class LauncherView(context: Context) : View(context) {
         val cx = margin + radius
         val cy = margin + radius
         canvas.drawCircle(cx, cy, radius, circlePaint)
-        icon?.let {
-            val half = (12 * density).toInt()
+        mascot?.let {
+            val half = (MASCOT / 2 * density).toInt()
             it.setBounds((cx - half).toInt(), (cy - half).toInt(), (cx + half).toInt(), (cy + half).toInt())
             it.draw(canvas)
         }
@@ -225,5 +250,14 @@ internal class LauncherView(context: Context) : View(context) {
         canvas.drawRoundRect(box, height / 2, height / 2, badgePaint)
         val baseline = box.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(badge, box.centerX(), baseline, textPaint)
+    }
+
+    private companion object {
+        const val MASCOT = 30f
+        const val PRESSED_SCALE = 0.94f
+        const val PRESS_MS = 120L
+
+        /** Black at 18%. */
+        const val SHADOW = 0x2E000000
     }
 }
