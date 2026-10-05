@@ -39,7 +39,7 @@ final class ChatSnapshotTests: XCTestCase {
 
     /// DESIGN-PASS-2 6: one close button, the same size on every screen, measured in the layout (not in pixels,
     /// whose colours and the window's safe area vary): its circle 40×40, and in its bar 16 pt from the trailing side
-    /// and 12 pt from the bar's top, also with nothing leading.
+    /// and centred in the bar's row, also with nothing leading.
     func testTheCloseButtonsSize() throws {
         let theme = PreviewData.theme(dark: false)
         let measured = Box<CGRect>(.zero)
@@ -57,7 +57,9 @@ final class ChatSnapshotTests: XCTestCase {
         _ = Snapshot.render(bar, width: 390, dark: false)
         XCTAssertEqual(inBar.value.size, CGSize(width: 40, height: 40))
         XCTAssertEqual(390 - inBar.value.maxX, 16, accuracy: 0.5, "16 pt from the trailing side")
-        XCTAssertEqual(inBar.value.minY, 12, accuracy: 0.5, "12 pt under the bar's top")
+        // DESIGN-PASS-3 A9: the bar's 48 pt row starts 16 pt down and centres the 40 pt circle in it.
+        let top = Double(ClomniTheme.Size.barTop) + Double(ClomniTheme.Size.barRow - ClomniTheme.Size.closeCircle) / 2
+        XCTAssertEqual(Double(inBar.value.minY), top, accuracy: 0.5, "centred in the bar's row")
     }
 
     func testEveryMessageFixture() throws {
