@@ -174,6 +174,28 @@ class MessageStoreTest {
         assertTrue(store.canAnswer(message(9, conversationId = "conv_9", interactive = true)))
     }
 
+    /**
+     * Operator, 2026-10-04 (72): only the last, unanswered bot message shows its choices; once the user's choice (or
+     * anything else) follows, they are gone, also in a history loaded afresh with nothing marked on this device.
+     */
+    @Test
+    fun choicesOnlyOnTheLastUnansweredMessage() {
+        val buttons = listOf(MessageContent.Button("b1", "Sifarişim haqqında", null, "p1"))
+        fun choices(seq: Long) = message(seq, interactive = true)
+            .copy(content = MessageContent.QuickReplies("Nə ilə kömək edək?", buttons, MessageContent.QuickRepliesLayout.VERTICAL, true, false))
+        val system = message(4).copy(content = MessageContent.System(MessageContent.SystemEvent.WaitingInQueue, "Növbədəsiniz", 2))
+        // Reloaded: two steps, the first answered by the user's bubble; the second one waits.
+        store.putMessages("conv_1", listOf(choices(1), message(2, clientId = "c_2", text = "Sifarişim haqqında"), choices(3)), syncedThrough = 3)
+        assertFalse(store.canAnswer(store.message("msg_1")!!))
+        assertTrue(store.canAnswer(store.message("msg_3")!!))
+        // A system line after it does not answer it.
+        store.putMessages("conv_1", listOf(system), syncedThrough = 4)
+        assertTrue(store.canAnswer(store.message("msg_3")!!))
+        // The user's choice arrives from the server (another device, or a reload after it): the choices are gone.
+        store.putMessages("conv_1", listOf(message(5, clientId = "c_5", text = "Sifariş haradadır?")), syncedThrough = 5)
+        assertFalse(store.canAnswer(store.message("msg_3")!!))
+    }
+
     @Test
     fun keptOnDiskForTheNextLaunch() {
         val dir = folder.newFolder()
