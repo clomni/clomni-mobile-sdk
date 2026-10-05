@@ -9,9 +9,11 @@ import ClomniCore
 import ClomniPresentation
 #endif
 
-/// The optional floating button: a 56 pt brand-coloured circle at the bottom corner, the unread count on it. It
-/// lives in a window of its own, only as large as the button, so the app's screen below stays untouched; the window
-/// exists only while the launcher shows.
+/// The optional floating button (DESIGN-PASS-3 E1): a 56 pt circle in the brand colour at the bottom corner with the
+/// operator's line mascot in it, 30 pt, white lines when on_primary is light and black ones when it is dark (the
+/// original drawings, only shrunk; their optical centre in the middle). A soft shadow (y 4, blur 12, 18%), 0.94 while
+/// pressed (120 ms), the unread count on the red 18 pt badge. It lives in a window of its own, only as large as the
+/// button and its shadow, so the app's screen below stays untouched; the window exists only while the launcher shows.
 @MainActor
 final class LauncherController {
     private var window: LauncherWindow?
@@ -30,11 +32,12 @@ final class LauncherController {
             host.view.backgroundColor = .clear
             window.rootViewController = host
         }
-        // The badge may stand out of the circle by a few points.
-        let side = CGFloat(LauncherState.size) + 12
+        // The badge and the shadow stand out of the circle.
+        let margin: CGFloat = 16
+        let side = CGFloat(LauncherState.size) + 2 * margin
         let screen = scene.coordinateSpace.bounds
         let insets = scene.windows.first { $0.isKeyWindow }?.safeAreaInsets ?? .zero
-        let edge = CGFloat(LauncherState.edgePadding) - 6
+        let edge = CGFloat(LauncherState.edgePadding) - margin
         let x = state.side == .left ? insets.left + edge : screen.width - insets.right - edge - side
         let y = screen.height - insets.bottom - edge - CGFloat(state.bottomPadding) - side
         window.frame = CGRect(x: x, y: y, width: side, height: side)
@@ -78,12 +81,10 @@ struct LauncherButton: View {
 
     var body: some View {
         Button(action: tap) {
-            Image(systemName: "message.fill")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(theme.colors.onPrimary.color)
+            mascot
                 .frame(width: CGFloat(LauncherState.size), height: CGFloat(LauncherState.size))
-                .background(Circle().fill(theme.colors.primary.color))
-                .shadow(color: Color.black.opacity(0.2), radius: 7, x: 0, y: 4)
+                .background(Circle().fill(theme.colors.primary.color)
+                    .shadow(color: Color.black.opacity(0.18), radius: 6, x: 0, y: 4))
                 .overlay(alignment: .topTrailing) {
                     if let badge = state.badge {
                         Text(badge)
@@ -97,11 +98,30 @@ struct LauncherButton: View {
                     }
                 }
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(LauncherPressStyle())
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(Text(state.accessibilityLabel))
         .environment(\.clomniTypeface, typeface)
         .environment(\.clomniThemeOverride, themeOverride)
+    }
+
+    private var mascot: some View {
+        let name = LauncherState.whiteMascot(on: theme.colors.onPrimary)
+            ? "clomni_launcher_mascot_white" : "clomni_launcher_mascot_black"
+        return Image(name, bundle: ClomniResources.bundle("ClomniMessenger_Media"))
+            .resizable()
+            .interpolation(.high)
+            .frame(width: CGFloat(LauncherState.mascotSize), height: CGFloat(LauncherState.mascotSize))
+            .accessibilityHidden(true)
+    }
+}
+
+/// Pressed, the launcher gives a little and comes back.
+private struct LauncherPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? CGFloat(LauncherState.pressedScale) : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 #endif

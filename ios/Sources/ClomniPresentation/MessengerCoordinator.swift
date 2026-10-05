@@ -40,6 +40,15 @@ package struct LauncherState: Sendable, Equatable {
     package static let size: Double = 56
     /// From the screen's side and bottom edges.
     package static let edgePadding: Double = 18
+    /// The operator's line mascot in the circle (DESIGN-PASS-3 E1).
+    package static let mascotSize: Double = 30
+    /// Pressed, the button gives a little: this scale, in 120 ms.
+    package static let pressedScale: Double = 0.94
+
+    /// White lines when `on_primary` is light, black ones when it is dark.
+    package static func whiteMascot(on onPrimary: RGBColor) -> Bool {
+        onPrimary.luminance > 0.5
+    }
 
     package let side: MessengerConfig.LauncherPosition
     /// Above the bottom edge, for a tab bar (`setBottomPadding`).

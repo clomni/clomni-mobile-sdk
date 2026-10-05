@@ -29,6 +29,8 @@ Pod::Spec.new do |s|
   s.resource_bundles = {
     'ClomniMessenger_Privacy' => ['ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'],
     'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.mp3'],
+    # The launcher's mascot: the operator's line drawing, shrunk to 30, 60 and 90 px.
+    'ClomniMessenger_Media' => ['ios/Sources/ClomniMessenger/Media.xcassets'],
   }
   s.frameworks = 'Foundation', 'Security', 'UIKit', 'SwiftUI', 'PhotosUI', 'UniformTypeIdentifiers', 'UserNotifications', 'AVFoundation', 'Network'
 end

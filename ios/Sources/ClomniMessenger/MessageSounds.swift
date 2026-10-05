@@ -20,16 +20,6 @@ enum MessageSounds {
     #if canImport(AVFoundation) && canImport(UIKit)
     private static var players: [ChatSound: AVAudioPlayer] = [:]
 
-    private static var bundle: Bundle {
-        #if SWIFT_PACKAGE
-        return Bundle.module
-        #else
-        // CocoaPods: the ClomniMessenger_Sounds resource bundle next to the code.
-        let host = Bundle(for: BundleToken.self)
-        return host.url(forResource: "ClomniMessenger_Sounds", withExtension: "bundle").flatMap(Bundle.init(url:)) ?? host
-        #endif
-    }
-
     #endif
 
     @MainActor
@@ -43,7 +33,8 @@ enum MessageSounds {
         guard session.category == .ambient else { return }
         if players[sound] == nil {
             // One player each, so a reply that comes while the sent sound plays still sounds.
-            players[sound] = bundle.url(forResource: "clomni_message", withExtension: "mp3")
+            players[sound] = ClomniResources.bundle("ClomniMessenger_Sounds")
+                .url(forResource: "clomni_message", withExtension: "mp3")
                 .flatMap { try? AVAudioPlayer(contentsOf: $0) }
             players[sound]?.volume = sound == .sent ? sentVolume : 1
             players[sound]?.prepareToPlay()
@@ -55,6 +46,3 @@ enum MessageSounds {
     }
 }
 
-#if canImport(AVFoundation) && canImport(UIKit) && !SWIFT_PACKAGE
-private final class BundleToken {}
-#endif

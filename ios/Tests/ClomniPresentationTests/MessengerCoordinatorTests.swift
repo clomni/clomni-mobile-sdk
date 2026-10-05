@@ -197,6 +197,33 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(fresh.readiness, .ready)
     }
 
+    /// DESIGN-PASS-3 E1: the operator's line mascot, white lines on a dark brand colour and black ones on a light
+    /// one, shipped in the asset catalog at 30, 60 and 90 px (30 pt), and in the pod's media bundle.
+    func testTheLauncherCarriesTheMascot() throws {
+        XCTAssertTrue(LauncherState.whiteMascot(on: RGBColor(hex: "#FFFFFF")!))
+        XCTAssertFalse(LauncherState.whiteMascot(on: RGBColor(hex: "#1B1D21")!))
+
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let catalog = root.appendingPathComponent("ios/Sources/ClomniMessenger/Media.xcassets")
+        for colour in ["white", "black"] {
+            let name = "clomni_launcher_mascot_\(colour)"
+            let set = catalog.appendingPathComponent("\(name).imageset")
+            let contents = try String(contentsOf: set.appendingPathComponent("Contents.json"), encoding: .utf8)
+            for (suffix, side) in [("", 30), ("@2x", 60), ("@3x", 90)] {
+                let file = "\(name)\(suffix).png"
+                XCTAssertTrue(contents.contains("\"\(file)\""), file)
+                // The PNG's own width and height (IHDR).
+                let header = [UInt8](try Data(contentsOf: set.appendingPathComponent(file)).prefix(24))
+                let width = header[16..<20].reduce(0) { $0 << 8 | Int($1) }
+                let height = header[20..<24].reduce(0) { $0 << 8 | Int($1) }
+                XCTAssertEqual([width, height], [side, side], file)
+            }
+        }
+        let podspec = try String(contentsOf: root.appendingPathComponent("ClomniMessenger.podspec"), encoding: .utf8)
+        XCTAssertTrue(podspec.contains("'ClomniMessenger_Media' => ['ios/Sources/ClomniMessenger/Media.xcassets']"))
+    }
+
     func testTheLauncherRule() async throws {
         let messenger = coordinator()
         messenger.setLauncherVisible(true)
