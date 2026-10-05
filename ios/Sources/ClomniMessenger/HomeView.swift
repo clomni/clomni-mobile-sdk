@@ -460,30 +460,26 @@ struct ConversationRowView: View {
     }
 }
 
-/// "Bizi izləyin": 30 pt squares (radius 8) with each platform's mark in its colour, 44 pt targets.
+/// "Bizi izləyin" (DESIGN-PASS-3 D2): the title 17 semibold, then at most five 44 pt circles 12 apart from the start,
+/// each the network's monochrome mark (22 pt) in the text colour on canvas, on background in dark mode; no
+/// brand-coloured squares. Each circle is its own 44 pt target.
 struct ChannelsCardView: View {
     let card: HomeScreen.ChannelsCard
     let theme: ClomniTheme
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
+        VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.m)) {
             CardTitle(text: card.label, theme: theme)
                 .accessibilityAddTraits(.isHeader)
             icons
-                .padding(.horizontal, -Self.overhang)
-                .padding(.vertical, -Self.overhang)
         }
         .clomniCard(theme)
     }
 
-    /// How far a 44 pt target reaches past its 30 pt square.
-    private static let overhang = CGFloat(ClomniTheme.Size.touchTarget - ClomniTheme.Size.channel) / 2
-    /// Between two targets, for squares 20 pt apart.
-    private static let gap = CGFloat(ClomniTheme.Space.channelGap) - 2 * overhang
+    private static let gap = CGFloat(ClomniTheme.Space.m)
 
-    /// The squares 20 pt apart, across and between rows, so their 44 pt targets never overlap; a row that is full
-    /// continues on the next line.
+    /// The circles 12 pt apart, across and between rows; a row that is full continues on the next line.
     @ViewBuilder
     private var icons: some View {
         if #available(iOS 16.0, *) {
@@ -511,40 +507,41 @@ struct ChannelButton: View {
     let theme: ClomniTheme
     let action: () -> Void
 
-    private var background: Color {
-        switch item.glyph {
-        case .brand(_, let color): return color.color
-        case .symbol: return theme.colors.surface.color
-        }
-    }
-
     var body: some View {
         Button(action: action) {
-            ZStack {
-                RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.channel), style: .continuous)
-                    .fill(background)
-                glyph
-            }
-            .frame(width: CGFloat(ClomniTheme.Size.channel), height: CGFloat(ClomniTheme.Size.channel))
-            .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
-            .contentShape(Rectangle())
+            glyph
+                .foregroundStyle(theme.colors.textPrimary.color)
+                .frame(width: CGFloat(ClomniTheme.Size.channel), height: CGFloat(ClomniTheme.Size.channel))
+                .contentShape(Circle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ChannelCircleStyle(theme: theme))
         .accessibilityLabel(Text(item.accessibilityLabel))
     }
 
     @ViewBuilder
     private var glyph: some View {
         switch item.glyph {
-        case .brand(let path, _):
+        case .brand(let path):
             SVGShape(svg: path)
-                .fill(Color.white)
-                .frame(width: 16, height: 16)
+                .fill(theme.colors.textPrimary.color)
+                .frame(width: 22, height: 22)
         case .symbol(let name):
             Image(systemName: name)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(theme.colors.textPrimary.color)
+                .font(.system(size: 19, weight: .regular))
+                .frame(width: 22, height: 22)
         }
+    }
+}
+
+/// The circle under a channel's mark: canvas (background in dark mode), the text colour at 10% while pressed.
+private struct ChannelCircleStyle: ButtonStyle {
+    let theme: ClomniTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(Circle().fill(configuration.isPressed
+                ? theme.colors.textPrimary.color.opacity(0.10)
+                : (theme.isDark ? theme.colors.background : theme.colors.canvas).color))
     }
 }
 

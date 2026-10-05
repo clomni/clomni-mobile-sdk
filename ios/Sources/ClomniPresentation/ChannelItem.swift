@@ -1,12 +1,11 @@
 import Foundation
 
-/// One icon of "Bizi izləyin": the platform's own mark, white on its colour, so it is recognised at a glance; email,
-/// phone and other links get an SF Symbol. Each has its name for VoiceOver.
+/// One circle of "Bizi izləyin" (DESIGN-PASS-3 D2): the platform's monochrome mark, or an SF Symbol for email, phone
+/// and a website, all in the text colour; and its name for VoiceOver.
 package struct ChannelItem: Sendable, Equatable, Identifiable {
     package enum Glyph: Sendable, Equatable {
-        /// A brand mark in a 24×24 box (see `BrandMarks`), drawn white on `color`.
-        case brand(SVGPath, color: RGBColor)
-        /// An SF Symbol in the text colour on the theme's surface.
+        /// A brand mark in a 24×24 box (see `BrandMarks`).
+        case brand(SVGPath)
         case symbol(String)
     }
 
@@ -24,11 +23,11 @@ package struct ChannelItem: Sendable, Equatable, Identifiable {
         } else if url.scheme == "tel" || type.lowercased() == "phone" {
             glyph = .symbol("phone")
             accessibilityLabel = strings[.phone]
-        } else if let mark = BrandMarks.mark(for: type.lowercased()), let color = RGBColor(hex: mark.color) {
-            glyph = .brand(mark.path, color: color)
+        } else if let mark = BrandMarks.mark(for: type.lowercased()) {
+            glyph = .brand(mark.path)
             accessibilityLabel = mark.name
         } else {
-            glyph = .symbol("link")
+            glyph = .symbol("globe")
             accessibilityLabel = url.host ?? url.absoluteString
         }
     }

@@ -55,7 +55,6 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let input: Double = 20
         /// The Home header's logo (DESIGN-PASS 2).
         package static let logo: Double = 8
-        package static let channel: Double = 8
     }
 
     /// Font sizes in pt; text scales with Dynamic Type from these.
@@ -82,8 +81,6 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let xl: Double = 16
         package static let xxl: Double = 20
         package static let xxxl: Double = 24
-        /// Between the channel squares, so their 44 pt targets do not overlap.
-        package static let channelGap: Double = 20
     }
 
     package enum Size {
@@ -109,7 +106,8 @@ package struct ClomniTheme: Sendable, Equatable {
         /// Header avatars overlap by this much.
         package static let headerAvatarOverlap: Double = 7
         package static let avatar: Double = 28
-        package static let channel: Double = 30
+        /// A "Bizi izləyin" circle, its own tap target.
+        package static let channel: Double = 44
         package static let unreadDot: Double = 7
         package static let tabDot: Double = 8
         /// Icons in Home's cards.

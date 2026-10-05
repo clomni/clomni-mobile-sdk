@@ -84,7 +84,7 @@ final class SVGPathTests: XCTestCase {
 
     /// Every brand mark parses and fills its 24×24 box.
     func testBrandMarks() throws {
-        XCTAssertEqual(Set(BrandMarks.paths.keys), Set(BrandMarks.styles.keys))
+        XCTAssertEqual(Set(BrandMarks.paths.keys), Set(BrandMarks.names.keys))
         for slug in BrandMarks.paths.keys.sorted() {
             let mark = try XCTUnwrap(BrandMarks.mark(for: slug), slug)
             let box = mark.path.bounds
@@ -94,7 +94,6 @@ final class SVGPathTests: XCTestCase {
             XCTAssertLessThanOrEqual(box.maxY, 24.6, slug)
             XCTAssertGreaterThan(max(box.maxX - box.minX, box.maxY - box.minY), 20, "\(slug) fills the box")
             guard case .move? = mark.path.segments.first else { return XCTFail("\(slug) starts with a move") }
-            XCTAssertNotNil(RGBColor(hex: mark.color), slug)
         }
         XCTAssertEqual(BrandMarks.mark(for: "twitter")?.name, "X")
         XCTAssertNil(BrandMarks.mark(for: "mastodon"))
@@ -106,8 +105,7 @@ final class SVGPathTests: XCTestCase {
             ChannelItem(type: type, url: URL(string: url)!, strings: strings)
         }
         let instagram = item("instagram", "https://instagram.com/apar.az")
-        guard case .brand(let path, let color) = instagram.glyph else { return XCTFail("\(instagram.glyph)") }
-        XCTAssertEqual(color.hex, "#FF0069")
+        guard case .brand(let path) = instagram.glyph else { return XCTFail("\(instagram.glyph)") }
         XCTAssertEqual(path, BrandMarks.mark(for: "instagram")?.path)
         XCTAssertEqual(instagram.accessibilityLabel, "Instagram")
         XCTAssertEqual(item("LinkedIn", "https://linkedin.com/company/apar").accessibilityLabel, "LinkedIn")
@@ -116,7 +114,7 @@ final class SVGPathTests: XCTestCase {
         XCTAssertEqual(item("call", "tel:+994501234567").glyph, .symbol("phone"))
         XCTAssertEqual(item("call", "tel:+994501234567").accessibilityLabel, "Telefon")
         let unknown = item("mastodon", "https://social.az/@apar")
-        XCTAssertEqual(unknown.glyph, .symbol("link"))
+        XCTAssertEqual(unknown.glyph, .symbol("globe"), "a website")
         XCTAssertEqual(unknown.accessibilityLabel, "social.az")
         XCTAssertNotEqual(item("instagram", "https://a").id, item("instagram", "https://b").id)
     }

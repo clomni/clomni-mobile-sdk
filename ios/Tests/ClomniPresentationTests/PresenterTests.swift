@@ -146,8 +146,8 @@ final class PresenterTests: XCTestCase {
         let card = try XCTUnwrap(presenter(config: config).home(snapshot(config)).channels)
         XCTAssertEqual(card.items.map(\.url.host), ["instagram.com", "whatsapp.com", "telegram.com", "facebook.com", "messenger.com"],
                        "at most five, in the panel's order")
-        XCTAssertEqual(card.rows().map(\.count), [5])
-        XCTAssertEqual(card.rows(of: 4).map(\.count), [4, 1])
+        XCTAssertEqual(card.rows().map(\.count), [4, 1], "five circles do not fit the narrowest card")
+        XCTAssertEqual(card.rows(of: 5).map(\.count), [5])
         XCTAssertEqual(card.rows().flatMap { $0 }, card.items, "in their order")
         XCTAssertEqual(card.rows(of: 0).count, 5, "never zero per row")
         XCTAssertEqual(HomeScreen.ChannelsCard(label: "x", items: []).rows(), [])

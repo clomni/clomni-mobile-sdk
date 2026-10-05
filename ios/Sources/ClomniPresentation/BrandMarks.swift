@@ -1,6 +1,6 @@
 import Foundation
 
-/// Monochrome brand marks for "Bizi izləyin", drawn white on the platform's colour.
+/// Monochrome brand marks for "Bizi izləyin", drawn in the text colour (DESIGN-PASS-3 D2).
 ///
 /// Path data from Simple Icons (https://simpleicons.org), CC0-1.0: version 16.33.0, except LinkedIn, which Simple
 /// Icons removed at LinkedIn's request from 14.0.0 on and is taken from 13.0.0. Each path fills a 24×24 box. Kept in
@@ -8,28 +8,26 @@ import Foundation
 enum BrandMarks {
     struct Mark {
         let name: String
-        /// Simple Icons' brand colour.
-        let color: String
         let path: SVGPath
     }
 
     /// By the `type` of `home.channels[]`.
     static func mark(for type: String) -> Mark? {
         let slug = type == "twitter" ? "x" : type
-        guard let data = paths[slug], let path = SVGPath(data), let style = styles[slug] else { return nil }
-        return Mark(name: style.name, color: style.color, path: path)
+        guard let data = paths[slug], let path = SVGPath(data), let name = names[slug] else { return nil }
+        return Mark(name: name, path: path)
     }
 
-    static let styles: [String: (name: String, color: String)] = [
-        "instagram": ("Instagram", "#FF0069"),
-        "whatsapp": ("WhatsApp", "#25D366"),
-        "telegram": ("Telegram", "#26A5E4"),
-        "facebook": ("Facebook", "#0866FF"),
-        "messenger": ("Messenger", "#0866FF"),
-        "linkedin": ("LinkedIn", "#0A66C2"),
-        "youtube": ("YouTube", "#FF0000"),
-        "tiktok": ("TikTok", "#000000"),
-        "x": ("X", "#000000"),
+    static let names: [String: String] = [
+        "instagram": "Instagram",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "facebook": "Facebook",
+        "messenger": "Messenger",
+        "linkedin": "LinkedIn",
+        "youtube": "YouTube",
+        "tiktok": "TikTok",
+        "x": "X",
     ]
 
     static let paths: [String: String] = [
