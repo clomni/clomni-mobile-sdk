@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -493,6 +494,47 @@ class ChatPresenterTest {
     }
 
     /** Every message fixture, valid or not, reaches the screen as something. */
+    /** DESIGN-PASS-3 F2: the quote in the bubble, over the field, and who may be answered. */
+    @Test
+    fun replies() {
+        fun quoteOf(file: String) = bubbles(screen(listOf(ChatFixture.message(file)))).single().quote
+        assertEquals(
+            Bubble.Quote("msg_f65", "Leyla", "Ödənişi kartla etmisiniz, yoxsa balansdan? Qəbzin şəklini də göndərə bilərsiniz, yoxlayaq."),
+            quoteOf("66-reply-user-to-operator.json"),
+        )
+        assertEquals("the user's own message is \"Siz\"", Bubble.Quote("msg_f62", "Siz", "qebz.jpg"), quoteOf("67-reply-operator-to-image.json"))
+        assertEquals(Bubble.Quote("msg_f60", "Siz", "Mesaj silinib"), quoteOf("68-reply-to-deleted.json"))
+        assertNull("a broken reply_to: the message without its quote", quoteOf("70-invalid-reply-to-without-kind.json"))
+
+        // Answering: the quote over the field; the user's message while it is on its way shows it too.
+        val operator = ChatFixture.message("02-text-operator-markdown.json")
+        val answering = screen(listOf(operator)) { it.copy(conversation = ChatFixture.conversation("open"), replyingTo = operator.id) }
+        val quote = answering.composer.quote!!
+        assertEquals(operator.id, quote.messageId)
+        assertFalse("one line", quote.excerpt.contains('\n'))
+        assertEquals("Bağla", answering.composer.cancelQuoteLabel)
+        assertEquals(listOf("Cavabla", "Kopyala"), listOf(answering.replyLabel, answering.copyLabel))
+        val bubble = bubbles(answering).single()
+        assertTrue(bubble.replyable)
+        assertEquals(operator.id, bubble.messageId)
+        assertNotNull(bubble.copyText)
+        val sending = screen(listOf(operator)) {
+            it.copy(pending = listOf(pending(ClientMessage.Text("Bəli", replyTo = operator.id), "Bəli")))
+        }
+        val mine = bubbles(sending).last()
+        assertEquals(quote, mine.quote)
+        assertFalse("still on its way: nothing to answer yet", mine.replyable)
+        assertEquals("Bəli", mine.copyText)
+
+        // A flow waiting for a choice: no composer, so nothing is answered; copying still works.
+        val menu = screen(listOf(operator)) {
+            it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), replyingTo = operator.id)
+        }
+        assertNull(menu.composer.quote)
+        assertFalse(bubbles(menu).single().replyable)
+        assertNotNull(bubbles(menu).single().copyText)
+    }
+
     @Test
     fun everyMessageFixtureRenders() {
         val protocol = ProtocolJson()

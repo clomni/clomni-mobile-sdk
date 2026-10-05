@@ -5,6 +5,7 @@ import ai.clomni.messenger.protocol.Assignee
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.ConversationStatus
 import ai.clomni.messenger.protocol.Message
+import ai.clomni.messenger.protocol.ReplyRef
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
@@ -29,16 +30,21 @@ internal class ChatPresenter(
             else -> HomeScreen.Phase.LOADING
         }
         val lastIncoming = snapshot.messages.lastOrNull { it.sender.type != SenderType.USER && it.type != "system" }
+        val composer = composer(snapshot, phase == HomeScreen.Phase.READY)
+        // No reply while a flow waits for a choice: there is no composer to write the answer in.
+        val canReply = composer.mode == ChatComposer.Mode.Open
         return ChatScreen(
             phase = phase,
             loadingLabel = strings[Key.LOADING],
             header = header(snapshot),
-            items = items(snapshot),
-            composer = composer(snapshot, phase == HomeScreen.Phase.READY),
+            items = items(snapshot, canReply),
+            composer = composer,
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
             connected = strings[Key.CONNECTED],
             failure = if (phase == HomeScreen.Phase.FAILED) HomeScreen.Failure(strings[Key.ERROR], strings[Key.RETRY]) else null,
             announcement = lastIncoming?.let { Announcement(it.id, label(it, snapshot)) },
+            replyLabel = strings[Key.REPLY],
+            copyLabel = strings[Key.COPY],
         )
     }
 
@@ -111,6 +117,10 @@ internal class ChatPresenter(
             cameraLabel = strings[Key.PICK_CAMERA],
             fileLabel = strings[Key.PICK_FILE],
             removeLabel = strings[Key.REMOVE_ATTACHMENT],
+            quote = snapshot.replyingTo.takeIf { mode == ChatComposer.Mode.Open }
+                ?.let { id -> snapshot.messages.firstOrNull { it.id == id } }
+                ?.let { quote(it, snapshot) },
+            cancelQuoteLabel = strings[Key.CLOSE],
         )
     }
 
@@ -128,6 +138,10 @@ internal class ChatPresenter(
         val metaName: String?,
         val status: Bubble.Status?,
         val accessibilityLabel: String,
+        val quote: Bubble.Quote? = null,
+        val messageId: String? = null,
+        val replyable: Boolean = false,
+        val copyText: String? = null,
     )
 
     private sealed interface Entry {
@@ -138,7 +152,7 @@ internal class ChatPresenter(
         data class Typing(val line: TypingLine) : Entry
     }
 
-    private fun items(snapshot: ChatSnapshot): List<ChatItem> {
+    private fun items(snapshot: ChatSnapshot, canReply: Boolean): List<ChatItem> {
         val entries = mutableListOf<Entry>()
         var previous: Long? = null
         fun separate(id: String, date: Long) {
@@ -154,7 +168,16 @@ internal class ChatPresenter(
                 entries += Entry.System(SystemLine(message.id, content.text, systemAvatars(content.event, snapshot)))
                 continue
             }
-            body(message, snapshot)?.let { entries += Entry.Draw(draft(message, it, snapshot)) }
+            body(message, snapshot)?.let { body ->
+                entries += Entry.Draw(
+                    draft(message, body, snapshot).copy(
+                        quote = message.replyTo?.let { quote(it, snapshot) },
+                        messageId = message.id,
+                        replyable = canReply && body !is FormCard,
+                        copyText = copyText(message.content),
+                    ),
+                )
+            }
             if (content is MessageContent.QuickReplies && message.id in snapshot.answerable) {
                 entries += Entry.Replies(block(message.id, content))
             }
@@ -167,6 +190,11 @@ internal class ChatPresenter(
                 Draft(
                     pending.id, Bubble.Side.OUTGOING, "user", pending.createdAt, body, null, null, status(pending),
                     "${strings[Key.YOU]}, ${time.clock(pending.createdAt)}: $text",
+                    quote = quoted(pending.message)?.let { id ->
+                        snapshot.messages.firstOrNull { it.id == id }?.let { quote(it, snapshot) }
+                            ?: Bubble.Quote(id, "", strings[Key.QUOTE_DELETED])
+                    },
+                    copyText = (pending.message as? ClientMessage.Text)?.text ?: (pending.message as? ClientMessage.Attachment)?.caption,
                 ),
             )
         }
@@ -230,6 +258,10 @@ internal class ChatPresenter(
                         status = draft.status,
                         accessibilityLabel = draft.accessibilityLabel,
                         author = if (opensRun) draft.metaName else null,
+                        quote = draft.quote,
+                        messageId = draft.messageId,
+                        replyable = draft.replyable,
+                        copyText = draft.copyText,
                     ),
                 )
             }
@@ -280,6 +312,43 @@ internal class ChatPresenter(
             else -> person(message.sender, snapshot).first
         }
         return "$who, ${time.clock(message.createdAt)}: ${readable(message)}"
+    }
+
+    // Replies
+
+    /** The server's description of the quoted message. */
+    private fun quote(ref: ReplyRef, snapshot: ChatSnapshot): Bubble.Quote = Bubble.Quote(
+        ref.id,
+        ref.sender?.let { author(it, snapshot) }.orEmpty(),
+        ref.excerpt?.let(::oneLine)?.takeIf { it.isNotEmpty() } ?: strings[Key.QUOTE_DELETED],
+    )
+
+    /** A message here being quoted: over the field, and in the user's bubble until the server's copy comes. */
+    private fun quote(message: Message, snapshot: ChatSnapshot): Bubble.Quote {
+        val excerpt = when (val content = message.content) {
+            is MessageContent.Image -> content.caption ?: strings[Key.IMAGE]
+            is MessageContent.File -> content.name
+            else -> readable(message)
+        }
+        return Bubble.Quote(message.id, author(message.sender, snapshot), oneLine(excerpt).take(EXCERPT_CHARS))
+    }
+
+    private fun author(sender: Sender, snapshot: ChatSnapshot): String =
+        if (sender.type == SenderType.USER) strings[Key.YOU] else person(sender, snapshot).first
+
+    private fun oneLine(text: String): String = text.replace(Regex("\\s+"), " ").trim()
+
+    private fun quoted(message: ClientMessage): String? = when (message) {
+        is ClientMessage.Text -> message.replyTo
+        is ClientMessage.Attachment -> message.replyTo
+        else -> null
+    }
+
+    private fun copyText(content: MessageContent): String? = when (content) {
+        is MessageContent.Text -> LimitedMarkdown.plainText(content.text)
+        is MessageContent.Image -> content.caption
+        is MessageContent.QuickReplies -> content.text?.let(LimitedMarkdown::plainText)
+        else -> null
     }
 
     private fun readable(message: Message): String = when (val content = message.content) {
@@ -443,6 +512,9 @@ internal class ChatPresenter(
     companion object {
         /** Messages of one sender less than this far apart share a run: one avatar, one meta line. */
         const val GROUP_WINDOW_MS = 60_000L
+
+        /** The server's excerpts are at most this long; a local quote is cut to the same. */
+        private const val EXCERPT_CHARS = 120
 
         /** A longer pause gets a new time separator. */
         const val SEPARATOR_PAUSE_MS = 3_600_000L

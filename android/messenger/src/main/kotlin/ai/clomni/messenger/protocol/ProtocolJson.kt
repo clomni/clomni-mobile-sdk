@@ -153,7 +153,10 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         put("type", message.type)
         putJsonObject("content") {
             when (message) {
-                is ClientMessage.Text -> put("text", message.text)
+                is ClientMessage.Text -> {
+                    put("text", message.text)
+                    message.replyTo?.let { put("reply_to", it) }
+                }
                 is ClientMessage.ButtonReply -> {
                     put("reply_to", message.replyTo)
                     put("button_id", message.buttonId)
@@ -167,6 +170,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 is ClientMessage.Attachment -> {
                     put("upload_id", message.uploadId)
                     put("caption", message.caption)
+                    message.replyTo?.let { put("reply_to", it) }
                 }
                 is ClientMessage.RatingSubmit -> {
                     put("reply_to", message.replyTo)
@@ -207,6 +211,14 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 null
             }
         }
+        val replyTo = o.present("reply_to")?.let {
+            try {
+                replyRef(it.asObject("reply_to"))
+            } catch (e: ProtocolException) {
+                logger("$id: ${e.message}; shown without its quote")
+                null
+            }
+        }
         // Content last, so a message dropped for its envelope does not also log about its content.
         return Message(
             id = id,
@@ -220,8 +232,16 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
             flow = flow,
             content = content(type, content, id),
             fallbackText = fallbackText,
+            replyTo = replyTo,
         )
     }
+
+    private fun replyRef(o: JsonObject) = ReplyRef(
+        id = o.requireString("id"),
+        sender = (o["sender"] as? JsonObject)?.let { Sender(SenderType.from(it.requireString("type")), name = it.string("name")) },
+        excerpt = o.string("excerpt"),
+        kind = o.string("kind") ?: throw ProtocolException("reply_to.kind: expected a string"),
+    )
 
     private fun sender(o: JsonObject) =
         Sender(SenderType.from(o.requireString("type")), o.string("id"), o.string("name"), o.string("avatar_url"))
@@ -650,7 +670,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         val c = o.requireObject("content")
         val clientId = o.requireString("client_id")
         return when (type) {
-            "text" -> ClientMessage.Text(c.requireString("text"), clientId)
+            "text" -> ClientMessage.Text(c.requireString("text"), clientId, c.string("reply_to"))
             "button_reply" -> ClientMessage.ButtonReply(
                 replyTo = c.requireString("reply_to"),
                 buttonId = c.requireString("button_id"),
@@ -663,7 +683,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 values = c.requireObject("values").toMap(),
                 clientId = clientId,
             )
-            "attachment" -> ClientMessage.Attachment(c.requireString("upload_id"), c.string("caption"), clientId)
+            "attachment" -> ClientMessage.Attachment(c.requireString("upload_id"), c.string("caption"), clientId, c.string("reply_to"))
             "rating_submit" -> ClientMessage.RatingSubmit(
                 replyTo = c.requireString("reply_to"),
                 score = c.int("score") ?: throw ProtocolException("score: expected an integer"),

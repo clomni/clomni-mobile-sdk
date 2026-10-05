@@ -18,6 +18,8 @@ internal sealed interface ClientMessage {
     data class Text(
         val text: String,
         override val clientId: String = newClientId(),
+        /** The message the user answers (swipe or long press), by its server id. */
+        val replyTo: String? = null,
     ) : ClientMessage {
         override val type: String get() = "text"
     }
@@ -47,6 +49,8 @@ internal sealed interface ClientMessage {
         val uploadId: String,
         val caption: String? = null,
         override val clientId: String = newClientId(),
+        /** As for [Text.replyTo]. */
+        val replyTo: String? = null,
     ) : ClientMessage {
         override val type: String get() = "attachment"
     }

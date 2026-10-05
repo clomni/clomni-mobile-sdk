@@ -11,6 +11,22 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.SystemLine
 import ai.clomni.messenger.presentation.TextRun
 import ai.clomni.messenger.presentation.TypingLine
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.unit.Dp
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -91,6 +107,10 @@ internal class ChatActions(
     val retryLoad: () -> Unit = {},
     val openImage: (url: String) -> Unit = {},
     val reachedTop: () -> Unit = {},
+    /** A swipe or "Cavabla": the message to quote over the field. */
+    val reply: (messageId: String) -> Unit = {},
+    /** The ✕ on the quote over the field. */
+    val cancelReply: () -> Unit = {},
 )
 
 /** The styled runs as one text: bold and italic spans; links underlined and tappable (https, tel, mailto only). */
@@ -178,71 +198,133 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
     val top = if (startsRun) ClomniTheme.Space.xl.dp else ClomniTheme.Space.xxs.dp
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.78f
     val gutter = ClomniTheme.Size.avatar.dp + ClomniTheme.Space.s.dp
-    Column(
-        Modifier.fillMaxWidth().padding(top = top),
-        horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
-    ) {
-        bubble.author?.let { author ->
-            BasicText(
-                author,
-                Modifier.padding(start = gutter, bottom = 4.dp).clearAndSetSemantics {},
-                style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+    val links = LocalTranscript.current
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    // A quote led here: the row glows in the brand colour for a second.
+    val glow by animateColorAsState(
+        if (links.highlighted == bubble.id) theme.colors.primary.color.copy(alpha = 0.12f) else Color.Transparent,
+        tween(if (links.highlighted == bubble.id) 200 else 700),
+        label = "quoted",
+    )
+    var menu by remember { mutableStateOf(false) }
+    var pulled by remember { mutableFloatStateOf(0f) }
+    val messageId = bubble.messageId
+    val replyable = bubble.replyable && messageId != null
+    val longPress: (() -> Unit)? = if (bubble.hasMenu) {
+        {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            menu = true
         }
-        Row(verticalAlignment = Alignment.Bottom) {
-            if (incoming) {
-                val avatar = bubble.avatar
-                if (avatar != null) {
-                    ChatAvatarView(avatar, ClomniTheme.Size.avatar, theme)
-                } else {
-                    Spacer(Modifier.width(ClomniTheme.Size.avatar.dp))
-                }
-                Spacer(Modifier.width(ClomniTheme.Space.s.dp))
-            }
-            Box(Modifier.widthIn(max = maxWidth)) { BubbleBody(bubble, theme, actions) }
+    } else {
+        null
+    }
+    // TalkBack has no long press on a bubble: the menu's two actions are its own.
+    val a11y = listOfNotNull(
+        if (replyable) CustomAccessibilityAction(links.replyLabel) { actions.reply(messageId!!); true } else null,
+        bubble.copyText?.let { text -> CustomAccessibilityAction(links.copyLabel) { copyText(context, text); true } },
+    )
+    Box(Modifier.fillMaxWidth().padding(top = top).background(glow, RoundedCornerShape(12.dp))) {
+        if (incoming) ReplyArrow(pulled, theme, Modifier.align(Alignment.CenterStart))
+        Column(
+            Modifier.fillMaxWidth().swipeToReply(replyable, bubble.id, { messageId?.let(actions.reply) }) { pulled = it },
+            horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
+        ) {
+            BubbleColumn(bubble, theme, actions, incoming, gutter, maxWidth, pulled, longPress, a11y)
+            if (menu) MessageMenu(bubble, theme, actions.reply) { menu = false }
         }
-        bubble.meta?.let { meta ->
-            BasicText(
-                meta,
-                Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = gutter).clearAndSetSemantics {},
-                style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
-            )
-        }
-        bubble.status?.let { StatusLine(it, theme, actions.retry) }
     }
 }
 
-/** The bubble itself: text, image, file card or form. */
+/** Who, the avatar slot, the bubble, then when and the status: the parts of a [BubbleRow] that move with a swipe. */
 @Composable
-private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions) {
+private fun BubbleColumn(
+    bubble: Bubble,
+    theme: ClomniTheme,
+    actions: ChatActions,
+    incoming: Boolean,
+    gutter: Dp,
+    maxWidth: Dp,
+    pulled: Float,
+    longPress: (() -> Unit)?,
+    a11y: List<CustomAccessibilityAction>,
+) {
+    bubble.author?.let { author ->
+        BasicText(
+            author,
+            Modifier.padding(start = gutter, bottom = 4.dp).clearAndSetSemantics {},
+            style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+    Row(verticalAlignment = Alignment.Bottom) {
+        if (incoming) {
+            val avatar = bubble.avatar
+            if (avatar != null) {
+                ChatAvatarView(avatar, ClomniTheme.Size.avatar, theme)
+            } else {
+                Spacer(Modifier.width(ClomniTheme.Size.avatar.dp))
+            }
+            Spacer(Modifier.width(ClomniTheme.Space.s.dp))
+        }
+        Box(Modifier.widthIn(max = maxWidth)) {
+            if (!incoming) ReplyArrow(pulled, theme, Modifier.align(Alignment.CenterStart).offset(x = (-36).dp))
+            BubbleBody(bubble, theme, actions, longPress, a11y)
+        }
+    }
+    bubble.meta?.let { meta ->
+        BasicText(
+            meta,
+            Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = gutter).clearAndSetSemantics {},
+            style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
+        )
+    }
+    bubble.status?.let { StatusLine(it, theme, actions.retry) }
+}
+
+/** The bubble itself: text, image, file card or form; a quote at its top when it answers a message. */
+@Composable
+private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions, longPress: (() -> Unit)?, a11y: List<CustomAccessibilityAction>) {
     val incoming = bubble.side == Bubble.Side.INCOMING
     val fill = if (incoming) theme.colors.surface else theme.colors.primary
     val ink = if (incoming) theme.colors.textPrimary else theme.colors.onPrimary
     val shape = bubble.shape()
+    val quote = bubble.quote
     when (val body = bubble.body) {
-        is Bubble.TextBody -> BasicText(
-            attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
+        is Bubble.TextBody -> Column(
             Modifier.clip(shape)
                 .background(fill.color)
-                .padding(vertical = 10.dp, horizontal = 14.dp)
-                .clearAndSetSemantics { contentDescription = bubble.accessibilityLabel },
-            style = clomniText(ClomniTheme.FontSize.message, ink),
-        )
-        is Bubble.ImageBody -> ImageBubble(body, bubble.accessibilityLabel, theme, fill, ink, actions.openImage)
-        is Bubble.FileBody -> {
+                .then(if (longPress != null) Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { longPress() }) } else Modifier)
+                .padding(vertical = if (quote != null) 6.dp else 10.dp, horizontal = if (quote != null) 6.dp else 14.dp),
+        ) {
+            if (quote != null) QuoteBlock(quote, ink, !incoming, Modifier.padding(bottom = 4.dp))
+            BasicText(
+                attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
+                (if (quote != null) Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp) else Modifier)
+                    .clearAndSetSemantics {
+                        contentDescription = bubble.accessibilityLabel
+                        if (a11y.isNotEmpty()) customActions = a11y
+                    },
+                style = clomniText(ClomniTheme.FontSize.message, ink),
+            )
+        }
+        is Bubble.ImageBody -> Quoted(quote, shape, fill, ink, !incoming) {
+            ImageBubble(body, bubble.accessibilityLabel, theme, fill, ink, actions.openImage, longPress, a11y)
+        }
+        is Bubble.FileBody -> Quoted(quote, shape, fill, ink, !incoming) {
             val uriHandler = LocalUriHandler.current
             FileCard(
                 body,
                 ink,
                 Modifier.clip(shape).background(fill.color)
-                    .clickable(enabled = body.url != null, role = Role.Button) {
+                    .combinedClickable(enabled = body.url != null || longPress != null, role = Role.Button, onLongClick = longPress) {
                         body.url?.let { runCatching { uriHandler.openUri(it) } }
                     }
                     .clearAndSetSemantics {
                         contentDescription = bubble.accessibilityLabel
                         role = Role.Button
+                        if (a11y.isNotEmpty()) customActions = a11y
                     },
             )
         }
@@ -251,6 +333,17 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             theme,
             Modifier.clip(shape).background(fill.color),
         ) { values -> actions.submit(body.messageId, values) }
+    }
+}
+
+/** An image or file that answers a message: the quote over it, both in one bubble of its colour. */
+@Composable
+private fun Quoted(quote: Bubble.Quote?, shape: Shape, fill: RgbColor, ink: RgbColor, outgoing: Boolean, content: @Composable () -> Unit) {
+    if (quote == null) return content()
+    Column(Modifier.width(IntrinsicSize.Max).clip(shape).background(fill.color).padding(4.dp)) {
+        QuoteBlock(quote, ink, outgoing, Modifier.fillMaxWidth().padding(2.dp))
+        Spacer(Modifier.height(4.dp))
+        content()
     }
 }
 
@@ -266,6 +359,8 @@ private fun ImageBubble(
     fill: RgbColor,
     ink: RgbColor,
     open: (String) -> Unit,
+    longPress: (() -> Unit)? = null,
+    a11y: List<CustomAccessibilityAction> = emptyList(),
 ) {
     val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
     // Previews and screenshot tests load nothing (and have no loader to load with).
@@ -282,10 +377,11 @@ private fun ImageBubble(
     val target = image.fullUrl ?: image.url
     Column(
         Modifier.clip(shape)
-            .clickable(enabled = target != null, role = Role.Button) { target?.let(open) }
+            .combinedClickable(enabled = target != null || longPress != null, role = Role.Button, onLongClick = longPress) { target?.let(open) }
             .clearAndSetSemantics {
                 contentDescription = label
                 role = Role.Image
+                if (a11y.isNotEmpty()) customActions = a11y
             },
     ) {
         // A grey place of the bubble's size until the picture is here (DESIGN-PASS 5).

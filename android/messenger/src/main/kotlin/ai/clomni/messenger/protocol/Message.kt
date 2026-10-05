@@ -22,6 +22,19 @@ internal data class Message(
     val flow: FlowRef?,
     val content: MessageContent,
     val fallbackText: String,
+    /** The message this one answers, quoted over its bubble; null when it answers none. */
+    val replyTo: ReplyRef? = null,
+)
+
+/** `reply_to`: the quoted message as the server describes it, so it shows even when it is not loaded here. */
+internal data class ReplyRef(
+    val id: String,
+    /** Null when the quoted message is not the user's to see or no longer exists. */
+    val sender: Sender?,
+    /** One line of plain text; null when the message was deleted or is not there (the quote reads quote_deleted). */
+    val excerpt: String?,
+    /** text, image, file, or a kind added later (shown as text). */
+    val kind: String,
 )
 
 internal data class Sender(

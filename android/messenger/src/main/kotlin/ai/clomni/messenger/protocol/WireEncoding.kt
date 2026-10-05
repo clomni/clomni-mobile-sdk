@@ -77,6 +77,25 @@ internal fun Message.toJson(): JsonObject = buildJsonObject {
     )
     put("content", content.toJson())
     put("fallback_text", fallbackText)
+    replyTo?.let { quoted ->
+        put(
+            "reply_to",
+            buildJsonObject {
+                put("id", quoted.id)
+                put(
+                    "sender",
+                    quoted.sender?.let { sender ->
+                        buildJsonObject {
+                            put("type", sender.type.wire)
+                            putIfPresent("name", sender.name)
+                        }
+                    } ?: JsonNull,
+                )
+                put("excerpt", quoted.excerpt)
+                put("kind", quoted.kind)
+            },
+        )
+    }
 }
 
 private fun Assignee.toJson(): JsonObject = buildJsonObject {

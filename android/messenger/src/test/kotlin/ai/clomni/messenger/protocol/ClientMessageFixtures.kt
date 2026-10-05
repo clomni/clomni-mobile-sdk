@@ -9,6 +9,11 @@ internal object ClientMessageFixtures {
             text = "Gedişim bitmədi, pul çıxılmağa davam edir",
             clientId = "6f1c2c8e-1b2a-4c3d-8e9f-0a1b2c3d4e5f",
         ),
+        "fixtures/69-client-text-reply.json" to ClientMessage.Text(
+            text = "Bəli, kartla ödəmişdim",
+            clientId = "0b7d4f2e-9a61-4c8b-b3f0-5e2d1a7c6b94",
+            replyTo = "msg_f65",
+        ),
         "fixtures/46-client-button-reply.json" to ClientMessage.ButtonReply(
             replyTo = "msg_f09",
             buttonId = "o_s",

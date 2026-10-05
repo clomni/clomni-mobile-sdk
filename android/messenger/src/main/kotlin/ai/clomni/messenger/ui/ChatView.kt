@@ -54,11 +54,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -83,6 +85,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import java.util.UUID
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The conversation (brief 8·7.4), kept current by [controller]: header, the transcript scrolled to its end, the
@@ -170,6 +174,8 @@ internal fun ClomniChat(
         retry = controller::retrySending,
         retryLoad = controller::retry,
         openImage = { fullScreen = it },
+        reply = controller::replyTo,
+        cancelReply = { controller.replyTo(null) },
         reachedTop = {
             if (older && !loadingOlder) {
                 loadingOlder = true
@@ -243,6 +249,8 @@ internal fun ChatScreenView(
     /** A picked file waiting over the field. */
     picked: PickedPreview? = null,
 ) {
+    val links = TranscriptLinks(screen.replyLabel, screen.copyLabel)
+    CompositionLocalProvider(LocalTranscript provides links) {
     Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
         // The bar's line shows once the transcript has something above what is on screen.
         var scrolled by remember { mutableStateOf(false) }
@@ -286,6 +294,7 @@ internal fun ChatScreenView(
         if (!composing) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         Announcer(screen.announcement?.id, screen.announcement?.text)
     }
+    }
 }
 
 /**
@@ -316,6 +325,23 @@ private fun LazyTranscript(
         if (still || !placed) state.scrollToItem(last) else state.animateScrollToItem(last)
         placed = true
     }
+    // A tap on a quote: the quoted message is scrolled to (a third down the screen) and lit for a second.
+    val scope = rememberCoroutineScope()
+    var lit by remember { mutableStateOf<String?>(null) }
+    val base = LocalTranscript.current
+    val links = TranscriptLinks(base.replyLabel, base.copyLabel, lit) { messageId ->
+        val index = items.indexOfFirst { (it as? ChatItem.BubbleItem)?.bubble?.messageId == messageId }
+        if (index >= 0) {
+            scope.launch {
+                val target = index + if (loadingOlder) 1 else 0
+                val offset = -state.layoutInfo.viewportSize.height / 3
+                if (still) state.scrollToItem(target, offset) else state.animateScrollToItem(target, offset)
+                lit = items[index].id
+                delay(1_000)
+                lit = null
+            }
+        }
+    }
     val reachedTop by rememberUpdatedState(actions.reachedTop)
     val report by rememberUpdatedState(scrolled)
     LaunchedEffect(state) { snapshotFlow { state.canScrollBackward }.collect { report(it) } }
@@ -344,7 +370,9 @@ private fun LazyTranscript(
         items(items, key = { it.id }) { item ->
             // Fades in the first time it is ever shown only: not again when it scrolls back into view.
             val fresh = remember(item.id) { known.add(item.id) }
-            Box(Modifier.appearing(fresh)) { ChatItemView(item, theme, actions) }
+            CompositionLocalProvider(LocalTranscript provides links) {
+                Box(Modifier.appearing(fresh)) { ChatItemView(item, theme, actions) }
+            }
         }
     }
 }

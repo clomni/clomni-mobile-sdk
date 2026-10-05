@@ -6,11 +6,14 @@ import ai.clomni.messenger.presentation.ChatPresenter
 import ai.clomni.messenger.presentation.ClomniTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -96,6 +99,20 @@ internal fun ComposerView(
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            // The message being answered, over the field; it comes and goes by growing and fading.
+            var shownQuote by remember { mutableStateOf(composer.quote) }
+            if (composer.quote != null) shownQuote = composer.quote
+            AnimatedVisibility(
+                composer.quote != null,
+                enter = expandVertically(tween(220, easing = FastOutSlowInEasing)) + fadeIn(tween(220)),
+                exit = shrinkVertically(tween(180, easing = FastOutSlowInEasing)) + fadeOut(tween(180)),
+            ) {
+                shownQuote?.let { QuoteStrip(it, composer.cancelQuoteLabel, theme, actions.cancelReply) }
+            }
+            // Answering puts the cursor in the field.
+            LaunchedEffect(composer.quote?.messageId) {
+                if (composer.quote != null && composer.mode == ChatComposer.Mode.Open) runCatching { focus.requestFocus() }
+            }
             if (picked != null) {
                 Preview(picked, composer.removeLabel, theme, actions.removePicked)
             }

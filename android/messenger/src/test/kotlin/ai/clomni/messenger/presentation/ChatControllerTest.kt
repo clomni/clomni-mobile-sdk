@@ -105,9 +105,9 @@ private class FakeChat : ChatDataSource {
         return done(Unit)
     }
 
-    override fun sendText(text: String, conversationId: String): Future<PendingMessage> {
-        calls += "text $text"
-        return done(queue(ClientMessage.Text(text), conversationId, text))
+    override fun sendText(text: String, conversationId: String, replyTo: String?): Future<PendingMessage> {
+        calls += "text $text" + replyTo?.let { " ↩ $it" }.orEmpty()
+        return done(queue(ClientMessage.Text(text, replyTo = replyTo), conversationId, text))
     }
 
     override fun reply(message: Message, button: MessageContent.Button): Future<PendingMessage> {
@@ -132,6 +132,7 @@ private class FakeChat : ChatDataSource {
         mime: String,
         caption: String?,
         conversationId: String,
+        replyTo: String?,
     ): Future<PendingMessage> {
         if (data.size > 10) return failed(ClomniError.Rejected("file over 10 MB"))
         if (data.isEmpty()) return failed(ClomniError.Rejected("file not stored"))
@@ -264,6 +265,24 @@ class ChatControllerTest {
         source.set(listOf(ChatFixture.message("01-text-bot.json")))
         chat.load()
         assertEquals("not a form", emptyMap<String, String>(), chat.submit("msg_f01", emptyMap()))
+    }
+
+    /** A swipe or "Cavabla" quotes the message over the field; the next message takes it, and the ✕ drops it. */
+    @Test
+    fun answeringAMessage() {
+        val operator = ChatFixture.message("02-text-operator-markdown.json")
+        source.set(listOf(operator))
+        val chat = controller()
+        chat.load()
+        chat.replyTo(operator.id)
+        assertEquals(operator.id, chat.screen.composer.quote?.messageId)
+        chat.replyTo(null)
+        assertNull(chat.screen.composer.quote)
+        chat.replyTo(operator.id)
+        assertTrue(chat.send("Bəli"))
+        assertNull("sent with the message", chat.screen.composer.quote)
+        assertTrue(chat.send("Bir də"))
+        assertEquals(listOf("text Bəli ↩ ${operator.id}", "text Bir də"), source.calls.filter { it.startsWith("text") })
     }
 
     @Test
