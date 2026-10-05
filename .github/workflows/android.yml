@@ -110,7 +110,26 @@ jobs:
           script: |
             adb devices -l
             adb shell getprop ro.build.version.sdk
+      # Once in a while the emulator never answers on its console port ("could not connect to TCP port 5554") although
+      # the previous run passed: the first attempt may fail, the retry below then decides the job.
       - name: Device tests
+        id: device-tests
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: ${{ env.ARCH }}
+          target: ${{ env.TARGET }}
+          force-avd-creation: false
+          emulator-boot-timeout: 900
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -accel on
+          disable-animations: true
+          working-directory: android
+          script: |
+            adb devices -l
+            ./gradlew --no-daemon :messenger:connectedDebugAndroidTest
+      - name: Device tests (retry once)
+        if: steps.device-tests.outcome == 'failure'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
@@ -126,7 +145,7 @@ jobs:
             ./gradlew --no-daemon :messenger:connectedDebugAndroidTest
       # When it fails: what adb and the emulator saw.
       - name: Emulator state on failure
-        if: failure()
+        if: failure() || steps.device-tests.outcome == 'failure'
         run: |
           adb devices -l || true
           ls -la ~/.android/avd || true
