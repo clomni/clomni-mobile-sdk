@@ -70,6 +70,8 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         }
     }
 
+    /// Lets go of the sheet without touching its screens: closed (pulled down, ✕, `Clomni.dismiss`) it goes down still
+    /// showing the screen it showed, not Home (DESIGN-PASS-3 C4). The next opening is a new navigation, at Home.
     private func close() {
         navigation = nil
         shown = []

@@ -222,6 +222,20 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(heard.opened, ["profile_support", "push"])
     }
 
+    /// DESIGN-PASS-3 C4: closed from a conversation, the coordinator is closed at once (the sheet goes down still
+    /// showing the conversation: UIKitMessenger leaves its navigation as it is); the next opening starts at Home.
+    func testClosingFromAConversationOpensAtHomeNextTime() async {
+        let messenger = coordinator()
+        messenger.present()
+        messenger.navigate(to: .conversation("conv_9"))
+        XCTAssertEqual(messenger.stack, [.home, .conversation("conv_9")])
+        messenger.dismiss()
+        XCTAssertEqual(messenger.stack, [])
+        XCTAssertFalse(messenger.wantsAnyView)
+        messenger.present()
+        XCTAssertEqual(messenger.stack, [.home], "a new sheet starts at Home")
+    }
+
     /// Opening before anyone logged in: an anonymous visitor, then the config, while the screens show skeletons.
     func testPreparingLogsInAVisitorOnlyWhenNeeded() async {
         let messenger = coordinator()
