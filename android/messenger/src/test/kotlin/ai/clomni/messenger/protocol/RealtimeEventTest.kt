@@ -43,6 +43,18 @@ class RealtimeEventTest {
             ),
             fixture("38-event-conversation-updated.json").data,
         )
+        val flows = listOf("71-event-flow-menu.json", "72-event-flow-text.json", "73-event-flow-ended.json").map {
+            ((fixture(it).data as Payload.ConversationUpdated).update.flow)
+        }
+        assertEquals(
+            listOf(
+                Conversation.Flow(true, "menu", "flw_apar_az", "S"),
+                Conversation.Flow(true, "text", "flw_apar_az", "U"),
+                Conversation.Flow(false, null),
+            ),
+            flows,
+        )
+        assertEquals("a menu holds the composer, text and an ended flow do not", listOf(true, false, false), flows.map { it?.holdsComposer })
         assertEquals(Payload.UnreadChanged(2), fixture("39-event-unread-changed.json").data)
         assertEquals(Payload.ConfigChanged("W/\"7f3a\""), fixture("40-event-config-changed.json").data)
         assertEquals(emptyList<String>(), protocol.warnings)

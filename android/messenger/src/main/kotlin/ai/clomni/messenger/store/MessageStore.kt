@@ -176,7 +176,9 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     fun apply(update: RealtimeEvent.ConversationUpdate): Boolean {
         val known = conversations[update.id] ?: return false
         val unread = update.unreadCount ?: known.unreadCount
-        putConversation(known.copy(status = update.status, assignee = update.assignee, unreadCount = unread))
+        putConversation(
+            known.copy(status = update.status, assignee = update.assignee, unreadCount = unread, flow = update.flow ?: known.flow),
+        )
         return true
     }
 

@@ -14,7 +14,7 @@ class MobileApiModelsTest {
     private fun millis(time: String) = Instant.parse(time).toEpochMilli()
 
     private val conversationJson = """{"id":"conv_5521","status":"bot","assignee":null,"unread_count":1,"last_message":null,
-        "flow":{"flow_id":"flw_apar_az","node_id":"S"},"opened_from":"profile_support","created_at":"2026-10-01T10:30:00Z"}"""
+        "flow":{"active":true,"awaiting":"menu","flow_id":"flw_apar_az","node_id":"S"},"opened_from":"profile_support","created_at":"2026-10-01T10:30:00Z"}"""
 
     @Test
     fun session() {
@@ -42,7 +42,7 @@ class MobileApiModelsTest {
             assignee = null,
             unreadCount = 1,
             lastMessage = null,
-            flow = Conversation.FlowStep("flw_apar_az", "S"),
+            flow = Conversation.Flow(active = true, awaiting = "menu", flowId = "flw_apar_az", nodeId = "S"),
             openedFrom = "profile_support",
             createdAt = millis("2026-10-01T10:30:00Z"),
         )
@@ -50,9 +50,10 @@ class MobileApiModelsTest {
         val full = conversation.copy(
             assignee = Assignee("Leyla", "https://app.clomni.ai/a/leyla.png", true),
             lastMessage = protocol.json.parseMessage(ProtocolFiles.read("fixtures/02-text-operator-markdown.json")),
-            flow = null,
+            flow = Conversation.Flow(active = false, awaiting = null),
         )
         assertEquals(full, protocol.json.parseConversation(full.toJson().toString()))
+        assertEquals(conversation, protocol.json.parseConversation(conversation.toJson().toString()))
         assertEquals(
             Conversation("conv_1", ConversationStatus.UNKNOWN, null, 0, null, null, null, millis("2026-10-01T10:30:00Z")),
             protocol.json.parseConversation(

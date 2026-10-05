@@ -33,6 +33,9 @@ private class FakeChat : ChatDataSource {
     val outbox = mutableListOf<PendingMessage>()
     var answerable = mutableSetOf<String>()
     var loadFails = false
+
+    /** conversation.flow (JSON) of the conversations [set] and [refreshConversation] give. */
+    var flow = "null"
     val calls = mutableListOf<String>()
     val typingStates = mutableListOf<Boolean>()
     val observers = LinkedHashMap<UUID, (ClomniChange) -> Unit>()
@@ -41,7 +44,18 @@ private class FakeChat : ChatDataSource {
 
     override var isLive: Boolean = true
 
-    fun set(messages: List<Message>, id: String = "conv_5521", answerable: Set<String> = emptySet(), loadFails: Boolean = false) {
+    fun set(
+        messages: List<Message>,
+        id: String = "conv_5521",
+        answerable: Set<String> = emptySet(),
+        loadFails: Boolean = false,
+        flow: String = "null",
+    ) {
+        this.flow = flow
+        // Known from the first frame, as the store keeps it, while a flow drives it.
+        if (flow != "null" || id in conversations) {
+            conversations[id] = ChatFixture.conversation(conversations[id]?.status?.wire ?: "bot", id = id, flow = flow)
+        }
         stored[id] = messages
         this.answerable = answerable.toMutableSet()
         this.loadFails = loadFails
@@ -57,7 +71,7 @@ private class FakeChat : ChatDataSource {
 
     override fun refreshConversation(id: String): Future<Unit> {
         calls += "refreshConversation $id"
-        conversations[id] = ChatFixture.conversation("bot", id = id)
+        conversations[id] = ChatFixture.conversation("bot", id = id, flow = flow)
         return done(Unit)
     }
 
@@ -168,6 +182,7 @@ private class Timers : Scheduler {
 class ChatControllerTest {
     private val source = FakeChat()
     private val timers = Timers()
+    private val menu = ChatFixture.flow("menu")
     private val polls = Timers()
     private val direct = Executor { it.run() }
     private var renders = 0
@@ -211,7 +226,7 @@ class ChatControllerTest {
     @Test
     fun buttonsBackAndASecondTap() {
         val step = ChatFixture.message("10-apar-level2-S-chips.json")
-        source.set(listOf(step), answerable = setOf(step.id))
+        source.set(listOf(step), answerable = setOf(step.id), flow = menu)
         val chat = controller()
         chat.load()
         assertEquals(ChatComposer.Mode.Hidden, chat.screen.composer.mode)
@@ -222,7 +237,7 @@ class ChatControllerTest {
         assertEquals("the second tap finds the buttons gone", listOf("reply msg_f10 o_t"), source.calls.filter { it.startsWith("reply") })
         assertTrue(chat.screen.items.none { it is ChatItem.RepliesItem })
         assertTrue("the choice stays as the user's message", "Velosiped dayandı" in bubbleTexts(chat))
-        source.set(listOf(step), answerable = setOf(step.id))
+        source.set(listOf(step), answerable = setOf(step.id), flow = menu)
         chat.tap("back", step.id)
         assertTrue("back msg_f10" in source.calls)
         val text = ChatFixture.message("01-text-bot.json")
@@ -384,7 +399,7 @@ class ChatControllerTest {
         val modes = mutableListOf<ChatComposer.Mode>()
 
         // Cached: right from the first frame.
-        source.set(listOf(step), answerable = setOf(step.id))
+        source.set(listOf(step), answerable = setOf(step.id), flow = menu)
         val cached = controller()
         modes += cached.screen.composer.mode
         cached.onChange = { modes += cached.screen.composer.mode }
@@ -398,7 +413,7 @@ class ChatControllerTest {
         modes += fresh.screen.composer.mode
         assertEquals(HomeScreen.Phase.LOADING, fresh.screen.phase)
         fresh.onChange = { modes += fresh.screen.composer.mode }
-        source.set(listOf(step), id = "conv_9", answerable = setOf(step.id))
+        source.set(listOf(step), id = "conv_9", answerable = setOf(step.id), flow = menu)
         fresh.load()
         assertEquals(HomeScreen.Phase.READY, fresh.screen.phase)
 
@@ -418,7 +433,7 @@ class ChatControllerTest {
         chat.load()
         assertEquals(HomeScreen.Phase.LOADING, chat.screen.phase)
         assertEquals("the wait has its limit", 1, timers.pending.size)
-        source.set(listOf(step), id = "conv_new", answerable = setOf(step.id))
+        source.set(listOf(step), id = "conv_new", answerable = setOf(step.id), flow = menu)
         source.push(ClomniChange.Started("draft_new", "conv_new"))
         assertEquals(HomeScreen.Phase.READY, chat.screen.phase)
         timers.fire()
@@ -426,6 +441,7 @@ class ChatControllerTest {
         assertTrue("never shown: $modes", modes.all { it == ChatComposer.Mode.Hidden })
 
         // The step never came: after the wait, the empty conversation and its field.
+        source.flow = "null"
         val late = controller(id = "draft_late")
         late.load()
         assertEquals(ChatComposer.Mode.Hidden, late.screen.composer.mode)
@@ -447,7 +463,7 @@ class ChatControllerTest {
     @Test
     fun theFlowKeepsTheComposerUntilAHandover() {
         val step = ChatFixture.message("10-apar-level2-S-chips.json")
-        source.set(listOf(step), answerable = setOf(step.id))
+        source.set(listOf(step), answerable = setOf(step.id), flow = menu)
         val chat = controller()
         val modes = mutableListOf(chat.screen.composer.mode)
         chat.onChange = { modes += chat.screen.composer.mode }
@@ -459,7 +475,7 @@ class ChatControllerTest {
         source.stored["conv_5521"] = listOf(step, ChatFixture.message("03-text-user.json", "seq" to 1_000))
         source.push(ClomniChange.Messages("conv_5521"))
         val next = ChatFixture.message("11-apar-level3-U.json", "seq" to 1_001)
-        source.set(source.stored.getValue("conv_5521") + next, answerable = setOf(next.id))
+        source.set(source.stored.getValue("conv_5521") + next, answerable = setOf(next.id), flow = menu)
         source.push(ClomniChange.Messages("conv_5521"))
         assertTrue("never shown: $modes", modes.all { it == ChatComposer.Mode.Hidden })
 

@@ -185,6 +185,10 @@ class MessageStoreTest {
         assertEquals(ConversationStatus.OPEN, store.conversation("conv_2")?.status)
         assertEquals("Leyla", store.conversation("conv_2")?.assignee?.name)
         assertEquals(2, store.conversation("conv_2")?.unreadCount)
+        assertTrue(store.apply(update.copy(flow = Conversation.Flow(true, "menu", "flw_a", "S"))))
+        assertEquals(true, store.conversation("conv_2")?.flow?.holdsComposer)
+        assertTrue("an update without flow keeps the one known", store.apply(update))
+        assertEquals("flw_a", store.conversation("conv_2")?.flow?.flowId)
         assertFalse(store.apply(update.copy(id = "conv_9")))
 
         store.markSeen("conv_2")

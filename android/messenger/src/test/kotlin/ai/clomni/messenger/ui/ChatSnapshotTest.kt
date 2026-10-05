@@ -65,11 +65,13 @@ class ChatFixtureSnapshotTest {
             if (entry.schema != "message.json") continue
             // A message the parser drops (no seq, say) has nothing to show.
             val message = protocol.parseMessage(ProtocolFiles.read(entry.path)) ?: continue
+            val answerable = if (message.flow?.interactive == true) setOf(message.id) else emptySet()
             val screen = present(
                 ChatSnapshot(
                     config = config,
+                    conversation = ChatFixture.botConversation(listOf(message), answerable).takeIf { answerable.isNotEmpty() },
                     messages = listOf(message),
-                    answerable = if (message.flow?.interactive == true) setOf(message.id) else emptySet(),
+                    answerable = answerable,
                     load = MessengerSnapshot.Load.LOADED,
                 ),
             )
@@ -136,7 +138,7 @@ class ChatSnapshotTest {
 
     private fun loaded(vararg messages: Message, answerable: Set<String> = emptySet()) = ChatSnapshot(
         config = Fixture.aparConfig,
-        conversation = ChatFixture.conversation("bot"),
+        conversation = ChatFixture.botConversation(messages.toList(), answerable),
         messages = messages.toList(),
         answerable = answerable,
         load = MessengerSnapshot.Load.LOADED,

@@ -43,6 +43,8 @@ internal data class RealtimeEvent(
         /** Null while no operator has the conversation. */
         val assignee: Assignee?,
         val unreadCount: Int?,
+        /** Null from a server from before `flow` was sent: the conversation keeps what it had. */
+        val flow: Conversation.Flow? = null,
     )
 }
 

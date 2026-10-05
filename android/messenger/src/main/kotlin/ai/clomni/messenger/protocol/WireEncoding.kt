@@ -32,7 +32,17 @@ internal fun Conversation.toJson(): JsonObject = buildJsonObject {
     put("assignee", assignee?.toJson() ?: JsonNull)
     put("unread_count", unreadCount)
     put("last_message", lastMessage?.toJson() ?: JsonNull)
-    put("flow", flow?.let { buildJsonObject { put("flow_id", it.flowId); put("node_id", it.nodeId) } } ?: JsonNull)
+    put(
+        "flow",
+        flow?.let {
+            buildJsonObject {
+                put("active", it.active)
+                put("awaiting", it.awaiting)
+                putIfPresent("flow_id", it.flowId)
+                putIfPresent("node_id", it.nodeId)
+            }
+        } ?: JsonNull,
+    )
     put("opened_from", openedFrom)
     put("created_at", Iso8601.format(createdAt))
 }

@@ -427,6 +427,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                     status = ConversationStatus.from(d.requireString("status")),
                     assignee = (d["assignee"] as? JsonObject)?.let(::assignee),
                     unreadCount = d.int("unread_count"),
+                    flow = conversationFlow(d["flow"]),
                 ),
             )
             "unread.changed" -> RealtimeEvent.Payload.UnreadChanged(
@@ -464,14 +465,17 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         assignee = (o["assignee"] as? JsonObject)?.let(::assignee),
         unreadCount = o.int("unread_count") ?: 0,
         lastMessage = (o["last_message"] as? JsonObject)?.let(::message),
-        flow = (o["flow"] as? JsonObject)?.let { flow ->
-            val flowId = flow.string("flow_id")
-            val nodeId = flow.string("node_id")
-            if (flowId != null && nodeId != null) Conversation.FlowStep(flowId, nodeId) else null
-        },
+        flow = conversationFlow(o["flow"]),
         openedFrom = o.string("opened_from"),
         createdAt = o.requireTime("created_at"),
     )
+
+    /** `{active, awaiting, flow_id?, node_id?}`; the earlier `{flow_id, node_id}` (no `active`) reads as none. */
+    private fun conversationFlow(element: JsonElement?): Conversation.Flow? {
+        val o = element as? JsonObject ?: return null
+        val active = o.boolean("active") ?: return null
+        return Conversation.Flow(active, o.string("awaiting"), o.string("flow_id"), o.string("node_id"))
+    }
 
     private fun conversationWithMessages(o: JsonObject) =
         ConversationWithMessages(conversation(o.requireObject("conversation")), o.items("messages", ::message))

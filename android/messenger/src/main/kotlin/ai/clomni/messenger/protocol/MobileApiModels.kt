@@ -24,13 +24,17 @@ internal data class Conversation(
     val assignee: Assignee?,
     val unreadCount: Int,
     val lastMessage: Message?,
-    /** The flow step the conversation waits on. */
-    val flow: FlowStep?,
+    /** Whether a flow drives the conversation; null from a server (or a copy on disk) from before `flow` was sent. */
+    val flow: Flow?,
     val openedFrom: String?,
     /** Epoch milliseconds, UTC. */
     val createdAt: Long,
 ) {
-    data class FlowStep(val flowId: String, val nodeId: String)
+    /** [awaiting]: menu, text, form or null, kept as sent. [flowId] and [nodeId] while [active]. */
+    data class Flow(val active: Boolean, val awaiting: String?, val flowId: String? = null, val nodeId: String? = null) {
+        /** The composer stays away while a flow drives the conversation, unless it waits for typed text. */
+        val holdsComposer: Boolean get() = active && awaiting != "text"
+    }
 }
 
 internal data class ConversationPage(val conversations: List<Conversation>, val nextCursor: String?)

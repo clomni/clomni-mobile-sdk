@@ -87,20 +87,15 @@ internal class ChatPresenter(
 
     private fun composer(snapshot: ChatSnapshot, known: Boolean): ChatComposer {
         val config = snapshot.config
-        val waiting = snapshot.messages.lastOrNull { it.id in snapshot.answerable }
-        val replies = waiting?.content as? MessageContent.QuickReplies
         val mode = when {
             // Not "shown" by default (DESIGN-PASS-3 C5): until the messages and their buttons are known there is none,
             // so a flow's step never finds one to take away.
             !known -> ChatComposer.Mode.Hidden
             snapshot.conversation?.status == ConversationStatus.CLOSED ->
                 ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
-            // A step waiting for a choice has nothing under it: no field, no "choose above" (DESIGN-PASS-3 A4).
-            replies != null -> ChatComposer.Mode.Hidden
-            flowHasIt(snapshot) -> ChatComposer.Mode.Hidden
-            // A choice on its way: the flow's next step follows it, so the field does not come up in between.
-            snapshot.pending.any { it.message is ClientMessage.ButtonReply && it.state == PendingMessage.State.SENDING } ->
-                ChatComposer.Mode.Hidden
+            // The server says whether a flow drives the conversation (conversation.flow): while it waits for a button,
+            // a form or its next step there is no field; it waits for typed text, or it is over, and the field is back.
+            snapshot.conversation?.flow?.holdsComposer == true -> ChatComposer.Mode.Hidden
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(
@@ -117,20 +112,6 @@ internal class ChatPresenter(
             fileLabel = strings[Key.PICK_FILE],
             removeLabel = strings[Key.REMOVE_ATTACHMENT],
         )
-    }
-
-    /**
-     * A flow is running the conversation (operator, 2026-10-05): its status is `bot` and the other side's latest
-     * message is a flow step that is neither the END node nor a question answered in words (interactive, plain text).
-     * Between a choice and the next step too, then, there is no field; it comes when an operator takes the
-     * conversation (queued, open), when the flow ends, for a text answer, or after a message from outside the flow.
-     */
-    private fun flowHasIt(snapshot: ChatSnapshot): Boolean {
-        if (snapshot.conversation?.status != ConversationStatus.BOT) return false
-        val step = snapshot.messages.lastOrNull { it.sender.type != SenderType.USER && it.content !is MessageContent.System }
-        val flow = step?.flow ?: return false
-        if (flow.nodeId == END_NODE) return false
-        return !(flow.interactive && step.content is MessageContent.Text)
     }
 
     // Transcript
@@ -465,9 +446,6 @@ internal class ChatPresenter(
 
         /** A longer pause gets a new time separator. */
         const val SEPARATOR_PAUSE_MS = 3_600_000L
-
-        /** The node a flow's last message comes from (the server's convention, fixture 50). */
-        private const val END_NODE = "END"
 
         /** A flow button with one of these titles (letters only, lower case) restarts or steps back by itself. */
         private val RESTART_TITLES = setOf(
