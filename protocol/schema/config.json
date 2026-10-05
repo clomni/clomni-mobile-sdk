@@ -136,7 +136,15 @@
       "type": "boolean",
       "description": "Play the send and receive sounds. Set in the panel (Theme, Sounds); absent means true."
     },
-    "languages": { "type": "array", "minItems": 1, "items": { "enum": ["az", "en", "ru"] } },
+    "languages": {
+      "type": "object",
+      "required": ["enabled", "default"],
+      "description": "Set in the panel (Appearance, Languages). The SDK speaks the host's setLanguage if it is enabled, else the device's language if it is enabled, else default. strings is in the language asked for (?lang=) when it is enabled, else in default.",
+      "properties": {
+        "enabled": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["az", "en", "ru"] } },
+        "default": { "enum": ["az", "en", "ru"] }
+      }
+    },
     "strings": { "type": "object", "additionalProperties": { "type": "string" } },
     "limits": {
       "type": "object",

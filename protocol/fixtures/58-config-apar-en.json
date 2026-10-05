@@ -100,11 +100,10 @@
     "starts_with_flow": true
   },
   "sounds": true,
-  "languages": [
-    "az",
-    "en",
-    "ru"
-  ],
+  "languages": {
+    "enabled": ["az", "en", "ru"],
+    "default": "az"
+  },
   "strings": {
     "today": "Today",
     "yesterday": "Yesterday",

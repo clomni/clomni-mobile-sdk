@@ -133,6 +133,21 @@
         }
       }
     },
+    "languages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "default"],
+      "description": "The languages the Messenger speaks and the one it falls back to, which must be on. Absent means all three, az the default.",
+      "properties": {
+        "enabled": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["az", "en", "ru"] } },
+        "default": { "enum": ["az", "en", "ru"] }
+      },
+      "allOf": [
+        { "if": { "properties": { "default": { "const": "az" } } }, "then": { "properties": { "enabled": { "type": "array", "contains": { "const": "az" } } } } },
+        { "if": { "properties": { "default": { "const": "en" } } }, "then": { "properties": { "enabled": { "type": "array", "contains": { "const": "en" } } } } },
+        { "if": { "properties": { "default": { "const": "ru" } } }, "then": { "properties": { "enabled": { "type": "array", "contains": { "const": "ru" } } } } }
+      ]
+    },
     "powered_by": { "type": "boolean", "description": "false only counts on a plan that allows it (app_sdk_white_label)." }
   },
   "$defs": {

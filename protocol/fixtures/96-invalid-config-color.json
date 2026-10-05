@@ -50,9 +50,10 @@
     }
   },
   "composer": {},
-  "languages": [
-    "az"
-  ],
+  "languages": {
+    "enabled": ["az"],
+    "default": "az"
+  },
   "strings": {},
   "limits": {},
   "powered_by": true

@@ -42,7 +42,10 @@
     }
   },
   "languages": {
-    "enabled": ["az", "en", "ru"],
+    "enabled": [
+      "en",
+      "ru"
+    ],
     "default": "az"
   },
   "powered_by": true

@@ -416,5 +416,11 @@
     "schema": "news.json",
     "note": "Səhv: başlıq 80 simvoldan uzundur",
     "valid": false
+  },
+  {
+    "file": "65-invalid-appearance-default-language-off.json",
+    "schema": "appearance.json",
+    "note": "Səhv: əsas dil (az) açıq dillərin içində deyil",
+    "valid": false
   }
 ]

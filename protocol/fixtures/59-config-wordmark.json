@@ -98,11 +98,10 @@
     "starts_with_flow": false
   },
   "sounds": false,
-  "languages": [
-    "az",
-    "en",
-    "ru"
-  ],
+  "languages": {
+    "enabled": ["az", "en", "ru"],
+    "default": "az"
+  },
   "strings": {
     "today": "Bu gün",
     "yesterday": "Dünən",

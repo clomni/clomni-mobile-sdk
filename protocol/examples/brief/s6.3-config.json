@@ -31,7 +31,7 @@
   },
   "theme": { "mode": "system", "launcher": { "enabled": false, "position": "right", "bottom_padding": 20 } },
   "composer": { "attachments": true, "emoji": true },
-  "languages": ["az", "en", "ru"],
+  "languages": { "enabled": ["az", "en", "ru"], "default": "az" },
   "strings": { "greeting_line1": "Salam, {first_name} 👋", "greeting_line1_anonymous": "Salam 👋", "greeting_line2": "Necə kömək edə bilərik?" },
   "limits": { "image_mb": 10, "file_mb": 25, "text_chars": 4000 },
   "powered_by": true

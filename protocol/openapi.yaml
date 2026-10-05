@@ -325,7 +325,7 @@ paths:
         - $ref: '#/components/parameters/Sdk'
         - name: lang
           in: query
-          description: Language of `strings` and the greeting. Defaults to the user's language.
+          description: Language of `strings` and the greeting. Defaults to the user's language; a language the panel turned off (or none) answers in `languages.default`.
           schema:
             $ref: '#/components/schemas/Language'
         - name: If-None-Match
