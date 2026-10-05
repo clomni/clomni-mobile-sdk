@@ -36,6 +36,7 @@ internal class ChatPresenter(
             items = items(snapshot),
             composer = composer(snapshot, phase == HomeScreen.Phase.READY),
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
+            connected = strings[Key.CONNECTED],
             failure = if (phase == HomeScreen.Phase.FAILED) HomeScreen.Failure(strings[Key.ERROR], strings[Key.RETRY]) else null,
             announcement = lastIncoming?.let { Announcement(it.id, label(it, snapshot)) },
         )

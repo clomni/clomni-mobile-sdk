@@ -196,6 +196,7 @@ internal class MessengerCoordinator(
             listen()
             val cached = session.config
             val unread = session.unreadTotal
+            if (session.isLoggedIn) openOnCache(cached, unread)
             var fresh: MessengerConfig? = null
             val state = when {
                 session.isAppDisabled -> Readiness.DISABLED
@@ -230,6 +231,7 @@ internal class MessengerCoordinator(
             worker.execute {
                 listen()
                 var failure: String? = null
+                if (session.isLoggedIn) openOnCache(session.config, session.unreadTotal)
                 if (!session.isLoggedIn) {
                     failure = runCatching { session.loginUnidentifiedUser().get() }.exceptionOrNull()
                         ?.let { "the messenger cannot open: ${it.cause ?: it}" }
@@ -255,6 +257,22 @@ internal class MessengerCoordinator(
                     done(!disabled && failure == null)
                 }
             }
+        }
+    }
+
+    /**
+     * On the worker: logged in with a kept look, the messenger is ready now, on the cache (DESIGN-PASS-3 C1, C2); the
+     * socket and the config's ETag check follow, and a changed config redraws the screens when it comes. Offline, or
+     * on a slow network, the user sees what they saw last time instead of skeletons.
+     */
+    private fun openOnCache(cached: MessengerConfig?, unread: Int) {
+        if (cached == null || session.isAppDisabled) return
+        main.execute {
+            if (readiness != Readiness.NOT_READY) return@execute
+            config = config ?: cached
+            readiness = Readiness.READY
+            updateUnread(unread)
+            changed()
         }
     }
 

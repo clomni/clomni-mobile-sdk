@@ -288,6 +288,8 @@ class PresenterTest {
         assertNull(home.failure)
         assertEquals("İnternet yoxdur", home.offline)
         assertEquals(home.offline, presenter().messages(cached).offline)
+        assertEquals("the strip's word once it is back", "Qoşuldu", home.connected)
+        assertEquals(home.connected, presenter().messages(cached).connected)
     }
 
     @Test

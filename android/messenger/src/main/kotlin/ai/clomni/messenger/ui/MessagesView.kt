@@ -34,7 +34,7 @@ internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel
         TopBar(screen.backLabel, actions.back, closeLabel, actions.close, theme, scrolled = scroll.value > 0) {
             TopBarTitle(screen.title, theme)
         }
-        screen.offline?.let { OfflineStrip(it, theme) }
+        OfflineStrip(screen.offline, screen.connected, theme)
         val padding = Modifier.padding(ClomniTheme.Space.l.dp)
         val spacing = Arrangement.spacedBy(ClomniTheme.Space.m.dp)
         when (screen.phase) {

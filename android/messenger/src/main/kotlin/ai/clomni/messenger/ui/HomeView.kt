@@ -85,7 +85,7 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
         ) {
             HomeTop(screen.header, theme, actions.close)
             Greeting(screen.header, theme, Modifier.onGloballyPositioned { greetingBottom = it.boundsInParent().bottom })
-            screen.offline?.let { OfflineStrip(it, theme) }
+            OfflineStrip(screen.offline, screen.connected, theme)
             HomeCards(
                 screen,
                 theme,

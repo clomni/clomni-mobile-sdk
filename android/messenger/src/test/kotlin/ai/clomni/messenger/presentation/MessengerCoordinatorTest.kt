@@ -66,8 +66,12 @@ private class FakeSession : MessengerSession {
         return done(cachedConfig)
     }
 
+    /** Runs when the socket is asked for, before it answers. */
+    var connecting: () -> Unit = {}
+
     override fun connect(): Future<Unit> {
         calls += "connect"
+        connecting()
         return done(Unit)
     }
 
@@ -170,6 +174,30 @@ class MessengerCoordinatorTest {
         fromPanel.setLauncherVisible(true)
         assertEquals("Bizə mesaj göndərin", fromPanel.launcher?.accessibilityLabel)
         assertNull(fromPanel.launcher?.badge)
+    }
+
+    /** DESIGN-PASS-3 C1, C2: logged in with a kept look, the messenger is ready before the network has answered. */
+    @Test
+    fun readyOnTheCacheBeforeTheNetwork() {
+        session.loggedIn = true
+        session.cachedConfig = Fixture.aparConfig
+        session.unread = 3
+        val messenger = coordinator()
+        val atConnect = mutableListOf<MessengerCoordinator.Readiness>()
+        session.connecting = { atConnect += messenger.readiness }
+        messenger.start()
+        messenger.prepare()
+        assertEquals(listOf(MessengerCoordinator.Readiness.READY, MessengerCoordinator.Readiness.READY), atConnect)
+        assertEquals(3, messenger.unreadTotal)
+
+        // Nothing kept: it waits for the server, as before.
+        val bare = FakeSession().apply { loggedIn = true }
+        val fresh = MessengerCoordinator(bare, "az", direct, direct)
+        val seen = mutableListOf<MessengerCoordinator.Readiness>()
+        bare.connecting = { seen += fresh.readiness }
+        fresh.start()
+        assertEquals(listOf(MessengerCoordinator.Readiness.NOT_READY), seen)
+        assertEquals(MessengerCoordinator.Readiness.READY, fresh.readiness)
     }
 
     /** DESIGN-PASS-3 C4: closing from a conversation, the sheet goes down showing it; the next opening is Home. */

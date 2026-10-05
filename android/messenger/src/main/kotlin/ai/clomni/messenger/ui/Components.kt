@@ -7,10 +7,18 @@ import ai.clomni.messenger.presentation.ConversationRow
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.RgbColor
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +36,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,10 +54,12 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 private val target = ClomniTheme.Size.touchTarget.dp
 
@@ -112,15 +128,49 @@ internal fun SkeletonBlock(height: Float, theme: ClomniTheme) {
     )
 }
 
-/** The thin yellow strip: "İnternet yoxdur". */
+/**
+ * The thin strip under the header (DESIGN-PASS-3 C1): 32 high on the text colour at 6%, a small icon and "İnternet
+ * yoxdur" in 13 text_muted, opening and closing in 200 ms; the screen under it stays as the cache has it. When the
+ * connection is back it says [connected] ("Qoşuldu") for a second, then closes.
+ */
 @Composable
-internal fun OfflineStrip(text: String, theme: ClomniTheme) {
-    BasicText(
-        text,
-        Modifier.fillMaxWidth().background(theme.colors.warning.color)
-            .padding(vertical = ClomniTheme.Space.xs.dp, horizontal = ClomniTheme.Space.l.dp),
-        style = clomniText(ClomniTheme.FontSize.label, theme.colors.onWarning).copy(textAlign = TextAlign.Center),
-    )
+internal fun OfflineStrip(offline: String?, connected: String, theme: ClomniTheme) {
+    var back by remember { mutableStateOf(false) }
+    var wasOffline by remember { mutableStateOf(offline != null) }
+    LaunchedEffect(offline != null) {
+        if (offline != null) {
+            wasOffline = true
+            back = false
+        } else if (wasOffline) {
+            wasOffline = false
+            back = true
+            delay(1_000)
+            back = false
+        }
+    }
+    AnimatedVisibility(
+        offline != null || back,
+        enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+        exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+    ) {
+        val muted = theme.colors.textSecondary
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 32.dp)
+                .background(theme.colors.textPrimary.color.copy(alpha = 0.06f))
+                .padding(horizontal = ClomniTheme.Space.l.dp)
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painterResource(if (offline != null) R.drawable.clomni_ic_offline else R.drawable.clomni_ic_check),
+                null,
+                Modifier.size(14.dp),
+                colorFilter = ColorFilter.tint(muted.color),
+            )
+            Spacer(Modifier.width(6.dp))
+            BasicText(offline ?: connected, style = clomniText(13f, muted), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
 }
 
 /** "Nəsə səhv getdi" with "Yenidən cəhd et". */

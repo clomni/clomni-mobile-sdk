@@ -16,8 +16,10 @@ internal data class ChatScreen(
     val header: ChatHeader,
     val items: List<ChatItem>,
     val composer: ChatComposer,
-    /** The thin yellow strip under the header. */
+    /** The thin strip under the header while offline (DESIGN-PASS-3 C1). */
     val offline: String?,
+    /** "Qoşuldu": the strip's word for a second once the connection is back. */
+    val connected: String,
     val failure: HomeScreen.Failure?,
     /** The newest incoming message, for TalkBack to read out when it changes. */
     val announcement: Announcement?,

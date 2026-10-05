@@ -247,7 +247,7 @@ internal fun ChatScreenView(
         // The bar's line shows once the transcript has something above what is on screen.
         var scrolled by remember { mutableStateOf(false) }
         ChatHeaderView(screen.header, theme, actions, scrolled)
-        screen.offline?.let { OfflineStrip(it, theme) }
+        OfflineStrip(screen.offline, screen.connected, theme)
         val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
         val inner = if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
         // What is not known yet shows nothing; once it is, all of it comes in one frame, fading in over 200 ms

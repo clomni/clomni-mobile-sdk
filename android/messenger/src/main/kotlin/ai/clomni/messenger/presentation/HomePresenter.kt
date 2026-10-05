@@ -26,8 +26,10 @@ internal data class HomeScreen(
     val news: List<NewsCard> = emptyList(),
     /** "Powered by Clomni" under the cards, or null where the plan turns it off. */
     val poweredBy: String?,
-    /** The thin yellow strip under the header. */
+    /** The thin strip under the header while offline (DESIGN-PASS-3 C1). */
     val offline: String?,
+    /** "Qoşuldu": the strip's word for a second once the connection is back. */
+    val connected: String,
     val failure: Failure?,
 ) {
     enum class Phase {
@@ -113,6 +115,7 @@ internal data class MessagesScreen(
     val empty: String?,
     val newConversation: HomeScreen.NewConversationCard,
     val offline: String?,
+    val connected: String,
     val failure: HomeScreen.Failure?,
 )
 
@@ -195,6 +198,7 @@ internal class HomePresenter(
             },
             poweredBy = if (config?.poweredBy == false) null else POWERED_BY,
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
+            connected = strings[Key.CONNECTED],
             failure = if (failed) failure else null,
         )
     }
@@ -239,6 +243,7 @@ internal class HomePresenter(
             empty = if (phase == HomeScreen.Phase.READY && rows.isEmpty()) strings[Key.EMPTY_LIST] else null,
             newConversation = newConversation(snapshot.config),
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
+            connected = strings[Key.CONNECTED],
             failure = if (failed) failure else null,
         )
     }

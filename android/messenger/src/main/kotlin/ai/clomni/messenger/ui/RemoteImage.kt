@@ -17,6 +17,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import coil.ImageLoader
+import coil.annotation.ExperimentalCoilApi
+import coil.decode.DataSource
+import coil.request.ImageResult
+import coil.request.SuccessResult
+import coil.transition.CrossfadeTransition
+import coil.transition.Transition
+import coil.transition.TransitionTarget
 import coil.compose.AsyncImage
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
@@ -34,14 +41,29 @@ internal object ClomniImages {
     private var loader: ImageLoader? = null
 
     fun loader(context: Context): ImageLoader = loader ?: synchronized(this) {
-        loader ?: context.applicationContext.let { app ->
-            ImageLoader.Builder(app)
-                .memoryCache { MemoryCache.Builder(app).maxSizePercent(0.10).build() }
-                .diskCache { DiskCache.Builder().directory(directory(app)).maxSizeBytes(50L * 1024 * 1024).build() }
-                .crossfade(200)
-                .build()
-        }.also { loader = it }
+        loader ?: context.applicationContext.let { app -> build(app, directory(app)) }.also { loader = it }
     }
+
+    /**
+     * Pictures kept on disk (DESIGN-PASS-3 C2). A panel picture's URL changes with its version, so a kept copy is the
+     * picture: it is shown without asking the server, offline too, whatever the response's cache headers said. Only a
+     * picture that came over the network fades in (200 ms); one from the disk or memory is simply there.
+     */
+    @OptIn(ExperimentalCoilApi::class)
+    fun build(app: Context, directory: File): ImageLoader = ImageLoader.Builder(app)
+        .memoryCache { MemoryCache.Builder(app).maxSizePercent(0.10).build() }
+        .diskCache { DiskCache.Builder().directory(directory).maxSizeBytes(50L * 1024 * 1024).build() }
+        .respectCacheHeaders(false)
+        .transitionFactory(
+            object : Transition.Factory {
+                override fun create(target: TransitionTarget, result: ImageResult): Transition =
+                    if (fadesIn(result)) CrossfadeTransition.Factory(200).create(target, result) else Transition.Factory.NONE.create(target, result)
+            },
+        )
+        .build()
+
+    /** Only what the network brought fades in. */
+    fun fadesIn(result: ImageResult): Boolean = result is SuccessResult && result.dataSource == DataSource.NETWORK
 
     fun directory(context: Context): File = context.cacheDir.resolve("clomni_images")
 
