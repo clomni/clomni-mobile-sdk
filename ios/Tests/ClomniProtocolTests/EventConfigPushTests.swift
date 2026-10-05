@@ -106,7 +106,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(config.theme, MessengerConfig.Theme(
             mode: .system, launcher: MessengerConfig.Launcher(enabled: false, position: .right, bottomPadding: 20)))
         XCTAssertEqual(config.composer, MessengerConfig.Composer(attachments: true, emoji: true))
-        XCTAssertEqual(config.languages, ["az", "en", "ru"])
+        XCTAssertEqual(config.languages, MessengerConfig.Languages(enabled: ["az", "en", "ru"], default: "az"))
         XCTAssertEqual(config.strings["send_card_title"], "Bizə mesaj göndərin")
         XCTAssertEqual(config.strings["greeting_line1"], "Salam, {first_name}")
         XCTAssertEqual(config.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 25, textChars: 4000))
@@ -178,9 +178,28 @@ final class MessengerConfigTests: ProtocolTestCase {
             replyTimeOffline: "Hazırda iş saatı deyil, iş saatında cavab verəcəyik",
             officeHours: MessengerConfig.OfficeHours(timeZone: nil, openNow: true, nextOpenAt: nil)))
         XCTAssertEqual(config.bot, MessengerConfig.Bot(name: "Clomni", avatarUrl: nil))
-        XCTAssertEqual(config.languages, ["az"])
+        XCTAssertEqual(config.languages, MessengerConfig.Languages(enabled: ["az"], default: "az"))
         XCTAssertTrue(config.strings.isEmpty)
         XCTAssertTrue(config.poweredBy)
+    }
+
+    /// DESIGN-PASS-3 D1: the host's language when the panel has it on, else the phone's, else the panel's default.
+    func testLanguagesFromThePanel() throws {
+        func config(_ json: String) throws -> MessengerConfig { try XCTUnwrap(ProtocolJSON.parseConfig(Data(json.utf8))) }
+        let minimal = try XCTUnwrap(ProtocolJSON.parseConfig(Fixtures.data("43-config-minimal.json"))).languages
+        XCTAssertEqual(minimal.pick(host: "en", device: "ru"), "az", "one language on: always it")
+        let apar = try XCTUnwrap(ProtocolJSON.parseConfig(Fixtures.data("42-config-apar.json")))
+        XCTAssertEqual(apar.languages.pick(host: "ru", device: "en"), "ru", "the host's first")
+        XCTAssertEqual(apar.languages.pick(host: "de", device: "en-GB"), "en", "then the phone's")
+        XCTAssertEqual(apar.speaks(nil, device: "tr_TR"), "az", "then the default")
+        let two = try config(#"{"languages":{"enabled":["en","ru"],"default":"ru"}}"#)
+        XCTAssertEqual(two.speaks("az", device: "az"), "ru", "a language that is off is not spoken")
+        XCTAssertEqual((nil as MessengerConfig?).speaks(nil, device: "ru-RU"), "ru", "no config yet: the phone")
+        // The earlier array, a default that is off, nothing usable.
+        XCTAssertEqual(try config(#"{"languages":["en","az","xx"]}"#).languages,
+                       MessengerConfig.Languages(enabled: ["en", "az"], default: "en"))
+        XCTAssertEqual(try config(#"{"languages":{"enabled":["en"],"default":"az"}}"#).languages.default, "en")
+        XCTAssertEqual(try config(#"{"languages":{"enabled":[],"default":"az"}}"#).languages, MessengerConfig.Languages())
     }
 
     func testEmptyAndOddConfigs() throws {
@@ -188,7 +207,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(empty.version, 0)
         XCTAssertEqual(empty.brand.name, "")
         XCTAssertEqual(empty.home.cards, [.messages, .recent, .send, .news, .channels], "no list: every card")
-        XCTAssertEqual(empty.languages, ["az"])
+        XCTAssertEqual(empty.languages, MessengerConfig.Languages(), "absent: all three, az the default")
 
         let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
         {"brand":{"name":"X","primary_color":"#12345","header_style":"neon","glow":"yes",
@@ -228,7 +247,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(closed.team.officeHours?.nextOpenAt, Date(timeIntervalSince1970: 1_790_917_200))
         XCTAssertFalse(closed.team.officeHours?.openNow ?? true)
         XCTAssertEqual(odd.strings, ["send": "Göndər"])
-        XCTAssertEqual(odd.languages, ["az"])
+        XCTAssertEqual(odd.languages, MessengerConfig.Languages(), "an empty list: all three")
         XCTAssertEqual(odd.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 5, textChars: 4000))
 
         let image = try XCTUnwrap(ProtocolJSON.parseConfig(Data(

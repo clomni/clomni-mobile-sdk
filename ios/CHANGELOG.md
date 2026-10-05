@@ -17,6 +17,8 @@ The first release.
   `onMessengerClosed`, `onConversationStarted`, `onFlowCompleted`).
 - `setTypeface` for the app's own font family, `setLogLevel`, `setSoundsEnabled` (the short message sounds; the panel's
   `sounds` turns them off too).
+- `setLanguage`: the messenger speaks the languages turned on in the panel (Appearance, Languages): the app's choice
+  when it is on, else the phone's, else the panel's main language; with one on, always that one.
 - The look and the texts come from the panel (config v2): the brand's colours as the server derived them, the header
   as gradient, solid colour or picture, the glow, the logo for dark mode, the bot's picture, Home's cards in the
   panel's order, up to five channels, "Powered by Clomni", light or dark mode, and the texts with `{name}` and

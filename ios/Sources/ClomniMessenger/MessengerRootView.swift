@@ -50,7 +50,7 @@ struct HomeScreenRoot: View {
                 HomeTabView(model: home, source: model.source, coordinator: coordinator)
                     .transition(.opacity)
             } else {
-                HomeView(screen: HomePresenter(strings: ClomniStrings(language: model.config?.languages.first,
+                HomeView(screen: HomePresenter(strings: ClomniStrings(language: model.config.speaks(model.language),
                                                                       overrides: model.config?.strings ?? [:]),
                                                now: Date()).preparing(failed: model.preparationFailed),
                          theme: theme,
@@ -80,8 +80,9 @@ struct ConversationScreen: View {
     let back: () -> Void
     let close: () -> Void
 
-    init(engine: ClomniEngine, conversationId: String, back: @escaping () -> Void, close: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: ChatModel(engine: engine, conversationId: conversationId, language: nil))
+    init(engine: ClomniEngine, conversationId: String, language: String?, back: @escaping () -> Void,
+         close: @escaping () -> Void) {
+        _model = StateObject(wrappedValue: ChatModel(engine: engine, conversationId: conversationId, language: language))
         self.back = back
         self.close = close
     }

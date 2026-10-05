@@ -111,7 +111,7 @@ package final class ChatController {
     }
 
     private var strings: ClomniStrings {
-        ClomniStrings(language: language ?? snapshot.config?.languages.first, overrides: snapshot.config?.strings ?? [:])
+        ClomniStrings(language: snapshot.config.speaks(language), overrides: snapshot.config?.strings ?? [:])
     }
 
     /// The cache at once, then the server; marks the conversation read. Until the messages and their buttons are

@@ -66,7 +66,7 @@ package final class HomeController {
         snapshot = MessengerSnapshot(config: config, userName: userName)
         if config != nil { snapshot.configLoad = .loaded }
         self.userName = userName
-        let presenter = HomePresenter(strings: ClomniStrings(language: language ?? config?.languages.first,
+        let presenter = HomePresenter(strings: ClomniStrings(language: config.speaks(language),
                                                              overrides: config?.strings ?? [:]),
                                       timeZone: timeZone, now: now())
         home = presenter.home(snapshot)
@@ -80,7 +80,8 @@ package final class HomeController {
         if observation == nil {
             observation = await source.observe { [changes] change in changes.submit(change) }
         }
-        let config = await source.refreshConfig(language: language)
+        // The config's texts, and with them the news, in the language spoken.
+        let config = await source.refreshConfig(language: snapshot.config.speaks(language))
         snapshot.configLoad = config == nil ? .failed : .loaded
         _ = await source.refreshNews()
         do {
@@ -111,7 +112,7 @@ package final class HomeController {
     /// A news item's screen, from the news Home has; reported as news_opened.
     package func article(_ id: String) -> NewsArticle? {
         guard let item = snapshot.news.first(where: { $0.id == id }) else { return nil }
-        let strings = ClomniStrings(language: language ?? snapshot.config?.languages.first,
+        let strings = ClomniStrings(language: snapshot.config.speaks(language),
                                     overrides: snapshot.config?.strings ?? [:])
         return NewsArticle(item, strings: strings, time: TimeText(strings: strings, timeZone: timeZone), now: now())
     }
@@ -146,7 +147,7 @@ package final class HomeController {
     private func render() {
         snapshot.userName = userName
         snapshot.isOffline = isOffline
-        let strings = ClomniStrings(language: language ?? snapshot.config?.languages.first,
+        let strings = ClomniStrings(language: snapshot.config.speaks(language),
                                     overrides: snapshot.config?.strings ?? [:])
         let presenter = HomePresenter(strings: strings, timeZone: timeZone, now: now())
         home = presenter.home(snapshot)

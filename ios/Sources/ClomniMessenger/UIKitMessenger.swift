@@ -89,7 +89,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         navigation.presentationController?.delegate = self
         self.navigation = navigation
         shown = []
-        home = MessengerModel(engine: engine, language: nil, userName: nil, config: coordinator.config)
+        home = MessengerModel(engine: engine, language: coordinator.language, userName: nil, config: coordinator.config)
         follow(coordinator.stack, animated: false)
         top.present(navigation, animated: true)
     }
@@ -117,16 +117,17 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         if let coordinator {
             switch route {
             case .home:
-                HomeScreenRoot(model: rootModel, home: home ?? MessengerModel(engine: engine, language: nil, userName: nil),
+                HomeScreenRoot(model: rootModel, home: home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil),
                                coordinator: coordinator)
             case .messages:
-                MessagesScreenRoot(home: home ?? MessengerModel(engine: engine, language: nil, userName: nil),
+                MessagesScreenRoot(home: home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil),
                                    coordinator: coordinator)
             case .news(let id):
-                NewsScreenView(model: home ?? MessengerModel(engine: engine, language: nil, userName: nil), id: id,
+                NewsScreenView(model: home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil), id: id,
                                coordinator: coordinator)
             case .conversation(let id):
-                ConversationScreen(engine: engine, conversationId: id, back: { [weak coordinator] in coordinator?.back() },
+                ConversationScreen(engine: engine, conversationId: id, language: coordinator.language,
+                                   back: { [weak coordinator] in coordinator?.back() },
                                    close: { [weak coordinator] in coordinator?.dismiss() })
             }
         }
@@ -180,6 +181,8 @@ final class MessengerRootModel: ObservableObject {
     @Published private(set) var config: MessengerConfig?
     @Published private(set) var source: String?
     @Published private(set) var preparationFailed = false
+    /// `Clomni.setLanguage`.
+    @Published private(set) var language: String?
     @Published var typeface: Typeface?
     @Published var themeOverride = ThemeOverride()
 
@@ -189,6 +192,7 @@ final class MessengerRootModel: ObservableObject {
         if config != coordinator.config { config = coordinator.config }
         if source != coordinator.source { source = coordinator.source }
         if preparationFailed != coordinator.preparationFailed { preparationFailed = coordinator.preparationFailed }
+        if language != coordinator.language { language = coordinator.language }
     }
 }
 #endif

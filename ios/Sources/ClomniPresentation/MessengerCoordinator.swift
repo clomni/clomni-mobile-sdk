@@ -100,7 +100,8 @@ package final class MessengerCoordinator {
     package var onChange: (() -> Void)?
 
     private let session: MessengerSession
-    private let language: String?
+    /// The host's language (`Clomni.setLanguage`), spoken when the panel has it on; `setLanguage` changes it.
+    package private(set) var language: String?
     private var launcherOverride: Bool?
     private var bottomPaddingOverride: Double?
     private var listeners: [UUID: (Int) -> Void] = [:]
@@ -115,7 +116,7 @@ package final class MessengerCoordinator {
     }
 
     private var strings: ClomniStrings {
-        ClomniStrings(language: language ?? config?.languages.first, overrides: config?.strings ?? [:])
+        ClomniStrings(language: config.speaks(language), overrides: config?.strings ?? [:])
     }
 
     /// Whether the UIKit layer should hold any Clomni view: only while the messenger is open or the launcher shows.
@@ -148,7 +149,7 @@ package final class MessengerCoordinator {
         } else if await session.isLoggedIn {
             await openOnCache()
             await session.connect()
-            config = await session.refreshConfig(language: language) ?? config
+            config = await session.refreshConfig(language: config.speaks(language)) ?? config
             readiness = await session.isAppDisabled ? .disabled : .ready
         }
         changed()
@@ -176,7 +177,7 @@ package final class MessengerCoordinator {
         }
         if await session.isAppDisabled { return refuse(true, "") }
         await session.connect()
-        config = await session.refreshConfig(language: language) ?? config
+        config = await session.refreshConfig(language: config.speaks(language)) ?? config
         if await session.isAppDisabled { return refuse(true, "") }
         readiness = .ready
         updateUnread(await session.unreadTotal)
@@ -207,6 +208,15 @@ package final class MessengerCoordinator {
         }
         changed()
         return false
+    }
+
+    /// `Clomni.setLanguage`: the texts in the language now spoken, the server's once it answers.
+    package func setLanguage(_ language: String?) {
+        guard language != self.language else { return }
+        self.language = language
+        changed()
+        guard readiness == .ready else { return }
+        Task { _ = await session.refreshConfig(language: config.speaks(language)) }
     }
 
     /// After `logout`: the messenger closes, the count goes to 0, and nothing shows until the next login.

@@ -51,8 +51,12 @@ actor FakeSession: MessengerSession {
         loggedIn = true
     }
 
+    /// The language each config was asked for in.
+    var configLanguages: [String?] = []
+
     func refreshConfig(language: String?) async -> MessengerConfig? {
         calls.append("config")
+        configLanguages.append(language)
         if freshConfig != nil { cachedConfig = freshConfig }
         return cachedConfig
     }
@@ -222,6 +226,22 @@ final class MessengerCoordinatorTests: XCTestCase {
         }
         let podspec = try String(contentsOf: root.appendingPathComponent("ClomniMessenger.podspec"), encoding: .utf8)
         XCTAssertTrue(podspec.contains("'ClomniMessenger_Media' => ['ios/Sources/ClomniMessenger/Media.xcassets']"))
+    }
+
+    /// `Clomni.setLanguage`: spoken when the panel has it on, the config asked for in it; off, the default.
+    func testSetLanguage() async {
+        await session.set(loggedIn: true, cached: Fixture.aparConfig)
+        let messenger = coordinator()
+        await messenger.start()
+        var asked = await session.configLanguages
+        XCTAssertEqual(asked, ["az"])
+        messenger.setLanguage("ru")
+        XCTAssertEqual(messenger.language, "ru")
+        for _ in 0..<200 where (await session.configLanguages).count < 2 { await Task.yield() }
+        asked = await session.configLanguages
+        XCTAssertEqual(asked, ["az", "ru"])
+        messenger.setLanguage("ru")
+        XCTAssertEqual(Fixture.aparConfig.speaks("de", device: "tr"), "az", "a language that is off: the panel's main")
     }
 
     func testTheLauncherRule() async throws {

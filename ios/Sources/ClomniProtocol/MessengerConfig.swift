@@ -12,8 +12,8 @@ package struct MessengerConfig: Sendable, Equatable {
     package let home: Home
     package let theme: Theme
     package let composer: Composer
-    /// Never empty; "az" when the server sends none.
-    package let languages: [String]
+    /// The languages the panel turned on and the one to fall back to (DESIGN-PASS-3 D1).
+    package let languages: Languages
     /// The texts of the chosen language; a missing key falls back to the SDK's own az/en/ru text.
     package let strings: [String: String]
     package let limits: Limits
@@ -164,6 +164,56 @@ package struct MessengerConfig: Sendable, Equatable {
     }
 
     package static let maxChannels = 5
+
+    /// `languages {enabled, default}`; absent, all three are on and az is the default. The messenger speaks the host's
+    /// language when it is on, else the device's when it is on, else `default` (`pick`); with one on, always that one.
+    package struct Languages: Sendable, Equatable {
+        package static let all = ["az", "en", "ru"]
+
+        package let enabled: [String]
+        package let `default`: String
+
+        package init(enabled: [String] = all, default: String = "az") {
+            self.enabled = enabled
+            self.default = `default`
+        }
+
+        package func pick(host: String?, device: String?) -> String {
+            [host, device].compactMap { $0.map(Self.base) }.first { enabled.contains($0) } ?? `default`
+        }
+
+        /// "en-GB", "ru_RU" → "en", "ru".
+        package static func base(_ tag: String) -> String {
+            String(tag.lowercased().prefix { $0 != "-" && $0 != "_" })
+        }
+
+        /// `{enabled, default}`, or the earlier array (the enabled ones, its first the default). Unknown languages are
+        /// dropped, a default that is not on falls to the first enabled one; nothing usable: all three, az.
+        init(_ value: JSONValue?) {
+            let enabled: [String]
+            var fallback: String?
+            if case .object(let fields)? = value {
+                enabled = (fields["enabled"]?.arrayValue ?? []).compactMap(\.stringValue)
+                fallback = fields["default"]?.stringValue
+            } else {
+                enabled = (value?.arrayValue ?? []).compactMap(\.stringValue)
+            }
+            var on: [String] = []
+            for language in enabled where Self.all.contains(language) && !on.contains(language) { on.append(language) }
+            guard let first = on.first else {
+                self.init()
+                return
+            }
+            if let wanted = fallback, !on.contains(wanted) { fallback = nil }
+            self.init(enabled: on, default: fallback ?? first)
+        }
+    }
+
+    /// The language the messenger speaks with this config: `host`'s (`Clomni.setLanguage`) if the panel has it on,
+    /// else the device's if on, else the panel's main language.
+    package func speaks(_ host: String?, device: String? = Locale.preferredLanguages.first) -> String {
+        languages.pick(host: host, device: device)
+    }
 }
 
 extension MessengerConfig {
@@ -239,8 +289,7 @@ extension MessengerConfig {
         self.composer = Composer(attachments: composer.optionalBool("attachments") ?? true,
                                  emoji: composer.optionalBool("emoji") ?? true)
 
-        let languages = (f["languages"]?.arrayValue ?? []).compactMap(\.stringValue)
-        self.languages = languages.isEmpty ? ["az"] : languages
+        languages = Languages(f["languages"])
         strings = (f["strings"]?.objectValue ?? [:]).compactMapValues(\.stringValue)
 
         let limits = section(f, "limits")
@@ -274,5 +323,12 @@ extension MessengerConfig {
         guard let value, value.utf8.count == 7, value.first == "#",
               value.utf8.dropFirst().allSatisfy(digits.contains) else { return nil }
         return value
+    }
+}
+
+extension Optional where Wrapped == MessengerConfig {
+    /// `MessengerConfig.speaks` before any config: the host's language, else the device's, of the three; else az.
+    package func speaks(_ host: String?, device: String? = Locale.preferredLanguages.first) -> String {
+        (self?.languages ?? MessengerConfig.Languages()).pick(host: host, device: device)
     }
 }

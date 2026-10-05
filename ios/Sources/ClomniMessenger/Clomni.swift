@@ -105,6 +105,12 @@ public enum Clomni {
         }
     }
 
+    /// The language the messenger speaks: "az", "en" or "ru", used when the panel has it on; otherwise the phone's
+    /// language if it is on, else the panel's main language. nil (the default) follows the phone.
+    public static func setLanguage(_ language: String?) {
+        MainThread.run { ClomniRuntime.shared.setLanguage(language) }
+    }
+
     /// The floating button: off by default, and the panel can turn it on too. The app's choice wins.
     public static func setLauncherVisible(_ visible: Bool) {
         MainThread.run { ClomniRuntime.shared.setLauncherVisible(visible) }

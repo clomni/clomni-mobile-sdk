@@ -78,6 +78,8 @@ final class ClomniRuntime {
     private(set) var coordinator: MessengerCoordinator?
     private var renderer: MessengerRenderer?
     private var launcherVisible: Bool?
+    /// `Clomni.setLanguage`: the host's language, nil to follow the phone (DESIGN-PASS-3 D1).
+    private var language: String?
     private var bottomPadding: Double?
     private var deviceToken: String?
     private var typeface: String?
@@ -127,7 +129,7 @@ final class ClomniRuntime {
     func initialize(appId: String, apiKey: String, baseURL: URL) {
         guard backend == nil else { return ClomniLog.warning("initialize was called before; the first call stays") }
         let backend = makeBackend(appId, apiKey, baseURL)
-        let coordinator = MessengerCoordinator(session: backend)
+        let coordinator = MessengerCoordinator(session: backend, language: language)
         coordinator.events = events()
         coordinator.addUnreadCountListener { [weak self] in self?.unreadChanged($0) }
         if let launcherVisible { coordinator.setLauncherVisible(launcherVisible) }
@@ -193,6 +195,11 @@ final class ClomniRuntime {
     }
 
     // MARK: - Launcher and push
+
+    func setLanguage(_ language: String?) {
+        self.language = language
+        coordinator?.setLanguage(language)
+    }
 
     func setLauncherVisible(_ visible: Bool) {
         launcherVisible = visible
