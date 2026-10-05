@@ -19,6 +19,10 @@ package struct MessengerConfig: Sendable, Equatable {
     package let limits: Limits
     /// "Powered by Clomni" under Home; only a plan that allows it turns it off.
     package let poweredBy: Bool
+    /// `conversation.starts_with_flow`: a new conversation starts a flow, so it is created as soon as it opens.
+    package let startsWithFlow: Bool
+    /// Short sounds for a sent and a received message; the app can still turn them off.
+    package let sounds: Bool
 
     package struct Brand: Sendable, Equatable {
         package let name: String
@@ -244,6 +248,8 @@ extension MessengerConfig {
         self.limits = Limits(imageMb: positive("image_mb", 10), fileMb: positive("file_mb", 25),
                              textChars: positive("text_chars", 4000))
         poweredBy = f.optionalBool("powered_by") ?? true
+        startsWithFlow = section(f, "conversation").optionalBool("starts_with_flow") ?? false
+        sounds = f.optionalBool("sounds") ?? true
     }
 
     /// The six colours (and header_text when there), or nil.

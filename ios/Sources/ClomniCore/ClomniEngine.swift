@@ -60,6 +60,8 @@ package actor ClomniEngine {
     private var drafts: [String: String?] = [:]
     /// Drafts the server has created, to their ids.
     private var createdDrafts: [String: String] = [:]
+    /// Drafts whose POST /conversations is on its way (opened with a flow, or the first message): one request each.
+    private var creating: [String: Task<Void, Error>] = [:]
 
     package init(appId: String, apiKey: String, baseURL: URL? = nil) {
         #if canImport(Security)
@@ -338,10 +340,15 @@ package actor ClomniEngine {
     }
 
     /// A new conversation that exists only here until its first message: the server creates it then (starting the
-    /// inbox's new-conversation flow), so opening and closing the messenger leaves nothing in the panel.
+    /// inbox's new-conversation flow), so opening and closing the messenger leaves nothing in the panel. When the inbox
+    /// starts new conversations with a flow (`conversation.starts_with_flow`) it is created right away, with the
+    /// draft's `client_id`, so the flow's first messages arrive without the user writing first.
     package func draftConversation(openedFrom: String?) -> String {
         let id = "\(Self.draftPrefix)\(UUID().uuidString.lowercased())"
         drafts[id] = openedFrom
+        if config?.startsWithFlow == true {
+            Task { try? await self.ensureCreated(id, openedFrom: openedFrom) }
+        }
         return id
     }
 
@@ -578,7 +585,7 @@ package actor ClomniEngine {
                 entry = updated
             }
             if Self.isDraft(entry.conversationId) {
-                try await create(entry.conversationId, openedFrom: entry.openedFrom)
+                try await ensureCreated(entry.conversationId, openedFrom: entry.openedFrom)
                 guard let updated = outbox.entry(entry.id) else { return }
                 entry = updated
             }
@@ -621,6 +628,15 @@ package actor ClomniEngine {
     /// move to its id at once and on disk), and the message follows with its own client id. The draft's UUID, on
     /// disk with its messages, is the start's `client_id`: a retry after a lost answer, or after a restart, gets the
     /// conversation the first request made.
+    private func ensureCreated(_ draft: String, openedFrom: String?) async throws {
+        guard createdDrafts[draft] == nil else { return }
+        if let running = creating[draft] { return try await running.value }
+        let task = Task { try await self.create(draft, openedFrom: openedFrom) }
+        creating[draft] = task
+        defer { creating[draft] = nil }
+        try await task.value
+    }
+
     private func create(_ draft: String, openedFrom: String?) async throws {
         let id = try await startConversation(openedFrom: openedFrom,
                                               clientId: String(draft.dropFirst(Self.draftPrefix.count))).id

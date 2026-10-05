@@ -111,6 +111,8 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(config.strings["greeting_line1"], "Salam, {first_name}")
         XCTAssertEqual(config.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 25, textChars: 4000))
         XCTAssertTrue(config.poweredBy)
+        XCTAssertTrue(config.startsWithFlow)
+        XCTAssertTrue(config.sounds)
     }
 
     /// APPEARANCE-CONTRACT § 4a and § 4c: the full logo, the logo's and the greeting's scale, the cards.
@@ -199,7 +201,7 @@ final class MessengerConfigTests: ProtocolTestCase {
                  "cards":["channels","promo","recent","channels"]},
          "team":{"show":false,"avatars":["https://a/1.png",7],"office_hours":{"tz":"Asia/Baku"}},
          "strings":{"send":"Göndər","count":3},"languages":[],"limits":{"image_mb":0,"file_mb":5},
-         "powered_by":false}
+         "powered_by":false,"sounds":false,"conversation":{"starts_with_flow":"yes"}}
         """##.utf8)))
         XCTAssertEqual(odd.brand.primaryColor, MessengerConfig.Brand.defaultPrimaryColor)
         for bad in ["#+12345", "#１Ｆ９Ｄ６３", "#1F9D6Z", "1F9D63A"] {
@@ -217,6 +219,10 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(odd.team.avatars.count, 1)
         XCTAssertEqual(odd.team.officeHours?.openNow, true)
         XCTAssertFalse(odd.poweredBy)
+        XCTAssertFalse(odd.sounds)
+        XCTAssertFalse(odd.startsWithFlow, "only true starts it")
+        XCTAssertFalse(empty.startsWithFlow)
+        XCTAssertTrue(empty.sounds)
         let closed = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
             #"{"team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}"#.utf8)))
         XCTAssertEqual(closed.team.officeHours?.nextOpenAt, Date(timeIntervalSince1970: 1_790_917_200))

@@ -23,6 +23,42 @@ final class DraftConversationTests: EngineTestCase {
         XCTAssertTrue(server.requests("POST", "/conversations").isEmpty)
     }
 
+    /// `conversation.starts_with_flow`: the conversation is created as the draft opens, with the draft's client_id,
+    /// and the flow's first message is there before the user writes; their first message does not create another.
+    func testAConversationThatStartsWithAFlowIsCreatedWhenItOpens() async throws {
+        server.startsWithFlow = true
+        let phone = await device()
+        try await phone.engine.loginUnidentifiedUser()
+        _ = await phone.engine.refreshConfig(language: "az")
+        let draft = await phone.engine.draftConversation(openedFrom: "home")
+        await expect { await phone.engine.resolved(draft) != draft }
+        let id = await phone.engine.resolved(draft)
+        let creates = server.requests("POST", "/conversations")
+        XCTAssertEqual(creates.count, 1)
+        XCTAssertEqual(body(creates.first)?["client_id"]?.stringValue, String(draft.dropFirst(ClomniEngine.draftPrefix.count)))
+        XCTAssertEqual(body(creates.first)?["opened_from"]?.stringValue, "home")
+        let messages = await phone.messages(id)
+        XCTAssertEqual(messages.first?.sender.type, .bot)
+
+        try await phone.engine.sendText("Salam", in: draft)
+        await expect { self.userMessages(id).count == 1 }
+        XCTAssertEqual(server.requests("POST", "/conversations").count, 1)
+    }
+
+    /// A message written while the opening's create is on its way waits for it: one POST /conversations.
+    func testAMessageDuringTheFlowsCreateMakesNoSecondConversation() async throws {
+        server.startsWithFlow = true
+        let phone = await device()
+        try await phone.engine.loginUnidentifiedUser()
+        _ = await phone.engine.refreshConfig(language: "az")
+        let draft = await phone.engine.draftConversation(openedFrom: nil)
+        try await phone.engine.sendText("Salam", in: draft)
+        await expect { await phone.engine.resolved(draft) != draft }
+        let id = await phone.engine.resolved(draft)
+        await expect { self.userMessages(id).count == 1 }
+        XCTAssertEqual(server.requests("POST", "/conversations").count, 1)
+    }
+
     func testTheFirstMessageCreatesTheConversationOnce() async throws {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()

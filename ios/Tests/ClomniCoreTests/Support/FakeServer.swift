@@ -48,6 +48,8 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     private var counter = 0
     private var frameSink: (@Sendable (String) -> Void)?
     var enforceHash = false
+    /// The config's `conversation.starts_with_flow`.
+    var startsWithFlow = false
     let configETag = "W/\"c1\""
     let newsETag = "W/\"n1\""
     /// GET /news's body: fixture 61 unless a test sets another.
@@ -228,7 +230,8 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
             if request.headers["If-None-Match"] == configETag { return HTTPResponse(status: 304) }
             let config: JSONValue = ["brand": ["name": "Apar", "primary_color": "#1F9D63"], "launcher": ["visible": false],
                                      "home": [:], "team": [:], "bot": ["name": "Clomni"], "composer": [:],
-                                     "languages": ["az"], "strings": [:], "limits": ["text_chars": 50]]
+                                     "languages": ["az"], "strings": [:], "limits": ["text_chars": 50],
+                                     "conversation": ["starts_with_flow": .bool(startsWithFlow)]]
             return Self.json(200, config, headers: ["ETag": configETag])
         case ("GET", ["news"]):
             if request.headers["If-None-Match"] == newsETag { return HTTPResponse(status: 304) }
