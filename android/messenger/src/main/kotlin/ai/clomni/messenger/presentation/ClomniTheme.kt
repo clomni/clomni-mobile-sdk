@@ -47,7 +47,7 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
     )
 
     object Radius {
-        val message = 16f
+        val message = 18f
 
         /** The corner where messages of one group meet. */
         val messageJoined = 5f
@@ -63,6 +63,9 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         val brand = 17f
         val title = 14.5f
         val text = 14f
+
+        /** A message bubble's text. */
+        val message = 16f
         val preview = 13f
         val secondary = 12.5f
         val label = 12f

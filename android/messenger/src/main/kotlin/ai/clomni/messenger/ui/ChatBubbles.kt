@@ -138,8 +138,8 @@ internal fun ChatItemView(item: ChatItem, theme: ClomniTheme, actions: ChatActio
     when (item) {
         is ChatItem.TimeItem -> BasicText(
             item.text,
-            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = ClomniTheme.Space.m.dp),
-            style = clomniText(11.5f, theme.colors.textSecondary).copy(textAlign = TextAlign.Center),
+            Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.xl.dp),
+            style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary).copy(textAlign = TextAlign.Center),
         )
         is ChatItem.BubbleItem -> BubbleRow(item.bubble, theme, actions)
         is ChatItem.SystemItem -> SystemLineView(item.line, theme)
@@ -148,7 +148,7 @@ internal fun ChatItemView(item: ChatItem, theme: ClomniTheme, actions: ChatActio
     }
 }
 
-/** 16 dp, 5 where bubbles of one run meet; the user's always keep the 5 dp bottom-end corner. */
+/** 18 dp, 5 where bubbles of one run meet; the user's always keep the 5 dp bottom-end corner. */
 internal fun Bubble.shape(): RoundedCornerShape {
     val round = ClomniTheme.Radius.message.dp
     val joined = ClomniTheme.Radius.messageJoined.dp
@@ -167,17 +167,17 @@ internal fun Bubble.shape(): RoundedCornerShape {
 }
 
 /**
- * A bubble with its avatar slot, the author over the first of a run (13 semibold), the time under the last, and the
- * status, on its side of the screen. A bubble is at most 78% of the screen wide (DESIGN-PASS-2 13).
+ * A bubble with its avatar slot (28, next to the last of a run), the author over the first of a run (13 medium), the
+ * time under the last (12), and the status, on its side of the screen. Bubbles of a run are 4 apart, runs 16. A bubble
+ * is at most 78% of the screen wide (DESIGN-PASS-2 13, DESIGN-PASS-3 B2).
  */
 @Composable
 internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions) {
     val incoming = bubble.side == Bubble.Side.INCOMING
     val startsRun = bubble.position == Bubble.Position.FIRST || bubble.position == Bubble.Position.SINGLE
-    // A new run starts a little apart: 8 dp for the other side (12 with its author line), 8 for the user.
-    val top = if (startsRun) 8.dp else 0.dp
+    val top = if (startsRun) ClomniTheme.Space.xl.dp else ClomniTheme.Space.xxs.dp
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.78f
-    val gutter = ClomniTheme.Size.headerAvatar.dp + ClomniTheme.Space.s.dp
+    val gutter = ClomniTheme.Size.avatar.dp + ClomniTheme.Space.s.dp
     Column(
         Modifier.fillMaxWidth().padding(top = top),
         horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
@@ -186,7 +186,7 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             BasicText(
                 author,
                 Modifier.padding(start = gutter, bottom = 4.dp).clearAndSetSemantics {},
-                style = clomniText(13f, theme.colors.textSecondary, FontWeight.SemiBold),
+                style = clomniText(13f, theme.colors.textSecondary, FontWeight.Medium),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -195,9 +195,9 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             if (incoming) {
                 val avatar = bubble.avatar
                 if (avatar != null) {
-                    ChatAvatarView(avatar, ClomniTheme.Size.headerAvatar, theme)
+                    ChatAvatarView(avatar, ClomniTheme.Size.avatar, theme)
                 } else {
-                    Spacer(Modifier.width(ClomniTheme.Size.headerAvatar.dp))
+                    Spacer(Modifier.width(ClomniTheme.Size.avatar.dp))
                 }
                 Spacer(Modifier.width(ClomniTheme.Space.s.dp))
             }
@@ -207,7 +207,7 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             BasicText(
                 meta,
                 Modifier.padding(top = ClomniTheme.Space.xxs.dp, start = gutter).clearAndSetSemantics {},
-                style = clomniText(ClomniTheme.FontSize.meta, theme.colors.textSecondary),
+                style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary),
             )
         }
         bubble.status?.let { StatusLine(it, theme, actions.retry) }
@@ -226,9 +226,9 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
             Modifier.clip(shape)
                 .background(fill.color)
-                .padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp)
+                .padding(vertical = 10.dp, horizontal = 14.dp)
                 .clearAndSetSemantics { contentDescription = bubble.accessibilityLabel },
-            style = clomniText(ClomniTheme.FontSize.text, ink),
+            style = clomniText(ClomniTheme.FontSize.message, ink),
         )
         is Bubble.ImageBody -> ImageBubble(body, bubble.accessibilityLabel, theme, fill, ink, actions.openImage)
         is Bubble.FileBody -> {
@@ -406,7 +406,7 @@ private fun TypingRow(line: TypingLine, theme: ClomniTheme) {
         Modifier.padding(top = 4.dp).clearAndSetSemantics { contentDescription = line.accessibilityLabel },
         verticalAlignment = Alignment.Bottom,
     ) {
-        ChatAvatarView(line.avatar, ClomniTheme.Size.headerAvatar, theme)
+        ChatAvatarView(line.avatar, ClomniTheme.Size.avatar, theme)
         Spacer(Modifier.width(ClomniTheme.Space.s.dp))
         Row(
             Modifier.clip(RoundedCornerShape(ClomniTheme.Radius.message.dp))

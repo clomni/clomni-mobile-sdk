@@ -323,9 +323,10 @@ private fun MessengerSheet(
                 ) {
                     val tint = if (theme.isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f)
                     CompositionLocalProvider(LocalPressTint provides tint) { content() }
-                    // The handle: 36×4, the text colour at 20%.
+                    // The handle: 36×4, the text colour at 20%, 4 over the bar's title block (DESIGN-PASS-3 B3); the bar
+                    // itself stays where it is on every screen, so ✕ does not move.
                     Box(
-                        Modifier.align(Alignment.TopCenter).padding(top = 6.dp).size(36.dp, 4.dp)
+                        Modifier.align(Alignment.TopCenter).padding(top = 14.dp).size(36.dp, 4.dp)
                             .clip(RoundedCornerShape(2.dp)).background(theme.colors.textPrimary.color.copy(alpha = 0.2f)),
                     )
                 }

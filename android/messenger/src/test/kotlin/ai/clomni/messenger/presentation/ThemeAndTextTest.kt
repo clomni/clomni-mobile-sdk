@@ -229,6 +229,15 @@ class TimeTextTest {
 
     private fun ago(seconds: Long) = now - seconds * 1_000
 
+    /** Under a run of bubbles: "indi" within a minute, then the clock (DESIGN-PASS-3 B2). */
+    @Test
+    fun stamp() {
+        assertEquals("indi", text("az").stamp(ago(30), now))
+        assertEquals("now", text("en").stamp(ago(30), now))
+        assertEquals("10:27", text("az").stamp(ago(130), now))
+        assertEquals("10:27", text("en").stamp(ago(130), now))
+    }
+
     @Test
     fun ago() {
         val az = text("az")

@@ -214,7 +214,7 @@ internal class ChatPresenter(
                 }
                 val closesRun = offset == run.size - 1 && draft.side == Bubble.Side.INCOMING
                 val opensRun = offset == 0 && draft.side == Bubble.Side.INCOMING
-                val meta = draft.metaName?.let { time.ago(draft.date, now) }
+                val meta = draft.metaName?.let { time.stamp(draft.date, now) }
                 items += ChatItem.BubbleItem(
                     Bubble(
                         draft.id, draft.side, draft.body, position,
@@ -252,7 +252,6 @@ internal class ChatPresenter(
             avatar = if (outgoing) null else avatar,
             metaName = when {
                 outgoing -> null
-                message.sender.type == SenderType.BOT -> "$name · ${strings[Key.BOT]}"
                 else -> name
             },
             status = null,
@@ -411,7 +410,8 @@ internal class ChatPresenter(
         val brand = config?.brand?.name.orEmpty()
         return when (sender.type) {
             SenderType.BOT -> {
-                val name = sender.name ?: config?.bot?.name?.takeIf { it.isNotEmpty() } ?: brand
+                // The bot speaks as the brand (DESIGN-PASS-3 B2): its own name in the panel is not shown.
+                val name = brand.ifEmpty { sender.name ?: config?.bot?.name.orEmpty() }
                 name to ChatAvatar(config?.brand?.logoUrl ?: config?.bot?.avatarUrl ?: sender.avatarUrl, initial(name), true)
             }
             SenderType.OPERATOR -> {

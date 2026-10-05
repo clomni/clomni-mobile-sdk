@@ -97,12 +97,12 @@ class ChatPresenterTest {
         )
         assertNull(list[0].avatar)
         assertNull(list[0].meta)
-        assertEquals("the author over the first of the run, the time under the last", "Clomni · Bot", list[0].author)
+        assertEquals("the author over the first of the run, the time under the last: the bot speaks as the brand", "Apar", list[0].author)
         assertNull(list[1].author)
         assertEquals("indi", list[1].meta)
-        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.aparConfig.brand.logoUrl, "C", true), list[1].avatar)
+        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.aparConfig.brand.logoUrl, "A", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
-        assertEquals("Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
+        assertEquals("Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
     }
 
     @Test
@@ -121,7 +121,7 @@ class ChatPresenterTest {
             screen(listOf(ChatFixture.message("02-text-operator-markdown.json", "created_at" to "2026-10-01T10:30:00Z"))),
         ).first()
         assertEquals("Leyla", reply.author)
-        assertEquals("2 dəq", reply.meta)
+        assertEquals("after a minute, the clock", "10:30", reply.meta)
         assertEquals("L", reply.avatar?.initial)
         val runs = (reply.body as Bubble.TextBody).runs
         assertEquals(TextRun("Gedişinizi yoxladıq.", bold = true), runs.first())
@@ -318,7 +318,7 @@ class ChatPresenterTest {
         assertNull(card.sentLabel)
         assertEquals("Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.text?.first()?.text)
         // TalkBack: who asks and when, then each field once, "*" said as a word.
-        assertEquals("Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
+        assertEquals("Apar bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
         assertEquals(listOf("Ad, soyad, məcburi", "Telefon, məcburi", "Email"), card.fields.map { it.accessibilityLabel })
 
         val sent = bubbles(screen(listOf(ChatFixture.message("21-form-submitted.json")))).first().body as FormCard
@@ -329,7 +329,7 @@ class ChatPresenterTest {
         val stale = bubbles(screen(listOf(contact))).first().body as FormCard
         assertTrue("no longer the live step", stale.readOnly)
         assertEquals(
-            "Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
+            "Apar bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
             bubbles(screen(listOf(contact))).first().accessibilityLabel,
         )
     }
@@ -428,12 +428,12 @@ class ChatPresenterTest {
         assertEquals("Leyla yazır", line.accessibilityLabel)
         assertEquals("L", line.avatar.initial)
         assertEquals(
-            Announcement("msg_f01", "Clomni bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."),
+            Announcement("msg_f01", "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."),
             operatorTyping.announcement,
         )
         assertNull("the user's own message is not news", screen(listOf(ChatFixture.message("03-text-user.json"))).announcement)
         val botTyping = screen(emptyList()) { it.copy(typing = Sender(SenderType.BOT)) }
-        assertEquals("Clomni yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
+        assertEquals("Apar yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
         val someone = screen(emptyList()) { it.copy(typing = Sender(SenderType.UNKNOWN)) }
         assertEquals("Apar yazır", (someone.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
 

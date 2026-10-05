@@ -8,6 +8,7 @@ import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ChatScreen
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
+import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.toward
 import ai.clomni.messenger.protocol.MessengerConfig
 import android.content.Context
@@ -51,6 +52,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -70,6 +72,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -360,8 +363,9 @@ private fun Announcer(id: String?, text: String?) {
 }
 
 /**
- * The conversation's [TopBar]: in the middle who answers (avatar 32, with the green dot for an operator online), the
- * name 17 semibold and the subtitle 13 under it.
+ * The conversation's [TopBar], its middle 4 under the sheet's handle: in the middle who answers (the company's logo as uploaded in
+ * a 32 square with 8 corners, or the operator's 32 avatar with the green dot while online), the name 16 semibold and
+ * the subtitle 13 under it, the two centred as one block (DESIGN-PASS-3 B3).
  */
 @Composable
 internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: ChatActions, scrolled: Boolean = false) {
@@ -377,11 +381,10 @@ internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: Cha
 private fun HeaderLead(header: ChatHeader, theme: ClomniTheme) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box {
-            val avatar = when (val lead = header.lead) {
-                is ChatHeader.Lead.Brand -> lead.logo
-                is ChatHeader.Lead.Person -> lead.avatar
+            when (val lead = header.lead) {
+                is ChatHeader.Lead.Brand -> BrandLogo(lead.logo, theme)
+                is ChatHeader.Lead.Person -> ChatAvatarView(lead.avatar, 32f, theme)
             }
-            ChatAvatarView(avatar, 32f, theme)
             if ((header.lead as? ChatHeader.Lead.Person)?.online == true) {
                 Box(
                     Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp)
@@ -395,7 +398,7 @@ private fun HeaderLead(header: ChatHeader, theme: ClomniTheme) {
         Column(Modifier.weight(1f, fill = false).semantics(mergeDescendants = true) { heading() }) {
             BasicText(
                 header.title,
-                style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
+                style = clomniText(16f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.25f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -406,6 +409,30 @@ private fun HeaderLead(header: ChatHeader, theme: ClomniTheme) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/** The company's logo with its own background, not cut to a circle; its initial on the brand colour without one. */
+@Composable
+private fun BrandLogo(logo: ChatAvatar, theme: ClomniTheme) {
+    val size = ClomniTheme.Size.logo
+    val url = logo.url
+    if (url != null) {
+        RemoteImage(
+            url,
+            ImageSizing.Kind.ICON,
+            size,
+            Color.Transparent,
+            Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).clearAndSetSemantics {},
+        )
+        return
+    }
+    Box(
+        Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).background(theme.colors.primary.color)
+            .clearAndSetSemantics {},
+        Alignment.Center,
+    ) {
+        BasicText(logo.initial, style = clomniText(15f, theme.colors.onPrimary, FontWeight.Bold))
     }
 }
 

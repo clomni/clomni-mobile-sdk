@@ -83,12 +83,12 @@ internal data class Bubble(
     val position: Position,
     /** Next to the last bubble of an incoming run. */
     val avatar: ChatAvatar?,
-    /** Under the last bubble of an incoming run: when, "indi". */
+    /** Under the last bubble of an incoming run: when, "indi" or "12:42". */
     val meta: String?,
     /** Under the user's message when it is the last one, or when it failed. */
     val status: Status?,
     val accessibilityLabel: String,
-    /** Over the first bubble of an incoming run: who, "Clomni · Bot", "Leyla" (DESIGN-PASS-2 13). */
+    /** Over the first bubble of an incoming run: who, the brand for the bot ("Clomni"), "Leyla". */
     val author: String? = null,
 ) {
     enum class Side { INCOMING, OUTGOING }

@@ -19,6 +19,10 @@ internal class TimeText(private val strings: ClomniStrings, private val timeZone
         }
     }
 
+    /** Under the last bubble of a run: "indi" within a minute, then the clock ("12:42"). */
+    fun stamp(date: Long, now: Long): String =
+        if (now - date < 60_000) strings[ClomniStrings.Key.NOW] else clock(date)
+
     /**
      * For the conversation's time separators: "Bu gün 10:30", "Dünən 10:30", "1 oktyabr 10:30", and with the year
      * when it is not this one.
