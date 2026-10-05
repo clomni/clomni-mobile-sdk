@@ -52,7 +52,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -363,15 +362,15 @@ private fun Announcer(id: String?, text: String?) {
 }
 
 /**
- * The conversation's [TopBar], its middle 4 under the sheet's handle: in the middle who answers (the company's logo as uploaded in
- * a 32 square with 8 corners, or the operator's 32 avatar with the green dot while online), the name 16 semibold and
- * the subtitle 13 under it, the two centred as one block (DESIGN-PASS-3 B3).
+ * The conversation's [TopBar], its middle 4 under the sheet's handle: 8 after back's circle who answers (the
+ * company's logo cut to a 32 circle, filled and centred, or the operator's 32 avatar with the green dot while online),
+ * the name 16 semibold and the subtitle 13 under it, the block at the start and cut with "…" before ✕ (DESIGN-PASS-3 B3).
  */
 @Composable
 internal fun ChatHeaderView(header: ChatHeader, theme: ClomniTheme, actions: ChatActions, scrolled: Boolean = false) {
     // One height whatever comes and goes in it (a subtitle, typing, the operator's dot, the team's faces): one line
     // each, so only the user's font size changes it (DESIGN-PASS-2 10).
-    TopBar(header.backLabel, actions.back, header.closeLabel, actions.close, theme, scrolled) {
+    TopBar(header.backLabel, actions.back, header.closeLabel, actions.close, theme, scrolled, leading = true) {
         // The company until an operator joins, then the operator: a 200 ms crossfade between the two.
         Crossfade(header, animationSpec = tween(200), label = "header") { shown -> HeaderLead(shown, theme) }
     }
@@ -412,7 +411,7 @@ private fun HeaderLead(header: ChatHeader, theme: ClomniTheme) {
     }
 }
 
-/** The company's logo with its own background, not cut to a circle; its initial on the brand colour without one. */
+/** The company's logo in a circle, cropped to fill it from the centre; its initial on the brand colour without one. */
 @Composable
 private fun BrandLogo(logo: ChatAvatar, theme: ClomniTheme) {
     val size = ClomniTheme.Size.logo
@@ -423,12 +422,12 @@ private fun BrandLogo(logo: ChatAvatar, theme: ClomniTheme) {
             ImageSizing.Kind.ICON,
             size,
             Color.Transparent,
-            Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).clearAndSetSemantics {},
+            Modifier.size(size.dp).clip(CircleShape).clearAndSetSemantics {},
         )
         return
     }
     Box(
-        Modifier.size(size.dp).clip(RoundedCornerShape(ClomniTheme.Radius.logo.dp)).background(theme.colors.primary.color)
+        Modifier.size(size.dp).clip(CircleShape).background(theme.colors.primary.color)
             .clearAndSetSemantics {},
         Alignment.Center,
     ) {

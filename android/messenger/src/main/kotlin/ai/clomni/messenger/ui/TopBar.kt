@@ -32,8 +32,9 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The bar on the list, a conversation and a news item: back at the start and ✕ at the end, both 40 dp circles in
- * 48 dp slots 12 from the edges; the middle centred on the screen, not between the buttons, so it keeps the same room
- * on both sides and cuts with "…". 64 high (16 + 48: the same row as Home's, DESIGN-PASS-3 A9); the 1 px line
+ * 48 dp slots 12 from the edges. The middle is centred on the screen, not between the buttons, so it keeps the same
+ * room on both sides and cuts with "…"; with [leading] (the conversation) it starts 8 after back's circle instead and
+ * takes the room up to ✕. 64 high (16 + 48: the same row as Home's, DESIGN-PASS-3 A9); the 1 px line
  * under it shows only while the content is scrolled under it ([scrolled]).
  */
 @Composable
@@ -44,6 +45,7 @@ internal fun TopBar(
     close: () -> Unit,
     theme: ClomniTheme,
     scrolled: Boolean,
+    leading: Boolean = false,
     // Null when the screen has its title in its content (a news item).
     middle: (@Composable () -> Unit)? = null,
 ) {
@@ -52,7 +54,14 @@ internal fun TopBar(
         Box(Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
             BackButton(backLabel, theme, back, Modifier.align(Alignment.CenterStart).padding(start = TOP_BAR_EDGE))
             if (middle != null) {
-                Box(Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = TOP_BAR_MIDDLE), Alignment.Center) { middle() }
+                if (leading) {
+                    Box(
+                        Modifier.align(Alignment.CenterStart).fillMaxWidth().padding(start = TOP_BAR_LEAD, end = TOP_BAR_MIDDLE),
+                        Alignment.CenterStart,
+                    ) { middle() }
+                } else {
+                    Box(Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = TOP_BAR_MIDDLE), Alignment.Center) { middle() }
+                }
             }
             CloseButton(closeLabel, CloseStyle.ON_SURFACE, theme, close, Modifier.align(Alignment.CenterEnd).padding(end = TOP_BAR_EDGE))
         }
@@ -94,3 +103,6 @@ private val TOP_BAR_EDGE = 12.dp
 
 /** The middle keeps clear of both slots, and 8 more: the same on both sides, so it is centred on the screen. */
 private val TOP_BAR_MIDDLE = TOP_BAR_EDGE + ClomniTheme.Size.touchTarget.dp + 8.dp
+
+/** A leading middle: 8 after back's 40 dp circle, which sits 4 inside its 48 dp slot. */
+private val TOP_BAR_LEAD = TOP_BAR_EDGE + 4.dp + 40.dp + 8.dp
