@@ -110,6 +110,12 @@ public enum Clomni {
         MainThread.run { ClomniRuntime.shared.setLauncherVisible(visible) }
     }
 
+    /// The short sounds for a message received while the conversation is open and one sent. On unless the panel
+    /// turns them off; false here turns them off whatever the panel says. The silent switch mutes them.
+    public static func setSoundsEnabled(_ enabled: Bool) {
+        MainThread.run { MessageSounds.appEnabled = enabled }
+    }
+
     /// The app's own font family (for example "Montserrat") for every text of the messenger; it must be in the app
     /// (UIAppFonts). Text keeps following Dynamic Type. A weight the family lacks takes its nearest face. nil, or a
     /// family the app does not have, is the system font.

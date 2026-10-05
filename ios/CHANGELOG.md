@@ -15,7 +15,8 @@ The first release.
   (`ios/Examples/NotificationService`).
 - The unread count (`addUnreadCountListener`, `onUnreadCountChanged`) and events (`onMessengerOpened`,
   `onMessengerClosed`, `onConversationStarted`, `onFlowCompleted`).
-- `setTypeface` for the app's own font family, `setLogLevel`.
+- `setTypeface` for the app's own font family, `setLogLevel`, `setSoundsEnabled` (the short message sounds; the panel's
+  `sounds` turns them off too).
 - The look and the texts come from the panel (config v2): the brand's colours as the server derived them, the header
   as gradient, solid colour or picture, the glow, the logo for dark mode, the bot's picture, Home's cards in the
   panel's order, up to five channels, "Powered by Clomni", light or dark mode, and the texts with `{name}` and

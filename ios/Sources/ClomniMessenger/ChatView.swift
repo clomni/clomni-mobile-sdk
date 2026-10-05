@@ -23,6 +23,7 @@ final class ChatModel: ObservableObject {
         screen = controller.screen
         config = controller.config
         controller.onChange = { [weak self] in self?.sync() }
+        controller.playSound = { MessageSounds.play($0) }
     }
 
     convenience init(engine: ClomniEngine, conversationId: String, language: String?, known: [String: String] = [:]) {

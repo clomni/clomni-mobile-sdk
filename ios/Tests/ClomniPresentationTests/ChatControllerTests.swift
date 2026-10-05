@@ -25,6 +25,8 @@ actor FakeChat: ChatDataSource {
         self.loadFails = loadFails
     }
 
+    func setConfig(_ config: MessengerConfig?) { cachedConfig = config }
+
     func push(_ change: ClomniChange) {
         observers.values.forEach { $0(change) }
     }
@@ -225,6 +227,30 @@ final class ChatControllerTests: XCTestCase {
         let made = await calls()
         XCTAssertEqual(made.filter { !$0.hasPrefix("load") && !$0.hasPrefix("read") && !$0.hasPrefix("refresh") },
                        ["text Salam", "file velo.jpg", "retry abc"])
+    }
+
+    func testSoundsForASentAndAReceivedMessage() async {
+        let chat = controller()
+        var played: [ChatSound] = []
+        chat.playSound = { played.append($0) }
+        let old = Fixture.message("01-text-bot.json")
+        await source.set([old])
+        await chat.load()
+        XCTAssertEqual(played, [], "what was there when the screen opened is not news")
+        await chat.send("Salam")
+        XCTAssertEqual(played, [.sent])
+        let reply = Fixture.message("01-text-bot.json",
+                                    ["id": "msg_new", "seq": 99, "created_at": "2026-10-01T10:32:30Z"])
+        await source.set([old, reply])
+        await source.push(.messages(conversationId: "conv_5521"))
+        await chat.settled()
+        XCTAssertEqual(played, [.sent, .incoming])
+        // The panel's sounds: false silences both.
+        await source.setConfig(ProtocolJSON.parseConfig(Data(#"{"sounds":false}"#.utf8)))
+        await source.push(.config)
+        await chat.settled()
+        await chat.send("Yenə")
+        XCTAssertEqual(played, [.sent, .incoming])
     }
 
     func testTypingShowsAndHides() async throws {

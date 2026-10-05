@@ -110,4 +110,14 @@ final class PrivacyManifestTests: XCTestCase {
         let podspec = try String(contentsOf: root.appendingPathComponent("ClomniMessenger.podspec"), encoding: .utf8)
         XCTAssertTrue(podspec.contains("'ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'"))
     }
+
+    /// The two message sounds ship the same way (CocoaPods: the ClomniMessenger_Sounds bundle).
+    func testTheSoundsShipAsResources() throws {
+        for name in ["clomni_ding", "clomni_ping"] {
+            let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: "wav"), name)
+            XCTAssertEqual(try Data(contentsOf: url).prefix(4), Data("RIFF".utf8), name)
+        }
+        let podspec = try String(contentsOf: root.appendingPathComponent("ClomniMessenger.podspec"), encoding: .utf8)
+        XCTAssertTrue(podspec.contains("'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.wav']"))
+    }
 }

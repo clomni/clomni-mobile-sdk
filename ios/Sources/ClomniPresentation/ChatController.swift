@@ -34,11 +34,18 @@ extension ClomniEngine: ChatDataSource {}
 
 /// Keeps one conversation's screen current and turns taps into engine calls. The SwiftUI view observes it through
 /// `onChange`.
+/// A short sound of the conversation (DESIGN-PASS-3 A7): a message from the other side, or one the user sent.
+package enum ChatSound: Sendable {
+    case incoming, sent
+}
+
 @MainActor
 package final class ChatController {
     package private(set) var screen: ChatScreen
     /// Called after `screen` changed.
     package var onChange: (() -> Void)?
+    /// Plays a short sound (DESIGN-PASS-3 A7); called only while the panel allows sounds (`sounds`).
+    package var playSound: ((ChatSound) -> Void)?
     /// Changes when "Yeni söhbət başlat" opens a new conversation in place of a closed one, and when the server
     /// creates a draft with its first message.
     package private(set) var conversationId: String
@@ -55,6 +62,8 @@ package final class ChatController {
     private let timeZone: TimeZone
     private let now: @Sendable () -> Date
     private let typingTimeout: TimeInterval
+    /// A message newer than this that arrives while the screen is open gets the incoming sound.
+    private let openedAt: Date
     private var snapshot: ChatSnapshot
     private var observation: UUID?
     private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
@@ -77,6 +86,7 @@ package final class ChatController {
         self.timeZone = timeZone
         self.now = now
         self.typingTimeout = typingTimeout
+        openedAt = now()
         snapshot = ChatSnapshot()
         snapshot.known = known
         screen = ChatPresenter(strings: ClomniStrings(language: language), timeZone: timeZone, now: now())
@@ -140,6 +150,7 @@ package final class ChatController {
     package func send(_ text: String) async -> Bool {
         guard ChatPresenter.canSend(text, limit: screen.composer.limit),
               (try? await source.sendText(text, in: conversationId)) != nil else { return false }
+        sound(.sent)
         await source.setTyping(false, in: conversationId)
         return true
     }
@@ -153,6 +164,7 @@ package final class ChatController {
     package func tap(_ buttonId: String, in messageId: String) async {
         guard let message = snapshot.messages.first(where: { $0.id == messageId }),
               case .quickReplies(let replies) = message.content else { return }
+        sound(.sent)
         if buttonId == "back" {
             _ = try? await source.goBack(from: message)
         } else if let button = replies.buttons.first(where: { $0.id == buttonId }) {
@@ -168,6 +180,7 @@ package final class ChatController {
               case .form(let form) = message.content else { return [:] }
         let errors = FormInput.errors(form, values: values, strings: strings)
         guard errors.isEmpty else { return errors }
+        sound(.sent)
         _ = try? await source.submitForm(message, values: FormInput.payload(form, values: values))
         await read()
         render()
@@ -183,6 +196,7 @@ package final class ChatController {
     package func sendFile(_ data: Data, fileName: String, mime: String, caption: String? = nil) async -> String? {
         do {
             _ = try await source.sendFile(data, fileName: fileName, mime: mime, caption: caption, in: conversationId)
+            sound(.sent)
             return nil
         } catch ClomniError.rejected {
             let limits = snapshot.config?.limits
@@ -215,7 +229,14 @@ package final class ChatController {
         switch change {
         case .messages(let id) where id == conversationId:
             let before = snapshot.messages.last?.id
+            let known = Set(snapshot.messages.map(\.id))
             await read()
+            // Something new from the other side while the conversation is on screen.
+            if snapshot.messages.contains(where: {
+                !known.contains($0.id) && $0.createdAt >= openedAt && $0.sender.type != .user && $0.type != "system"
+            }) {
+                sound(.incoming)
+            }
             // A message from whoever was typing ends the indicator.
             if let typing = snapshot.typing, let last = snapshot.messages.last, last.id != before,
                last.sender.type == typing.type {
@@ -273,6 +294,10 @@ package final class ChatController {
             files[pending.id] = await source.localFile(of: pending)
         }
         snapshot.localFiles = files
+    }
+
+    private func sound(_ sound: ChatSound) {
+        if snapshot.config?.sounds != false { playSound?(sound) }
     }
 
     private func render() {
