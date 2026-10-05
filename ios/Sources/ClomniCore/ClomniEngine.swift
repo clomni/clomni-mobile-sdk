@@ -604,7 +604,7 @@ package actor ClomniEngine {
         } catch ClomniError.server(409, let error) {
             // already_answered / stale_interaction: the server has moved on; show its copy of the message.
             removePending(entry.id)
-            if let replyTo = entry.message.replyTo {
+            if let replyTo = entry.message.answeredId {
                 store.markAnswered(replyTo)
                 let seq = store.message(replyTo, in: entry.conversationId)?.seq
                 Task { try? await self.fetch(entry.conversationId, after: max(0, (seq ?? 1) - 1)) }
@@ -799,8 +799,9 @@ package actor ClomniEngine {
 }
 
 extension ClientMessage {
-    /// The message a button reply, form or rating answers.
-    var replyTo: String? {
+    /// The message a button reply, form or rating answers (not `replyTo`, which is the quoted message of a text or an
+    /// attachment).
+    var answeredId: String? {
         switch content {
         case .buttonReply(let replyTo, _, _), .formSubmit(let replyTo, _, _), .ratingSubmit(let replyTo, _, _): return replyTo
         case .text, .attachment: return nil
