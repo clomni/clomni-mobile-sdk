@@ -16,6 +16,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.messenger
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.0"
+        # Optimised for size, as the podspec ships it: an SDK sits in someone else's app.
+        SWIFT_OPTIMIZATION_LEVEL: "-Osize"
         OTHER_SWIFT_FLAGS: "$(inherited) -package-name ClomniMessenger"
         BUILD_LIBRARY_FOR_DISTRIBUTION: YES
         SKIP_INSTALL: NO
