@@ -120,6 +120,7 @@
       "required": ["mode", "launcher"],
       "properties": {
         "mode": { "enum": ["system", "light", "dark"] },
+        "sounds": { "type": "boolean", "description": "The SDKs' send and receive sounds; absent means on." },
         "launcher": {
           "type": "object",
           "additionalProperties": false,

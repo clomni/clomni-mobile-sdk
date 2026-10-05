@@ -1147,6 +1147,9 @@ components:
         ws_url: wss://app.clomni.ai/v1/realtime
     Assignee:
       type: object
+      description: The operator the conversation is assigned to. While there is none (a bot or flow answers), the
+        conversation header shows `brand.name` and the logo, and a bot message's avatar is the logo; once set, the
+        header shows this name and picture. A message's author is its `sender.type` (bot, operator).
       required: [name]
       properties:
         name:

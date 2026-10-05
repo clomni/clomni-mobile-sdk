@@ -94,6 +94,10 @@
     "attachments": true,
     "emoji": true
   },
+  "conversation": {
+    "starts_with_flow": false
+  },
+  "sounds": false,
   "languages": [
     "az",
     "en",
