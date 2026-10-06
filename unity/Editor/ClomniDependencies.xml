@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The native Clomni SDKs, for the External Dependency Manager for Unity (EDM4U): Gradle on Android, CocoaPods on iOS. -->
+<dependencies>
+  <androidPackages>
+    <repositories>
+      <repository>https://repo.maven.apache.org/maven2</repository>
+    </repositories>
+    <androidPackage spec="ai.clomni:messenger:1.0.0" />
+  </androidPackages>
+  <iosPods>
+    <iosPod name="ClomniMessenger" version="1.0.0" minTargetSdk="15.0" addToAllTargets="false" />
+  </iosPods>
+</dependencies>

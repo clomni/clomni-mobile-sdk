@@ -1,0 +1,26 @@
+{
+  "name": "ai.clomni.messenger",
+  "version": "1.0.0",
+  "displayName": "Clomni Messenger",
+  "description": "Opens the Clomni Messenger inside a Unity game or app on Android and iOS, through the native Clomni SDKs: users, flows, push and the unread count.",
+  "unity": "2021.3",
+  "author": {
+    "name": "Clomni",
+    "url": "https://clomni.ai"
+  },
+  "documentationUrl": "https://github.com/rzayevkenann/clomni-mobile-sdk/blob/main/unity/README.md",
+  "changelogUrl": "https://github.com/rzayevkenann/clomni-mobile-sdk/blob/main/unity/CHANGELOG.md",
+  "keywords": ["clomni", "messenger", "chat", "support"],
+  "samples": [
+    {
+      "displayName": "Basic",
+      "description": "Three buttons: open the messenger, log a user in, start a flow.",
+      "path": "Samples~/Basic"
+    },
+    {
+      "displayName": "Push (Firebase)",
+      "description": "Hands Firebase Cloud Messaging's token and messages to Clomni. Needs the Firebase Unity SDK.",
+      "path": "Samples~/Push"
+    }
+  ]
+}

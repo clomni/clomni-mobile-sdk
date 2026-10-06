@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Both samples as a game's own scripts would see the package: its public API only. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Samples~/**/*.cs" />
+    <ProjectReference Include="../Runtime/ClomniMessenger.csproj" />
+    <ProjectReference Include="../UnityEngine/UnityEngine.csproj" />
+    <ProjectReference Include="../Firebase/Firebase.Messaging.csproj" />
+  </ItemGroup>
+</Project>

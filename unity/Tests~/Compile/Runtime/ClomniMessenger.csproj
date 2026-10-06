@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The package's Runtime/ as Unity compiles it (ClomniMessenger.asmdef), against stub UnityEngine types. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Runtime/**/*.cs" />
+    <ProjectReference Include="../UnityEngine/UnityEngine.csproj" />
+  </ItemGroup>
+</Project>

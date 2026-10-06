@@ -11,6 +11,7 @@ closed.
 | `ios/` | `ClomniMessenger` (Swift Package Manager, CocoaPods) |
 | `react-native/` | `@clomni/react-native` (wraps the native SDKs) |
 | `flutter/` | `clomni_flutter` (wraps the native SDKs) |
+| `unity/` | `ai.clomni.messenger` (Unity package, wraps the native SDKs) |
 | `protocol/` | JSON Schemas and fixtures, copied from the Clomni server repo (`scripts/sync-protocol.sh`) |
 
 Both native SDKs render the same `protocol/fixtures`; their tests fail when a fixture no longer parses or renders.
@@ -43,7 +44,7 @@ are in the Example app ([ios/Example](ios/Example)), whose code CI compiles; the
 ### Releasing iOS
 
 SwiftPM finds versions by the repository's tags, so the iOS SDK's tags are bare semantic versions (`1.0.0`); the other
-packages' tags carry a prefix (`android-1.0.0`, `react-native-1.0.0`, `flutter-1.0.0`) and SwiftPM ignores them.
+packages' tags carry a prefix (`android-1.0.0`, `react-native-1.0.0`, `flutter-1.0.0`, `unity-1.0.0`) and SwiftPM ignores them.
 
 1. The same version in `ClomniMessenger.podspec`, `SDKInfo.version` and a `## 1.0.0` section of `ios/CHANGELOG.md`
    without "(unreleased)": `scripts/ios-release-check.sh 1.0.0 --release`.
