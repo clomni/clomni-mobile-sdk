@@ -341,7 +341,7 @@ internal class ChatController(
                         // A message from whoever was typing ends the indicator at once (operator, 2026-10-05).
                         val typing = snapshot.typing
                         val seen = before.messages.mapTo(HashSet()) { it.id }
-                        if (typing != null && state.messages.any { it.id !in seen && wrote(it.sender, typing) }) {
+                        if (typing != null && state.messages.any { it.id !in seen && it.sender.isTyping(typing) }) {
                             hideTyping?.invoke()
                             hideTyping = null
                             snapshot = snapshot.copy(typing = null)
@@ -358,8 +358,19 @@ internal class ChatController(
                 }
             }
             // The user's own typing, echoed back, is not someone else writing.
+            // "off" ends it whoever it names (operator, 2026-10-06).
             is ClomniChange.Typing -> if (change.conversationId == id && change.sender.type != SenderType.USER) {
                 main.execute { showTyping(if (change.isTyping) change.sender else null) }
+            }
+            // A copy of a message already here changes no message, but the one typing it has stopped. Through the
+            // worker, so a new message's own redraw (queued there first) takes the indicator away in the same frame.
+            is ClomniChange.Arrived -> if (change.conversationId == id) {
+                worker.execute {
+                    main.execute {
+                        val typing = snapshot.typing
+                        if (conversationId == id && typing != null && change.sender.isTyping(typing)) showTyping(null)
+                    }
+                }
             }
             is ClomniChange.Read -> if (change.conversationId == id) worker.execute { publish(read(id)) }
             ClomniChange.Conversations, ClomniChange.Config, ClomniChange.Session -> worker.execute { publish(read(id)) }
@@ -377,17 +388,13 @@ internal class ChatController(
         }
     }
 
-    /** [message]'s sender is the one shown typing: the same kind, and the same person when both are named. */
-    private fun wrote(sender: Sender, typing: Sender): Boolean =
-        sender.type == typing.type && (sender.id == null || typing.id == null || sender.id == typing.id)
-
     /** On [main]. */
     private fun showTyping(sender: Sender?) {
         hideTyping?.invoke()
         hideTyping = null
         snapshot = snapshot.copy(typing = sender)
         render()
-        if (sender != null) hideTyping = scheduler.after(typingTimeoutMs) { showTyping(null) }
+        if (snapshot.typing != null) hideTyping = scheduler.after(typingTimeoutMs) { showTyping(null) }
     }
 
     /** What the engine holds for one conversation; read on [worker]. */
@@ -445,6 +452,12 @@ internal class ChatController(
 
     private fun render() {
         snapshot = snapshot.copy(isOffline = isOffline)
+        // A flow waiting for a choice: nobody is writing, and a later step must not bring back an old "typing".
+        if (snapshot.typing != null && snapshot.awaitsChoice) {
+            hideTyping?.invoke()
+            hideTyping = null
+            snapshot = snapshot.copy(typing = null)
+        }
         screen = ChatPresenter(strings, timeZone, now()).screen(snapshot)
         onChange?.invoke()
     }

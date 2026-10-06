@@ -456,7 +456,11 @@ internal class ClomniEngine(
                     live = true
                     catchUp()
                 }
-                is RealtimeEvent.Payload.MessageCreated -> receive(data.message)
+                is RealtimeEvent.Payload.MessageCreated -> {
+                    receive(data.message)
+                    val message = data.message
+                    if (message.sender.type != SenderType.USER) store.changed(ClomniChange.Arrived(message.conversationId, message.sender))
+                }
                 is RealtimeEvent.Payload.MessageUpdated -> receive(data.message)
                 is RealtimeEvent.Payload.Typing ->
                     notify(ClomniChange.Typing(data.conversationId, data.sender, data.isTyping))

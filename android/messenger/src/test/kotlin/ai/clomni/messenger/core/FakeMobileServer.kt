@@ -169,6 +169,11 @@ internal class FakeMobileServer : Dispatcher() {
         return message
     }
 
+    /** [message] over the socket once more, as a re-delivered copy. */
+    @Synchronized
+    fun redeliver(conversationId: String, message: JsonObject) =
+        broadcast(conversations.getValue(conversationId).userId, "message.created", message)
+
     /** The messages a user can see in [conversationId], in `seq` order. */
     @Synchronized
     fun messages(conversationId: String): List<JsonObject> = conversations.getValue(conversationId).messages.toList()

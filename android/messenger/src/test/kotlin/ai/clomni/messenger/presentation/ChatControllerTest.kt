@@ -361,6 +361,55 @@ class ChatControllerTest {
         assertFalse(chat.screen.items.last() is ChatItem.TypingItem)
     }
 
+    /**
+     * The indicator goes at once on a message from the one typing, even a copy of one already here; on any "off"; and
+     * while the flow waits for a choice (operator, 2026-10-06).
+     */
+    @Test
+    fun typingEndsOnACopyOffOrAChoice() {
+        val bot = ChatFixture.message("01-text-bot.json")
+        source.set(listOf(bot))
+        val chat = controller()
+        chat.load()
+        fun typing() = chat.screen.items.last() is ChatItem.TypingItem
+
+        source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.BOT, "bot_flow"), true))
+        assertTrue(typing())
+        source.push(ClomniChange.Arrived("conv_other", bot.sender))
+        assertTrue("another conversation's message", typing())
+        source.push(ClomniChange.Arrived("conv_5521", bot.sender))
+        assertFalse("a copy from the bot, whichever bot id", typing())
+        assertTrue(timers.pending.isEmpty())
+
+        val leyla = Sender(SenderType.OPERATOR, "op_1", "Leyla")
+        source.push(ClomniChange.Typing("conv_5521", leyla, true))
+        source.push(ClomniChange.Arrived("conv_5521", Sender(SenderType.OPERATOR, "op_2", "Nigar")))
+        assertTrue("someone else's message leaves it", typing())
+        source.push(ClomniChange.Arrived("conv_5521", leyla))
+        assertFalse(typing())
+
+        source.push(ClomniChange.Typing("conv_5521", leyla, true))
+        source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.BOT, "bot_x"), false))
+        assertFalse("off is off, whoever it names", typing())
+
+        // The flow's menu is the last word: a "typing" has nothing to show, nor a timer to keep.
+        val step = ChatFixture.message("10-apar-level2-S-chips.json", "seq" to 2)
+        source.set(listOf(bot, step), answerable = setOf(step.id), flow = menu)
+        source.push(ClomniChange.Messages("conv_5521"))
+        source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.BOT), true))
+        assertFalse("a flow waiting for a choice", typing())
+        assertTrue(timers.pending.isEmpty())
+        // Shown before the menu came: the menu ends it.
+        source.set(listOf(bot), flow = "null")
+        source.push(ClomniChange.Messages("conv_5521"))
+        source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.BOT), true))
+        assertTrue(typing())
+        source.set(listOf(bot, step), answerable = setOf(step.id), flow = menu)
+        source.push(ClomniChange.Conversations)
+        assertFalse(typing())
+        assertTrue(timers.pending.isEmpty())
+    }
+
     @Test
     fun otherChangesAndStop() {
         val chat = controller()

@@ -437,16 +437,33 @@ private fun FileCard(file: Bubble.FileBody, ink: RgbColor, modifier: Modifier) {
     }
 }
 
-/** "Göndərildi", "Oxundu"; a failure in red, which sends again when tapped. */
+/**
+ * Under the user's last message, at the end: its time and a small clock, then ✓ (in the brand colour once read); no
+ * words on screen, TalkBack reads "Göndərildi". A failure in red words, which sends again when tapped.
+ */
 @Composable
 private fun StatusLine(status: Bubble.Status, theme: ClomniTheme, retry: (String) -> Unit) {
     val style = clomniText(ClomniTheme.FontSize.meta, if (status.isFailure) theme.colors.errorText else theme.colors.textSecondary)
     val retryId = status.retryId
-    if (retryId == null) {
-        // "Göndərilir" → "Göndərildi" → "Oxundu": only the words cross-fade, nothing moves (M3, 150 ms).
-        Crossfade(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), tween(150), label = "status") { text ->
-            BasicText(text, style = style)
+    val mark = status.mark
+    if (mark != null) {
+        Row(
+            Modifier.padding(top = ClomniTheme.Space.xxs.dp).clearAndSetSemantics { contentDescription = status.text },
+            horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            status.time?.let { BasicText(it, style = clomniText(ClomniTheme.FontSize.label, theme.colors.textSecondary)) }
+            // The clock becomes ✓ in place: only the icon cross-fades, nothing moves (M3, 150 ms).
+            Crossfade(mark, animationSpec = tween(150), label = "status") { shown ->
+                when (shown) {
+                    Bubble.Status.Mark.SENDING -> Icon(R.drawable.clomni_ic_clock, theme.colors.textSecondary, 12.dp)
+                    Bubble.Status.Mark.SENT -> Icon(R.drawable.clomni_ic_check, theme.colors.textSecondary, 14.dp)
+                    Bubble.Status.Mark.READ -> Icon(R.drawable.clomni_ic_check, theme.colors.primaryText, 14.dp)
+                }
+            }
         }
+    } else if (retryId == null) {
+        BasicText(status.text, Modifier.padding(top = ClomniTheme.Space.xxs.dp), style = style)
     } else {
         // The 15 dp line reaches a 48 dp target without moving anything.
         val reach = 16.dp

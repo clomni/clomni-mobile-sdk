@@ -3,8 +3,12 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.QuickReplyBlock
 import ai.clomni.messenger.presentation.ReplyButton
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -35,17 +38,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 
 /**
  * The live step's choices (DESIGN-PASS-3 A3): capsules side by side, wrapping, aligned to the end, 8 apart both ways,
  * 12 under the last message; then a grey "← Geri". M5: new ones come 150 ms after their message, 40 ms apart, 6 up and
- * fading in. A tap is a light tick; the chosen one goes at once while the others fade out (200 ms), and the choice
- * comes in as the user's message.
+ * fading in. A tap is a light tick; then all of them, the chosen one too, fade out and fold their height away in
+ * [CHOICE_FOLD_MS] (only fade with the system's animations off), and the choice comes in as the user's message after
+ * that ([folded] already: drawn folded).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (String) -> Unit) {
+internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, folded: Boolean = false, tap: (String) -> Unit) {
     var chosen by remember(block.messageId) { mutableStateOf<String?>(null) }
     val haptic = LocalHapticFeedback.current
     val arriving = LocalArriving.current
@@ -57,6 +61,27 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
         }
     }
     val buttons = block.buttons + listOfNotNull(block.back)
+    val still = reduceMotion()
+    val fold = tween<IntSize>(CHOICE_FOLD_MS, easing = Motion.EmphasizedAccelerate)
+    AnimatedVisibility(
+        !folded && chosen == null,
+        enter = EnterTransition.None,
+        exit = if (still) fadeOut(tween(CHOICE_FOLD_MS)) else fadeOut(tween(CHOICE_FOLD_MS)) + shrinkVertically(fold, Alignment.Top),
+    ) {
+        Choices(buttons, block, theme, arriving, chosen == null, choose)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Choices(
+    buttons: List<ReplyButton>,
+    block: QuickReplyBlock,
+    theme: ClomniTheme,
+    arriving: Boolean,
+    enabled: Boolean,
+    choose: (String) -> Unit,
+) {
     Box(Modifier.fillMaxWidth().padding(top = 12.dp), Alignment.CenterEnd) {
         // Side by side, each as wide as its text, wrapping to the next line; a long choice wraps inside 85% of the width.
         FlowRow(
@@ -65,18 +90,16 @@ internal fun QuickRepliesView(block: QuickReplyBlock, theme: ClomniTheme, tap: (
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             buttons.forEachIndexed { index, button ->
-                val opacity by animateFloatAsState(
-                    if (chosen == null) 1f else 0f,
-                    tween(if (chosen == button.id) 90 else 200),
-                    label = "choice",
-                )
-                Box(Modifier.entrance(arriving, 6f, 1f, 200, 150 + 40 * index).alpha(opacity)) {
-                    Pill(button, button === block.back, theme, enabled = chosen == null, choose)
+                Box(Modifier.entrance(arriving, 6f, 1f, 200, 150 + 40 * index)) {
+                    Pill(button, button === block.back, theme, enabled, choose)
                 }
             }
         }
     }
 }
+
+/** How long the choices take to fade and fold away after a tap, before the user's message comes in. */
+internal const val CHOICE_FOLD_MS = 120
 
 /**
  * A capsule: at least 44 high, white (surface in dark) with a 1.5 dp border in the text colour at 18% (24% in dark),

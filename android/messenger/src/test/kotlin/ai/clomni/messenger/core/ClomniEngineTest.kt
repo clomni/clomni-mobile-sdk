@@ -14,6 +14,7 @@ import ai.clomni.messenger.protocol.ConversationStatus
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.ProtocolJson
+import ai.clomni.messenger.protocol.SenderType
 import ai.clomni.messenger.realtime.RealtimeClient
 import ai.clomni.messenger.store.MessageStore
 import ai.clomni.messenger.store.PendingMessage
@@ -601,6 +602,19 @@ class ClomniEngineTest {
         assertEquals(1, fake.count("POST /v1/conversations/$conversation/read"))
         assertEquals(2, fake.count("POST /v1/conversations/$conversation/typing"))
         phone.engine.markRead("conv_unknown").await()
+    }
+
+    /** A bot's or operator's message over the socket, a copy too, tells the screen its sender stopped typing. */
+    @Test
+    fun aMessageOverTheSocketEndsItsSendersTyping() {
+        val (phone, conversation) = ready()
+        val message = fake.botSays(conversation, "Bir")
+        eventually("the message") { phone.changes.any { it is ClomniChange.Arrived && it.conversationId == conversation } }
+        phone.engine.awaitIdle()
+        phone.changes.clear()
+        fake.redeliver(conversation, message)
+        eventually("its copy") { phone.changes.any { it is ClomniChange.Arrived && it.sender.type == SenderType.BOT } }
+        assertFalse("the copy changed no message", ClomniChange.Messages(conversation) in phone.changes)
     }
 
     @Test

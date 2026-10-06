@@ -58,6 +58,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -250,6 +251,8 @@ internal fun ChatScreenView(
     loadingOlder: Boolean = false,
     /** A picked file waiting over the field. */
     picked: PickedPreview? = null,
+    /** The transcript's hold while a choice folds away; tests hand one in to draw that moment. */
+    fold: ChoiceFold = remember { ChoiceFold() },
 ) {
     Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
         // The bar's line shows once the transcript has something above what is on screen.
@@ -270,7 +273,7 @@ internal fun ChatScreenView(
                     screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
                 }
                 HomeScreen.Phase.READY -> if (lazy) {
-                    LazyTranscript(screen, theme, actions, inner, loadingOlder) { scrolled = it }
+                    LazyTranscript(screen, theme, actions, inner, fold, loadingOlder) { scrolled = it }
                 } else {
                     Column(
                         inner.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
@@ -298,8 +301,37 @@ internal fun ChatScreenView(
 }
 
 /**
+ * A choice's way out (operator, 2026-10-06): from the tap until its capsules have faded and folded away
+ * ([CHOICE_FOLD_MS]) the transcript stays as it was, so the user's message then comes in at the end, under nothing
+ * and over nothing.
+ */
+@Stable
+internal class ChoiceFold {
+    /** The transcript as it was at the tap, while the choices fold. */
+    var held by mutableStateOf<List<ChatItem>?>(null)
+        private set
+
+    /** The choices folding or folded: they stay folded should they still be there after the hold. */
+    var folding by mutableStateOf<String?>(null)
+        private set
+
+    fun start(items: List<ChatItem>, repliesId: String) {
+        held = items
+        folding = repliesId
+    }
+
+    fun release() {
+        held = null
+    }
+
+    /** What the transcript shows: what it held, or [live]. */
+    fun shown(live: List<ChatItem>): List<ChatItem> = held ?: live
+}
+
+/**
  * The transcript, scrolled to its end when it opens and whenever a new item arrives; items that arrive while it is
- * open rise 6 dp and fade in. Reaching the top asks for older messages.
+ * open rise 6 dp and fade in. One that goes is gone in that frame: nothing fades out over what takes its place.
+ * Reaching the top asks for older messages.
  */
 @Composable
 private fun LazyTranscript(
@@ -307,10 +339,18 @@ private fun LazyTranscript(
     theme: ClomniTheme,
     actions: ChatActions,
     modifier: Modifier,
+    fold: ChoiceFold,
     loadingOlder: Boolean = false,
     scrolled: (Boolean) -> Unit = {},
 ) {
-    val items = screen.items
+    val items = fold.shown(screen.items)
+    // Previews hold what they were given.
+    val inspecting = LocalInspectionMode.current
+    LaunchedEffect(fold.held) {
+        if (fold.held == null || inspecting) return@LaunchedEffect
+        delay(CHOICE_FOLD_MS.toLong())
+        fold.release()
+    }
     val loadingLabel = screen.loadingLabel
     // While older messages load, item 0 is their indicator and the messages follow it.
     val last = items.size - 1 + if (loadingOlder) 1 else 0
@@ -373,10 +413,20 @@ private fun LazyTranscript(
             // M3: a new item comes in its own way (ChatItemView); one that moves slides to its place.
             CompositionLocalProvider(LocalTranscript provides links, LocalArriving provides fresh) {
                 Box(
-                    Modifier.animateItem(fadeInSpec = null, placementSpec = if (still) null else Motion.sheet(IntOffset.VisibilityThreshold))
-                        .arriving(fresh, item.arrival),
+                    Modifier.animateItem(
+                        fadeInSpec = null,
+                        placementSpec = if (still) null else Motion.sheet(IntOffset.VisibilityThreshold),
+                        fadeOutSpec = null,
+                    ).arriving(fresh, item.arrival),
                 ) {
-                    ChatItemView(item, theme, actions)
+                    if (item is ChatItem.RepliesItem) {
+                        QuickRepliesView(item.block, theme, folded = fold.folding == item.id) { buttonId ->
+                            fold.start(items, item.id)
+                            actions.tap(buttonId, item.block.messageId)
+                        }
+                    } else {
+                        ChatItemView(item, theme, actions)
+                    }
                 }
             }
         }

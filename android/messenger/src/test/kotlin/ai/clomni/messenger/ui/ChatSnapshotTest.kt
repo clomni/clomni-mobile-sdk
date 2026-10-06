@@ -1,7 +1,9 @@
 package ai.clomni.messenger.ui
 
 import ai.clomni.messenger.presentation.ChatFixture
+import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ChatPresenter
+import ai.clomni.messenger.presentation.ChatScreen
 import ai.clomni.messenger.presentation.ChatSnapshot
 import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.ClomniTheme
@@ -28,6 +30,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams
 import com.android.resources.Density
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -249,6 +252,69 @@ class ChatSnapshotTest {
         } finally {
             ai.clomni.messenger.Clomni.setTypeface(null)
         }
+    }
+
+    /**
+     * A choice, frame by frame as the phone draws it (operator, 2026-10-06, pictures 85 and 87): the capsules folded
+     * with the transcript held; the user's message at the end with the bot typing under it; the bot's answer where the
+     * typing was, the typing row under it with the run's only avatar. Nothing lies over anything in any of them.
+     */
+    @Test
+    fun aChoiceNeverOverlaps() {
+        val greeting = message("m1", 1, "10:31:00Z", bot, "text", """{"text":"Salam! Nə ilə kömək edək?"}""")
+        val menu = message(
+            "m2", 2, "10:31:00Z", bot, "quick_replies",
+            """{"layout":"vertical","input_disabled":true,
+               "buttons":[{"id":"order","title":"Sifarişim haqqında","icon":null,"payload":"node:order"},
+                          {"id":"pay","title":"Ödəniş","icon":null,"payload":"node:pay"},
+                          {"id":"tech","title":"Texniki problem","icon":null,"payload":"node:tech"}]}""",
+        )
+        val waiting = loaded(greeting, menu, answerable = setOf("m2"))
+        val buttons = (present(waiting).items.last() as ChatItem.RepliesItem).block.buttons.map { it.accessibilityLabel }
+        val chosen = PendingMessage("conv_5521", ClientMessage.ButtonReply("m2", "tech", "node:tech"), "Texniki problem", NOW)
+        val typing = Sender(SenderType.BOT)
+        val answer = message("m4", 4, "10:31:50Z", bot, "text", """{"text":"Problemi qısaca yazın."}""")
+
+        val held = present(waiting)
+        frame("choice_1_folding", held, ChoiceFold().apply { start(held.items, "replies-m2") }) { found ->
+            assertTrue("the capsules take no place: $found", found.none { it.label in buttons })
+            assertEquals("the transcript held: no message of the user's yet", 1, found.size)
+        }
+        frame("choice_2_sent", present(loaded(greeting, menu).copy(pending = listOf(chosen), typing = typing))) { found ->
+            assertEquals("bot, user, clock, typing: $found", listOf("Apar bot", "Siz", "Göndərilir", "Apar yazır"), found.map { it.label.substringBefore(",") })
+        }
+        val sent = message("m3", 3, "10:31:40Z", user, "text", """{"text":"Texniki problem"}""")
+        val answered = present(loaded(greeting, menu, sent, answer).copy(typing = typing))
+        val answerBubble = answered.items.filterIsInstance<ChatItem.BubbleItem>().last().bubble
+        assertEquals("the typing row has the run's avatar", null, answerBubble.avatar)
+        frame("choice_3_answered", answered) { found ->
+            assertEquals("bot, user, bot, typing: $found", listOf("Apar bot", "Siz", "Apar bot", "Apar yazır"), found.map { it.label.substringBefore(",") })
+        }
+    }
+
+    /** [screen] in the lazy transcript; [check] gets its messages, status and typing row, top to bottom, none over another. */
+    private fun frame(name: String, screen: ChatScreen, fold: ChoiceFold = ChoiceFold(), check: (List<SemanticsCapture.Element>) -> Unit) {
+        val theme = ClomniTheme.make(Fixture.aparConfig.brand, false)
+        paparazzi.snapshot(name) {
+            CompositionLocalProvider(LocalInspectionMode provides true) { ChatScreenView(screen, theme, ChatActions(), fold = fold) }
+        }
+        val labels = screen.items.flatMap { item ->
+            when (item) {
+                is ChatItem.BubbleItem -> listOfNotNull(item.bubble.accessibilityLabel, item.bubble.status?.text)
+                is ChatItem.RepliesItem -> item.block.buttons.map { it.accessibilityLabel }
+                is ChatItem.TypingItem -> listOf(item.line.accessibilityLabel)
+                else -> emptyList()
+            }
+        }.toSet()
+        val found = semantics.elements.filter { it.label in labels }.sortedBy { it.top }
+        for ((i, a) in found.withIndex()) {
+            for (b in found.drop(i + 1)) {
+                val apart = a.fromStart + a.width <= b.fromStart + 0.5f || b.fromStart + b.width <= a.fromStart + 0.5f ||
+                    a.top + a.height <= b.top + 0.5f || b.top + b.height <= a.top + 0.5f
+                assertTrue("$name: \"$a\" lies over \"$b\"", apart)
+            }
+        }
+        check(found)
     }
 
     // The reference (docs/ui-reference.html 4.2, 4.3) at its own size, 282×602 dp at 1.5×, with its data.

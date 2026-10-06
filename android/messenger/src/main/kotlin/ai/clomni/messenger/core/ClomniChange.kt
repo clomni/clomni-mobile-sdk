@@ -20,6 +20,9 @@ internal sealed interface ClomniChange {
 
     data class Typing(val conversationId: String, val sender: Sender, val isTyping: Boolean) : ClomniChange
 
+    /** A message from [sender] came over the socket, new or a copy already held: they are no longer typing it. */
+    data class Arrived(val conversationId: String, val sender: Sender) : ClomniChange
+
     data class Read(val conversationId: String, val upToSeq: Long) : ClomniChange
 
     /** The first message of draft [draftId] created conversation [conversationId] on the server. */

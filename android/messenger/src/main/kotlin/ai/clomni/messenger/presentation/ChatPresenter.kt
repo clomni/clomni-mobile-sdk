@@ -142,6 +142,8 @@ internal class ChatPresenter(
         val messageId: String? = null,
         val replyable: Boolean = false,
         val copyText: String? = null,
+        /** Who wrote it; null for the user's pending messages. */
+        val from: Sender? = null,
     )
 
     private sealed interface Entry {
@@ -198,8 +200,12 @@ internal class ChatPresenter(
                 ),
             )
         }
-        snapshot.typing?.let { sender ->
+        // A row of its own at the end; none while a flow waits for a choice.
+        snapshot.typing?.takeUnless { snapshot.awaitsChoice }?.let { sender ->
             val who = person(sender, snapshot)
+            // One face: the run the typing continues gives its avatar to the typing row.
+            val last = (entries.lastOrNull() as? Entry.Draw)?.draft
+            if (last?.from?.isTyping(sender) == true) entries[entries.lastIndex] = Entry.Draw(last.copy(avatar = null))
             entries += Entry.Typing(TypingLine(who.second, "${who.first} ${strings[Key.TYPING]}"))
         }
         markLastStatus(entries, snapshot)
@@ -207,20 +213,26 @@ internal class ChatPresenter(
     }
 
     /**
-     * The status of the user's last message shows when nothing came after it: "Göndərilir", "Göndərildi" or
-     * "Oxundu". A failure shows on its own message wherever it is.
+     * The status of the user's last message shows when nothing came after it: the clock while it goes, then ✓, with
+     * its time; TalkBack reads "Göndərilir", "Göndərildi" or "Oxundu". A failure shows on its own message wherever it is.
      */
     private fun markLastStatus(entries: MutableList<Entry>, snapshot: ChatSnapshot) {
         val index = entries.indexOfLast { it is Entry.Draw }
         val last = (entries.getOrNull(index) as? Entry.Draw)?.draft ?: return
         if (last.side != Bubble.Side.OUTGOING || last.status != null) return
-        val text = if (snapshot.pending.any { it.id == last.id }) {
-            strings[Key.SENDING]
+        val mark = if (snapshot.pending.any { it.id == last.id }) {
+            Bubble.Status.Mark.SENDING
         } else {
             val seq = snapshot.messages.firstOrNull { key(it) == last.id }?.seq ?: 0
-            if (snapshot.readUpTo?.let { it >= seq } == true) strings[Key.READ] else strings[Key.SENT]
+            if (snapshot.readUpTo?.let { it >= seq } == true) Bubble.Status.Mark.READ else Bubble.Status.Mark.SENT
         }
-        entries[index] = Entry.Draw(last.copy(status = Bubble.Status(text, isFailure = false, retryId = null)))
+        val text = when (mark) {
+            Bubble.Status.Mark.SENDING -> strings[Key.SENDING]
+            Bubble.Status.Mark.SENT -> strings[Key.SENT]
+            Bubble.Status.Mark.READ -> strings[Key.READ]
+        }
+        val status = Bubble.Status(text, isFailure = false, retryId = null, mark = mark, time = time.stamp(last.date, now))
+        entries[index] = Entry.Draw(last.copy(status = status))
     }
 
     /** Bubbles of one sender within a minute of each other, with nothing between them, form a run. */
@@ -301,6 +313,7 @@ internal class ChatPresenter(
             },
             status = null,
             accessibilityLabel = label(message, snapshot),
+            from = message.sender,
         )
     }
 

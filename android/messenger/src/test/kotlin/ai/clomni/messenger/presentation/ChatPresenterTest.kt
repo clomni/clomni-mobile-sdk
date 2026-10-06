@@ -155,6 +155,49 @@ class ChatPresenterTest {
         assertNull(alone.meta)
     }
 
+    /** No words under the user's message: its time and the clock, then ✓; the words are TalkBack's (operator, 2026-10-06). */
+    @Test
+    fun statusIsAMarkWithTheTime() {
+        val sending = pending(ClientMessage.Text("Salam"), "Salam")
+        assertEquals(
+            Bubble.Status("Göndərilir", false, null, Bubble.Status.Mark.SENDING, "indi"),
+            bubbles(screen(emptyList()) { it.copy(pending = listOf(sending)) }).single().status,
+        )
+        val mine = ChatFixture.message("03-text-user.json", "created_at" to "2026-10-01T10:30:00Z")
+        assertEquals(Bubble.Status("Göndərildi", false, null, Bubble.Status.Mark.SENT, "10:30"), bubbles(screen(listOf(mine))).single().status)
+        assertEquals(Bubble.Status.Mark.READ, bubbles(screen(listOf(mine)) { it.copy(readUpTo = 3) }).single().status?.mark)
+        val failed = sending.copy(state = PendingMessage.State.FAILED)
+        assertNull("a failure is in words", bubbles(screen(emptyList()) { it.copy(pending = listOf(failed)) }).single().status?.mark)
+    }
+
+    /** The typing row: one avatar, at the end; none while the flow waits for a choice (operator, 2026-10-06). */
+    @Test
+    fun typingRowTakesTheAvatarAndWaitsForNoChoice() {
+        val bot = ChatFixture.message("01-text-bot.json", "created_at" to "2026-10-01T10:31:30Z")
+        val botTyping = screen(listOf(bot)) { it.copy(typing = Sender(SenderType.BOT, "bot_other")) }
+        assertTrue(botTyping.items.last() is ChatItem.TypingItem)
+        assertNull("the bot's run gives its avatar to the typing row", bubbles(botTyping).single().avatar)
+        assertEquals("indi", bubbles(botTyping).single().meta)
+        val leylaTyping = screen(listOf(bot)) { it.copy(typing = Sender(SenderType.OPERATOR, name = "Leyla")) }
+        assertNotNull("someone else typing: the bot keeps its own", bubbles(leylaTyping).single().avatar)
+
+        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val waiting: (ChatSnapshot) -> ChatSnapshot = {
+            it.copy(
+                conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")),
+                answerable = setOf(step.id),
+                typing = Sender(SenderType.BOT),
+            )
+        }
+        assertTrue("choices wait: nobody is typing", screen(listOf(step), waiting).items.none { it is ChatItem.TypingItem })
+        val tapped = screen(listOf(step)) { waiting(it).copy(pending = listOf(pending(ClientMessage.Text("A"), "A"))) }
+        assertTrue("once chosen, the bot may type", tapped.items.last() is ChatItem.TypingItem)
+        val over = screen(listOf(step)) { waiting(it).copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow(null))) }
+        assertTrue("the flow waits for nothing", over.items.last() is ChatItem.TypingItem)
+        val old = screen(listOf(step)) { waiting(it).copy(answerable = emptySet()) }
+        assertTrue("the choices are not live", old.items.last() is ChatItem.TypingItem)
+    }
+
     /** The user's message is one item from the moment it is written: the server's copy changes only its status. */
     @Test
     fun aSentMessageKeepsItsPlaceInTheTranscript() {

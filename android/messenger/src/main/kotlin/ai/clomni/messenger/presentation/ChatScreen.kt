@@ -5,6 +5,7 @@ import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
+import ai.clomni.messenger.protocol.SenderType
 import ai.clomni.messenger.store.PendingMessage
 import java.io.File
 
@@ -139,12 +140,21 @@ internal data class Bubble(
     ) : Body
 
     data class Status(
-        /** "Göndərilir", "Göndərildi", "Oxundu", "Göndərilmədi · Yenidən cəhd et". */
+        /**
+         * "Göndərilir", "Göndərildi", "Oxundu": only TalkBack reads it, the screen shows [mark]. A failure,
+         * "Göndərilmədi · Yenidən cəhd et", is on screen in words.
+         */
         val text: String,
         val isFailure: Boolean,
         /** The client id to send again when the failure is tapped. */
         val retryId: String?,
-    )
+        /** The clock, then ✓, next to [time]; null for a failure. */
+        val mark: Mark? = null,
+        /** When it was sent, next to [mark]: "indi", "12:42". */
+        val time: String? = null,
+    ) {
+        enum class Mark { SENDING, SENT, READ }
+    }
 }
 
 internal data class SystemLine(val id: String, val text: String, val avatars: List<ChatAvatar>)
@@ -228,6 +238,22 @@ internal data class ChatComposer(
         data class Closed(val text: String, val action: String) : Mode
     }
 }
+
+/**
+ * A flow waits for a choice and the last message offers it: nobody is writing, whatever the last "typing" said
+ * (operator, 2026-10-06).
+ */
+internal val ChatSnapshot.awaitsChoice: Boolean
+    get() {
+        val flow = conversation?.flow ?: return false
+        if (!flow.active || flow.awaiting == null || pending.isNotEmpty()) return false
+        val last = messages.lastOrNull { it.content !is MessageContent.System } ?: return false
+        return last.content is MessageContent.QuickReplies && last.id in answerable
+    }
+
+/** This sender is the one shown [typing]: the same kind, and the same person when both are named; a bot is a bot. */
+internal fun Sender.isTyping(typing: Sender): Boolean =
+    type == typing.type && (type == SenderType.BOT || id == null || typing.id == null || id == typing.id)
 
 /** What the conversation screen is built from. */
 internal data class ChatSnapshot(
