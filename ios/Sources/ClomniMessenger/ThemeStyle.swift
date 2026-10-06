@@ -201,54 +201,96 @@ struct SkeletonBlock: View {
     }
 }
 
-/// The thin strip under the header (DESIGN-PASS-3 C1): 32 high on the text colour at 6%, a small icon and "İnternet
-/// yoxdur" in 13 text_muted, opening and closing in 200 ms; the screen under it stays as the cache has it. When the
-/// connection is back it says `connected` ("Qoşuldu") for a second, then closes. `below` is room under it while it
-/// shows.
-struct OfflineStrip: View {
+/// The offline capsule (CM-077), the same on every screen: it floats over the content, centred, 8 under the screen's
+/// bar, and moves nothing. 32 high, radius 16, 14 at the sides; a dark neutral at 92% under 13 medium white with a 14
+/// Wi-Fi-off icon 6 before it (the other way round in dark mode), shadow y 2, blur 8, 12%. None of it is the brand's,
+/// so it reads the same on the brand's colour, a picture or the page. It comes 8 down from above as it fades in, on a
+/// 200 ms spring; when the connection is back it says `connected` ("Qoşuldu") with ✓ for a second, then goes back up.
+/// VoiceOver announces each change.
+struct OfflineCapsule: View {
     let offline: String?
     let connected: String
     let theme: ClomniTheme
-    var below: CGFloat = 0
-    @State private var back = false
+    @State private var notice: OfflineNotice
+    /// The words it had, for the frame between the network coming back and the notice moving on.
+    @State private var kept: String
     /// Bumped by every change, so an earlier second cannot close a later "Qoşuldu".
     @State private var generation = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var text: String? { offline ?? (back ? connected : nil) }
+    init(offline: String?, connected: String, theme: ClomniTheme) {
+        self.offline = offline
+        self.connected = connected
+        self.theme = theme
+        _notice = State(initialValue: OfflineNotice.hidden.next(offline: offline != nil))
+        _kept = State(initialValue: offline ?? "")
+    }
+
+    private var shown: Bool { offline != nil || notice != .hidden }
+    private var saysOffline: Bool { offline != nil || notice == .offline }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let text {
-                HStack(spacing: 6) {
-                    Image(systemName: offline != nil ? "wifi.slash" : "checkmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .accessibilityHidden(true)
-                    Text(text)
-                        .clomniFont(13, relativeTo: .footnote)
-                        .lineLimit(1)
-                }
-                .foregroundStyle(theme.colors.textSecondary.color)
-                .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
-                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
-                .background(theme.colors.textPrimary.color.opacity(0.06))
-                .padding(.bottom, below)
-                .accessibilityElement(children: .combine)
-                .transition(.move(edge: .top).combined(with: .opacity))
+        ZStack {
+            if shown {
+                capsule
+                    .transition(reduceMotion ? .opacity : AnyTransition.offset(y: -8).combined(with: .opacity))
             }
         }
-        .clipped()
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: text)
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.capsule, value: shown)
+        .allowsHitTesting(false)
         .onChange(of: offline != nil) { isOffline in
             generation += 1
-            back = !isOffline
-            if let text { UIAccessibility.post(notification: .announcement, argument: text) }
-            guard !isOffline else { return }
+            notice = notice.next(offline: isOffline)
+            if let offline { kept = offline }
+            UIAccessibility.post(notification: .announcement, argument: isOffline ? (offline ?? kept) : connected)
+            guard notice == .back else { return }
             let shown = generation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                if generation == shown { back = false }
+            DispatchQueue.main.asyncAfter(deadline: .now() + OfflineNotice.backSeconds) {
+                if generation == shown { notice = notice.expired() }
             }
         }
+    }
+
+    private var capsule: some View {
+        let colors = theme.capsule
+        let shadow = ClomniTheme.Shadow.capsule
+        return HStack(spacing: 6) {
+            Image(systemName: saysOffline ? "wifi.slash" : "checkmark")
+                .resizable()
+                .scaledToFit()
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 14, height: 14)
+                .accessibilityHidden(true)
+            Text(saysOffline ? (offline ?? kept) : connected)
+                .clomniFont(13, .medium, relativeTo: .footnote)
+                .lineLimit(1)
+        }
+        .foregroundStyle(colors.text.color)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 32)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(colors.fill.color.opacity(colors.opacity))
+                .shadow(color: Color.black.opacity(shadow.opacity), radius: CGFloat(shadow.radius) / 2, x: 0,
+                        y: CGFloat(shadow.y))
+        )
+        .accessibilityElement(children: .combine)
+        .padding(.horizontal, CGFloat(ClomniTheme.Space.l))
+    }
+}
+
+extension View {
+    /// The offline capsule hanging 8 under this bar (the list's, a conversation's), over what follows it.
+    func offlineCapsule(offline: String?, connected: String, theme: ClomniTheme) -> some View {
+        overlay(alignment: .bottom) {
+            // A line of no height on the bar's bottom edge, the capsule hanging from it.
+            Color.clear.frame(height: 0).overlay(alignment: .top) {
+                OfflineCapsule(offline: offline, connected: connected, theme: theme)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+            }
+        }
+        .zIndex(1)
     }
 }
 

@@ -131,9 +131,9 @@ package struct HomeScreen: Sendable, Equatable {
     package let channels: ChannelsCard?
     package let messagesCard: MessagesCard
     package let news: NewsCard?
-    /// The thin strip under the header while offline (DESIGN-PASS-3 C1).
+    /// The capsule over the screen while offline (CM-077).
     package let offline: String?
-    /// "Qoşuldu": the strip's word for a second once the connection is back.
+    /// "Qoşuldu": the capsule's word for a second once the connection is back.
     package let connected: String
     package let failure: Failure?
     /// What VoiceOver reads over the skeleton: "Yüklənir".
@@ -414,5 +414,24 @@ package struct NewsArticle: Sendable, Equatable {
         button = item.button
         backLabel = strings[.goBack]
         closeLabel = strings[.close]
+    }
+}
+
+/// What the offline capsule says (CM-077), the same on every screen: nothing, "İnternet yoxdur", or "Qoşuldu" for
+/// `backSeconds` once the connection is back.
+package enum OfflineNotice: Sendable, Equatable {
+    case hidden, offline, back
+
+    package static let backSeconds = 1.0
+
+    /// Where it goes when the network becomes `offline`: only coming back from offline says "Qoşuldu".
+    package func next(offline: Bool) -> OfflineNotice {
+        if offline { return .offline }
+        return self == .offline ? .back : self
+    }
+
+    /// "Qoşuldu" has had its second.
+    package func expired() -> OfflineNotice {
+        self == .back ? .hidden : self
     }
 }

@@ -126,7 +126,22 @@ package struct ClomniTheme: Sendable, Equatable {
 
         /// M9: very light, y 2, blur 8, 6%.
         package static let card = Shadow(opacity: 0.06, radius: 8, y: 2)
+        /// The offline capsule: y 2, blur 8, 12%.
+        package static let capsule = Shadow(opacity: 0.12, radius: 8, y: 2)
     }
+
+    /// The offline capsule's colours (CM-077): a dark neutral at 92% under white text, the other way round in dark
+    /// mode. Neither comes from the brand, so it reads the same on the brand's colour, a picture or the page.
+    package struct Capsule: Sendable, Equatable {
+        package let fill: RGBColor
+        package let opacity: Double
+        package let text: RGBColor
+
+        package static let light = Capsule(fill: RGBColor(hex: "#1C1C1E")!, opacity: 0.92, text: .white)
+        package static let dark = Capsule(fill: RGBColor(hex: "#F2F2F7")!, opacity: 0.92, text: RGBColor(hex: "#1C1C1E")!)
+    }
+
+    package var capsule: Capsule { isDark ? .dark : .light }
 
     /// Clomni's own colour, for a config that has none.
     package static let defaultPrimary = RGBColor(hex: MessengerConfig.Brand.defaultPrimaryColor) ?? .black

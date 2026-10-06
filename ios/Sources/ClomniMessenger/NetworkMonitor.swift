@@ -4,7 +4,7 @@ import Foundation
 import Network
 #endif
 
-/// Whether the phone has a way to the network, for the strip under the header (DESIGN-PASS-3 C1): "İnternet yoxdur"
+/// Whether the phone has a way to the network, for the offline capsule (CM-077): "İnternet yoxdur"
 /// while it has none, the screens staying as the cache has them. One system monitor for the whole SDK, started the
 /// first time a screen asks.
 @MainActor

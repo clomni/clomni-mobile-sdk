@@ -11,6 +11,8 @@ import ClomniPresentation
 enum Motion {
     /// The sheet's spring (damping 0.86, stiffness ≈ 400), for anything that travels: scrolling to a message too.
     static let spring = Animation.spring(response: 0.35, dampingFraction: 0.86)
+    /// The offline capsule's 200 ms spring (CM-077): damping 0.86, stiffness ≈ 1000.
+    static let capsule = Animation.spring(response: 0.2, dampingFraction: 0.86)
     /// A press and its release (M6): damping 0.6, stiffness ≈ 800.
     static let press = Animation.spring(response: 0.22, dampingFraction: 0.6)
 

@@ -37,7 +37,7 @@ package final class HomeController {
         didSet { render() }
     }
 
-    /// The thin yellow strip; set from the app's reachability.
+    /// The offline capsule (CM-077); set from the app's reachability.
     package var isOffline = false {
         didSet { render() }
     }

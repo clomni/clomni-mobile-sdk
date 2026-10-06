@@ -180,6 +180,31 @@ final class ChatSnapshotTests: XCTestCase {
             }
         }
     }
+
+    /// CM-077: offline, the capsule floats 8 under the bar on Home and in a conversation, light and dark; nothing under
+    /// it moves.
+    func testOfflineCapsule() throws {
+        var home = PreviewData.snapshot()
+        home.isOffline = true
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
+        let message = try XCTUnwrap(ProtocolJSON.parseMessage(Data(contentsOf: fixtures.appendingPathComponent("01-text-bot.json"))))
+        var chat = ChatSnapshot(config: config, messages: [message])
+        chat.load = .loaded
+        chat.isOffline = true
+        let screen = ChatPresenter(strings: ClomniStrings(language: "az", overrides: config.strings),
+                                   timeZone: TimeZone(identifier: "UTC")!, now: now).screen(chat)
+        for dark in [false, true] {
+            let suffix = dark ? "-dark" : "-light"
+            let view = HomeView(screen: PreviewData.presenter.home(home), theme: PreviewData.theme(dark: dark),
+                                actions: MessengerActions())
+                .environment(\.clomniLoadsRemoteImages, false)
+                .environment(\.colorScheme, dark ? .dark : .light)
+            try Snapshot.assert(Snapshot.render(view, width: 390, height: 844, dark: dark), named: "home-offline" + suffix)
+            let theme = ClomniTheme.make(brand: config.brand, dark: dark)
+            let scene = SnapshotScene(screen: screen, theme: theme, size: .large)
+            try Snapshot.assert(Snapshot.render(scene, width: 390, dark: dark), named: "chat-offline" + suffix)
+        }
+    }
 }
 
 /// Light and dark, at the default text size and at accessibility3 (Dynamic Type past 200%, DoD 11).
@@ -204,6 +229,7 @@ private struct SnapshotScene: View {
     var body: some View {
         VStack(spacing: 0) {
             ChatHeaderView(header: screen.header, theme: theme, back: {}, close: {})
+                .offlineCapsule(offline: screen.offline, connected: screen.connected, theme: theme)
             ChatTranscript(items: screen.items, theme: theme, actions: ChatActions())
             ComposerView(composer: screen.composer, theme: theme, text: .constant(""), writeAnyway: .constant(false),
                          staged: .constant(nil),

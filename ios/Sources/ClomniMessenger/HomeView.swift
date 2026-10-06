@@ -51,8 +51,6 @@ struct HomeView: View {
                             .onChange(of: measured.size.height) { block = $0 }
                     })
                     .padding(.bottom, Self.fullPast)
-                    OfflineStrip(offline: screen.offline, connected: screen.connected, theme: theme,
-                                 below: CGFloat(ClomniTheme.Space.l))
                     HomeCardsView(screen: screen, theme: theme, actions: actions)
                         .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
                         .padding(.bottom, CGFloat(ClomniTheme.Space.xxl))
@@ -66,6 +64,11 @@ struct HomeView: View {
                 }
             }
             .ignoresSafeArea(.container, edges: .top)
+        }
+        // 8 under the logo's 48 pt row, which starts 16 under the safe area; it stays there as the page scrolls.
+        .overlay(alignment: .top) {
+            OfflineCapsule(offline: screen.offline, connected: screen.connected, theme: theme)
+                .padding(.top, CGFloat(ClomniTheme.Size.barTop + ClomniTheme.Size.barRow) + 8)
         }
         // The page: canvas grey in light mode (the white cards stand on it, the fade ends in it), background in dark.
         .background((theme.isDark ? theme.colors.background : theme.colors.canvas).color.ignoresSafeArea())

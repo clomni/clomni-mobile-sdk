@@ -354,6 +354,21 @@ final class PresenterTests: XCTestCase {
         XCTAssertNil(home.failure)
         XCTAssertEqual(home.offline, "İnternet yoxdur")
         XCTAssertEqual(presenter().messages(cached).offline, home.offline)
+        XCTAssertEqual(home.connected, "Qoşuldu", "the capsule's word once it is back")
+        XCTAssertEqual(presenter().messages(cached).connected, home.connected)
+    }
+
+    /// CM-077: the capsule says "İnternet yoxdur", then "Qoşuldu" for a second once it is back, then goes.
+    func testTheOfflineCapsulesStates() {
+        XCTAssertEqual(OfflineNotice.hidden.next(offline: false), .hidden)
+        let offline = OfflineNotice.hidden.next(offline: true)
+        XCTAssertEqual(offline, .offline)
+        let back = offline.next(offline: false)
+        XCTAssertEqual(back, .back)
+        XCTAssertEqual(back.expired(), .hidden, "gone after its second")
+        XCTAssertEqual(back.next(offline: true), .offline, "offline again before the second is up")
+        XCTAssertEqual(back.next(offline: true).expired(), .offline, "the second does not close it then")
+        XCTAssertEqual(OfflineNotice.backSeconds, 1)
     }
 
     func testMessagesTab() {
