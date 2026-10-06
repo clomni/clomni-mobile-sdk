@@ -61,6 +61,11 @@ thread-ində çağırılmalıdır, hadisələr də orada gəlir.
 - Bildiriş ikonu: drawable-ı `.androidlib` qovluğuna qoyun (`Assets/Plugins/Android/ClomniRes.androidlib/res/drawable/`)
   və `Clomni.SetNotificationIcon("ic_notification")`.
 
+- **Unity 6 (6000.x).** Sınanmalı versiya 6000.3-dür. Unity 6-nın standart giriş nöqtəsi GameActivity-dir, paket onunla da
+  işləyir: messenger öz ekranında açılır, oyunun activity-sinə ehtiyacı yoxdur. *Project Settings → Player → Android*:
+  Minimum API Level 23 (Android 6.0) və ya yuxarı. External Dependency Manager-də *Android Resolver → Settings*:
+  "Use Gradle" və "Patch mainTemplate.gradle" açıq olsun (EDM4U 1.2.183+).
+
 ### iOS
 
 - Player Settings → Target minimum iOS Version: **15.0**.
@@ -108,6 +113,11 @@ CocoaPods; until then Android and iOS builds cannot resolve them.
 **Android**: call `Initialize` as early as possible (`RuntimeInitializeLoadType.BeforeSceneLoad`); ask for
 `POST_NOTIFICATIONS` on Android 13+; the notification icon is a drawable in an `.androidlib` folder, named with
 `SetNotificationIcon`.
+
+**Unity 6 (6000.x)**: the version to test is 6000.3. Unity 6 starts with GameActivity by default; the package works
+with it, as the messenger opens on its own screen and needs nothing from the game's activity. *Player → Android*: Minimum
+API Level 23 or higher. External Dependency Manager, *Android Resolver → Settings*: "Use Gradle" and "Patch
+mainTemplate.gradle" on (EDM4U 1.2.183+).
 
 **iOS**: Target minimum iOS Version 15.0; EDM4U adds the pod, open the `.xcworkspace`. The Swift bridge and its `.mm`
 companion go into the `UnityFramework` target; the `.mm` hands Swift the address of `UnitySendMessage`, so no bridging

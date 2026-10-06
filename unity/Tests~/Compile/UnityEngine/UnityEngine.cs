@@ -107,6 +107,7 @@ namespace UnityEngine
         public AndroidJavaObject(string className, params object[] args) => throw null;
         public IntPtr GetRawObject() => throw null;
         public ReturnType Call<ReturnType>(string methodName, params object[] args) => throw null;
+        public ReturnType CallStatic<ReturnType>(string methodName, params object[] args) => throw null;
         public FieldType GetStatic<FieldType>(string fieldName) => throw null;
         public void Dispose() => throw null;
     }
@@ -145,5 +146,13 @@ namespace UnityEngine
         public static IntPtr ExceptionOccurred() => throw null;
         public static void ExceptionClear() => throw null;
         public static void ExceptionDescribe() => throw null;
+    }
+}
+
+namespace UnityEngine
+{
+    public class AndroidJavaException : System.Exception
+    {
+        public AndroidJavaException(string message) : base(message) { }
     }
 }

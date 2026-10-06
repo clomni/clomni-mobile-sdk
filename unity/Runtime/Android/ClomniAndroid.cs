@@ -25,10 +25,27 @@ namespace ClomniMessenger
 
         internal ClomniAndroid()
         {
-            using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-            using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+            context = ApplicationContext();
+        }
+
+        // The SDK needs only the application. UnityPlayer.currentActivity gives it with both entry points (Activity and
+        // Unity 6's default GameActivity); should it be missing at that moment, the process's Application is asked for.
+        private static AndroidJavaObject ApplicationContext()
+        {
+            try
             {
-                context = activity.Call<AndroidJavaObject>("getApplicationContext");
+                using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+                {
+                    if (activity != null) return activity.Call<AndroidJavaObject>("getApplicationContext");
+                }
+            }
+            catch (AndroidJavaException)
+            {
+            }
+            using (var thread = new AndroidJavaClass("android.app.ActivityThread"))
+            {
+                return thread.CallStatic<AndroidJavaObject>("currentApplication");
             }
         }
 
