@@ -29,12 +29,18 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions) {
+    WithOfflineCapsule(screen.offline, screen.connected, theme) { bar -> MessagesBody(screen, theme, closeLabel, actions, bar) }
+}
+
+@Composable
+private fun MessagesBody(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions, bar: Modifier) {
     Column(Modifier.fillMaxSize().background(theme.colors.canvas.color)) {
         val scroll = rememberScrollState()
-        TopBar(screen.backLabel, actions.back, closeLabel, actions.close, theme, scrolled = scroll.value > 0) {
-            TopBarTitle(screen.title, theme)
+        Box(bar) {
+            TopBar(screen.backLabel, actions.back, closeLabel, actions.close, theme, scrolled = scroll.value > 0) {
+                TopBarTitle(screen.title, theme)
+            }
         }
-        OfflineStrip(screen.offline, screen.connected, theme)
         val padding = Modifier.padding(ClomniTheme.Space.l.dp)
         val spacing = Arrangement.spacedBy(ClomniTheme.Space.m.dp)
         when (screen.phase) {

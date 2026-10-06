@@ -254,49 +254,50 @@ internal fun ChatScreenView(
     /** The transcript's hold while a choice folds away; tests hand one in to draw that moment. */
     fold: ChoiceFold = remember { ChoiceFold() },
 ) {
-    Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
-        // The bar's line shows once the transcript has something above what is on screen.
-        var scrolled by remember { mutableStateOf(false) }
-        ChatHeaderView(screen.header, theme, actions, scrolled)
-        OfflineStrip(screen.offline, screen.connected, theme)
-        val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
-        val inner = if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
-        // What is not known yet shows nothing; once it is, all of it comes in one frame, fading in over 200 ms
-        // (DESIGN-PASS-3 C5). From the cache it is there in the first frame.
-        Crossfade(screen.phase, body, tween(200), label = "chat") { phase ->
-            when (phase) {
-                // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
-                HomeScreen.Phase.LOADING -> Box(inner, Alignment.Center) {
-                    LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
-                }
-                HomeScreen.Phase.FAILED -> Column(inner.padding(ClomniTheme.Space.xl.dp)) {
-                    screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
-                }
-                HomeScreen.Phase.READY -> if (lazy) {
-                    LazyTranscript(screen, theme, actions, inner, fold, loadingOlder) { scrolled = it }
-                } else {
-                    Column(
-                        inner.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
-                        verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
-                    ) {
-                        for (item in screen.items) ChatItemView(item, theme, actions)
+    WithOfflineCapsule(screen.offline, screen.connected, theme) { bar ->
+        Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
+            // The bar's line shows once the transcript has something above what is on screen.
+            var scrolled by remember { mutableStateOf(false) }
+            Box(bar) { ChatHeaderView(screen.header, theme, actions, scrolled) }
+            val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
+            val inner = if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+            // What is not known yet shows nothing; once it is, all of it comes in one frame, fading in over 200 ms
+            // (DESIGN-PASS-3 C5). From the cache it is there in the first frame.
+            Crossfade(screen.phase, body, tween(200), label = "chat") { phase ->
+                when (phase) {
+                    // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
+                    HomeScreen.Phase.LOADING -> Box(inner, Alignment.Center) {
+                        LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
+                    }
+                    HomeScreen.Phase.FAILED -> Column(inner.padding(ClomniTheme.Space.xl.dp)) {
+                        screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
+                    }
+                    HomeScreen.Phase.READY -> if (lazy) {
+                        LazyTranscript(screen, theme, actions, inner, fold, loadingOlder) { scrolled = it }
+                    } else {
+                        Column(
+                            inner.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
+                            verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
+                        ) {
+                            for (item in screen.items) ChatItemView(item, theme, actions)
+                        }
                     }
                 }
             }
+            // While a step waits for a button nothing is under the conversation; the composer comes back for free text, at
+            // the flow's end or when an operator joins (operator, 2026-10-04). M7: its height and its opacity, 220 ms.
+            val composing = screen.composer.mode != ChatComposer.Mode.Hidden
+            val still = reduceMotion()
+            AnimatedVisibility(
+                composing,
+                enter = if (still) fadeIn(tween(150)) else expandVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeIn(tween(220)),
+                exit = if (still) fadeOut(tween(150)) else shrinkVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeOut(tween(220)),
+            ) {
+                ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
+            }
+            if (!composing) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+            Announcer(screen.announcement?.id, screen.announcement?.text)
         }
-        // While a step waits for a button nothing is under the conversation; the composer comes back for free text, at
-        // the flow's end or when an operator joins (operator, 2026-10-04). M7: its height and its opacity, 220 ms.
-        val composing = screen.composer.mode != ChatComposer.Mode.Hidden
-        val still = reduceMotion()
-        AnimatedVisibility(
-            composing,
-            enter = if (still) fadeIn(tween(150)) else expandVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeIn(tween(220)),
-            exit = if (still) fadeOut(tween(150)) else shrinkVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeOut(tween(220)),
-        ) {
-            ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
-        }
-        if (!composing) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-        Announcer(screen.announcement?.id, screen.announcement?.text)
     }
 }
 

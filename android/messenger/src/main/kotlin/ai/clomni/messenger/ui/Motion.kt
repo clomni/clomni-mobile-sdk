@@ -36,6 +36,9 @@ internal object Motion {
     /** M1: the sheet, damping 0.86, stiffness 400. */
     fun <T> sheet(visibilityThreshold: T? = null) = spring(dampingRatio = 0.86f, stiffness = 400f, visibilityThreshold = visibilityThreshold)
 
+    /** The offline capsule's 200 ms spring (CM-077): damping 0.86, stiffness 1000 (iOS: response 0.2). */
+    fun <T> capsule(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.86f, stiffness = 1000f)
+
     /** M6: a press, and its release. */
     fun <T> press(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.6f, stiffness = 800f)
 

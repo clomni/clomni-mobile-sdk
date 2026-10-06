@@ -103,6 +103,22 @@ internal data class ClomniTheme(val colors: Colors, val isDark: Boolean) {
         companion object {
             /** M9: very light, y 2, blur 8, 6%. */
             val card = listOf(Shadow(0.06, 8.0, 2.0))
+
+            /** The offline capsule: y 2, blur 8, 12%. */
+            val capsule = Shadow(0.12, 8.0, 2.0)
+        }
+    }
+
+    /**
+     * The offline capsule's colours (CM-077): a dark neutral at 92% under white text, the other way round in dark mode.
+     * Neither comes from the brand, so it reads the same on the brand's colour, a picture or the page.
+     */
+    val capsule: Capsule get() = if (isDark) Capsule.DARK else Capsule.LIGHT
+
+    data class Capsule(val fill: RgbColor, val opacity: Double, val text: RgbColor) {
+        companion object {
+            val LIGHT = Capsule(RgbColor.parse("#1C1C1E")!!, 0.92, RgbColor.WHITE)
+            val DARK = Capsule(RgbColor.parse("#F2F2F7")!!, 0.92, RgbColor.parse("#1C1C1E")!!)
         }
     }
 

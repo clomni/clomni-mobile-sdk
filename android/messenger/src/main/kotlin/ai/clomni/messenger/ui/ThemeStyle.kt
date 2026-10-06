@@ -122,14 +122,15 @@ internal fun Modifier.bleed(horizontal: Dp = 0.dp, vertical: Dp = 0.dp): Modifie
 }
 
 /**
- * [ClomniTheme.Shadow.card] under a rounded rectangle of [radius]: drawn with a shadow layer, which the GPU draws for
- * shapes from Android 9; before that an elevation shadow of about the same weight.
+ * [token] (the card's by default) under a rounded rectangle of [radius] filled with [fill]: drawn with a shadow layer,
+ * which the GPU draws for shapes from Android 9; before that an elevation shadow of about the same weight.
  */
-internal fun Modifier.softShadow(radius: Dp, fill: Color): Modifier {
+internal fun Modifier.softShadow(radius: Dp, fill: Color, token: ClomniTheme.Shadow = ClomniTheme.Shadow.card.first()): Modifier {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-        return shadow(1.dp, RoundedCornerShape(radius), ambientColor = Color.Black.copy(alpha = 0.03f), spotColor = Color.Black.copy(alpha = 0.06f))
+        val spot = Color.Black.copy(alpha = token.opacity.toFloat())
+        return shadow(1.dp, RoundedCornerShape(radius), ambientColor = spot.copy(alpha = spot.alpha / 2), spotColor = spot)
+            .background(fill, RoundedCornerShape(radius))
     }
-    val token = ClomniTheme.Shadow.card.first()
     return drawWithCache {
         // A CSS blur of 8 is a shadow layer of radius 6 (the layer's radius is about 0.75 of the blur).
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {

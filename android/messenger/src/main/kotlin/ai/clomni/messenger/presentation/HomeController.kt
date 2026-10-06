@@ -75,7 +75,7 @@ internal class HomeController(
             render()
         }
 
-    /** The thin yellow strip; set from the device's connectivity. */
+    /** The offline capsule (CM-077); set from the device's connectivity. */
     var isOffline: Boolean = false
         set(value) {
             field = value

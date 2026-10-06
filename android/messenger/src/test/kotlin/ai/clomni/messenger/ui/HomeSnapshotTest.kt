@@ -84,7 +84,11 @@ class HomeSnapshotTest {
     )
 
     @Test
-    fun homeOffline() = snap("home_offline", loaded().copy(isOffline = true, configLoad = MessengerSnapshot.Load.FAILED))
+    fun homeOffline() {
+        val offline = loaded().copy(isOffline = true, configLoad = MessengerSnapshot.Load.FAILED)
+        snap("home_offline", offline)
+        snap("home_offline_dark", offline, dark = true)
+    }
 
     /** Fixture 43: only "new conversation", no channels, no team, no reply time; the SDK's own texts. */
     @Test

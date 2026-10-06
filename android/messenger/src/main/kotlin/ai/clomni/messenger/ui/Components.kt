@@ -6,13 +6,14 @@ import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.ConversationRow
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
+import ai.clomni.messenger.presentation.OfflineNotice
 import ai.clomni.messenger.presentation.RgbColor
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,7 +39,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +55,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -64,6 +69,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -129,48 +135,90 @@ internal fun SkeletonBlock(height: Float, theme: ClomniTheme) {
 }
 
 /**
- * The thin strip under the header (DESIGN-PASS-3 C1): 32 high on the text colour at 6%, a small icon and "İnternet
- * yoxdur" in 13 text_muted, opening and closing in 200 ms; the screen under it stays as the cache has it. When the
- * connection is back it says [connected] ("Qoşuldu") for a second, then closes.
+ * The offline capsule (CM-077), the same on every screen: it floats over the content, centred, 8 under the screen's bar,
+ * and moves nothing. 32 high, radius 16, 14 at the sides; a dark neutral at 92% under 13 medium white with a 14 Wi-Fi-off
+ * icon 6 before it (the other way round in dark mode), shadow y 2, blur 8, 12%. None of it is the brand's, so it reads
+ * the same on the brand's colour, a picture or the page. It comes 8 down from above as it fades in, on a 200 ms
+ * spring; when the connection is back it says [connected] ("Qoşuldu") with ✓ for a second, then goes back up. TalkBack
+ * reads it as it changes.
  */
 @Composable
-internal fun OfflineStrip(offline: String?, connected: String, theme: ClomniTheme) {
-    var back by remember { mutableStateOf(false) }
-    var wasOffline by remember { mutableStateOf(offline != null) }
+internal fun OfflineCapsule(offline: String?, connected: String, theme: ClomniTheme, modifier: Modifier = Modifier) {
+    var notice by remember { mutableStateOf(OfflineNotice.HIDDEN.next(offline != null)) }
     LaunchedEffect(offline != null) {
-        if (offline != null) {
-            wasOffline = true
-            back = false
-        } else if (wasOffline) {
-            wasOffline = false
-            back = true
-            delay(1_000)
-            back = false
+        notice = notice.next(offline != null)
+        if (notice == OfflineNotice.BACK) {
+            delay(OfflineNotice.BACK_MS)
+            notice = notice.expired()
         }
     }
+    // The words it had, for the frame between the network coming back and the notice moving on.
+    val kept = remember { arrayOf(offline.orEmpty()) }
+    if (offline != null) kept[0] = offline
+    val saysOffline = offline != null || notice == OfflineNotice.OFFLINE
+    val still = reduceMotion()
+    val rise = with(LocalDensity.current) { 8.dp.roundToPx() }
     AnimatedVisibility(
-        offline != null || back,
-        enter = expandVertically(tween(200)) + fadeIn(tween(200)),
-        exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+        offline != null || notice != OfflineNotice.HIDDEN,
+        modifier,
+        enter = if (still) fadeIn(tween(150)) else slideInVertically(Motion.capsule()) { -rise } + fadeIn(Motion.capsule()),
+        exit = if (still) fadeOut(tween(150)) else slideOutVertically(Motion.capsule()) { -rise } + fadeOut(Motion.capsule()),
     ) {
-        val muted = theme.colors.textSecondary
+        val colors = theme.capsule
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 32.dp)
-                .background(theme.colors.textPrimary.color.copy(alpha = 0.06f))
-                .padding(horizontal = ClomniTheme.Space.l.dp)
+            Modifier.padding(horizontal = ClomniTheme.Space.l.dp)
+                .softShadow(16.dp, colors.fill.color.copy(alpha = colors.opacity.toFloat()), ClomniTheme.Shadow.capsule)
+                .heightIn(min = 32.dp)
+                .padding(horizontal = 14.dp)
                 .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-                painterResource(if (offline != null) R.drawable.clomni_ic_offline else R.drawable.clomni_ic_check),
+                painterResource(if (saysOffline) R.drawable.clomni_ic_offline else R.drawable.clomni_ic_check),
                 null,
                 Modifier.size(14.dp),
-                colorFilter = ColorFilter.tint(muted.color),
+                colorFilter = ColorFilter.tint(colors.text.color),
             )
             Spacer(Modifier.width(6.dp))
-            BasicText(offline ?: connected, style = clomniText(13f, muted), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(
+                if (saysOffline) offline ?: kept[0] else connected,
+                style = clomniText(13f, colors.text, FontWeight.Medium),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
+}
+
+/**
+ * [screen] (the list, a conversation) with the offline capsule over it, 8 under its bar: [screen] puts the modifier it
+ * is handed on its bar, at its top. The capsule is placed from the bar's height as the bar is measured, in the same
+ * frame, and is the last thing TalkBack reaches.
+ */
+@Composable
+internal fun WithOfflineCapsule(
+    offline: String?,
+    connected: String,
+    theme: ClomniTheme,
+    screen: @Composable (bar: Modifier) -> Unit,
+) {
+    val end = remember { BarEnd() }
+    Box {
+        screen(Modifier.barEnd(end))
+        OfflineCapsule(offline, connected, theme, Modifier.align(Alignment.TopCenter).offset { IntOffset(0, end.px + 8.dp.roundToPx()) })
+    }
+}
+
+/** Where a screen's bar ends, px from the screen's top. */
+@Stable
+private class BarEnd {
+    var px by mutableIntStateOf(0)
+}
+
+private fun Modifier.barEnd(end: BarEnd): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    end.px = placeable.height
+    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
 }
 
 /** "Nəsə səhv getdi" with "Yenidən cəhd et". */

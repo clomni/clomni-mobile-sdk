@@ -171,7 +171,11 @@ class ChatSnapshotTest {
     )
 
     @Test
-    fun offline() = snap("chat_offline", loaded(ChatFixture.message("01-text-bot.json")).copy(isOffline = true))
+    fun offline() {
+        val offline = loaded(ChatFixture.message("01-text-bot.json")).copy(isOffline = true)
+        snap("chat_offline", offline)
+        snap("chat_offline_dark", offline, dark = true)
+    }
 
     /** DESIGN-PASS-3 F2: answering the operator, the quote over the field; an earlier answer quoted in its bubble. */
     @Test

@@ -26,9 +26,9 @@ internal data class HomeScreen(
     val news: List<NewsCard> = emptyList(),
     /** "Powered by Clomni" under the cards, or null where the plan turns it off. */
     val poweredBy: String?,
-    /** The thin strip under the header while offline (DESIGN-PASS-3 C1). */
+    /** The capsule over the screen while offline (CM-077). */
     val offline: String?,
-    /** "Qoşuldu": the strip's word for a second once the connection is back. */
+    /** "Qoşuldu": the capsule's word for a second once the connection is back. */
     val connected: String,
     val failure: Failure?,
 ) {
@@ -349,5 +349,29 @@ internal class HomePresenter(
         }
 
         private fun oneLine(text: String) = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" ")
+    }
+}
+
+/**
+ * What the offline capsule says (CM-077), the same on every screen: nothing, "İnternet yoxdur", or "Qoşuldu" for
+ * [BACK_MS] once the connection is back.
+ */
+internal enum class OfflineNotice {
+    HIDDEN,
+    OFFLINE,
+    BACK;
+
+    /** Where it goes when the network becomes [offline]: only coming back from offline says "Qoşuldu". */
+    fun next(offline: Boolean): OfflineNotice = when {
+        offline -> OFFLINE
+        this == OFFLINE -> BACK
+        else -> this
+    }
+
+    /** "Qoşuldu" has had its second. */
+    fun expired(): OfflineNotice = if (this == BACK) HIDDEN else this
+
+    companion object {
+        const val BACK_MS = 1_000L
     }
 }

@@ -87,7 +87,6 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
         ) {
             HomeTop(screen.header, theme, actions.close)
             Greeting(screen.header, theme, Modifier.onGloballyPositioned { greetingBottom = it.boundsInParent().bottom })
-            OfflineStrip(screen.offline, screen.connected, theme)
             HomeCards(
                 screen,
                 theme,
@@ -95,6 +94,14 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                 Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
             )
         }
+        // 8 under the logo's 48 dp row, which starts 16 under the status bar; it stays there as the page scrolls.
+        OfflineCapsule(
+            screen.offline,
+            screen.connected,
+            theme,
+            Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = (16f + ClomniTheme.Size.touchTarget + 8f).dp),
+        )
     }
 }
 

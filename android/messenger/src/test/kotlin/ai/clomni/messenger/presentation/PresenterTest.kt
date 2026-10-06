@@ -288,8 +288,22 @@ class PresenterTest {
         assertNull(home.failure)
         assertEquals("İnternet yoxdur", home.offline)
         assertEquals(home.offline, presenter().messages(cached).offline)
-        assertEquals("the strip's word once it is back", "Qoşuldu", home.connected)
+        assertEquals("the capsule's word once it is back", "Qoşuldu", home.connected)
         assertEquals(home.connected, presenter().messages(cached).connected)
+    }
+
+    /** CM-077: the capsule says "İnternet yoxdur", then "Qoşuldu" for a second once it is back, then goes. */
+    @Test
+    fun theOfflineCapsulesStates() {
+        assertEquals(OfflineNotice.HIDDEN, OfflineNotice.HIDDEN.next(offline = false))
+        val offline = OfflineNotice.HIDDEN.next(offline = true)
+        assertEquals(OfflineNotice.OFFLINE, offline)
+        val back = offline.next(offline = false)
+        assertEquals(OfflineNotice.BACK, back)
+        assertEquals("gone after its second", OfflineNotice.HIDDEN, back.expired())
+        assertEquals("offline again before the second is up", OfflineNotice.OFFLINE, back.next(offline = true))
+        assertEquals("the second does not close it then", OfflineNotice.OFFLINE, back.next(offline = true).expired())
+        assertEquals(1_000L, OfflineNotice.BACK_MS)
     }
 
     @Test
