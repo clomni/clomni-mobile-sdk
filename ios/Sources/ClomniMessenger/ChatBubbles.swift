@@ -416,14 +416,28 @@ struct FileCard: View {
     }
 }
 
-/// "Göndərildi", "Oxundu"; a failure in red, tapping it sends again.
+/// Under the user's last message, at the end: its time and a small clock, then ✓ (in the brand colour once read); no
+/// words on screen, VoiceOver reads "Göndərildi" with the bubble. A failure in red words, tapping it sends again.
 struct StatusLine: View {
     let status: Bubble.Status
     let theme: ClomniTheme
     let retry: (String) -> Void
 
     var body: some View {
-        if let retryId = status.retryId {
+        if let mark = status.mark {
+            HStack(spacing: CGFloat(ClomniTheme.Space.xxs)) {
+                if let time = status.time {
+                    Text(time)
+                        .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption2)
+                        .foregroundStyle(theme.colors.textSecondary.color)
+                }
+                // The clock becomes ✓ in place: only the icon cross-fades, nothing moves (M3, 150 ms).
+                ZStack { icon(mark).id(mark).transition(.opacity) }
+                    .frame(width: 14, height: 14)
+                    .animation(.easeOut(duration: 0.15), value: mark)
+            }
+            .accessibilityHidden(true)
+        } else if let retryId = status.retryId {
             Button {
                 retry(retryId)
             } label: {
@@ -438,6 +452,12 @@ struct StatusLine: View {
             ZStack { label.id(status.text).transition(.opacity) }
                 .animation(.easeOut(duration: 0.15), value: status.text)
         }
+    }
+
+    private func icon(_ mark: Bubble.Status.Mark) -> some View {
+        Image(systemName: mark == .sending ? "clock" : "checkmark")
+            .font(.system(size: mark == .sending ? 11 : 12, weight: .semibold))
+            .foregroundStyle(mark == .read ? theme.colors.primary.color : theme.colors.textSecondary.color)
     }
 
     /// Only the failure stays its own element (a button); "Göndərildi" and "Oxundu" are read with the bubble.

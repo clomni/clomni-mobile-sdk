@@ -117,7 +117,7 @@ package struct ChatPresenter: Sendable {
         let sender: String
         let date: Date
         let body: Bubble.Body
-        let avatar: ChatAvatar?
+        var avatar: ChatAvatar?
         /// Who wrote it, over an incoming run: the brand for the bot, the operator's name; nil for the user.
         let author: String?
         var status: Bubble.Status?
@@ -126,6 +126,8 @@ package struct ChatPresenter: Sendable {
         var messageId: String?
         var replyable = false
         var copyText: String?
+        /// Who wrote it; nil for the user's pending messages.
+        var from: Sender?
     }
 
     private enum Entry {
@@ -189,27 +191,41 @@ package struct ChatPresenter: Sendable {
                 },
                 copyText: pending.preview)))
         }
-        if let sender = snapshot.typing {
+        // A row of its own at the end; none while a flow waits for a choice.
+        if let sender = snapshot.typing, !snapshot.awaitsChoice {
             let who = person(sender, snapshot)
+            // One face: the run the typing continues gives its avatar to the typing row.
+            if case .draft(var last)? = entries.last, last.from?.isTyping(sender) == true {
+                last.avatar = nil
+                entries[entries.count - 1] = .draft(last)
+            }
             entries.append(.typing(TypingLine(avatar: who.avatar, accessibilityLabel: "\(who.name) \(strings[.typing])")))
         }
         markLastStatus(&entries, snapshot)
         return runs(entries)
     }
 
-    /// The status of the user's last message shows when nothing came after it: "Göndərilir", "Göndərildi" or
-    /// "Oxundu". A failure shows on its own message wherever it is.
+    /// The status of the user's last message shows when nothing came after it: the clock while it goes, then ✓, with
+    /// its time; VoiceOver reads "Göndərilir", "Göndərildi" or "Oxundu". A failure shows on its own message wherever
+    /// it is.
     private func markLastStatus(_ entries: inout [Entry], _ snapshot: ChatSnapshot) {
         guard let index = entries.lastIndex(where: { if case .draft = $0 { return true }; return false }),
               case .draft(var last) = entries[index], last.side == .outgoing, last.status == nil else { return }
-        let text: String
+        let mark: Bubble.Status.Mark
         if snapshot.pending.contains(where: { $0.id == last.id }) {
-            text = strings[.sending]
+            mark = .sending
         } else {
             let seq = snapshot.messages.first { key($0) == last.id }?.seq ?? 0
-            text = snapshot.readUpTo.map { $0 >= seq } == true ? strings[.read] : strings[.sent]
+            mark = snapshot.readUpTo.map { $0 >= seq } == true ? .read : .sent
         }
-        last.status = Bubble.Status(text: text, isFailure: false, retryId: nil)
+        let text: String
+        switch mark {
+        case .sending: text = strings[.sending]
+        case .sent: text = strings[.sent]
+        case .read: text = strings[.read]
+        }
+        last.status = Bubble.Status(text: text, isFailure: false, retryId: nil, mark: mark,
+                                    time: time.stamp(last.date, now: now))
         entries[index] = .draft(last)
     }
 
@@ -271,7 +287,7 @@ package struct ChatPresenter: Sendable {
             sender: outgoing ? "user" : "\(message.sender.type.rawValue) \(message.sender.id ?? message.sender.name ?? "")",
             date: message.createdAt, body: body, avatar: outgoing ? nil : who.avatar,
             author: outgoing ? nil : who.name,
-            status: nil, accessibilityLabel: label(message, snapshot))
+            status: nil, accessibilityLabel: label(message, snapshot), from: message.sender)
     }
 
     private func hint(_ body: Bubble.Body) -> String? {

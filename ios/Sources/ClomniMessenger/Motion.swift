@@ -19,19 +19,25 @@ enum Motion {
         .timingCurve(0.05, 0.7, 0.1, 1, duration: duration)
     }
 
+    /// Material's emphasized accelerate over `duration` seconds: for what leaves.
+    static func accelerate(_ duration: Double) -> Animation {
+        .timingCurve(0.3, 0, 0.8, 0.15, duration: duration)
+    }
+
     /// How a new item of the transcript comes in (M3, M4): an incoming bubble rises 8 from 0.97, the user's own 12
-    /// out of the composer, the typing bubble grows in; lines fade. With Reduce Motion everything only fades.
+    /// out of the composer, the typing bubble grows in; lines fade. With Reduce Motion everything only fades. One that
+    /// goes is gone in that frame: nothing fades out over what takes its place.
     static func arrival(_ item: ChatItem, still: Bool) -> AnyTransition {
         var rise: CGFloat = 4, from: CGFloat = 0.9, anchor = UnitPoint.bottomLeading
         switch item {
         case .bubble(let bubble) where bubble.side == .incoming: (rise, from) = (8, 0.97)
         case .bubble: (rise, from, anchor) = (12, 1, .bottomTrailing)
         case .typing: break
-        default: return .opacity
+        default: return .asymmetric(insertion: .opacity, removal: .identity)
         }
-        guard !still else { return .opacity }
+        guard !still else { return .asymmetric(insertion: .opacity, removal: .identity) }
         return .asymmetric(insertion: .opacity.combined(with: .offset(y: rise)).combined(with: .scale(scale: from, anchor: anchor)),
-                           removal: .opacity)
+                           removal: .identity)
     }
 }
 

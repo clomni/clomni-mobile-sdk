@@ -495,6 +495,53 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(failed.offline, "İnternet yoxdur")
     }
 
+    /// No words under the user's message: its time and the clock, then ✓; the words are VoiceOver's (operator,
+    /// 2026-10-06).
+    func testStatusIsAMarkWithTheTime() {
+        let sending = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Salam")),
+                                     preview: "Salam", createdAt: now)
+        XCTAssertEqual(bubbles(screen([]) { $0.pending = [sending] }).first?.status,
+                       Bubble.Status(text: "Göndərilir", isFailure: false, retryId: nil, mark: .sending, time: "indi"))
+        let mine = Fixture.message("03-text-user.json", ["created_at": "2026-10-01T10:30:00Z"])
+        XCTAssertEqual(bubbles(screen([mine])).first?.status,
+                       Bubble.Status(text: "Göndərildi", isFailure: false, retryId: nil, mark: .sent, time: "10:30"))
+        XCTAssertEqual(bubbles(screen([mine]) { $0.readUpTo = 3 }).first?.status?.mark, .read)
+        XCTAssertTrue(bubbles(screen([mine]) { $0.readUpTo = 3 }).first?.accessibilityLabel.hasSuffix(". Oxundu") == true,
+                      "VoiceOver still reads it")
+        var failed = sending
+        failed.state = .failed
+        XCTAssertNil(bubbles(screen([]) { $0.pending = [failed] }).first?.status?.mark, "a failure is in words")
+    }
+
+    /// The typing row: one avatar, at the end; none while the flow waits for a choice (operator, 2026-10-06).
+    func testTypingRowTakesTheAvatarAndWaitsForNoChoice() {
+        let bot = Fixture.message("01-text-bot.json", ["created_at": "2026-10-01T10:31:30Z"])
+        let botTyping = screen([bot]) { $0.typing = Sender(type: .bot, id: "bot_other") }
+        guard case .typing? = botTyping.items.last else { return XCTFail("typing is a row of its own at the end") }
+        XCTAssertNil(bubbles(botTyping).first?.avatar, "the bot's run gives its avatar to the typing row")
+        XCTAssertEqual(bubbles(botTyping).first?.meta, "indi")
+        let leylaTyping = screen([bot]) { $0.typing = Sender(type: .operator, name: "Leyla") }
+        XCTAssertNotNil(bubbles(leylaTyping).first?.avatar, "someone else typing: the bot keeps its own")
+
+        let step = Fixture.message("10-apar-level2-S-chips.json")
+        func typing(_ build: (inout ChatSnapshot) -> Void) -> Bool {
+            let items = screen([step]) {
+                $0.conversation = Fixture.onAMenu
+                $0.answerable = [step.id]
+                $0.typing = Sender(type: .bot)
+                build(&$0)
+            }.items
+            return items.contains { if case .typing = $0 { return true }; return false }
+        }
+        XCTAssertFalse(typing { _ in }, "choices wait: nobody is typing")
+        XCTAssertTrue(typing {
+            $0.pending = [PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("A")),
+                                         preview: "A", createdAt: now)]
+        }, "once chosen, the bot may type")
+        XCTAssertTrue(typing { $0.conversation = Fixture.conversation(status: "bot") }, "the flow waits for nothing")
+        XCTAssertTrue(typing { $0.answerable = [] }, "the choices are not live")
+    }
+
     /// Every message fixture, valid or not, reaches the screen as something: the Linux half of the snapshot tests.
     func testEveryMessageFixtureRenders() throws {
         let index = try JSONDecoder().decode([[String: JSONValue]].self, from: Fixture.data("index.json"))

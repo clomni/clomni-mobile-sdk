@@ -107,6 +107,53 @@ final class ChatSnapshotTests: XCTestCase {
         }
     }
 
+    /// A choice's way out (operator, 2026-10-06): folded, its capsules take no height, so the user's message comes in
+    /// under nothing and over nothing; under it its time and ✓ (no words), then the bot's typing row, one avatar.
+    func testAChoiceNeverOverlaps() throws {
+        func message(_ file: String, _ changes: [String: JSONValue] = [:]) throws -> Message {
+            guard case .object(var fields)? = ProtocolJSON.decode(try Data(contentsOf: fixtures.appendingPathComponent(file)))
+            else { throw XCTSkip(file) }
+            for (key, value) in changes { fields[key] = value }
+            return try XCTUnwrap(ProtocolJSON.parseMessage(.object(fields)))
+        }
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
+        let step = try message("10-apar-level2-S-chips.json")
+        let answer = try message("03-text-user.json", ["seq": 10, "created_at": "2026-10-01T10:31:00Z",
+                                                        "content": ["text": "Velosiped dayandı"]])
+        func screen(_ build: (inout ChatSnapshot) -> Void) -> ChatScreen {
+            var snapshot = ChatSnapshot(config: config, messages: [step])
+            snapshot.load = .loaded
+            build(&snapshot)
+            return ChatPresenter(strings: ClomniStrings(language: "az", overrides: config.strings),
+                                 timeZone: TimeZone(identifier: "UTC")!, now: now).screen(snapshot)
+        }
+        let choosing = screen { $0.answerable = [step.id] }
+        guard case .replies(let block)? = choosing.items.last else { return XCTFail("the choices show") }
+        let theme = ClomniTheme.make(brand: config.brand, dark: false)
+
+        let edge = Color.white.frame(height: 20)
+        let folded = Snapshot.render(VStack(spacing: 0) {
+            edge
+            QuickRepliesView(block: block, theme: theme, folded: true) { _ in }
+            edge
+        }, width: 390, dark: false)
+        XCTAssertEqual(folded.size.height, 40, "folded, the choices take no height")
+
+        let moments = [
+            ("choice-1-choosing", choosing),
+            ("choice-2-sent", screen { $0.messages = [step, answer] }),
+            ("choice-3-typing", screen {
+                $0.messages = [step, answer]
+                $0.readUpTo = answer.seq
+                $0.typing = Sender(type: .bot)
+            }),
+        ]
+        for (name, moment) in moments {
+            let image = Snapshot.render(SnapshotScene(screen: moment, theme: theme, size: .large), width: 390, dark: false)
+            try Snapshot.assert(image, named: name)
+        }
+    }
+
     /// Home as the brief draws it, while it loads, and when getting ready failed ("Yenidən cəhd et").
     func testHome() throws {
         let screens: [(String, HomeScreen)] = [

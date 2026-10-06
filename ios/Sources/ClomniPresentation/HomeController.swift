@@ -128,7 +128,7 @@ package final class HomeController {
 
     func changed(_ change: ClomniChange) async {
         switch change {
-        case .typing, .read:
+        case .typing, .arrived, .read:
             return
         default:
             await read()

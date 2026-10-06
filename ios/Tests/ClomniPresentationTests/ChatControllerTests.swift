@@ -43,6 +43,8 @@ actor FakeChat: ChatDataSource {
     /// What `refreshConversation` brings: a bot conversation unless a test says otherwise.
     var served: Conversation?
     func setConversation(_ conversation: Conversation) { served = conversation }
+    /// The conversation as the engine holds it now (its flow, say).
+    func put(_ conversation: Conversation, in id: String = "conv_5521") { conversations[id] = conversation }
 
     func messages(in conversationId: String) -> [Message] { stored[conversationId] ?? [] }
     func pending(in conversationId: String) -> [PendingMessage] { outbox.filter { $0.conversationId == conversationId } }
@@ -323,6 +325,68 @@ final class ChatControllerTests: XCTestCase {
         await source.push(.typing(conversationId: "conv_5521", sender: Sender(type: .user), isTyping: true))
         await chat.settled()
         if case .typing? = chat.screen.items.last { XCTFail("the user's own typing shows nothing") }
+    }
+
+    /// The indicator goes at once on a message from the one typing, even a copy of one already here; on any "off";
+    /// and while the flow waits for a choice (operator, 2026-10-06).
+    func testTypingEndsOnACopyOffOrAChoice() async {
+        let bot = Fixture.message("01-text-bot.json")
+        await source.set([bot])
+        let chat = controller()
+        await chat.load()
+        func typing() async -> Bool {
+            await chat.settled()
+            if case .typing? = chat.screen.items.last { return true }
+            return false
+        }
+
+        await source.push(.typing(conversationId: "conv_5521", sender: Sender(type: .bot, id: "bot_flow"), isTyping: true))
+        var shown = await typing()
+        XCTAssertTrue(shown)
+        await source.push(.arrived(conversationId: "conv_other", sender: bot.sender))
+        shown = await typing()
+        XCTAssertTrue(shown, "another conversation's message")
+        await source.push(.arrived(conversationId: "conv_5521", sender: bot.sender))
+        shown = await typing()
+        XCTAssertFalse(shown, "a copy from the bot, whichever bot id")
+        XCTAssertNil(chat.typingHide, "no timer left")
+
+        let leyla = Sender(type: .operator, id: "op_1", name: "Leyla")
+        await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: true))
+        await source.push(.arrived(conversationId: "conv_5521", sender: Sender(type: .operator, id: "op_2", name: "Nigar")))
+        shown = await typing()
+        XCTAssertTrue(shown, "someone else's message leaves it")
+        await source.push(.arrived(conversationId: "conv_5521", sender: leyla))
+        shown = await typing()
+        XCTAssertFalse(shown)
+
+        await source.push(.typing(conversationId: "conv_5521", sender: leyla, isTyping: true))
+        await source.push(.typing(conversationId: "conv_5521", sender: Sender(type: .bot, id: "bot_x"), isTyping: false))
+        shown = await typing()
+        XCTAssertFalse(shown, "off is off, whoever it names")
+
+        // The flow's menu is the last word: a "typing" has nothing to show, nor a timer to keep.
+        let step = Fixture.message("10-apar-level2-S-chips.json", ["seq": 2])
+        await source.set([bot, step], answerable: [step.id])
+        await source.put(Fixture.onAMenu)
+        await source.push(.messages(conversationId: "conv_5521"))
+        await source.push(.typing(conversationId: "conv_5521", sender: Sender(type: .bot), isTyping: true))
+        shown = await typing()
+        XCTAssertFalse(shown, "a flow waiting for a choice")
+        XCTAssertNil(chat.typingHide)
+        // Shown before the menu came: the menu ends it.
+        await source.set([bot])
+        await source.put(Fixture.conversation(status: "bot"))
+        await source.push(.messages(conversationId: "conv_5521"))
+        await source.push(.typing(conversationId: "conv_5521", sender: Sender(type: .bot), isTyping: true))
+        shown = await typing()
+        XCTAssertTrue(shown)
+        await source.set([bot, step], answerable: [step.id])
+        await source.put(Fixture.onAMenu)
+        await source.push(.conversations)
+        shown = await typing()
+        XCTAssertFalse(shown)
+        XCTAssertNil(chat.typingHide)
     }
 
     /// With the socket down the open conversation asks for newer messages every 5 s; connected, it stops.

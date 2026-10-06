@@ -79,6 +79,25 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(changes.filter { $0 == .read(conversationId: id, upToSeq: 1) }.count, 1, "the user's own read is not news")
     }
 
+    /// A bot's or operator's message over the socket, a copy too, tells the screen its sender stopped typing; the
+    /// user's own does not, nor an update.
+    func testAMessageOverTheSocketEndsItsSendersTyping() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        await phone.online()
+        func arrivals() -> Int {
+            phone.changes.all.filter { if case .arrived(id, let sender) = $0 { return sender.type == .bot }; return false }.count
+        }
+        let message = server.botSays("Bir", in: id)
+        await expect { arrivals() == 1 }
+        phone.socket.push(FakeServer.frame("message.created", message))
+        await expect { arrivals() == 2 }
+        phone.socket.push(FakeServer.frame("message.updated", message))
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(arrivals(), 2, "an update is not a new message")
+        XCTAssertFalse(phone.changes.all.contains { if case .arrived(_, let sender) = $0 { return sender.type == .user }; return false })
+    }
+
     func testARefusedMessageFailsAtOnceWithTheServersReason() async throws {
         let phone = await device()
         let (id, _) = try await conversation(on: phone)

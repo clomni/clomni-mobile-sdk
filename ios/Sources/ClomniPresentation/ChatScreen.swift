@@ -113,11 +113,27 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     }
 
     package struct Status: Sendable, Equatable {
-        /// "Göndərilir", "Göndərildi", "Oxundu", "Göndərilmədi · Yenidən cəhd et".
+        /// The clock while it goes, then ✓ (in the brand colour once read).
+        package enum Mark: Sendable, Equatable { case sending, sent, read }
+
+        /// "Göndərilir", "Göndərildi", "Oxundu": only VoiceOver reads it, the screen shows `mark`. A failure,
+        /// "Göndərilmədi · Yenidən cəhd et", is on screen in words.
         package let text: String
         package let isFailure: Bool
         /// The client id to send again when the failure is tapped.
         package let retryId: String?
+        /// Next to `time`; nil for a failure.
+        package let mark: Mark?
+        /// When it was sent, next to `mark`: "indi", "12:42".
+        package let time: String?
+
+        package init(text: String, isFailure: Bool, retryId: String?, mark: Mark? = nil, time: String? = nil) {
+            self.text = text
+            self.isFailure = isFailure
+            self.retryId = retryId
+            self.mark = mark
+            self.time = time
+        }
     }
 
     package let id: String
@@ -246,6 +262,24 @@ package struct ChatComposer: Sendable, Equatable {
     /// The message being answered, over the field with its ✕ (`cancelQuoteLabel`).
     package let quote: Bubble.Quote?
     package let cancelQuoteLabel: String
+}
+
+extension ChatSnapshot {
+    /// A flow waits for a choice and the last message offers it: nobody is writing, whatever the last "typing" said
+    /// (operator, 2026-10-06).
+    package var awaitsChoice: Bool {
+        guard let flow = conversation?.flow, flow.active, flow.awaiting != nil, pending.isEmpty,
+              let last = messages.last(where: { if case .system = $0.content { return false }; return true }),
+              case .quickReplies = last.content else { return false }
+        return answerable.contains(last.id)
+    }
+}
+
+extension Sender {
+    /// This sender is the one shown `typing`: the same kind, and the same person when both are named; a bot is a bot.
+    package func isTyping(_ typing: Sender) -> Bool {
+        type == typing.type && (type == .bot || id == nil || typing.id == nil || id == typing.id)
+    }
 }
 
 /// What the conversation screen is built from.

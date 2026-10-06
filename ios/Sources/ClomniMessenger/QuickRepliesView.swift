@@ -9,21 +9,36 @@ import ClomniPresentation
 #endif
 
 /// The live step's buttons: right-aligned pills side by side, wrapping, then a grey "← Geri" unless the flow has its
-/// own restart. A tap fades them out; the choice stays as the user's message.
+/// own restart. A tap is a light tick; then all of them, the chosen one too, fade out and fold their height away in
+/// `foldTime` (only fade with Reduce Motion), and only then is the choice sent: the user's message comes in at the
+/// end, under nothing and over nothing (operator, 2026-10-06).
 struct QuickRepliesView: View {
     let block: QuickReplyBlock
     let theme: ClomniTheme
+    /// Drawn folded from the start (tests draw that moment).
+    var folded = false
     let tap: (String) -> Void
     @State private var chosen = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// How long the choices take to fade and fold away after a tap, before the user's message comes in.
+    static let foldTime: TimeInterval = 0.12
 
     var body: some View {
         // Right-aligned over the composer, 8 pt apart; the transcript keeps them 16 pt from the screen's edges.
         layout
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.top, CGFloat(ClomniTheme.Space.l))
-            .opacity(chosen ? 0 : 1)
-            .animation(.easeOut(duration: 0.2), value: chosen)
-            .allowsHitTesting(!chosen)
+            .opacity(gone ? 0 : 1)
+            // Folded, they stay folded should they still be there. Cut to the shrinking height only then: their
+            // 6 pt rise as they come in reaches past it.
+            .frame(height: gone && !reduceMotion ? 0 : nil, alignment: .top)
+            .mask(alignment: .top) { Rectangle().padding(.bottom, gone ? 0 : -CGFloat(ClomniTheme.Space.xl)) }
+            .allowsHitTesting(!gone)
+    }
+
+    private var gone: Bool {
+        chosen || folded
     }
 
     /// Side by side, each as wide as its text, wrapping onto the next line, right-aligned, 8 apart both ways
@@ -54,12 +69,12 @@ struct QuickRepliesView: View {
         }
     }
 
-    /// A light tick (M5); the choices fade out as the user's message comes in.
+    /// A light tick (M5); the choices fold away, then the choice goes.
     private func choose(_ id: String) {
         guard !chosen else { return }
-        chosen = true
         Haptics.light()
-        tap(id)
+        withAnimation(Motion.accelerate(Self.foldTime)) { chosen = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.foldTime) { tap(id) }
     }
 }
 

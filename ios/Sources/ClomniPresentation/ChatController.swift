@@ -323,15 +323,19 @@ package final class ChatController {
             }
             // A message from whoever was typing ends the indicator at once (operator, 2026-10-05).
             if let typing = snapshot.typing,
-               snapshot.messages.contains(where: { !known.contains($0.id) && Self.wrote($0.sender, typing) }) {
-                typingHide?.cancel()
-                snapshot.typing = nil
+               snapshot.messages.contains(where: { !known.contains($0.id) && $0.sender.isTyping(typing) }) {
+                hideTyping()
             }
             render()
             await source.markRead(in: conversationId)
-        // The user's own typing, echoed back, is not someone else writing.
+        // The user's own typing, echoed back, is not someone else writing; "off" ends it whoever it names
+        // (operator, 2026-10-06).
         case .typing(let id, let sender, let isTyping) where id == conversationId && sender.type != .user:
             showTyping(isTyping ? sender : nil)
+        // A copy of a message already here changes no message, but the one typing it has stopped. It comes after the
+        // message's own `.messages`, so a new message takes the indicator away in the same redraw.
+        case .arrived(let id, let sender) where id == conversationId:
+            if let typing = snapshot.typing, sender.isTyping(typing) { showTyping(nil) }
         case .read(let id, _) where id == conversationId:
             await read()
             render()
@@ -347,16 +351,13 @@ package final class ChatController {
         }
     }
 
-    /// `sender` is the one shown typing: the same kind, and the same person when both are named.
-    private static func wrote(_ sender: Sender, _ typing: Sender) -> Bool {
-        sender.type == typing.type && (sender.id == nil || typing.id == nil || sender.id == typing.id)
-    }
-
     private func showTyping(_ sender: Sender?) {
         typingHide?.cancel()
+        typingHide = nil
         snapshot.typing = sender
         render()
-        guard sender != nil else { return }
+        // A flow waiting for a choice may have taken it away already.
+        guard snapshot.typing != nil else { return }
         let timeout = typingTimeout
         typingHide = Task { [weak self, sleep] in
             do {
@@ -391,8 +392,17 @@ package final class ChatController {
         if snapshot.config?.sounds != false { playSound?(sound) }
     }
 
+    /// The indicator goes, and its timer with it.
+    private func hideTyping() {
+        typingHide?.cancel()
+        typingHide = nil
+        snapshot.typing = nil
+    }
+
     private func render() {
         snapshot.isOffline = isOffline
+        // A flow waiting for a choice: nobody is writing, and a later step must not bring back an old "typing".
+        if snapshot.typing != nil, snapshot.awaitsChoice { hideTyping() }
         screen = ChatPresenter(strings: strings, timeZone: timeZone, now: now()).screen(snapshot)
         onChange?()
     }

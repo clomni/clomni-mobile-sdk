@@ -13,6 +13,8 @@ package enum ClomniChange: Sendable, Equatable {
     case messages(conversationId: String)
     case unread(total: Int)
     case typing(conversationId: String, sender: Sender, isTyping: Bool)
+    /// A message from `sender` came over the socket, new or a copy already held: they are no longer typing it.
+    case arrived(conversationId: String, sender: Sender)
     case read(conversationId: String, upToSeq: Int)
     /// A new conversation's first message made the server create it: the draft's id is `conversationId` from now on.
     case conversationCreated(draft: String, conversationId: String)
@@ -221,7 +223,10 @@ package actor ClomniEngine {
         switch event.data {
         case .ready:
             Task { await self.catchUp() }
-        case .messageCreated(let message), .messageUpdated(let message):
+        case .messageCreated(let message):
+            receive(message, fromSocket: true)
+            if message.sender.type != .user { notify(.arrived(conversationId: message.conversationId, sender: message.sender)) }
+        case .messageUpdated(let message):
             receive(message, fromSocket: true)
         case .typing(let conversationId, let sender, let isTyping):
             notify(.typing(conversationId: conversationId, sender: sender, isTyping: isTyping))
