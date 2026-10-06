@@ -14,3 +14,6 @@ xcuserdata/
 # A snapshot that no longer matches its reference (see ChatSnapshotTests).
 *.failed.png
 DerivedData/
+
+# A Firebase project of our own, for real pushes in the sample (android/sample/build.gradle.kts).
+android/sample/google-services.json
