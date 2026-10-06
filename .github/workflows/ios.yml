@@ -1,5 +1,7 @@
 name: iOS
 
+# The repository is public since 2026-10-06: macOS minutes are not counted against a quota any more.
+
 on:
   workflow_dispatch:
   pull_request:
