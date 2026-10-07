@@ -207,6 +207,27 @@ class ChatSnapshotTest {
         )
     }
 
+    /**
+     * A quoted text bubble is as wide as the wider of its quote and its text, the time at its bottom end; the text on
+     * one line with the time beside it when the quote is the narrower. A bubble without a quote stays as it was.
+     */
+    @Test
+    fun quotedTextWidths() {
+        fun answer(id: String, seq: Int, sender: String, quoted: String, quoteAuthor: String, text: String) = protocol.parseMessage(
+            """{"id":"$id","conversation_id":"conv_5521","type":"text","sender":$sender,"created_at":"2026-10-01T10:4$seq:00Z",
+               "seq":$seq,"lang":"az","flow":null,"content":{"text":"$text"},"fallback_text":"-",
+               "reply_to":{"id":"msg_q$seq","sender":{"type":"$quoteAuthor","name":"Leyla"},"excerpt":"$quoted","kind":"text"}}""",
+        )!!
+        snap(
+            "chat_quoted_text_widths",
+            loaded(
+                answer("msg_q1", 1, user, "Ödənişi kartla etmisiniz, yoxsa balansdan? Qəbzin şəklini də göndərin.", "operator", "Kartla"),
+                answer("msg_q2", 2, operator, "Bəli", "user", "Ödəniş tapıldı, pul qaytarıldı"),
+                message("msg_q3", 3, "10:43:00Z", user, "text", """{"text":"Təşəkkür edirəm"}"""),
+            ).copy(conversation = ChatFixture.conversation("open", leyla)),
+        )
+    }
+
     @Test
     fun closedConversation() = snap(
         "chat_closed",
