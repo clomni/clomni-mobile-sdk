@@ -165,9 +165,11 @@ public enum Clomni {
         ProtocolJSON.isClomniPush(userInfo)
     }
 
-    /// For a tap on a notification (`userNotificationCenter(_:didReceive:withCompletionHandler:)`, with
-    /// `response.notification.request.content.userInfo`): a Clomni push opens its conversation. false for the app's
-    /// own pushes, which stay the app's to handle.
+    /// For a tap on a notification (`userNotificationCenter(_:didReceive:)`, with
+    /// `response.notification.request.content.userInfo`): a Clomni push opens its conversation, or Home when the server
+    /// has no such conversation. false for the app's own pushes, which stay the app's to handle. Keep that delegate
+    /// method on the main actor, not `nonisolated`: Swift calls UIKit's completion handler where the method ends, and
+    /// UIKit stops the app when that is off the main thread.
     @discardableResult
     public static func handlePush(_ userInfo: [AnyHashable: Any]) -> Bool {
         guard let push = ProtocolJSON.clomniPush(userInfo) else { return false }

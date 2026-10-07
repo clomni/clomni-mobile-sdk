@@ -55,6 +55,8 @@ actor FakeBackend: ClomniBackend {
         return ProtocolJSON.parseUser(Data(#"{"id":"usr_5","anonymous":false}"#.utf8))!
     }
 
+    func conversationExists(_ id: String) async -> Bool? { true }
+
     func setDeviceToken(_ token: String, sandbox: Bool) async {
         calls.append("setDeviceToken \(token) \(sandbox ? "sandbox" : "production")")
     }

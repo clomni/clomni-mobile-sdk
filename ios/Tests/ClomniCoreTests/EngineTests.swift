@@ -325,6 +325,25 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(known?.status, .bot)
     }
 
+    /// A push's conversation: kept here, or the server's; its 404 (the panel's test push, "conv_test") is false.
+    func testWhetherAPushConversationExists() async throws {
+        let other = await device()
+        let (id, _) = try await conversation(on: other, user: "5")
+        let phone = await device()
+        let beforeLogin = await phone.engine.conversationExists(id)
+        XCTAssertNil(beforeLogin, "no session: not known")
+        try await phone.engine.loginUser(UserIdentity(userId: "5"), userHash: "hash_5")
+        let fetched = await phone.engine.conversationExists(id)
+        XCTAssertEqual(fetched, true)
+        let kept = await phone.engine.conversation(id)
+        XCTAssertNotNil(kept, "fetched once, kept")
+        let test = await phone.engine.conversationExists("conv_test")
+        XCTAssertEqual(test, false)
+        let draft = await phone.engine.draftConversation(openedFrom: nil)
+        let drafted = await phone.engine.conversationExists(draft)
+        XCTAssertEqual(drafted, true)
+    }
+
     func testUserAndUploadPassThrough() async throws {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()

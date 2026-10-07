@@ -27,6 +27,8 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     private var home: MessengerModel?
     private var typeface: Typeface?
     private var themeOverride = ThemeOverride()
+    /// Waiting for a window to present from (`present`).
+    private var windowObservers: [NSObjectProtocol] = []
 
     init(engine: ClomniEngine, coordinator: MessengerCoordinator) {
         self.engine = engine
@@ -79,9 +81,9 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     }
 
     private func present(_ coordinator: MessengerCoordinator) {
-        guard let top = Self.topViewController() else {
-            return ClomniLog.error("no window to present the messenger from")
-        }
+        // A tap on a notification at a cold start can come before the app's window is up: presented once it is.
+        guard let top = Self.topViewController(), top.viewIfLoaded?.window != nil else { return waitForWindow() }
+        stopWaitingForWindow()
         let navigation = Self.sheet()
         navigation.delegate = self
         navigation.presentationController?.delegate = self
@@ -90,6 +92,25 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         home = MessengerModel(engine: engine, language: coordinator.language, userName: nil, config: coordinator.config)
         follow(coordinator.stack, animated: false)
         top.present(navigation, animated: true)
+    }
+
+    private func waitForWindow() {
+        guard windowObservers.isEmpty else { return }
+        ClomniLog.debug("no window to present the messenger from yet")
+        for name in [UIWindow.didBecomeKeyNotification, UIScene.didActivateNotification] {
+            windowObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) {
+                [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.stopWaitingForWindow()
+                    self?.render()
+                }
+            })
+        }
+    }
+
+    private func stopWaitingForWindow() {
+        for observer in windowObservers { NotificationCenter.default.removeObserver(observer) }
+        windowObservers = []
     }
 
     /// Brings the navigation stack to `stack`: a push or a pop when only the top changed, else the whole stack.
