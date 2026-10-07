@@ -260,6 +260,10 @@ actor DemoChat: ChatDataSource {
         return PendingMessage(text: "", in: message.conversationId)
     }
 
+    func submitRating(_ message: Message, score: Int, comment: String?) throws -> PendingMessage {
+        throw ClomniError.rejected("demo")
+    }
+
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?, in conversationId: String,
                   replyTo: String?) throws -> PendingMessage {
         throw ClomniError.rejected("demo")

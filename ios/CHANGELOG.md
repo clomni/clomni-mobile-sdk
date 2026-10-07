@@ -7,6 +7,8 @@ The first release.
 - The messenger in the app's own screens: Home (greeting, recent conversation, new conversation, the brand's channels)
   and the conversation (text with limited Markdown, images, files, forms, the flows' buttons, system lines, typing,
   read status, offline outbox). SwiftUI, iOS 15+, light and dark, Dynamic Type up to accessibility3, VoiceOver.
+- Ratings (CSAT): five faces or five stars, a comment when the panel asks for one, sent through the outbox like any
+  message. Web addresses, emails and phone numbers written in a message are tappable; web addresses go to `onLink`.
 - Opened only by the app: `Clomni.present(source:)`, `presentNewConversation`, `presentConversation`,
   `startFlow(_:data:openMessenger:source:)`; an optional launcher (`setLauncherVisible`, `setBottomPadding`).
 - Users: `loginUser` with `userHash` (identity verification), `loginUnidentifiedUser`, `updateUser`, `logout`.

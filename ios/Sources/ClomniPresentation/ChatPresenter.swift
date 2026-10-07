@@ -169,7 +169,11 @@ package struct ChatPresenter: Sendable {
                 var draft = draft(message, body, snapshot)
                 draft.quote = message.replyTo.map { quote($0, snapshot) }
                 draft.messageId = message.id
-                if case .form = body {} else { draft.replyable = canReply }
+                // A form or a rating is answered in its card, not quoted.
+                switch body {
+                case .form, .rating: break
+                default: draft.replyable = canReply
+                }
                 draft.copyText = copyText(message.content)
                 entries.append(.draft(draft))
             }
@@ -295,7 +299,7 @@ package struct ChatPresenter: Sendable {
         switch body {
         case .image: return strings[.opensImage]
         case .file(let file): return file.url == nil ? nil : strings[.opensFile]
-        case .text, .form: return nil
+        case .text, .form, .rating: return nil
         }
     }
 
@@ -317,6 +321,7 @@ package struct ChatPresenter: Sendable {
         case .file(let file): return "\(strings[.file]): \(file.name), \(Media.fileSize(file.size, language: strings.language))"
         case .quickReplies(let replies): return replies.text.map(LimitedMarkdown.plainText) ?? message.fallbackText
         case .form(let form): return form.text.map(LimitedMarkdown.plainText) ?? message.fallbackText
+        case .rating(let rating): return LimitedMarkdown.plainText(rating.text)
         default: return message.fallbackText
         }
     }
@@ -325,25 +330,32 @@ package struct ChatPresenter: Sendable {
     private func body(_ message: Message, _ snapshot: ChatSnapshot) -> Bubble.Body? {
         switch message.content {
         case .text(let text):
-            return .text(LimitedMarkdown.parse(text))
+            return .text(rich(text))
         case .quickReplies(let replies):
-            return replies.text.map { .text(LimitedMarkdown.parse($0)) }
+            return replies.text.map { .text(rich($0)) }
         case .image(let image):
             let box = Media.imageBox(width: image.width, height: image.height)
             return .image(Bubble.ImageBody(url: image.thumbUrl ?? image.url, fullUrl: image.url, localFile: nil,
                                            width: box.width, height: box.height, sizeKnown: box.known,
-                                           caption: image.caption.map(LimitedMarkdown.parse)))
+                                           caption: image.caption.map(rich)))
         case .file(let file):
             return .file(Bubble.FileBody(name: file.name, size: Media.fileSize(file.size, language: strings.language),
                                          symbol: Media.fileSymbol(mime: file.mime), url: file.url))
         case .form(let form):
             return .form(card(message.id, form, snapshot))
+        case .rating(let rating):
+            return .rating(card(message.id, rating, snapshot))
         case .system:
             return nil
-        case .card, .rating, .unknown:
+        case .card, .unknown:
             // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
-            return .text([TextRun(message.fallbackText)])
+            return .text(TextLinks.linkify([TextRun(message.fallbackText)]))
         }
+    }
+
+    /// A message's text: its markdown, and the addresses, emails and phone numbers written in it, tappable.
+    private func rich(_ text: String) -> [TextRun] {
+        TextLinks.linkify(LimitedMarkdown.parse(text))
     }
 
     /// A pending message's bubble: its text, the button's title, "← Geri", or the file being sent. A submitted form
@@ -351,7 +363,7 @@ package struct ChatPresenter: Sendable {
     private func body(_ pending: PendingMessage, _ snapshot: ChatSnapshot) -> Bubble.Body? {
         switch pending.message.content {
         case .text(let text):
-            return .text([TextRun(text)])
+            return .text(TextLinks.linkify([TextRun(text)]))
         case .buttonReply:
             return .text([TextRun(pending.preview ?? strings[.back])])
         case .attachment(_, let caption):
@@ -360,7 +372,7 @@ package struct ChatPresenter: Sendable {
                 let box = Media.imageBox(width: nil, height: nil)
                 return .image(Bubble.ImageBody(url: nil, fullUrl: nil, localFile: snapshot.localFiles[pending.id],
                                                width: box.width, height: box.height, sizeKnown: false,
-                                               caption: caption.map { [TextRun($0)] }))
+                                               caption: caption.map { TextLinks.linkify([TextRun($0)]) }))
             }
             return .file(Bubble.FileBody(name: upload.fileName,
                                          size: Media.fileSize(upload.size, language: strings.language),
@@ -417,6 +429,52 @@ package struct ChatPresenter: Sendable {
             submitted: FormInput.submittedLines(form).map { FormCard.Line(label: $0.label, value: $0.value) },
             sentLabel: sent ? strings[.sent] : nil)
     }
+
+    /// The faces as the web widget has them, worst to best.
+    private static let faces = ["😞", "😑", "😐", "😀", "😍"]
+
+    private func card(_ messageId: String, _ rating: MessageContent.Rating, _ snapshot: ChatSnapshot) -> RatingCard {
+        let words: [ClomniStrings.Key] = [.rating1, .rating2, .rating3, .rating4, .rating5]
+        let options = (1...5).map { score in
+            RatingCard.Option(score: score, face: rating.scale == .emoji5 ? Self.faces[score - 1] : nil,
+                              accessibilityLabel: rating.scale == .emoji5 ? strings[words[score - 1]]
+                                  : strings.format(.ratingStars, score))
+        }
+        // What the server says first (it answers a rating_submit with the rating, `submitted` filled); then the answer
+        // on its way, offline too (open again if it failed).
+        let pending = snapshot.pending.last { entry in
+            if case .ratingSubmit(let replyTo, _, _) = entry.message.content { return replyTo == messageId }
+            return false
+        }
+        let state: RatingCard.State
+        if let submitted = rating.submitted {
+            state = .sent(score: submitted["score"]?.intValue.flatMap { (1...5).contains($0) ? $0 : nil },
+                          comment: submitted["comment"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 })
+        } else if let pending, case .ratingSubmit(_, let score, let comment) = pending.message.content {
+            state = pending.state == .failed ? .open : .sent(score: score, comment: comment)
+        } else {
+            state = snapshot.answerable.contains(messageId) ? .open : .sent(score: nil, comment: nil)
+        }
+        let field = rating.comment == .hidden ? nil : FormCard.Field(
+            id: "comment", type: .textarea, label: strings[.ratingComment], required: rating.comment == .required,
+            placeholder: nil, maxLength: Self.commentLimit, options: [],
+            accessibilityLabel: rating.comment == .required ? "\(strings[.ratingComment]), \(strings[.required])"
+                : strings[.ratingComment],
+            initialValue: "",
+            shownLabel: rating.comment == .required ? strings[.ratingComment]
+                : "\(strings[.ratingComment]) \(strings[.optional])")
+        var sentLabel: String?
+        if case .sent(let score?, let comment) = state {
+            sentLabel = [strings.format(.ratingYours, options[score - 1].accessibilityLabel), comment,
+                         strings[.ratingThanks]].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")
+        }
+        return RatingCard(messageId: messageId, text: rich(rating.text), options: options, commentField: field,
+                          state: state, submitTitle: strings[.send], thanks: strings[.ratingThanks],
+                          sentAccessibilityLabel: sentLabel)
+    }
+
+    /// A rating's comment is a client message's text: at most this long.
+    package static let commentLimit = 4_000
 
     private func systemAvatars(_ event: MessageContent.SystemEvent, _ snapshot: ChatSnapshot) -> [ChatAvatar] {
         switch event {

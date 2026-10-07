@@ -95,8 +95,10 @@ struct MessageStore: Codable, Equatable {
         answered.insert(messageId)
     }
 
-    /// Only the latest interactive message of a conversation has live buttons, and only until it is answered.
+    /// Only the latest interactive message of a conversation has live buttons, and only until it is answered. A
+    /// rating stays open until it is answered, whatever comes after it.
     func canAnswer(_ message: Message) -> Bool {
+        if case .rating(let rating) = message.content { return rating.submitted == nil && !answered.contains(message.id) }
         guard message.flow?.interactive == true, !answered.contains(message.id) else { return false }
         let latest = messages(in: message.conversationId).last { $0.flow?.interactive == true }
         return latest.map { $0.id == message.id } ?? true

@@ -54,6 +54,16 @@ package struct ClomniStrings: Sendable, Equatable {
         case opensFile = "opens_file"
         /// The capsule over the transcript while the user reads further up and a message arrives (H2).
         case newMessage = "new_message"
+        // A rating (CSAT, CM-087): the five faces as VoiceOver reads them, a star's, the comment field, the thanks.
+        case rating1 = "rating_1"
+        case rating2 = "rating_2"
+        case rating3 = "rating_3"
+        case rating4 = "rating_4"
+        case rating5 = "rating_5"
+        case ratingStars = "rating_stars"
+        case ratingComment = "rating_comment"
+        case ratingThanks = "rating_thanks"
+        case ratingYours = "rating_yours"
     }
 
     /// az, en or ru; anything else reads as az.
@@ -138,6 +148,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .invalidNumber: "Rəqəm yazın", .tooLong: "Ən çox %d simvol", .chooseOption: "Variantlardan birini seçin",
             .fileTooLarge: "Fayl çox böyükdür (maks. %d MB)", .loading: "Yüklənir", .required: "məcburi",
             .opensImage: "Şəkli tam ekranda açır", .opensFile: "Faylı açır", .newMessage: "Yeni mesaj",
+            .rating1: "Çox pis", .rating2: "Pis", .rating3: "Normal", .rating4: "Yaxşı", .rating5: "Əla",
+            .ratingStars: "5 ulduzdan %d", .ratingComment: "Rəyiniz", .ratingThanks: "Rəyiniz üçün təşəkkür edirik",
+            .ratingYours: "Qiymətiniz: %@",
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
@@ -161,6 +174,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .tooLong: "At most %d characters", .chooseOption: "Choose one of the options",
             .fileTooLarge: "The file is too large (max %d MB)", .loading: "Loading", .required: "required",
             .opensImage: "Opens the picture full screen", .opensFile: "Opens the file", .newMessage: "New message",
+            .rating1: "Very bad", .rating2: "Bad", .rating3: "Okay", .rating4: "Good", .rating5: "Great",
+            .ratingStars: "%d of 5 stars", .ratingComment: "Your feedback", .ratingThanks: "Thank you for your feedback",
+            .ratingYours: "Your rating: %@",
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
@@ -184,6 +200,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .fileTooLarge: "Файл слишком большой (макс. %d МБ)", .loading: "Загрузка", .required: "обязательно",
             .opensImage: "Открывает изображение на весь экран", .opensFile: "Открывает файл",
             .newMessage: "Новое сообщение",
+            .rating1: "Очень плохо", .rating2: "Плохо", .rating3: "Нормально", .rating4: "Хорошо", .rating5: "Отлично",
+            .ratingStars: "%d из 5 звёзд", .ratingComment: "Ваш отзыв", .ratingThanks: "Спасибо за ваш отзыв",
+            .ratingYours: "Ваша оценка: %@",
         ],
     ]
 }

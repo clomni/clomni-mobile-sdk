@@ -26,6 +26,8 @@ extension EnvironmentValues {
 struct ChatActions {
     var tap: (_ buttonId: String, _ messageId: String) -> Void = { _, _ in }
     var submit: (_ messageId: String, _ values: [String: String]) async -> [String: String] = { _, _ in [:] }
+    /// A rating's score, with the comment when its card has a field.
+    var rate: (_ messageId: String, _ score: Int, _ comment: String?) async -> Void = { _, _, _ in }
     var retry: (_ clientId: String) -> Void = { _ in }
     var openImage: (URL) -> Void = { _ in }
     /// A swipe or "Cavabla": the message to quote over the field.
@@ -57,6 +59,19 @@ func attributedText(_ runs: [TextRun]) -> AttributedString {
         result += part
     }
     return result
+}
+
+/// Where a link in a message's text goes (CM-087): a web address to the app's `onLink` when it has one, as a news
+/// button's does; tel:, mailto: and any address without `onLink` to the system.
+struct MessageLinks: ViewModifier {
+    func body(content: Content) -> some View {
+        content.environment(\.openURL, OpenURLAction { url in
+            guard ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+                  let link = ClomniShared.state.read({ $0.events.link }) else { return .systemAction }
+            link(url)
+            return .handled
+        })
+    }
 }
 
 /// The messages, separators, buttons and typing, top to bottom (in a ScrollView on screen, bare in snapshots).
@@ -215,7 +230,7 @@ struct BubbleRow: View {
     }
 }
 
-/// The bubble itself: text, image, file card or form.
+/// The bubble itself: text, image, file card, form or rating.
 struct BubbleBody: View {
     let bubble: Bubble
     let theme: ClomniTheme
@@ -281,6 +296,10 @@ struct BubbleBody: View {
             FormCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill,
                          stamp: stamp, submit: { values in await actions.submit(card.messageId, values) },
                          focus: actions.focus)
+        case .rating(let card):
+            RatingCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill, stamp: stamp,
+                           rate: { score, comment in await actions.rate(card.messageId, score, comment) },
+                           focus: actions.focus)
         }
     }
 }
@@ -611,6 +630,7 @@ struct StampedText: View {
     var body: some View {
         (Text(text) + stamp.room.font(BubbleStamp.font(typeface, scaled: stampSize)))
             .clomniFont(size)
+            .modifier(MessageLinks())
             .overlay(alignment: .bottomTrailing) {
                 if drawsStamp { StampView(stamp: stamp, color: stamp.color(theme)).offset(y: Self.drop) }
             }

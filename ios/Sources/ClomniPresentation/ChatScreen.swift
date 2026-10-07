@@ -90,6 +90,7 @@ package struct Bubble: Sendable, Equatable, Identifiable {
         case image(ImageBody)
         case file(FileBody)
         case form(FormCard)
+        case rating(RatingCard)
     }
 
     package struct ImageBody: Sendable, Equatable {
@@ -233,6 +234,39 @@ package struct FormCard: Sendable, Equatable {
     package func announcement(for errors: [String: String]) -> String? {
         fields.lazy.compactMap { field in errors[field.id].map { "\(field.label): \($0)" } }.first
     }
+}
+
+/// A rating (CSAT) in a bot bubble: the question, then five faces or five stars. A choice sends at once, or opens a
+/// comment field and "Göndər" when the panel asks for a comment. Sent, the choice stays lit with the thanks under it.
+package struct RatingCard: Sendable, Equatable {
+    package struct Option: Sendable, Equatable, Identifiable {
+        package let score: Int
+        /// 😞 😑 😐 😀 😍 for `emoji_5`; nil for a star.
+        package let face: String?
+        /// "Əla", "5 ulduzdan 4".
+        package let accessibilityLabel: String
+
+        package var id: Int { score }
+    }
+
+    package enum State: Sendable, Equatable {
+        case open
+        /// Sent or on its way: nothing changes it. `score` is nil when the rating is closed without one the SDK knows
+        /// (the server took another answer, or no longer takes any): no choice lit, no thanks.
+        case sent(score: Int?, comment: String?)
+    }
+
+    package let messageId: String
+    package let text: [TextRun]
+    package let options: [Option]
+    /// The comment's field, a textarea like a form's; nil when the rating takes no comment.
+    package let commentField: FormCard.Field?
+    package let state: State
+    package let submitTitle: String
+    /// Under a sent rating: "Rəyiniz üçün təşəkkür edirik".
+    package let thanks: String
+    /// What VoiceOver reads for a sent rating: "Qiymətiniz: Əla. Rəyiniz üçün təşəkkür edirik".
+    package let sentAccessibilityLabel: String?
 }
 
 package struct ChatComposer: Sendable, Equatable {

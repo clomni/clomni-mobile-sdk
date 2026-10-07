@@ -73,7 +73,7 @@ final class ChatSnapshotTests: XCTestCase {
             guard let message = ProtocolJSON.parseMessage(try Data(contentsOf: fixtures.appendingPathComponent(file)))
             else { continue }
             var snapshot = ChatSnapshot(config: config, messages: [message])
-            snapshot.answerable = message.flow?.interactive == true ? [message.id] : []
+            snapshot.answerable = message.flow?.interactive == true || message.type == "rating" ? [message.id] : []
             snapshot.load = .loaded
             let screen = ChatPresenter(strings: ClomniStrings(language: "az", overrides: config.strings),
                                        timeZone: TimeZone(identifier: "UTC")!, now: now).screen(snapshot)
@@ -232,6 +232,49 @@ final class ChatSnapshotTests: XCTestCase {
                               "\(name + variant.suffix): the status bar's strip is \(top), the header \(header)")
                 try Snapshot.assert(image, named: name + variant.suffix)
             }
+        }
+    }
+
+    /// CM-087: a rating's card. Five faces to choose from; a face chosen, its comment field and "Göndər" open; five
+    /// stars sent, with the comment and the thanks. Light and dark, the transcript ones at accessibility3 too.
+    func testRating() throws {
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
+        let data = try Data(contentsOf: fixtures.appendingPathComponent("28-rating.json"))
+        guard case .object(var fields)? = ProtocolJSON.decode(data) else { return XCTFail() }
+        let faces = try XCTUnwrap(ProtocolJSON.parseMessage(.object(fields)))
+        fields["content"] = ["text": "Söhbəti necə qiymətləndirərdiniz?", "scale": "star_5", "comment": "optional",
+                             "submitted": ["score": 4, "comment": "Tez cavab verdiniz"]]
+        let stars = try XCTUnwrap(ProtocolJSON.parseMessage(.object(fields)))
+        func screen(_ message: Message) -> ChatScreen {
+            var snapshot = ChatSnapshot(config: config, messages: [message])
+            snapshot.answerable = [message.id]
+            snapshot.load = .loaded
+            return ChatPresenter(strings: ClomniStrings(language: "az", overrides: config.strings),
+                                 timeZone: TimeZone(identifier: "UTC")!, now: now).screen(snapshot)
+        }
+        for variant in Variant.all {
+            let theme = ClomniTheme.make(brand: config.brand, dark: variant.dark)
+            for (name, message) in [("chat-rating-open", faces), ("chat-rating-sent", stars)] {
+                let image = Snapshot.render(SnapshotScene(screen: screen(message), theme: theme, size: variant.size),
+                                            width: 390, dark: variant.dark)
+                try Snapshot.assert(image, named: name + variant.suffix)
+            }
+            guard variant.size == .large else { continue }
+            let bubble = try XCTUnwrap(screen(faces).items.lazy.compactMap { item -> Bubble? in
+                if case .bubble(let bubble) = item { return bubble }
+                return nil
+            }.first)
+            guard case .rating(let card) = bubble.body else { return XCTFail() }
+            let chosen = RatingCardView(card: card, theme: theme, bubble: BubbleShape(topLeft: 18, topRight: 18,
+                                                                                     bottomLeft: 18, bottomRight: 18),
+                                        bubbleFill: theme.colors.surface.color, stamp: BubbleStamp(bubble),
+                                        rate: { _, _ in }, chosen: 4)
+                .frame(width: 304)
+                .padding(16)
+                .background(theme.colors.background.color)
+                .environment(\.colorScheme, variant.dark ? .dark : .light)
+            try Snapshot.assert(Snapshot.render(chosen, width: 336, dark: variant.dark),
+                                named: "chat-rating-chosen" + variant.suffix)
         }
     }
 

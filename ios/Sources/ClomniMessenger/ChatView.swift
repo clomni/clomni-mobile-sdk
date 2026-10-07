@@ -90,6 +90,7 @@ struct ChatView: View {
         return ChatActions(
             tap: { buttonId, messageId in Task { @MainActor in await controller.tap(buttonId, in: messageId) } },
             submit: { messageId, values in await controller.submit(messageId, values: values) },
+            rate: { messageId, score, comment in await controller.rate(messageId, score: score, comment: comment) },
             retry: { clientId in Task { @MainActor in await controller.retrySending(clientId) } },
             openImage: { url in fullScreenImage = ImageURL(url: url) },
             reply: { messageId in Task { @MainActor in controller.reply(to: messageId) } },
@@ -268,7 +269,10 @@ struct ChatView: View {
         switch item {
         case .bubble(let bubble):
             follows = bubble.side == .outgoing
-            if case .form = bubble.body { follows = true }
+            switch bubble.body {
+            case .form, .rating: follows = true
+            default: break
+            }
         case .replies: follows = true
         default: break
         }
