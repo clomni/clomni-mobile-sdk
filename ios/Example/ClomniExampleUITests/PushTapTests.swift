@@ -21,16 +21,26 @@ final class PushTapTests: XCTestCase {
         // From the background, the messenger closed.
         close(app).tap()
         XCTAssertTrue(close(app).waitForNonExistence(timeout: 5))
-        XCUIDevice.shared.press(.home)
-        app.activate()
+        goHomeAndBack(app)
         XCTAssertTrue(close(app).waitForExistence(timeout: 20), "opened again from the background")
 
         // From the background, the messenger open: it moves to the push's conversation.
-        XCUIDevice.shared.press(.home)
-        app.activate()
+        goHomeAndBack(app)
         Thread.sleep(forTimeInterval: 3)
         XCTAssertEqual(app.state, .runningForeground, "still running after a tap with the messenger open")
         XCTAssertTrue(close(app).exists)
+    }
+
+    /// To the home screen and back, each step finished before the next. On CI (f92fc22) the app was found in the
+    /// background 3 s after an activation sent 0.5 s after the press, before the app had left the foreground: state 3,
+    /// alive, not a crash, and the same steps had passed on the run before.
+    private func goHomeAndBack(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        XCUIDevice.shared.press(.home)
+        let deadline = Date().addingTimeInterval(10)
+        while app.state == .runningForeground, Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        XCTAssertNotEqual(app.state, .runningForeground, "the app went to the background", file: file, line: line)
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "and came back", file: file, line: line)
     }
 
     /// The messenger's ✕, in whichever language it speaks.

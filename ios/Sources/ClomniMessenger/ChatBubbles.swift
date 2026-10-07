@@ -66,7 +66,12 @@ struct ChatTranscript: View {
     let actions: ChatActions
     /// Called when the top of the list comes into view.
     var reachedTop: () -> Void = {}
+    /// On screen: holds the list at its end (ChatView); its last row tells where the end is.
+    var pin: ScrollPin?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Under the last row.
+    static let bottomPadding = CGFloat(ClomniTheme.Space.s)
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
@@ -78,13 +83,16 @@ struct ChatTranscript: View {
                 // Fades in once, when it is new: an item is keyed by its client id from the moment it is written, so
                 // the server's copy changes only its status, and scrolling back is not an insertion.
                 ChatItemView(item: item, theme: theme, actions: actions)
+                    .background(alignment: .bottom) {
+                        if let pin, item.id == items.last?.id { ScrollPinLastRow(pin: pin) }
+                    }
                     .id(item.id)
                     .transition(Motion.arrival(item, still: reduceMotion))
             }
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
         .padding(.top, CGFloat(ClomniTheme.Space.xl))
-        .padding(.bottom, CGFloat(ClomniTheme.Space.s))
+        .padding(.bottom, Self.bottomPadding)
         // M3: new items come in on the emphasized easing and the rest move to their place; Reduce Motion: nothing moves.
         .animation(reduceMotion ? nil : Motion.decelerate(0.2), value: items.map(\.id))
     }
