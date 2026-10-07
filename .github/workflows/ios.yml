@@ -127,6 +127,8 @@ jobs:
       # The tests write their own screenshots as <name>.png into CLOMNI_SCREENSHOTS (passed to the test runner by the
       # TEST_RUNNER_ prefix); only that folder is uploaded. The result bundle's attachments are not: some of their
       # names (XCTest's debug descriptions) have quotes, which upload-artifact refuses.
+      # Up to 3 tries per test: the runner's simulator sometimes times out a screenshot or drops a home press
+      # (9812c1e, f22aecb). A real defect fails all three.
       - name: UI tests (keyboard, scrolling to the end, the time in the bubble)
         env:
           TEST_RUNNER_CLOMNI_SCREENSHOTS: ${{ github.workspace }}/ui-screenshots
@@ -136,6 +138,7 @@ jobs:
           -scheme ClomniExample
           -destination "id=${{ steps.sim.outputs.udid }}"
           -only-testing:ClomniExampleUITests
+          -retry-tests-on-failure -test-iterations 3
           -resultBundlePath ui-tests.xcresult
           -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO
