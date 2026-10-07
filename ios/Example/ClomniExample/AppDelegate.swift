@@ -5,6 +5,8 @@ import UserNotifications
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // UI tests: no account, no push prompt (UITestMode).
+        if UITestMode.isOn { return true }
         // From Clomni: Channels → Mobile app. The iOS API key, not the Android one. A build may set them instead
         // (build settings CLOMNI_APP_ID and CLOMNI_API_KEY, into Info.plist), as the TestFlight build does.
         Clomni.initialize(appId: Self.infoValue("CLOMNI_APP_ID") ?? "app_xxxxxxxx",

@@ -157,7 +157,7 @@ final class PresenterTests: XCTestCase {
     func testAppearanceFromThePanel() throws {
         let apar = presenter().home(snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
         XCTAssertEqual(apar.order, [.messages, .recent, .send, .channels])
-        XCTAssertEqual(apar.poweredBy, "Powered by Clomni")
+        XCTAssertEqual(apar.poweredBy, "Powered by", "the wordmark follows it")
 
         let json = ##"""
             {"brand":{"name":"Apar","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",

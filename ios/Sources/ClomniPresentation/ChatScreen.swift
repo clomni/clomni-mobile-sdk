@@ -22,6 +22,8 @@ package struct ChatScreen: Sendable, Equatable {
     /// A message's long-press menu: "Cavabla", "Kopyala".
     package let replyLabel: String
     package let copyLabel: String
+    /// "Yeni mesaj": the capsule that leads down to a message that came while the user read further up (H2).
+    package let newMessageLabel: String
 }
 
 package struct Announcement: Sendable, Equatable {

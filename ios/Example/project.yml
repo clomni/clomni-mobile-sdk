@@ -76,7 +76,23 @@ targets:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: Apple Distribution
           PROVISIONING_PROFILE_SPECIFIER: $(CLOMNI_PROFILE_APP)
-    scheme: {}
+    scheme:
+      testTargets:
+        - ClomniExampleUITests
+
+  # The messenger on a simulator, driven like a user (DESIGN-PASS-3 H1, H2, H4): the app starts with
+  # -ClomniDemoConversation and shows a fixed conversation, no server needed. CI: the "ui-test" job of ios.yml.
+  ClomniExampleUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - ClomniExampleUITests
+    dependencies:
+      - target: ClomniExample
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.example.uitests
+        GENERATE_INFOPLIST_FILE: YES
 
   # The operator's photo on notifications: ios/Examples/NotificationService, unchanged.
   NotificationService:

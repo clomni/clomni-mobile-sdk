@@ -54,6 +54,7 @@ struct ContentView: View {
             }
             .navigationTitle("Apar")
         }
+        .onAppear { if UITestMode.isOn { UITestMode.start() } }
     }
 
     private func logIn() {

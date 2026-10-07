@@ -84,3 +84,79 @@ jobs:
       # CocoaPods builds every target as one module; the podspec's -package-name keeps it building.
       - name: pod lib lint
         run: pod lib lint ClomniMessenger.podspec --platforms=ios
+
+  # DESIGN-PASS-3 H1, H2, H4 on a simulator: the Example app's UI tests (ios/Example/ClomniExampleUITests) open the
+  # messenger's conversation in its page sheet with a fixed conversation, bring up the software keyboard and measure
+  # what it covers. The screenshots, keyboard up, are the "ui-test-screenshots" artifact. Xcode 26 and its iOS 26
+  # simulator: what the TestFlight builds are made with.
+  ui-test:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26'
+
+      - name: Generate the Example project
+        run: |
+          brew install xcodegen
+          xcodegen generate --spec ios/Example/project.yml
+
+      # A plain iPhone of the newest iOS runtime, booted with the software keyboard: the hardware one would keep it
+      # down, and there would be nothing to measure.
+      - name: Simulator with the software keyboard
+        id: sim
+        run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("SimRuntime\\.iOS"))] | sort_by(.key) | last | .value
+            | (map(select(.name | test("^iPhone [0-9]+$"))) + map(select(.name | startswith("iPhone")))) | first | .udid')
+          test -n "$udid" && test "$udid" != null
+          xcrun simctl list devices | grep "$udid"
+          plist=~/Library/Preferences/com.apple.iphonesimulator.plist
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+          /usr/libexec/PlistBuddy -c "Add :DevicePreferences dict" "$plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :DevicePreferences:$udid dict" "$plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :DevicePreferences:$udid:ConnectHardwareKeyboard bool false" "$plist" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Set :DevicePreferences:$udid:ConnectHardwareKeyboard false" "$plist"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: UI tests (keyboard, scrolling to the end, the time in the bubble)
+        run: >
+          xcodebuild test
+          -project ios/Example/ClomniExample.xcodeproj
+          -scheme ClomniExample
+          -destination "id=${{ steps.sim.outputs.udid }}"
+          -only-testing:ClomniExampleUITests
+          -resultBundlePath ui-tests.xcresult
+          -skipPackagePluginValidation
+          CODE_SIGNING_ALLOWED=NO
+
+      # The tests' XCTAttachments, named as the tests named them.
+      - name: Screenshots out of the result bundle
+        if: always()
+        run: |
+          mkdir -p ui-screenshots
+          xcrun xcresulttool export attachments --path ui-tests.xcresult --output-path ui-screenshots || exit 0
+          jq -r '.[] | .attachments[] | "\(.exportedFileName)\t\(.suggestedHumanReadableName)"' ui-screenshots/manifest.json \
+            | while IFS=$'\t' read -r file name; do mv "ui-screenshots/$file" "ui-screenshots/$name"; done || true
+          ls -la ui-screenshots
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-screenshots
+          path: ui-screenshots
+          if-no-files-found: ignore
+
+      - name: Keep the result bundle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-tests-xcresult
+          path: ui-tests.xcresult
+          if-no-files-found: ignore

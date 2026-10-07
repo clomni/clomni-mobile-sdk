@@ -333,9 +333,7 @@ struct HomeCardsView: View {
                     .entrance(rise: 8, delay: 0.03 * Double(index))
                 }
                 if let poweredBy = screen.poweredBy {
-                    Text(verbatim: poweredBy)
-                        .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
-                        .foregroundStyle(theme.colors.textSecondary.color)
+                    PoweredByView(text: poweredBy, theme: theme)
                         .frame(maxWidth: .infinity)
                         .padding(.top, CGFloat(ClomniTheme.Space.s))
                 }
@@ -343,6 +341,45 @@ struct HomeCardsView: View {
         }
         // Fades only, so Reduce Motion needs nothing else.
         .animation(.easeOut(duration: 0.2), value: screen.phase)
+    }
+}
+
+/// "Powered by" 11 text_muted and Clomni's wordmark 14 high at 85% after it, the dark one on a light screen and the
+/// white one on a dark screen (DESIGN-PASS-3 H3): the operator's own files, only shrunk. A tap opens clomni.ai, through
+/// the app's `onLink` when it has one.
+struct PoweredByView: View {
+    static let url = URL(string: "https://clomni.ai")!
+    let text: String
+    let theme: ClomniTheme
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Button {
+            if let link = ClomniShared.state.read({ $0.events.link }) {
+                link(Self.url)
+            } else {
+                openURL(Self.url)
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(verbatim: text)
+                    .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
+                    .foregroundStyle(theme.colors.textSecondary.color)
+                Image(theme.isDark ? "clomni_wordmark_white" : "clomni_wordmark_dark",
+                      bundle: ClomniResources.bundle("ClomniMessenger_Media"))
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 14)
+                    .opacity(0.85)
+            }
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.vertical, -8)
+        .accessibilityLabel(Text(verbatim: "\(text) Clomni"))
+        .accessibilityAddTraits(.isLink)
     }
 }
 

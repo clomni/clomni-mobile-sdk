@@ -154,8 +154,9 @@ final class ChatSnapshotTests: XCTestCase {
         }
     }
 
-    /// G7 (operator, 2026-10-07): the time, and the user's mark after it, in the bubble's bottom-trailing corner. A
-    /// short message keeps them on its one line; when the last line is full they take a line of their own.
+    /// G7 and H4 (operator, 2026-10-07): the time, and the user's mark after it, small in the bubble's bottom-trailing
+    /// corner, WhatsApp's way. A short message ("As") keeps them on its one line and stays narrow; when the last line is
+    /// full they take a line of their own. The time grows with the text size only up to 13: the ax3 pictures show it.
     func testTheTimeIsInTheBubble() throws {
         func message(_ file: String, _ text: String, seq: Int) throws -> Message {
             guard case .object(var fields)? = ProtocolJSON.decode(try Data(contentsOf: fixtures.appendingPathComponent(file)))
@@ -170,22 +171,37 @@ final class ChatSnapshotTests: XCTestCase {
         var snapshot = ChatSnapshot(messages: [
             try message("01-text-bot.json", "Salam", seq: 1),
             try message("03-text-user.json", "Zəng et", seq: 2),
-            try message("03-text-user.json", String(repeating: "Sifarişim hələ gəlməyib, ", count: 3) + "zəng edin", seq: 3),
+            try message("03-text-user.json", "As", seq: 3),
+            try message("03-text-user.json", String(repeating: "Sifarişim hələ gəlməyib, ", count: 3) + "zəng edin", seq: 4),
         ])
         snapshot.load = .loaded
-        snapshot.readUpTo = 2
+        snapshot.readUpTo = 3
         let screen = ChatPresenter(strings: ClomniStrings(language: "az"), timeZone: TimeZone(identifier: "UTC")!,
                                    now: now).screen(snapshot)
         let bubbles = screen.items.compactMap { item -> Bubble? in
             if case .bubble(let bubble) = item { return bubble }
             return nil
         }
-        XCTAssertEqual(bubbles.map(\.time), ["11:30", "11:30", "11:30"])
+        XCTAssertEqual(bubbles.map(\.time), ["11:30", "11:30", "11:30", "11:30"])
         let theme = ClomniTheme.make(brand: nil, dark: false)
-        let short = Snapshot.render(BubbleBody(bubble: bubbles[1], theme: theme, shape: BubbleShape(topLeft: 20, topRight: 20,
-                                    bottomLeft: 20, bottomRight: 6), actions: ChatActions()), width: 300, dark: false)
-        XCTAssertLessThan(short.size.height, 48, "\"Zəng et 11:30 ✓✓\" is one line")
-        for variant in Variant.all where variant.size == .large {
+        let shape = BubbleShape(topLeft: 20, topRight: 20, bottomLeft: 20, bottomRight: 6)
+        let short = Snapshot.render(BubbleBody(bubble: bubbles[1], theme: theme, shape: shape, actions: ChatActions()),
+                                    width: 300, dark: false)
+        XCTAssertLessThan(short.size.height, 42, "\"Zəng et 11:30 ✓✓\" is one line, 6 under the stamp")
+        func fitting<V: View>(_ view: V) -> CGSize {
+            UIHostingController(rootView: view).sizeThatFits(in: CGSize(width: 300, height: CGFloat.greatestFiniteMagnitude))
+        }
+        // 14 + "As" + 6 + "11:30" + ✓✓ 15 + 14: about 95.
+        let tiny = fitting(BubbleBody(bubble: bubbles[2], theme: theme, shape: shape, actions: ChatActions()))
+        XCTAssertLessThan(tiny.width, 105, "\"As\" stays narrow")
+        XCTAssertLessThan(tiny.height, 42, "and one line")
+        // At the largest text size the stamp is at most 13 pt text: one short line.
+        let stamp = fitting(StampView(stamp: BubbleStamp(bubbles[2]), color: .black).dynamicTypeSize(.accessibility3))
+        XCTAssertLessThan(stamp.height, 18, "13 pt at most")
+        XCTAssertLessThan(stamp.width, 60, "13 pt at most")
+        XCTAssertEqual(StampGlyph.size(.read), CGSize(width: 15, height: 8))
+        XCTAssertEqual(StampGlyph.size(.sent), CGSize(width: 11, height: 8))
+        for variant in Variant.all {
             let image = Snapshot.render(SnapshotScene(screen: screen, theme: ClomniTheme.make(brand: nil, dark: variant.dark),
                                                       size: variant.size), width: 390, dark: variant.dark)
             try Snapshot.assert(image, named: "chat-time-in-bubble" + variant.suffix)

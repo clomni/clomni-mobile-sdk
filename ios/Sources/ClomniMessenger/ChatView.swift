@@ -74,6 +74,16 @@ struct ChatView: View {
     @State private var focusedField: String?
     /// The transcript's height: when the keyboard takes some of it, the list goes up with the keyboard.
     @State private var viewport: CGFloat = 0
+    /// How far the keyboard reaches into the screen (`KeyboardProbe`): the screen ends that much higher (H1).
+    @State private var keyboard: CGFloat = 0
+    /// Where the end of the list is, from the transcript's top edge; it changes with every scrolled frame, so it is
+    /// kept out of the view's state.
+    @State private var listEnd = Measure()
+    /// The user is within `followWithin` of the end. Decided when the list scrolls, not when it grows: a long message
+    /// arriving does not make the user "far" from an end they were at.
+    @State private var nearEnd = true
+    /// A message came while the user read further up: "Yeni mesaj ↓" shows (H2).
+    @State private var unseen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
@@ -128,7 +138,14 @@ struct ChatView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // H1: the screen ends on the keyboard, moving with it. SwiftUI's own keyboard avoidance is off for it: in the
+        // messenger's page sheet it did not happen on an iPhone, and where it does it would lift the screen twice.
+        .padding(.bottom, keyboard)
+        .background(KeyboardProbe { overlap, animation in
+            withAnimation(animation) { keyboard = overlap }
+        })
         .background(theme.colors.background.color.ignoresSafeArea())
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         // M7: the composer comes and goes by height and fade, 220 ms.
         .animation(reduceMotion ? nil : Motion.decelerate(0.22), value: composerShown)
         .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
@@ -206,6 +223,10 @@ struct ChatView: View {
                     }
                     .frame(height: 0)
                     ChatTranscript(items: model.screen.items, theme: theme, actions: actions(proxy), reachedTop: loadOlder)
+                        .background(GeometryReader { box in
+                            Color.clear.preference(key: ScrollEndOffset.self,
+                                                   value: box.frame(in: .named(ScrollTopOffset.space)).maxY)
+                        })
                         .onAppear {
                             if let last = model.screen.items.last?.id { proxy.scrollTo(last, anchor: .bottom) }
                             // Shown once it stands at its end: the first frame is the bottom, nothing slides.
@@ -213,9 +234,15 @@ struct ChatView: View {
                         }
                 }
                 .coordinateSpace(name: ScrollTopOffset.space)
-                .onPreferenceChange(ScrollTopOffset.self) { top in scrolled = top < -1 }
+                .onPreferenceChange(ScrollEndOffset.self) { end in listEnd.value = end }
+                .onPreferenceChange(ScrollTopOffset.self) { top in
+                    scrolled = top < -1
+                    let near = listEnd.value - viewport <= Self.followWithin
+                    if near != nearEnd { nearEnd = near }
+                    if near, unseen { unseen = false }
+                }
                 // The keyboard came up (or the composer grew): the last message, or the form field being filled,
-                // stays in sight over it, moving with it (operator, 2026-10-07, G4).
+                // stays in sight over it, moving with it (H1). Measured after the layout that made the room smaller.
                 .background(GeometryReader { box in
                     Color.clear
                         .onAppear { viewport = box.size.height }
@@ -225,14 +252,80 @@ struct ChatView: View {
                         }
                 })
                 .onChange(of: focusedField) { key in if key != nil { keepInSight(proxy) } }
-                .opacity(atBottom ? 1 : 0)
+                .onChange(of: newest?.id) { _ in arrived(proxy) }
+                // The typing bubble shows at the end only to whom is there.
                 .onChange(of: model.screen.items.last?.id) { last in
-                    guard let last else { return }
-                    // Reduce Motion: the transcript jumps to the new message instead of sliding.
-                    withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(last, anchor: .bottom) }
+                    guard last == "typing", nearEnd else { return }
+                    withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo("typing", anchor: .bottom) }
                 }
+                .overlay(alignment: .bottom) {
+                    ZStack {
+                        if unseen { newMessageCapsule(proxy) }
+                    }
+                    .animation(reduceMotion ? nil : Motion.capsule, value: unseen)
+                }
+                .opacity(atBottom ? 1 : 0)
             }
         }
+    }
+
+    /// Further than this from the end, the user is reading the history: a new message does not pull the list (H2).
+    static let followWithin: CGFloat = 120
+
+    /// The newest message or step: what decides whether the list follows. Not the typing bubble or a time line.
+    private var newest: ChatItem? {
+        model.screen.items.last {
+            switch $0 {
+            case .typing, .time: return false
+            default: return true
+            }
+        }
+    }
+
+    /// A new message or step (H2): the list goes to its end, softly, when the user is near the end anyway, sent it,
+    /// or it is choices or a form to fill; otherwise it stays where the user reads and "Yeni mesaj ↓" shows.
+    private func arrived(_ proxy: ScrollViewProxy) {
+        guard let item = newest, let last = model.screen.items.last?.id else { return }
+        var follows = nearEnd
+        switch item {
+        case .bubble(let bubble):
+            if bubble.side == .outgoing { follows = true }
+            if case .form = bubble.body { follows = true }
+        case .replies: follows = true
+        default: break
+        }
+        guard follows else {
+            if case .bubble = item { unseen = true }
+            return
+        }
+        unseen = false
+        withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(last, anchor: .bottom) }
+    }
+
+    /// "Yeni mesaj ↓" over the bottom of the transcript: a tap goes to the end.
+    private func newMessageCapsule(_ proxy: ScrollViewProxy) -> some View {
+        Button {
+            unseen = false
+            guard let last = model.screen.items.last?.id else { return }
+            withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(last, anchor: .bottom) }
+        } label: {
+            HStack(spacing: 6) {
+                Text(model.screen.newMessageLabel)
+                    .clomniFont(13, .semibold)
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(theme.colors.onPrimary.color)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 32)
+            .background(Capsule().fill(theme.colors.primary.color))
+            .shadow(color: Color.black.opacity(0.06), radius: 4, y: 2)
+        }
+        .buttonStyle(PressShapeStyle(shape: Capsule()))
+        .accessibilityIdentifier("clomni.chat.newMessage")
+        .padding(.bottom, CGFloat(ClomniTheme.Space.m))
+        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
     }
 
     /// The focused form field, else the last item, at the bottom of what the keyboard leaves of the list.
@@ -318,6 +411,20 @@ struct ChatView: View {
         defer { announced = announcement.id }
         guard announced != nil, announced != announcement.id else { return }
         UIAccessibility.post(notification: .announcement, argument: announcement.text)
+    }
+}
+
+/// A number a view keeps without redrawing when it changes.
+final class Measure {
+    var value: CGFloat = 0
+}
+
+/// The bottom of the transcript's content, from the top of what shows of it.
+struct ScrollEndOffset: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

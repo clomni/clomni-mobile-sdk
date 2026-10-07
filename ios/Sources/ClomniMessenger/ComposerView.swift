@@ -129,6 +129,7 @@ struct ComposerView: View {
                     .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
                     .contentShape(Rectangle())
                     .accessibilityLabel(Text(composer.sendLabel))
+                    .accessibilityIdentifier("clomni.composer.send")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
                 } else if composer.showsAttach {
                     iconButton("paperclip", label: composer.attachLabel, action: attach)
@@ -156,12 +157,14 @@ struct ComposerView: View {
                 .focused($focused)
                 .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .accessibilityLabel(Text(composer.placeholder))
+                .accessibilityIdentifier("clomni.composer.field")
         } else {
             TextField(composer.placeholder, text: $text)
                 .clomniFont(ClomniTheme.FontSize.text)
                 .focused($focused)
                 .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .accessibilityLabel(Text(composer.placeholder))
+                .accessibilityIdentifier("clomni.composer.field")
         }
     }
 

@@ -52,6 +52,8 @@ package struct ClomniStrings: Sendable, Equatable {
         case optional
         case opensImage = "opens_image"
         case opensFile = "opens_file"
+        /// The capsule over the transcript while the user reads further up and a message arrives (H2).
+        case newMessage = "new_message"
     }
 
     /// az, en or ru; anything else reads as az.
@@ -135,7 +137,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .invalidEmail: "E-poçt düzgün deyil", .invalidPhone: "Telefon nömrəsi düzgün deyil",
             .invalidNumber: "Rəqəm yazın", .tooLong: "Ən çox %d simvol", .chooseOption: "Variantlardan birini seçin",
             .fileTooLarge: "Fayl çox böyükdür (maks. %d MB)", .loading: "Yüklənir", .required: "məcburi",
-            .opensImage: "Şəkli tam ekranda açır", .opensFile: "Faylı açır",
+            .opensImage: "Şəkli tam ekranda açır", .opensFile: "Faylı açır", .newMessage: "Yeni mesaj",
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
@@ -158,7 +160,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .invalidPhone: "Enter a valid phone number", .invalidNumber: "Enter a number",
             .tooLong: "At most %d characters", .chooseOption: "Choose one of the options",
             .fileTooLarge: "The file is too large (max %d MB)", .loading: "Loading", .required: "required",
-            .opensImage: "Opens the picture full screen", .opensFile: "Opens the file",
+            .opensImage: "Opens the picture full screen", .opensFile: "Opens the file", .newMessage: "New message",
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
@@ -181,6 +183,7 @@ package struct ClomniStrings: Sendable, Equatable {
             .invalidNumber: "Введите число", .tooLong: "Не больше %d символов", .chooseOption: "Выберите вариант",
             .fileTooLarge: "Файл слишком большой (макс. %d МБ)", .loading: "Загрузка", .required: "обязательно",
             .opensImage: "Открывает изображение на весь экран", .opensFile: "Открывает файл",
+            .newMessage: "Новое сообщение",
         ],
     ]
 }
