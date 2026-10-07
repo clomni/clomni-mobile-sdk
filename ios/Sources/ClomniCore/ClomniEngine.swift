@@ -524,6 +524,21 @@ package actor ClomniEngine {
         notify(.conversations)
     }
 
+    /// Whether a push's conversation is there to open: true when it is kept here or the server returns it, false
+    /// on the server's 404 (`conversation_not_found`, as for the panel's test push "conv_test"), nil when the server
+    /// could not be asked (offline, no session yet).
+    package func conversationExists(_ id: String) async -> Bool? {
+        if Self.isDraft(id) || store.conversations[id] != nil { return true }
+        do {
+            try await refreshConversation(id)
+            return true
+        } catch ClomniError.server(status: 404, _) {
+            return false
+        } catch {
+            return nil
+        }
+    }
+
     package func upload(_ data: Data, fileName: String, mime: String) async throws -> UploadedFile {
         try await api.upload(data, fileName: fileName, mime: mime)
     }
