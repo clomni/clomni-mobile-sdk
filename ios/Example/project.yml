@@ -16,6 +16,10 @@ settings:
     SWIFT_VERSION: "5.0"
     # The SDK's API is made for Swift 6; its concurrency warnings show here.
     SWIFT_STRICT_CONCURRENCY: complete
+    # The app and its extension carry one version. TestFlight builds set CURRENT_PROJECT_VERSION
+    # (.github/workflows/ios-testflight.yml).
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: "1"
 
 targets:
   ClomniExample:
@@ -30,17 +34,42 @@ targets:
       path: ClomniExample-Info.plist
       properties:
         CFBundleDisplayName: Clomni Example
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Empty unless the build sets them; AppDelegate then uses its placeholders.
+        CLOMNI_APP_ID: $(CLOMNI_APP_ID)
+        CLOMNI_API_KEY: $(CLOMNI_API_KEY)
+        # HTTPS only: no export compliance question on every TestFlight build.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [remote-notification]
         NSPhotoLibraryUsageDescription: Söhbətə şəkil göndərmək üçün.
         NSCameraUsageDescription: Söhbətə şəkil çəkib göndərmək üçün.
     entitlements:
       path: ClomniExample.entitlements
       properties:
-        aps-environment: development
+        aps-environment: $(APS_ENVIRONMENT)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.example
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CLOMNI_APP_ID: ""
+        CLOMNI_API_KEY: ""
+      # Debug runs from Xcode get development APNs; Release (TestFlight, App Store) production.
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
     scheme: {}
 
   # The operator's photo on notifications: ios/Examples/NotificationService, unchanged.
@@ -54,6 +83,8 @@ targets:
       path: NotificationService-Info.plist
       properties:
         CFBundleDisplayName: NotificationService
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
