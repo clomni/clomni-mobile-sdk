@@ -101,7 +101,13 @@ jobs:
         run: |
           umask 077
           mkdir -p ~/private_keys
-          printf '%s\n' "$ASC_KEY_P8" > ~/private_keys/AuthKey_"$ASC_KEY_ID".p8
+          # A key copied on Windows carries CR line ends (and maybe a BOM); CryptoKit then rejects the PEM.
+          printf '%s\n' "$ASC_KEY_P8" | tr -d '\r' | sed '1s/^\xEF\xBB\xBF//' > ~/private_keys/AuthKey_"$ASC_KEY_ID".p8
+          chmod 600 ~/private_keys/AuthKey_"$ASC_KEY_ID".p8
+          if ! openssl pkey -in ~/private_keys/AuthKey_"$ASC_KEY_ID".p8 -noout 2>/dev/null; then
+            echo "::error::ASC_KEY_P8 is not a readable private key; paste the whole AuthKey_<id>.p8 file again."
+            exit 1
+          fi
           echo "ASC_KEY_PATH=$HOME/private_keys/AuthKey_$ASC_KEY_ID.p8" >> "$GITHUB_ENV"
 
       # Automatic signing: the app and its Notification Service Extension, profiles made or renewed with the key.
