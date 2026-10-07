@@ -119,6 +119,7 @@ jobs:
           CLOMNI_APP_ID: ${{ secrets.CLOMNI_APP_ID }}
           CLOMNI_IOS_KEY: ${{ secrets.CLOMNI_IOS_KEY }}
         run: |
+          # Signed for distribution straight away: a development profile needs a registered device, and the team has none.
           xcodebuild archive \
             -project ios/Example/ClomniExample.xcodeproj \
             -scheme ClomniExample \
@@ -132,6 +133,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             CLOMNI_APP_ID="$CLOMNI_APP_ID" \
             CLOMNI_API_KEY="$CLOMNI_IOS_KEY"
