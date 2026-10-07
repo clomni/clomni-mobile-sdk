@@ -21,6 +21,7 @@ final class KeyboardTests: XCTestCase {
         let email = element("clomni.form.email")
         XCTAssertTrue(email.waitForExistence(timeout: 15), "the demo conversation and its form are on screen")
         email.tap()
+        keep("form-field-tapped")
         let keyboard = settledKeyboard()
         keep("form-field-over-keyboard")
         let field = settled(email)
@@ -62,17 +63,19 @@ final class KeyboardTests: XCTestCase {
         XCTAssertTrue(composer.waitForExistence(timeout: 15))
         composer.tap()
         _ = settledKeyboard()
-        // The demo answers a question four seconds later; meanwhile the user drags the list 260 down, back into the
-        // history. Slowly and held, so it does not fling to the top and pull the sheet down.
+        // The demo answers a question ten seconds later. Before that, the user drags the list 350 back into the
+        // history, well past the 120 that still counts as the end, and the drag is over (held, so it does not fling
+        // to the top and pull the sheet down). A drag through the list also puts the keyboard down: the list is then
+        // at its end first, and 350 from it after.
         composer.typeText("Kuryer nə vaxt gələcək?")
         element("clomni.composer.send").tap()
-        let question = labelled("Kuryer nə vaxt gələcək?")
-        XCTAssertTrue(question.waitForExistence(timeout: 3))
-        let start = question.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 260)), withVelocity: .slow,
-                    thenHoldForDuration: 0.2)
+        XCTAssertTrue(labelled("Kuryer nə vaxt gələcək?").waitForExistence(timeout: 3))
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 350)), withVelocity: .default,
+                    thenHoldForDuration: 0.3)
+        keep("reading-above")
         let capsule = element("clomni.chat.newMessage")
-        XCTAssertTrue(capsule.waitForExistence(timeout: 10), "\"Yeni mesaj\" shows")
+        XCTAssertTrue(capsule.waitForExistence(timeout: 20), "\"Yeni mesaj\" shows")
         let answer = labelled("Bəli, yoxlayıb")
         XCTAssertFalse(answer.exists && answer.isHittable, "the list stayed where the user reads")
         keep("new-message-capsule")
@@ -114,10 +117,17 @@ final class KeyboardTests: XCTestCase {
         return last
     }
 
+    /// In the result bundle, and as `<name>.png` in CLOMNI_SCREENSHOTS on the Mac when it is set (CI sets it as
+    /// TEST_RUNNER_CLOMNI_SCREENSHOTS and uploads that folder).
     private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = app.screenshot()
+        let shot = XCTAttachment(screenshot: screenshot)
         shot.name = name
         shot.lifetime = .keepAlways
         add(shot)
+        guard let folder = ProcessInfo.processInfo.environment["CLOMNI_SCREENSHOTS"], !folder.isEmpty else { return }
+        let directory = URL(fileURLWithPath: folder, isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? screenshot.pngRepresentation.write(to: directory.appendingPathComponent("\(name).png"))
     }
 }

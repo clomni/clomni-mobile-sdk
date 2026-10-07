@@ -31,7 +31,7 @@ extension Clomni {
 }
 
 /// The demo conversation, in memory: a few messages back and forth (the user's read up to the last one), then a form
-/// to fill. What the user sends is there at once, with one ✓; a question (a text ending in "?") gets an answer four
+/// to fill. What the user sends is there at once, with one ✓; a question (a text ending in "?") gets an answer ten
 /// seconds later, which is what brings up "Yeni mesaj ↓" when the user has scrolled up meanwhile.
 actor DemoChat: ChatDataSource {
     static let conversationId = "conv_demo"
@@ -44,7 +44,8 @@ actor DemoChat: ChatDataSource {
     """#.utf8))
 
     private var stored: [Message]
-    private var answerable: Set<String> = ["msg_demo_9"]
+    private var answerable: Set<String> = []
+    private var readUpTo = 0
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
 
     init() {
@@ -59,18 +60,36 @@ actor DemoChat: ChatDataSource {
             ]),
             "submit_title": "Göndər",
         ])
-        stored = [
-            Self.text(1, from: "bot", "Salam! Clomni-yə xoş gəlmisiniz. Sizə necə kömək edə bilərik?", minutesAgo: 30),
-            Self.text(2, from: "user", "Salam", minutesAgo: 29),
-            Self.text(3, from: "user", "As", minutesAgo: 29),
-            Self.text(4, from: "operator", "Salam, mən Leylayam. Sifarişinizi yoxlayıram, bir dəqiqə.", minutesAgo: 28),
-            Self.text(5, from: "user", "Sifariş nömrəm 1042-dir. Dünən vermişdim, hələ gəlməyib.", minutesAgo: 27),
-            Self.text(6, from: "operator", "**Yoxladım.** Kuryer bu gün saat 18:00-a qədər çatdıracaq.", minutesAgo: 25),
-            Self.text(7, from: "user", "Çox sağ olun 🙏", minutesAgo: 24),
-            Self.text(8, from: "operator", "Buyurun. Başqa sualınız olsa, yazın.", minutesAgo: 24),
-            Self.message(9, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
-                         minutesAgo: 23),
+        // Longer than two screens, so the user can read well away from the end (H2).
+        let history = [
+            ("user", "Salam, ötən həftəki sifarişim haqqında sualım var"),
+            ("operator", "Salam! Əlbəttə, sifariş nömrəsini yazın, baxım."),
+            ("user", "R-0981"),
+            ("operator", "Bu sifariş 2 oktyabrda çatdırılıb. Nəsə problem olub?"),
+            ("user", "Yox, sadəcə qəbz lazım idi"),
+            ("operator", "Qəbzi e-poçtunuza göndərdim. Spam qovluğuna da baxın."),
+            ("user", "Gəldi, təşəkkürlər"),
+            ("operator", "Buyurun, xoş gün!"),
+        ]
+        stored = history.enumerated().compactMap { index, line in
+            Self.text(index + 1, from: line.0, line.1, minutesAgo: 1_500 - Double(index))
+        }
+        let base = history.count
+        stored += [
+            Self.text(base + 1, from: "bot", "Salam! Clomni-yə xoş gəlmisiniz. Sizə necə kömək edə bilərik?", minutesAgo: 30),
+            Self.text(base + 2, from: "user", "Salam", minutesAgo: 29),
+            Self.text(base + 3, from: "user", "As", minutesAgo: 29),
+            Self.text(base + 4, from: "operator", "Salam, mən Leylayam. Sifarişinizi yoxlayıram, bir dəqiqə.", minutesAgo: 28),
+            Self.text(base + 5, from: "user", "Sifariş nömrəm 1042-dir. Dünən vermişdim, hələ gəlməyib.", minutesAgo: 27),
+            Self.text(base + 6, from: "operator", "**Yoxladım.** Kuryer bu gün saat 18:00-a qədər çatdıracaq.", minutesAgo: 25),
+            Self.text(base + 7, from: "user", "Çox sağ olun 🙏", minutesAgo: 24),
+            Self.text(base + 8, from: "operator", "Buyurun. Başqa sualınız olsa, yazın.", minutesAgo: 24),
+            // A flow's step: only an interactive one can be filled in (ChatController asks canAnswer for those).
+            Self.message(base + 9, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
+                         minutesAgo: 23, interactive: true),
         ].compactMap { $0 }
+        answerable = ["msg_demo_\(base + 9)"]
+        readUpTo = base + 7
     }
 
     private static func text(_ seq: Int, from sender: String, _ text: String, minutesAgo: Double) -> Message? {
@@ -79,7 +98,7 @@ actor DemoChat: ChatDataSource {
     }
 
     private static func message(_ seq: Int, from sender: String, type: String, content: JSONValue, fallback: String,
-                                minutesAgo: Double) -> Message? {
+                                minutesAgo: Double, interactive: Bool = false) -> Message? {
         var who: [String: JSONValue] = ["type": .string(sender)]
         if sender == "operator" { who["name"] = "Leyla" }
         if sender == "bot" { who["name"] = "Clomni" }
@@ -90,6 +109,9 @@ actor DemoChat: ChatDataSource {
             "fallback_text": .string(fallback),
         ]
         if sender == "user" { fields["client_id"] = .string("cm_demo_\(seq)") }
+        if interactive {
+            fields["flow"] = .object(["flow_id": "flw_demo", "node_id": "F", "interactive": .bool(true)])
+        }
         return ProtocolJSON.parseMessage(.object(fields))
     }
 
@@ -108,7 +130,7 @@ actor DemoChat: ChatDataSource {
     func pending(in conversationId: String) -> [PendingMessage] { [] }
     func canAnswer(_ message: Message) -> Bool { answerable.contains(message.id) }
     /// The operator has read everything up to "Çox sağ olun": ✓✓ there, one ✓ after it.
-    func readByOperator(in conversationId: String) -> Int? { 7 }
+    func readByOperator(in conversationId: String) -> Int? { readUpTo }
     func localFile(of pending: PendingMessage) -> URL? { nil }
     func loadMessages(in conversationId: String) async throws {}
     func loadOlder(in conversationId: String) async throws -> Bool { false }
@@ -119,7 +141,7 @@ actor DemoChat: ChatDataSource {
         append(text, from: "user")
         if text.hasSuffix("?") {
             Task {
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
                 self.append("Bəli, yoxlayıb sizə yazacağam.", from: "operator")
             }
         }

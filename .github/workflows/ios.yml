@@ -124,7 +124,12 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
+      # The tests write their own screenshots as <name>.png into CLOMNI_SCREENSHOTS (passed to the test runner by the
+      # TEST_RUNNER_ prefix); only that folder is uploaded. The result bundle's attachments are not: some of their
+      # names (XCTest's debug descriptions) have quotes, which upload-artifact refuses.
       - name: UI tests (keyboard, scrolling to the end, the time in the bubble)
+        env:
+          TEST_RUNNER_CLOMNI_SCREENSHOTS: ${{ github.workspace }}/ui-screenshots
         run: >
           xcodebuild test
           -project ios/Example/ClomniExample.xcodeproj
@@ -135,23 +140,13 @@ jobs:
           -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO
 
-      # The tests' XCTAttachments, named as the tests named them.
-      - name: Screenshots out of the result bundle
-        if: always()
-        run: |
-          mkdir -p ui-screenshots
-          xcrun xcresulttool export attachments --path ui-tests.xcresult --output-path ui-screenshots || exit 0
-          jq -r '.[] | .attachments[] | "\(.exportedFileName)\t\(.suggestedHumanReadableName)"' ui-screenshots/manifest.json \
-            | while IFS=$'\t' read -r file name; do mv "ui-screenshots/$file" "ui-screenshots/$name"; done || true
-          ls -la ui-screenshots
-
       - name: Keep the screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-test-screenshots
-          path: ui-screenshots
-          if-no-files-found: ignore
+          path: ui-screenshots/*.png
+          if-no-files-found: warn
 
       - name: Keep the result bundle
         if: failure()

@@ -237,9 +237,7 @@ struct ChatView: View {
                 .onPreferenceChange(ScrollEndOffset.self) { end in listEnd.value = end }
                 .onPreferenceChange(ScrollTopOffset.self) { top in
                     scrolled = top < -1
-                    let near = listEnd.value - viewport <= Self.followWithin
-                    if near != nearEnd { nearEnd = near }
-                    if near, unseen { unseen = false }
+                    measureNearEnd()
                 }
                 // The keyboard came up (or the composer grew): the last message, or the form field being filled,
                 // stays in sight over it, moving with it (H1). Measured after the layout that made the room smaller.
@@ -249,6 +247,8 @@ struct ChatView: View {
                         .onChange(of: box.size.height) { height in
                             if height < viewport - 1 { keepInSight(proxy) }
                             viewport = height
+                            // The keyboard went down (a drag through the list dismisses it): more of the end shows.
+                            measureNearEnd()
                         }
                 })
                 .onChange(of: focusedField) { key in if key != nil { keepInSight(proxy) } }
@@ -271,6 +271,13 @@ struct ChatView: View {
 
     /// Further than this from the end, the user is reading the history: a new message does not pull the list (H2).
     static let followWithin: CGFloat = 120
+
+    /// Whether the user is near the end now, from where the list stands; "Yeni mesaj" goes once they are.
+    private func measureNearEnd() {
+        let near = listEnd.value - viewport <= Self.followWithin
+        if near != nearEnd { nearEnd = near }
+        if near, unseen { unseen = false }
+    }
 
     /// The newest message or step: what decides whether the list follows. Not the typing bubble or a time line.
     private var newest: ChatItem? {
