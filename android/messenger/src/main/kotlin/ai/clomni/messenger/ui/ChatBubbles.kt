@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -61,6 +62,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -288,21 +290,21 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
     val ink = if (incoming) theme.colors.textPrimary else theme.colors.onPrimary
     val shape = bubble.shape()
     val quote = bubble.quote
-    // G7: 70% of the bubble's ink (on_primary on the user's, text_muted on the others').
-    val metaInk = (if (incoming) theme.colors.textSecondary else theme.colors.onPrimary).over(fill, 0.7)
-    val meta: @Composable (RgbColor?) -> Unit = { ink -> BubbleMeta(bubble, ink ?: metaInk) }
+    // H4: on_primary at 65% on the user's bubble, text_muted on the others'.
+    val metaInk = if (incoming) theme.colors.textSecondary else theme.colors.onPrimary.over(fill, META_OPACITY.toDouble())
+    val meta: @Composable (RgbColor?) -> Unit = { over -> BubbleMeta(bubble, over ?: metaInk, over ?: ink) }
     when (val body = bubble.body) {
         is Bubble.TextBody -> Column(
             Modifier.clip(shape)
                 .background(fill.color)
                 .then(if (longPress != null) Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { longPress() }) } else Modifier)
-                .padding(vertical = if (quote != null) 6.dp else 10.dp, horizontal = if (quote != null) 6.dp else 14.dp),
+                .padding(top = if (quote != null) 6.dp else 10.dp, bottom = META_BOTTOM, start = if (quote != null) 6.dp else 14.dp, end = if (quote != null) 6.dp else 14.dp),
         ) {
             if (quote != null) QuoteBlock(quote, ink, !incoming, Modifier.padding(bottom = 4.dp))
             TimedText(
                 attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
                 clomniText(ClomniTheme.FontSize.message, ink),
-                if (quote != null) Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp) else Modifier,
+                if (quote != null) Modifier.padding(start = 8.dp, end = 8.dp) else Modifier,
                 Modifier.clearAndSetSemantics {
                     contentDescription = bubble.accessibilityLabel
                     if (a11y.isNotEmpty()) customActions = a11y
@@ -411,7 +413,8 @@ private fun ImageBubble(
             TimedText(
                 attributedText(caption, ink),
                 clomniText(ClomniTheme.FontSize.text, ink),
-                Modifier.width(width.dp).background(fill.color).padding(vertical = ClomniTheme.Space.s.dp, horizontal = ClomniTheme.Space.l.dp),
+                Modifier.width(width.dp).background(fill.color)
+                    .padding(top = ClomniTheme.Space.s.dp, bottom = META_BOTTOM, start = ClomniTheme.Space.l.dp, end = ClomniTheme.Space.l.dp),
             ) { meta(null) }
         }
     }
@@ -431,7 +434,7 @@ internal val Media.FileIcon.drawable: Int
 private fun FileCard(file: Bubble.FileBody, ink: RgbColor, meta: @Composable () -> Unit, modifier: Modifier) {
     Column(
         modifier.widthIn(max = 222.dp)
-            .padding(top = ClomniTheme.Space.m.dp, bottom = ClomniTheme.Space.s.dp, start = ClomniTheme.Space.l.dp, end = ClomniTheme.Space.l.dp),
+            .padding(top = ClomniTheme.Space.m.dp, bottom = META_BOTTOM, start = ClomniTheme.Space.l.dp, end = ClomniTheme.Space.l.dp),
         horizontalAlignment = Alignment.End,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -470,27 +473,37 @@ private fun FailureLine(status: Bubble.Status, theme: ClomniTheme, retry: (Strin
 }
 
 /**
- * Inside the bubble, at its bottom end (G7, as WhatsApp): the time, 11, and on the user's message its mark after it,
- * the clock, then ✓, then ✓✓ once read; no words on screen, TalkBack reads "Göndərildi".
+ * Inside the bubble, at its bottom end (G7, H4 as WhatsApp): the time, 11 and growing with the font size only up to 13,
+ * and on the user's message its thin mark after it: the clock, then ✓, then ✓✓ riding on each other once read, at 65%
+ * and at 100% once read. No words on screen, TalkBack reads "Göndərildi".
  */
 @Composable
-private fun BubbleMeta(bubble: Bubble, ink: RgbColor) {
+private fun BubbleMeta(bubble: Bubble, ink: RgbColor, markInk: RgbColor) {
     val time = bubble.time ?: return
     val status = bubble.status?.takeIf { it.mark != null }
+    val scale = LocalDensity.current.fontScale
+    val size = minOf(ClomniTheme.FontSize.meta * scale, META_MAX_SIZE) / scale
     Row(
         Modifier.clearAndSetSemantics { status?.let { contentDescription = it.text } },
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BasicText(time, style = clomniText(ClomniTheme.FontSize.meta, ink))
+        BasicText(time, style = clomniText(size, ink, lineHeight = 1.2f))
         val mark = status?.mark ?: return@Row
         // The clock becomes ✓ in place: only the icon cross-fades, nothing moves (M3, 150 ms).
         Crossfade(mark, animationSpec = tween(150), label = "status") { shown ->
-            when (shown) {
-                Bubble.Status.Mark.SENDING -> Icon(R.drawable.clomni_ic_clock, ink, 12.dp)
-                Bubble.Status.Mark.SENT -> Icon(R.drawable.clomni_ic_check, ink, 14.dp)
-                Bubble.Status.Mark.READ -> Icon(R.drawable.clomni_ic_check_double, ink, 14.dp)
+            val (icon, width, height) = when (shown) {
+                Bubble.Status.Mark.SENDING -> Triple(R.drawable.clomni_ic_clock, 9.dp, 9.dp)
+                Bubble.Status.Mark.SENT -> Triple(R.drawable.clomni_ic_tick, 11.dp, 8.dp)
+                Bubble.Status.Mark.READ -> Triple(R.drawable.clomni_ic_check_double, 15.dp, 8.dp)
             }
+            val opacity = if (shown == Bubble.Status.Mark.READ) 1f else META_OPACITY
+            Image(
+                painterResource(icon),
+                null,
+                Modifier.size(width, height),
+                colorFilter = ColorFilter.tint(markInk.color.copy(alpha = opacity)),
+            )
         }
     }
 }
@@ -517,8 +530,9 @@ private fun TimedText(
         val words = measurables[0].measure(loose)
         val time = measurables.getOrNull(1)?.measure(loose)
         val result = laidOut[0]
+        val drop = META_DROP.roundToPx()
         if (time == null || time.width == 0 || result == null) {
-            return@Layout layout(words.width, words.height) { words.placeRelative(0, 0) }
+            return@Layout layout(words.width, words.height + drop) { words.placeRelative(0, 0) }
         }
         val last = result.lineCount - 1
         val lastLine = ceil(result.getLineRight(last) - result.getLineLeft(last)).toInt()
@@ -526,7 +540,8 @@ private fun TimedText(
         val inline = needed <= constraints.maxWidth
         val width = (if (inline) maxOf(words.width, needed) else maxOf(words.width, time.width))
             .coerceIn(constraints.minWidth, constraints.maxWidth)
-        val height = if (inline) maxOf(words.height, time.height) else words.height + time.height
+        // Inline, the time sits a little under the last line's baseline (H4).
+        val height = if (inline) maxOf(words.height + drop, time.height) else words.height + time.height
         layout(width, height) {
             words.placeRelative(0, 0)
             time.placeRelative(width - time.width, height - time.height)
@@ -534,7 +549,13 @@ private fun TimedText(
     }
 }
 
-private val META_GAP = 8.dp
+private val META_GAP = 6.dp
+
+/** H4: the time and the mark stand 6 over the bubble's bottom edge, [META_DROP] under the text's last line. */
+private val META_BOTTOM = 6.dp
+private val META_DROP = 3.dp
+private const val META_OPACITY = 0.65f
+private const val META_MAX_SIZE = 13f
 
 /** Centred grey text with small avatars: "Leyla söhbətə qoşuldu". */
 @Composable

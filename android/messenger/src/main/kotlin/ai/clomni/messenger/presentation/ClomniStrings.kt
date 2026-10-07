@@ -88,6 +88,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         REPLY("reply"),
         COPY("copy"),
         QUOTE_DELETED("quote_deleted"),
+
+        // H2: the capsule over the transcript's end while the user reads further up.
+        NEW_MESSAGE("new_message"),
     }
 
     /** az, en or ru; anything else reads as az. */
@@ -177,6 +180,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.TOO_LONG to "Ən çox %d simvol", Key.CHOOSE_OPTION to "Variantlardan birini seçin",
                 Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)", Key.SUPPORT_MESSAGES to "Dəstək mesajları",
                 Key.REPLY to "Cavabla", Key.COPY to "Kopyala", Key.QUOTE_DELETED to "Mesaj silinib",
+                Key.NEW_MESSAGE to "Yeni mesaj",
                 Key.OPTIONAL to "(istəyə görə)",
             ),
             "en" to mapOf(
@@ -204,6 +208,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.TOO_LONG to "At most %d characters", Key.CHOOSE_OPTION to "Choose one of the options",
                 Key.FILE_TOO_LARGE to "The file is too large (max %d MB)", Key.SUPPORT_MESSAGES to "Support messages",
                 Key.REPLY to "Reply", Key.COPY to "Copy", Key.QUOTE_DELETED to "Message deleted",
+                Key.NEW_MESSAGE to "New message",
                 Key.OPTIONAL to "(optional)",
             ),
             "ru" to mapOf(
@@ -229,6 +234,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.TOO_LONG to "Не больше %d символов", Key.CHOOSE_OPTION to "Выберите вариант",
                 Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)", Key.SUPPORT_MESSAGES to "Сообщения поддержки",
                 Key.REPLY to "Ответить", Key.COPY to "Копировать", Key.QUOTE_DELETED to "Сообщение удалено",
+                Key.NEW_MESSAGE to "Новое сообщение",
                 Key.OPTIONAL to "(необязательно)",
             ),
         )

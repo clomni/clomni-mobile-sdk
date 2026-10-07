@@ -24,7 +24,7 @@ internal data class HomeScreen(
     val messagesCard: MessagesCard,
     /** At most three; none: no news card. */
     val news: List<NewsCard> = emptyList(),
-    /** "Powered by Clomni" under the cards, or null where the plan turns it off. */
+    /** "Powered by", before the Clomni wordmark under the cards (H3); null where the plan turns it off. */
     val poweredBy: String?,
     /** The capsule over the screen while offline (CM-077). */
     val offline: String?,
@@ -328,7 +328,7 @@ internal class HomePresenter(
 
     companion object {
         /** Not translated: the product's name. */
-        const val POWERED_BY = "Powered by Clomni"
+        const val POWERED_BY = "Powered by"
 
         /** The bot's picture; the brand's logo when the panel set none (the initial when there is no logo either). */
         fun botAvatar(config: MessengerConfig?): String? = config?.bot?.avatarUrl ?: config?.brand?.logoUrl

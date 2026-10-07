@@ -66,6 +66,8 @@ internal class MessengerActions(
     val newConversation: () -> Unit = {},
     val openConversation: (String) -> Unit = {},
     val retry: () -> Unit = {},
+    /** A link out of the messenger, through the app's `Clomni.onLink` first. */
+    val openLink: (String) -> Unit = {},
 )
 
 /**
@@ -117,7 +119,8 @@ internal fun rememberMessengerActions(
     openMessages: () -> Unit,
     openConversation: (String) -> Unit,
     openNews: (String) -> Unit,
-): MessengerActions = remember(controller, openedFrom, close, back, openMessages, openConversation, openNews) {
+    openLink: (String) -> Unit,
+): MessengerActions = remember(controller, openedFrom, close, back, openMessages, openConversation, openNews, openLink) {
     MessengerActions(
         close = close,
         back = back,
@@ -129,5 +132,6 @@ internal fun rememberMessengerActions(
         newConversation = { openConversation(controller.newConversation(openedFrom)) },
         openConversation = openConversation,
         retry = controller::retry,
+        openLink = openLink,
     )
 }

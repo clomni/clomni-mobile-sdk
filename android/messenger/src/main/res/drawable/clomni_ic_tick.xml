@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- "Oxundu" (H4, as WhatsApp): two thin ✓ riding on each other, 15×8, line 1.5 -->
+<!-- The user's message has gone (H4): one thin ✓, 11×8, line 1.5 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="15dp"
+    android:width="11dp"
     android:height="8dp"
-    android:viewportWidth="15"
+    android:viewportWidth="11"
     android:viewportHeight="8">
     <path
         android:pathData="M0.75,4.25l3,3L10.25,0.75"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M6.5,6l1.25,1.25L14.25,0.75"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="1.5"
         android:strokeLineCap="round"

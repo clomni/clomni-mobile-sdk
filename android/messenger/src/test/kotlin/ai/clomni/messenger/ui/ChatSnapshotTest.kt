@@ -17,12 +17,15 @@ import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
 import ai.clomni.messenger.store.PendingMessage
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
@@ -30,11 +33,11 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams
 import com.android.resources.Density
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.util.TimeZone
 
 /** 2026-10-01T10:32Z: two minutes after most fixtures. */
 private const val NOW = 1_790_850_720_000L
@@ -160,6 +163,21 @@ class ChatSnapshotTest {
     private val bot = """{"type":"bot","id":"bot_default","name":"Clomni","avatar_url":"https://app.clomni.ai/a/bot.png"}"""
     private val user = """{"type":"user","id":"usr_1"}"""
     private val operator = """{"type":"operator","id":"op_42","name":"Leyla","avatar_url":"https://app.clomni.ai/a/leyla.png"}"""
+
+    /** H2: "Yeni mesaj ↓" over the transcript's end while the user reads further up; a 48 dp target. */
+    @Test
+    fun newMessageCapsule() {
+        for (dark in listOf(false, true)) {
+            val theme = ClomniTheme.make(Fixture.aparConfig.brand, dark)
+            val name = "chat_new_message_${if (dark) "dark" else "light"}"
+            paparazzi.snapshot(name) {
+                Box(Modifier.fillMaxWidth().height(96.dp).background(theme.colors.background.color)) {
+                    NewMessageCapsule(true, "Yeni mesaj", theme, Modifier.align(Alignment.BottomCenter)) {}
+                }
+            }
+            semantics.assertTouchTargets(name)
+        }
+    }
 
     @Test
     fun skeleton() = snap("chat_skeleton", ChatSnapshot(config = Fixture.aparConfig, conversation = ChatFixture.conversation("bot")))

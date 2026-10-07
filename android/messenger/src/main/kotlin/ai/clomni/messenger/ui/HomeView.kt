@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -56,12 +58,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -295,18 +297,39 @@ private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                             }
                         }
                     }
-                    screen.poweredBy?.let {
-                        BasicText(
-                            it,
-                            Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.s.dp),
-                            style = clomniText(ClomniTheme.FontSize.meta, theme.colors.textSecondary).copy(textAlign = TextAlign.Center),
-                        )
-                    }
+                    screen.poweredBy?.let { PoweredBy(it, theme) { actions.openLink(CLOMNI_SITE) } }
                 }
             }
         }
     }
 }
+
+/**
+ * H3: "Powered by", 11 in text_muted, and the Clomni wordmark from the brand's own files (14 high, 85%): the dark one on
+ * a light page, the white one on a dark page. A tap opens clomni.ai.
+ */
+@Composable
+private fun PoweredBy(words: String, theme: ClomniTheme, open: () -> Unit) {
+    val mark = painterResource(if (theme.isDark) R.drawable.clomni_wordmark_white else R.drawable.clomni_wordmark_dark)
+    Box(Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.s.dp), Alignment.Center) {
+        Row(
+            // A 48 dp target that lays out like the line it surrounds.
+            Modifier.bleed(vertical = 17.dp).button("$words Clomni", RoundedCornerShape(8.dp), onClick = open)
+                .padding(horizontal = 8.dp, vertical = 17.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(words, style = clomniText(ClomniTheme.FontSize.meta, theme.colors.textSecondary))
+            Image(
+                mark,
+                null,
+                Modifier.height(14.dp).aspectRatio(mark.intrinsicSize.width / mark.intrinsicSize.height).alpha(0.85f),
+            )
+        }
+    }
+}
+
+private const val CLOMNI_SITE = "https://clomni.ai"
 
 /** Whether Home's cards have come in once since the messenger opened (M8); none outside the messenger. */
 internal class HomeIntro(var played: Boolean)

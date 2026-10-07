@@ -194,7 +194,7 @@ class AccessibilitySnapshotTest {
                 "WhatsApp [Button]",
                 "LinkedIn [Button]",
                 "E-poçt [Button]",
-                "Powered by Clomni",
+                "Powered by Clomni [Button]",
             ),
         )
     }

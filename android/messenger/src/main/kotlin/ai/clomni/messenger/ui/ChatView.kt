@@ -1,5 +1,7 @@
 package ai.clomni.messenger.ui
 
+import ai.clomni.messenger.R
+import ai.clomni.messenger.presentation.Bubble
 import ai.clomni.messenger.presentation.ChatAvatar
 import ai.clomni.messenger.presentation.ChatComposer
 import ai.clomni.messenger.presentation.ChatController
@@ -7,6 +9,7 @@ import ai.clomni.messenger.presentation.ChatHeader
 import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ChatScreen
 import ai.clomni.messenger.presentation.ClomniTheme
+import ai.clomni.messenger.presentation.FormCard
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.toward
@@ -29,7 +32,13 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +50,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
@@ -48,13 +58,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -79,6 +92,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -340,8 +354,9 @@ internal class ChoiceFold {
 }
 
 /**
- * The transcript, scrolled to its end when it opens and whenever a new item arrives; items that arrive while it is
- * open rise 6 dp and fade in. One that goes is gone in that frame: nothing fades out over what takes its place.
+ * The transcript, scrolled to its end when it opens and when a new item arrives (H2): always for the user's own
+ * message, choices and a form, otherwise only while the user is at the end; reading further up, "Yeni mesaj ↓" shows
+ * over it instead. Items that arrive while it is open rise 6 dp and fade in. One that goes is gone in that frame: nothing fades out over what takes its place.
  * Reaching the top asks for older messages.
  */
 @Composable
@@ -373,19 +388,61 @@ private fun LazyTranscript(
     // The first messages are placed at the end at once (the list opens at its bottom, then stays); only later ones
     // scroll there, and without motion they too are simply there.
     var placed by remember { mutableStateOf(items.isNotEmpty()) }
+    val density = LocalDensity.current
+    // H2: the user reads further up: more than 120 dp from the end, by their own scrolling (or ours), not because
+    // something arrived under them.
+    var away by remember { mutableStateOf(false) }
+    // Something arrived while the user was away: "Yeni mesaj ↓".
+    var unseen by remember { mutableStateOf(false) }
+    // Our own way to the end is on: where it passes says nothing about the user (a second message cutting it short
+    // must not find the user "away").
+    val auto = remember { booleanArrayOf(false) }
+    LaunchedEffect(state) {
+        val far = with(density) { FOLLOW_DISTANCE.roundToPx() }
+        var moving = false
+        snapshotFlow { state.isScrollInProgress to state.distanceToEnd() }.collect { (scrolling, distance) ->
+            if (auto[0]) {
+                moving = false
+                return@collect
+            }
+            // The frame a fling stops in counts too: it is where the user left the list.
+            if (scrolling || moving) away = distance > far
+            moving = scrolling
+            if (!away) unseen = false
+        }
+    }
+    val toEnd: suspend () -> Unit = {
+        away = false
+        unseen = false
+        auto[0] = true
+        try {
+            if (still) state.scrollToItem(last) else state.animateScrollToItem(last)
+        } finally {
+            auto[0] = false
+        }
+    }
     LaunchedEffect(lastId) {
-        if (items.isEmpty()) return@LaunchedEffect
-        if (still || !placed) state.scrollToItem(last) else state.animateScrollToItem(last)
+        val newest = items.lastOrNull() ?: return@LaunchedEffect
+        when {
+            !placed -> state.scrollToItem(last)
+            newest.takesToEnd() || !away -> toEnd()
+            newest !is ChatItem.TypingItem -> unseen = true
+        }
         placed = true
     }
-    // G4: while the composer has the cursor, the keyboard rising (or going) keeps the last message just over it, frame
-    // by frame with the keyboard's own animation. A form field brings itself into view instead (FormCardView).
-    val ime = WindowInsets.ime
-    val density = LocalDensity.current
+    // G4/H1: while the composer has the cursor, the transcript rises with the keyboard, frame by frame with its own
+    // animation: what stood just over it stays there, the last message too, however tall. A form field brings itself
+    // into view instead (FormCardView).
+    // The transcript's bottom edge: the keyboard, or the navigation bar while the keyboard is lower than it.
+    val ime = WindowInsets.ime.union(WindowInsets.navigationBars)
     val follow by rememberUpdatedState(typing)
-    val end by rememberUpdatedState(last)
     LaunchedEffect(state) {
-        snapshotFlow { ime.getBottom(density) }.collect { if (follow && end >= 0) state.scrollToItem(end) }
+        var was = ime.getBottom(density)
+        snapshotFlow { ime.getBottom(density) }.collect { now ->
+            val rise = now - was
+            was = now
+            if (follow && rise > 0) state.scrollBy(rise.toFloat())
+        }
     }
     // A tap on a quote: the quoted message is scrolled to (a third down the screen) and lit for a second.
     val scope = rememberCoroutineScope()
@@ -410,46 +467,104 @@ private fun LazyTranscript(
         snapshotFlow { state.firstVisibleItemIndex == 0 && state.layoutInfo.totalItemsCount > 0 }
             .collect { atTop -> if (atTop) reachedTop() }
     }
-    LazyColumn(
-        modifier,
-        state = state,
-        contentPadding = PaddingValues(
-            start = ClomniTheme.Space.xl.dp,
-            end = ClomniTheme.Space.xl.dp,
-            top = ClomniTheme.Space.xl.dp,
-            bottom = ClomniTheme.Space.s.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
-    ) {
-        if (loadingOlder) {
-            item(key = "older") {
-                Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                    LoadingSpinner(true, theme.colors.primary, loadingLabel, Modifier.padding(vertical = ClomniTheme.Space.s.dp), 20.dp)
-                }
-            }
-        }
-        items(items, key = { it.id }) { item ->
-            // Fades in the first time it is ever shown only: not again when it scrolls back into view.
-            val fresh = remember(item.id) { known.add(item.id) }
-            // M3: a new item comes in its own way (ChatItemView); one that moves slides to its place.
-            CompositionLocalProvider(LocalTranscript provides links, LocalArriving provides fresh) {
-                Box(
-                    Modifier.animateItem(
-                        fadeInSpec = null,
-                        placementSpec = if (still) null else Motion.sheet(IntOffset.VisibilityThreshold),
-                        fadeOutSpec = null,
-                    ).arriving(fresh, item.arrival),
-                ) {
-                    if (item is ChatItem.RepliesItem) {
-                        QuickRepliesView(item.block, theme, folded = fold.folding == item.id) { buttonId ->
-                            fold.start(items, item.id)
-                            actions.tap(buttonId, item.block.messageId)
-                        }
-                    } else {
-                        ChatItemView(item, theme, actions)
+    Box(modifier) {
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            state = state,
+            contentPadding = PaddingValues(
+                start = ClomniTheme.Space.xl.dp,
+                end = ClomniTheme.Space.xl.dp,
+                top = ClomniTheme.Space.xl.dp,
+                bottom = ClomniTheme.Space.s.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xxs.dp),
+        ) {
+            if (loadingOlder) {
+                item(key = "older") {
+                    Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                        LoadingSpinner(true, theme.colors.primary, loadingLabel, Modifier.padding(vertical = ClomniTheme.Space.s.dp), 20.dp)
                     }
                 }
             }
+            items(items, key = { it.id }) { item ->
+                // Fades in the first time it is ever shown only: not again when it scrolls back into view.
+                val fresh = remember(item.id) { known.add(item.id) }
+                // M3: a new item comes in its own way (ChatItemView); one that moves slides to its place.
+                CompositionLocalProvider(LocalTranscript provides links, LocalArriving provides fresh) {
+                    Box(
+                        Modifier.animateItem(
+                            fadeInSpec = null,
+                            placementSpec = if (still) null else Motion.sheet(IntOffset.VisibilityThreshold),
+                            fadeOutSpec = null,
+                        ).arriving(fresh, item.arrival),
+                    ) {
+                        if (item is ChatItem.RepliesItem) {
+                            QuickRepliesView(item.block, theme, folded = fold.folding == item.id) { buttonId ->
+                                fold.start(items, item.id)
+                                actions.tap(buttonId, item.block.messageId)
+                            }
+                        } else {
+                            ChatItemView(item, theme, actions)
+                        }
+                    }
+                }
+            }
+        }
+        NewMessageCapsule(unseen, screen.newMessageLabel, theme, Modifier.align(Alignment.BottomCenter)) {
+            scope.launch { toEnd() }
+        }
+    }
+}
+
+/** H2: the user's own message, choices and a form take the transcript to its end wherever the user was reading. */
+private fun ChatItem.takesToEnd(): Boolean = when (this) {
+    is ChatItem.RepliesItem -> true
+    is ChatItem.BubbleItem -> bubble.side == Bubble.Side.OUTGOING || bubble.body is FormCard
+    else -> false
+}
+
+/** How far the transcript's end is under the screen's bottom, in px; the end not laid out yet counts as far. */
+private fun LazyListState.distanceToEnd(): Int {
+    val info = layoutInfo
+    val last = info.visibleItemsInfo.lastOrNull() ?: return 0
+    if (last.index < info.totalItemsCount - 1) return Int.MAX_VALUE
+    return (last.offset + last.size + info.afterContentPadding - info.viewportEndOffset).coerceAtLeast(0)
+}
+
+/** H2: further up than this from the end, the user is reading the history and new messages leave them there. */
+private val FOLLOW_DISTANCE = 120.dp
+
+/**
+ * H2: "Yeni mesaj ↓" over the transcript's end while something new is under the screen: the brand colour, 32 high,
+ * radius 16, 13 medium with a 14 chevron after it, 12 over the composer. It rises 8 as it fades in (the offline
+ * capsule's spring); a tap takes the transcript to its end.
+ */
+@Composable
+internal fun NewMessageCapsule(shown: Boolean, label: String, theme: ClomniTheme, modifier: Modifier, open: () -> Unit) {
+    val still = reduceMotion()
+    val rise = with(LocalDensity.current) { 8.dp.roundToPx() }
+    AnimatedVisibility(
+        shown,
+        modifier.padding(bottom = ClomniTheme.Space.m.dp),
+        enter = if (still) fadeIn(tween(150)) else slideInVertically(Motion.capsule()) { rise } + fadeIn(Motion.capsule()),
+        exit = if (still) fadeOut(tween(150)) else slideOutVertically(Motion.capsule()) { rise } + fadeOut(Motion.capsule()),
+    ) {
+        // A 48 dp target that lays out like the 32 dp pill; the press shows on the pill only.
+        val press = remember { MutableInteractionSource() }
+        Row(
+            Modifier.bleed(vertical = 8.dp)
+                .clickable(press, indication = null, role = Role.Button, onClick = open)
+                .clearAndSetSemantics { contentDescription = label }
+                .padding(vertical = 8.dp)
+                .indication(press, ShapedIndication(RoundedCornerShape(16.dp)))
+                .softShadow(16.dp, theme.colors.primary.color, ClomniTheme.Shadow.capsule)
+                .heightIn(min = 32.dp)
+                .padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(label, style = clomniText(13f, theme.colors.onPrimary, FontWeight.Medium), maxLines = 1)
+            Icon(R.drawable.clomni_ic_chevron_down, theme.colors.onPrimary, 14.dp)
         }
     }
 }
