@@ -46,6 +46,60 @@ final class LimitedMarkdownTests: XCTestCase {
     }
 }
 
+/// CM-087: addresses, emails and phone numbers written as plain text are links.
+final class TextLinksTests: XCTestCase {
+    /// What was found, as written and as its URL.
+    private func links(_ text: String) -> [String] {
+        TextLinks.detect(text).map { "\(text[$0.range]) → \($0.url.absoluteString)" }
+    }
+
+    func testAddresses() {
+        XCTAssertEqual(links("Sayt: https://apar.az/sertler?x=1#y, ətraflı."),
+                       ["https://apar.az/sertler?x=1#y → https://apar.az/sertler?x=1#y"])
+        XCTAssertEqual(links("Köhnə http://apar.az və www.apar.az/qiymet."),
+                       ["http://apar.az → http://apar.az", "www.apar.az/qiymet → https://www.apar.az/qiymet"])
+        XCTAssertEqual(links("(bax: https://apar.az) və https://en.wikipedia.org/wiki/Baku_(city)!"),
+                       ["https://apar.az → https://apar.az",
+                        "https://en.wikipedia.org/wiki/Baku_(city) → https://en.wikipedia.org/wiki/Baku_(city)"])
+        XCTAssertEqual(links("HTTPS://APAR.AZ"), ["HTTPS://APAR.AZ → HTTPS://APAR.AZ"])
+        XCTAssertEqual(links("https://apar.az/ödəniş"), ["https://apar.az/ödəniş → https://apar.az/%C3%B6d%C9%99ni%C5%9F"])
+        XCTAssertEqual(links("link:https://apar.az"), ["https://apar.az → https://apar.az"])
+        XCTAssertEqual(links("https:// www. www.apar https://localhost awww.apar.az apar.az"), [], "no host, or none at all")
+    }
+
+    func testEmails() {
+        XCTAssertEqual(links("Yazın: info@apar.az."), ["info@apar.az → mailto:info@apar.az"])
+        XCTAssertEqual(links("<aysel.m+test@mail.apar.az>"), ["aysel.m+test@mail.apar.az → mailto:aysel.m+test@mail.apar.az"])
+        XCTAssertEqual(links("a@b @apar.az x@y.1 ödə@apar.az x@.az"), [])
+    }
+
+    func testPhones() {
+        XCTAssertEqual(links("Zəng: +994 50 123 45 67, ya da (012) 555-12-34."),
+                       ["+994 50 123 45 67 → tel:+994501234567", "(012) 555-12-34 → tel:0125551234"])
+        XCTAssertEqual(links("+994501234567 və 0501234567"),
+                       ["+994501234567 → tel:+994501234567", "0501234567 → tel:0501234567"])
+        XCTAssertEqual(links("Sifariş 12345678, tarix 2026-10-01, saat 10:30, kod A123456789, 1234567890123456"), [],
+                       "8 digits, a date, a time, glued to letters, over 15 digits")
+        XCTAssertEqual(links("https://apar.az/12345678901 info12345678901@apar.az"),
+                       ["https://apar.az/12345678901 → https://apar.az/12345678901",
+                        "info12345678901@apar.az → mailto:info12345678901@apar.az"], "never inside an address")
+    }
+
+    func testLinkify() {
+        let runs = TextLinks.linkify([TextRun("Bax "), TextRun("www.apar.az və 0501234567", bold: true),
+                                      TextRun("şərtlər", link: URL(string: "https://apar.az/sertler"))])
+        XCTAssertEqual(runs, [
+            TextRun("Bax "),
+            TextRun("www.apar.az", bold: true, link: URL(string: "https://www.apar.az")),
+            TextRun(" və ", bold: true),
+            TextRun("0501234567", bold: true, link: URL(string: "tel:0501234567")),
+            TextRun("şərtlər", link: URL(string: "https://apar.az/sertler")),
+        ])
+        XCTAssertEqual(TextLinks.linkify([TextRun("Salam 👋")]), [TextRun("Salam 👋")])
+        XCTAssertEqual(TextLinks.linkify([]), [])
+    }
+}
+
 final class FormInputTests: XCTestCase {
     private let strings = ClomniStrings(language: "az")
 

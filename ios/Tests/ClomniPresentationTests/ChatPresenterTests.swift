@@ -419,15 +419,84 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertTrue(lines[2].avatars.isEmpty)
         XCTAssertTrue(bubbles(system).isEmpty)
 
-        // card, carousel and rating are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
+        // card and carousel are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
         for (file, fallback) in [("26-card.json", "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az"),
                                  ("27-carousel.json", "Tarif 1 / Tarif 2 / Tarif 3"),
-                                 ("28-rating.json", "Xidmətimizi 1-5 qiymətləndirin"),
                                  ("29-unknown-type.json", "Hansı saat uyğundur? 10:00 / 14:00")] {
             let bubble = bubbles(screen([Fixture.message(file)])).first
             XCTAssertEqual(text(bubble), fallback, file)
             XCTAssertEqual(bubble?.side, .incoming, file)
         }
+    }
+
+    /// CM-087: a rating is a card of its own, open until answered; the answer on its way or sent locks it with the
+    /// thanks, a failed one opens it again.
+    func testRating() throws {
+        let rating = Fixture.message("28-rating.json")
+        func card(_ build: (inout ChatSnapshot) -> Void = { _ in }) -> RatingCard? {
+            guard case .rating(let card)? = bubbles(screen([rating], build)).first?.body else { return nil }
+            return card
+        }
+        let open = try XCTUnwrap(card { $0.answerable = [rating.id] })
+        XCTAssertEqual(open.state, .open)
+        XCTAssertEqual(open.text, [TextRun("Xidmətimizi qiymətləndirin")])
+        XCTAssertEqual(open.options.map(\.face), ["😞", "😑", "😐", "😀", "😍"])
+        XCTAssertEqual(open.options.map(\.accessibilityLabel), ["Çox pis", "Pis", "Normal", "Yaxşı", "Əla"])
+        XCTAssertEqual(open.commentField?.shownLabel, "Rəyiniz (istəyə görə)")
+        XCTAssertEqual(open.commentField?.type, .textarea)
+        XCTAssertEqual(open.submitTitle, "Göndər")
+        XCTAssertNil(open.sentAccessibilityLabel)
+        let bubble = try XCTUnwrap(bubbles(screen([rating]) { $0.answerable = [rating.id] }).first)
+        XCTAssertFalse(bubble.replyable, "answered in its card, not quoted")
+        XCTAssertEqual(bubble.accessibilityLabel, "Apar bot, 11:02: Xidmətimizi qiymətləndirin")
+
+        let answer = PendingMessage(conversationId: "conv_5521",
+                                    message: ClientMessage(content: .ratingSubmit(replyTo: rating.id, score: 5,
+                                                                                  comment: "Tez cavab verdiniz")),
+                                    preview: nil, createdAt: now)
+        let sending = try XCTUnwrap(card { $0.pending = [answer] })
+        XCTAssertEqual(sending.state, .sent(score: 5, comment: "Tez cavab verdiniz"), "offline it waits, locked")
+        XCTAssertEqual(sending.sentAccessibilityLabel,
+                       "Qiymətiniz: Əla. Tez cavab verdiniz. Rəyiniz üçün təşəkkür edirik")
+        XCTAssertEqual(bubbles(screen([rating]) { $0.pending = [answer] }).count, 1, "the answer has no bubble")
+        var failed = answer
+        failed.state = .failed
+        XCTAssertEqual(card { $0.pending = [failed] }?.state, .open, "a failure opens it again")
+        XCTAssertEqual(card()?.state, .sent(score: nil, comment: nil), "answered elsewhere or closed: nothing lit")
+
+        let fromServer = Fixture.message("28-rating.json", ["content": [
+            "text": "Necə idi?", "scale": "star_5", "comment": "none", "submitted": ["score": 4, "comment": ""],
+        ]])
+        guard case .rating(let stars)? = bubbles(screen([fromServer]) { $0.answerable = [fromServer.id] }).first?.body else {
+            return XCTFail()
+        }
+        XCTAssertEqual(stars.state, .sent(score: 4, comment: nil), "the server's submitted, whatever else says")
+        XCTAssertNil(stars.commentField)
+        XCTAssertEqual(stars.options.map(\.face), [nil, nil, nil, nil, nil])
+        XCTAssertEqual(stars.options[3].accessibilityLabel, "5 ulduzdan 4")
+        XCTAssertEqual(stars.sentAccessibilityLabel, "Qiymətiniz: 5 ulduzdan 4. Rəyiniz üçün təşəkkür edirik")
+
+        let required = Fixture.message("28-rating.json", ["content": [
+            "text": "?", "scale": "emoji_5", "comment": "required", "submitted": nil,
+        ]])
+        guard case .rating(let asks)? = bubbles(screen([required])).first?.body else { return XCTFail() }
+        XCTAssertEqual(asks.commentField?.shownLabel, "Rəyiniz")
+        XCTAssertEqual(asks.commentField?.accessibilityLabel, "Rəyiniz, məcburi")
+        XCTAssertEqual(asks.commentField?.required, true)
+    }
+
+    /// CM-087: addresses, emails and phones in a message's text are links, the user's own too.
+    func testLinksInMessages() throws {
+        let bot = Fixture.message("01-text-bot.json", ["content": ["text": "**Yazın:** info@apar.az və ya +994501234567"]])
+        guard case .text(let runs)? = bubbles(screen([bot])).first?.body else { return XCTFail() }
+        XCTAssertEqual(runs.compactMap(\.link?.absoluteString), ["mailto:info@apar.az", "tel:+994501234567"])
+        XCTAssertEqual(runs.first, TextRun("Yazın:", bold: true))
+        let mine = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("www.apar.az")),
+                                  preview: "www.apar.az", createdAt: now)
+        guard case .text(let sent)? = bubbles(screen([]) { $0.pending = [mine] }).first?.body else { return XCTFail() }
+        XCTAssertEqual(sent, [TextRun("www.apar.az", link: URL(string: "https://www.apar.az"))])
+        XCTAssertEqual(text(bubbles(screen([Fixture.message("26-card.json")])).first),
+                       "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az")
     }
 
     func testComposer() {

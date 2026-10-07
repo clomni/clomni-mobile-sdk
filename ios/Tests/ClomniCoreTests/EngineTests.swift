@@ -369,6 +369,50 @@ final class EngineTests: EngineTestCase {
         XCTAssertFalse(enabled)
     }
 
+    /// CM-087: a rating is open though no flow drives it; one that failed opens again, and the next answer takes its
+    /// place in the outbox.
+    func testAFailedRatingCanBeAnsweredAgain() async throws {
+        let phone = await device()
+        _ = try await conversation(on: phone)
+        await phone.online()
+        // conv_5521 is unknown to the server: its 404 fails the answer at once.
+        phone.socket.push(try fixtureFrame("28-rating.json"))
+        await expect { await phone.messages("conv_5521").count == 1 }
+        let stored = await phone.messages("conv_5521")
+        let rating = try XCTUnwrap(stored.first)
+        let open = await phone.engine.canAnswer(rating)
+        XCTAssertTrue(open)
+        try await phone.engine.submitRating(rating, score: 2, comment: nil)
+        let answered = await phone.engine.canAnswer(rating)
+        XCTAssertFalse(answered)
+        await expect { await phone.pending("conv_5521").first?.state == .failed }
+        let failed = await phone.pending("conv_5521").first
+        try await phone.engine.submitRating(rating, score: 3, comment: "Yenə")
+        let pending = await phone.pending("conv_5521")
+        XCTAssertEqual(pending.count, 1, "the failed answer is gone")
+        XCTAssertNotEqual(pending.first?.id, failed?.id)
+        XCTAssertEqual(pending.first?.message.content, .ratingSubmit(replyTo: "msg_f28", score: 3, comment: "Yenə"))
+    }
+
+    /// CM-087: the server answers a rating with the rating itself, `submitted` filled: no message of the user's.
+    func testARatingComesBackSubmitted() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        await phone.online()
+        let sent = server.botRates(in: id)
+        await expect { await phone.messages(id).last?.type == "rating" }
+        let count = await phone.messages(id).count
+        let messages = await phone.engine.messages(in: id)
+        let rating = try XCTUnwrap(messages.last)
+        try await phone.engine.submitRating(rating, score: 5, comment: "Tez cavab verdiniz")
+        await expect { await phone.pending(id).isEmpty }
+        let after = await phone.engine.messages(in: id)
+        XCTAssertEqual(after.count, count, "no bubble of the user's")
+        guard case .rating(let answered)? = after.last?.content else { return XCTFail() }
+        XCTAssertEqual(after.last?.id, sent["id"]?.stringValue)
+        XCTAssertEqual(answered.submitted, ["score": 5, "comment": "Tez cavab verdiniz"])
+    }
+
     func testFormRatingBackAndAttachmentPayloads() async throws {
         let phone = await device()
         let (id, _) = try await conversation(on: phone)

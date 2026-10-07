@@ -24,6 +24,7 @@ package protocol ChatDataSource: Sendable {
     func reply(to message: Message, with button: MessageContent.Button) async throws -> PendingMessage
     func goBack(from message: Message) async throws -> PendingMessage
     func submitForm(_ message: Message, values: [String: JSONValue]) async throws -> PendingMessage
+    func submitRating(_ message: Message, score: Int, comment: String?) async throws -> PendingMessage
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                   in conversationId: String, replyTo: String?) async throws -> PendingMessage
     func retry(_ clientId: String) async throws
@@ -269,6 +270,20 @@ package final class ChatController {
         return [:]
     }
 
+    /// A rating's score, with the comment when the card has a field. It goes through the outbox like any message
+    /// (offline it waits there); should it fail, the card is open again.
+    package func rate(_ messageId: String, score: Int, comment: String?) async {
+        guard let message = snapshot.messages.first(where: { $0.id == messageId }),
+              case .rating(let rating) = message.content else { return }
+        let text = comment.map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(ChatPresenter.commentLimit)) }
+            .flatMap { $0.isEmpty || rating.comment == .hidden ? nil : $0 }
+        guard rating.comment != .required || text != nil,
+              (try? await source.submitRating(message, score: score, comment: text)) != nil else { return }
+        sound(.sent)
+        await read()
+        render()
+    }
+
     /// "Göndərilmədi · Yenidən cəhd et".
     package func retrySending(_ clientId: String) async {
         try? await source.retry(clientId)
@@ -377,7 +392,7 @@ package final class ChatController {
         snapshot.pending = await source.pending(in: conversationId)
         snapshot.readUpTo = await source.readByOperator(in: conversationId)
         var answerable: Set<String> = []
-        for message in snapshot.messages where message.flow?.interactive == true {
+        for message in snapshot.messages where message.flow?.interactive == true || message.type == "rating" {
             if await source.canAnswer(message) { answerable.insert(message.id) }
         }
         snapshot.answerable = answerable

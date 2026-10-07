@@ -471,8 +471,15 @@ package actor ClomniEngine {
 
     @discardableResult
     package func submitRating(_ message: Message, score: Int, comment: String?) throws -> PendingMessage {
-        guard case .rating(let rating) = message.content, rating.submitted == nil, !store.answered.contains(message.id),
-              (1...5).contains(score) else { throw ClomniError.rejected("rating not open") }
+        // One that failed left the card open again: the new answer takes its place.
+        let failed = outbox.entries(in: message.conversationId).filter {
+            $0.state == .failed && $0.message.answeredId == message.id
+        }
+        guard case .rating(let rating) = message.content, rating.submitted == nil,
+              !failed.isEmpty || !store.answered.contains(message.id), (1...5).contains(score) else {
+            throw ClomniError.rejected("rating not open")
+        }
+        failed.forEach { removePending($0.id) }
         store.markAnswered(message.id)
         return enqueue(.ratingSubmit(replyTo: message.id, score: score, comment: comment), in: message.conversationId,
                        preview: nil)

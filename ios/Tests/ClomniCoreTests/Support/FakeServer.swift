@@ -124,6 +124,19 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
         return message
     }
 
+    /// A rating (CSAT) from the bot, open.
+    @discardableResult
+    func botRates(in conversationId: String, comment: String = "optional") -> JSONValue {
+        let message = locked {
+            makeMessage(in: conversationId, type: "rating", sender: Self.bot,
+                        content: ["text": "Xidmətimizi qiymətləndirin", "scale": "emoji_5", "comment": .string(comment),
+                                  "submitted": nil],
+                        fallback: "Xidmətimizi 1-5 qiymətləndirin")
+        }
+        emit("message.created", message)
+        return message
+    }
+
     /// Flow buttons on the server; the newest interactive message of the conversation.
     @discardableResult
     func botAsks(_ text: String, buttons: [String], in conversationId: String, silently: Bool = false) -> JSONValue {
@@ -375,13 +388,28 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
         case "text":
             text = content["text"]?.stringValue ?? ""
             guard !text.isEmpty else { return Self.error(400, "validation_failed", fields: ["text": "empty"]) }
-        case "button_reply", "form_submit", "rating_submit":
+        case "rating_submit":
+            // The rating itself comes back with `submitted` filled (and as message.updated); no message of the user's.
+            guard let replyTo = content["reply_to"]?.stringValue,
+                  let index = conversations[conversationId]?.messages.firstIndex(where: { $0["id"]?.stringValue == replyTo }),
+                  case .object(var fields) = conversations[conversationId]!.messages[index],
+                  case .object(var rating)? = fields["content"], let score = content["score"]?.intValue,
+                  (1...5).contains(score) else { return Self.error(400, "validation_failed") }
+            if conversations[conversationId]?.answered.contains(replyTo) == true { return Self.error(409, "already_answered") }
+            conversations[conversationId]?.answered.insert(replyTo)
+            rating["submitted"] = ["score": .number(Double(score)), "comment": content["comment"] ?? .null]
+            fields["content"] = .object(rating)
+            conversations[conversationId]?.messages[index] = .object(fields)
+            byClientId[clientId] = .object(fields)
+            frames.append(Self.frame("message.updated", .object(fields)))
+            return Self.json(201, .object(fields))
+        case "button_reply", "form_submit":
             guard let replyTo = content["reply_to"]?.stringValue,
                   let index = conversations[conversationId]?.messages.firstIndex(where: { $0["id"]?.stringValue == replyTo })
             else { return Self.error(400, "validation_failed") }
             if conversations[conversationId]?.answered.contains(replyTo) == true { return Self.error(409, "already_answered") }
             let latest = conversations[conversationId]?.messages.last { $0["flow"]?["interactive"]?.boolValue == true }
-            if type != "rating_submit", latest?["id"]?.stringValue != replyTo { return Self.error(409, "stale_interaction") }
+            if latest?["id"]?.stringValue != replyTo { return Self.error(409, "stale_interaction") }
             conversations[conversationId]?.answered.insert(replyTo)
             var answered = conversations[conversationId]!.messages[index]
             if case .object(var fields) = answered, case .object(var flow)? = fields["flow"] {

@@ -91,6 +91,16 @@ actor FakeChat: ChatDataSource {
                      preview: nil)
     }
 
+    func submitRating(_ message: Message, score: Int, comment: String?) throws -> PendingMessage {
+        guard answerable.remove(message.id) != nil else { throw ClomniError.rejected("rating not open") }
+        calls.append("rating \(message.id) \(score)" + (comment.map { " \($0)" } ?? ""))
+        return queue(.ratingSubmit(replyTo: message.id, score: score, comment: comment), in: message.conversationId,
+                     preview: nil)
+    }
+
+    /// The last queued message failed to go.
+    func failLast() { outbox[outbox.count - 1].state = .failed }
+
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                   in conversationId: String, replyTo: String?) throws -> PendingMessage {
         guard data.count <= 10 else { throw ClomniError.rejected("file over 10 MB") }
@@ -212,6 +222,51 @@ final class ChatControllerTests: XCTestCase {
         XCTAssertTrue(made.contains(#"form msg_f19 {"email":"","name":"Aysel","phone":"+994501234567"}"#), "\(made)")
         let notAForm = await chat.submit("msg_unknown", values: [:])
         XCTAssertEqual(notAForm, [:])
+    }
+
+    /// CM-087: a score goes once, with the comment only where the card asks for one; a required comment must be there.
+    func testRating() async throws {
+        let rating = Fixture.message("28-rating.json")
+        await source.set([rating], answerable: [rating.id])
+        let chat = controller()
+        await chat.load()
+        guard case .bubble(let bubble)? = chat.screen.items.last, case .rating(let open) = bubble.body else {
+            return XCTFail("\(chat.screen.items)")
+        }
+        XCTAssertEqual(open.state, .open)
+        await chat.rate(rating.id, score: 4, comment: "  Tez cavab verdiniz \n")
+        var made = await calls()
+        XCTAssertEqual(made.filter { $0.hasPrefix("rating") }, ["rating msg_f28 4 Tez cavab verdiniz"])
+        guard case .bubble(let sent)? = chat.screen.items.last, case .rating(let locked) = sent.body else {
+            return XCTFail()
+        }
+        XCTAssertEqual(locked.state, .sent(score: 4, comment: "Tez cavab verdiniz"))
+        await chat.rate(rating.id, score: 1, comment: nil)
+        made = await calls()
+        XCTAssertEqual(made.filter { $0.hasPrefix("rating") }.count, 1, "rated already")
+
+        // Failed: open again, and the next choice goes.
+        await source.failLast()
+        await source.set([rating], answerable: [rating.id])
+        await chat.load()
+        guard case .bubble(let again)? = chat.screen.items.last, case .rating(let reopened) = again.body else {
+            return XCTFail()
+        }
+        XCTAssertEqual(reopened.state, .open)
+
+        let required = Fixture.message("28-rating.json", ["id": "msg_f29", "seq": 28, "content": [
+            "text": "?", "scale": "star_5", "comment": "required", "submitted": nil,
+        ]])
+        let silent = Fixture.message("28-rating.json", ["id": "msg_f30", "seq": 29, "content": [
+            "text": "?", "scale": "star_5", "comment": "none", "submitted": nil,
+        ]])
+        await source.set([required, silent], answerable: [required.id, silent.id])
+        await chat.load()
+        await chat.rate(required.id, score: 2, comment: "   ")
+        await chat.rate(silent.id, score: 5, comment: "not asked for")
+        made = await calls()
+        XCTAssertEqual(made.filter { $0.hasPrefix("rating") }.dropFirst(), ["rating msg_f30 5"],
+                       "a required comment is missing; one nobody asked for is not sent")
     }
 
     /// A swipe or "Cavabla" quotes the message over the field; the next message takes it, and the ✕ drops it.

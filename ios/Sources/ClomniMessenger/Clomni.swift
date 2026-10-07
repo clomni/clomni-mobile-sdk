@@ -234,8 +234,9 @@ public enum Clomni {
         set { ClomniShared.state.write { $0.events.flowCompleted = newValue } }
     }
 
-    /// A news item's button: its link (https:// or the app's deep link) goes to the app, which opens it its own way.
-    /// Without this callback the system opens it.
+    /// A news item's button: its link (https:// or the app's deep link) goes to the app, which opens it its own way;
+    /// so does a web address in a message's text (tel: and mailto: always go to the system). Without this callback the
+    /// system opens it.
     public static var onLink: (@MainActor @Sendable (URL) -> Void)? {
         get { ClomniShared.state.read { $0.events.link } }
         set { ClomniShared.state.write { $0.events.link = newValue } }
