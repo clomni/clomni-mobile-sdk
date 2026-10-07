@@ -3,14 +3,16 @@ import UIKit
 import UserNotifications
 
 /// ClomniExampleUITests start the app with `-ClomniPushTap conv_a,conv_b,…`: taps on Clomni notifications without a
-/// real push. The first comes at launch (a cold start), each next one when the app comes back to the foreground. Each
+/// real push. The first comes at launch (a cold start), each next one `interval` after the one before. Each
 /// reaches the app delegate as UIKit sends a real one: its Objective-C method, called from a background queue, with a
 /// completion handler that has to be called on the main thread, as UIKit's has. Not for an app to copy.
 @MainActor
 enum UITestPushTap {
     private static var pending: [String] = []
     private static weak var delegate: NSObject?
-    private static var observer: NSObjectProtocol?
+    private static var timer: Timer?
+    /// Room for the test to close the messenger between two taps, on a slow runner too.
+    private static let interval: TimeInterval = 12
 
     /// true when the UI tests asked for taps: the app then asks for no push permission.
     static func start(_ delegate: NSObject & UNUserNotificationCenterDelegate) -> Bool {
@@ -20,9 +22,10 @@ enum UITestPushTap {
         pending = arguments[flag + 1].split(separator: ",").map(String.init)
         self.delegate = delegate
         tapNext()
-        observer = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification,
-                                                          object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { UITestPushTap.tapNext() }
+        // On a timer, not on coming back from the home screen: the runner's simulator never reported the app leaving
+        // the foreground (f22aecb to 015fa4d), with a home press or with Springboard brought to the front.
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            MainActor.assumeIsolated { UITestPushTap.pending.isEmpty ? timer.invalidate() : UITestPushTap.tapNext() }
         }
         return true
         #else

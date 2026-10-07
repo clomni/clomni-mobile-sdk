@@ -1,7 +1,7 @@
 import XCTest
 
-/// A tap on a Clomni notification opens the messenger and the app keeps running: at a cold start, and from the
-/// background with the messenger closed and open. The app taps for itself (`-ClomniPushTap`, UITestPushTap in the
+/// A tap on a Clomni notification opens the messenger and the app keeps running: at a cold start, then with the
+/// messenger closed and with it open. The app taps for itself (`-ClomniPushTap`, UITestPushTap in the
 /// Example) the way UIKit does: from a background queue, with a completion handler that must be called on the main
 /// thread. TestFlight build 8 stopped right there: the delegate method was nonisolated, so Swift called UIKit's
 /// handler from a background thread.
@@ -18,31 +18,15 @@ final class PushTapTests: XCTestCase {
         XCTAssertTrue(close(app).waitForExistence(timeout: 20), "the messenger opened from the tap at launch")
         XCTAssertEqual(app.state, .runningForeground)
 
-        // From the background, the messenger closed.
+        // The messenger closed: the next tap, 12 s after the first, opens it again.
         close(app).tap()
         XCTAssertTrue(close(app).waitForNonExistence(timeout: 5))
-        goHomeAndBack(app)
-        XCTAssertTrue(close(app).waitForExistence(timeout: 20), "opened again from the background")
+        XCTAssertTrue(close(app).waitForExistence(timeout: 25), "opened again by the next tap")
 
-        // From the background, the messenger open: it moves to the push's conversation.
-        goHomeAndBack(app)
-        Thread.sleep(forTimeInterval: 3)
+        // The messenger open: the third tap moves it to that conversation, and the app keeps running.
+        Thread.sleep(forTimeInterval: 15)
         XCTAssertEqual(app.state, .runningForeground, "still running after a tap with the messenger open")
         XCTAssertTrue(close(app).exists)
-    }
-
-    /// To the home screen and back, each step finished before the next. On CI (f92fc22) the app was found in the
-    /// background 3 s after an activation sent 0.5 s after the press, before the app had left the foreground: state 3,
-    /// alive, not a crash, and the same steps had passed on the run before.
-    private func goHomeAndBack(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        // Springboard to the front rather than the home button: on CI (f22aecb) a press left the app in the foreground
-        // for the whole 10 s.
-        XCUIApplication(bundleIdentifier: "com.apple.springboard").activate()
-        let deadline = Date().addingTimeInterval(10)
-        while app.state == .runningForeground, Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
-        XCTAssertNotEqual(app.state, .runningForeground, "the app went to the background", file: file, line: line)
-        app.activate()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "and came back", file: file, line: line)
     }
 
     /// The messenger's ✕, in whichever language it speaks.
