@@ -10,7 +10,7 @@ import ClomniPresentation
 #endif
 
 extension Clomni {
-    /// Debug builds, for UI tests (ios/Example's ClomniExampleUITests): the conversation screen over a fixed
+    /// Debug builds, for UI tests (ios/Example's ClomniExampleUITests): the conversation screen over a fixed, long
     /// conversation that ends in a form, presented the way the messenger is (a page sheet, its navigation, a hosting
     /// controller), with no server and no `initialize`. Not part of the SDK's API.
     @_spi(ClomniUITesting) @MainActor
@@ -30,9 +30,11 @@ extension Clomni {
     }
 }
 
-/// The demo conversation, in memory: a few messages back and forth (the user's read up to the last one), then a form
-/// to fill. What the user sends is there at once, with one ✓; a question (a text ending in "?") gets an answer ten
-/// seconds later, which is what brings up "Yeni mesaj ↓" when the user has scrolled up meanwhile.
+/// The demo conversation, in memory: 43 messages back and forth, short and long, two pictures (the user's read up to
+/// the last one), then a form to fill. It opens the way a phone opens a long conversation: what the cache kept at
+/// once, the older history from "the server" in two pages above it, 0.8 s apart. What the user sends is there at
+/// once, with one ✓; a question (a text ending in "?") gets an answer ten seconds later, which is what brings up
+/// "Yeni mesaj ↓" when the user has scrolled up meanwhile.
 actor DemoChat: ChatDataSource {
     static let conversationId = "conv_demo"
 
@@ -44,6 +46,8 @@ actor DemoChat: ChatDataSource {
     """#.utf8))
 
     private var stored: [Message]
+    /// The history the cache did not keep, the page just before it first.
+    private var unloaded: [[Message]]
     private var answerable: Set<String> = []
     private var readUpTo = 0
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
@@ -60,37 +64,106 @@ actor DemoChat: ChatDataSource {
             ]),
             "submit_title": "Göndər",
         ])
-        // Longer than two screens, so the user can read well away from the end (H2).
-        let history = [
-            ("user", "Salam, ötən həftəki sifarişim haqqında sualım var"),
-            ("operator", "Salam! Əlbəttə, sifariş nömrəsini yazın, baxım."),
-            ("user", "R-0981"),
-            ("operator", "Bu sifariş 2 oktyabrda çatdırılıb. Nəsə problem olub?"),
-            ("user", "Yox, sadəcə qəbz lazım idi"),
-            ("operator", "Qəbzi e-poçtunuza göndərdim. Spam qovluğuna da baxın."),
-            ("user", "Gəldi, təşəkkürlər"),
-            ("operator", "Buyurun, xoş gün!"),
+        // Two weeks back, one week back (the pages "the server" sends), yesterday and today (the cache): many screens,
+        // so the list opens far from its first message and the user can read well away from the end (H2).
+        let oldest: [Line] = [
+            .text("user", "Salam, kartla ödəniş keçmir"),
+            .text("operator", "Salam! Hansı kartdır, xəta nə yazır?"),
+            .text("user", "Visa. \"Əməliyyat rədd edildi\" yazır, amma kartda pul var. Banka zəng etmişəm, deyirlər ki, "
+                  + "onların tərəfində hər şey qaydasındadır və problem sizdədir."),
+            .text("operator", "Bir dəqiqə, yoxlayıram."),
+            .text("operator", "Ödəniş bankın 3D Secure təsdiqini gözləyir. SMS kodunu yazdıqdan sonra səhifəni bağlamayın, "
+                  + "təsdiq bir neçə saniyə çəkə bilər. SMS gəlmirsə, bankın tətbiqində internet ödənişlərinin açıq "
+                  + "olduğunu yoxlayın."),
+            .text("user", "SMS gəlmir"),
+            .image("user", Self.greyPicture, width: 1170, height: 2532, caption: "Ekranda bu çıxır"),
+            .text("operator", "Aydındır. Bankın tətbiqində internet ödənişlərini açmaq lazımdır."),
+            .text("user", "Tapdım, açdım"),
+            .text("user", "İndi keçdi!"),
+            .text("operator", "Əla! Başqa sualınız var?"),
+            .text("user", "Yox, sağ olun"),
+            .text("operator", "Xoş gün!"),
         ]
-        stored = history.enumerated().compactMap { index, line in
-            Self.text(index + 1, from: line.0, line.1, minutesAgo: 1_500 - Double(index))
+        let older: [Line] = [
+            .text("user", "Salam, aldığım ayaqqabı ölçümə uyğun gəlmədi. Dəyişmək olar?"),
+            .text("operator", "Salam! Olar. Qutusu və çeki varsa, 14 gün ərzində dəyişirik."),
+            .text("user", "Qutusu var, çek e-poçtdadır"),
+            .text("operator", "Sifariş nömrəsini və lazım olan ölçünü yazın."),
+            .text("user", "R-0874, 42 ölçü"),
+            .image("operator", Self.sandPicture, width: 1280, height: 960,
+                   caption: "Bu modelin 42 ölçüsü anbarda var. Kuryer köhnəni götürəndə yenisini gətirəcək."),
+            .text("user", "Super. Nə vaxt gələ bilər?"),
+            .text("operator", "Sabah 10:00 ilə 14:00 arası. Kuryer gəlməmişdən əvvəl zəng edəcək."),
+            .text("user", "Sabah işdəyəm, ünvanı dəyişmək olar? Nizami küçəsi 25, ofis binası, 3-cü mərtəbə. Qəbulda "
+                  + "Aysel üçün olduğunu desinlər, mənə xəbər verəcəklər."),
+            .text("operator", "Ünvanı dəyişdim, kuryerə də qeyd yazdım."),
+            .text("user", "Təşəkkür edirəm"),
+            .text("user", "👍"),
+            .text("operator", "Buyurun!"),
+        ]
+        let yesterday: [Line] = [
+            .text("user", "Salam, ötən həftəki sifarişim haqqında sualım var"),
+            .text("operator", "Salam! Əlbəttə, sifariş nömrəsini yazın, baxım."),
+            .text("user", "R-0981"),
+            .text("operator", "Bu sifariş 2 oktyabrda çatdırılıb. Nəsə problem olub?"),
+            .text("user", "Yox, sadəcə qəbz lazım idi"),
+            .text("operator", "Qəbzi e-poçtunuza göndərdim. Spam qovluğuna da baxın."),
+            .text("user", "Gəldi, təşəkkürlər"),
+            .text("operator", "Buyurun, xoş gün!"),
+        ]
+        let today: [Line] = [
+            .text("bot", "Salam! Clomni-yə xoş gəlmisiniz. Sizə necə kömək edə bilərik?"),
+            .text("user", "Salam"),
+            .text("user", "As"),
+            .text("operator", "Salam, mən Leylayam. Sifarişinizi yoxlayıram, bir dəqiqə."),
+            .text("user", "Sifariş nömrəm 1042-dir. Dünən vermişdim, hələ gəlməyib."),
+            .text("operator", "**Yoxladım.** Kuryer bu gün saat 18:00-a qədər çatdıracaq."),
+            .text("user", "Çox sağ olun 🙏"),
+            .text("operator", "Buyurun. Başqa sualınız olsa, yazın."),
+        ]
+        var seq = 0
+        func messages(_ lines: [Line], minutesAgo start: Double) -> [Message] {
+            lines.enumerated().compactMap { index, line in
+                seq += 1
+                return line.message(seq, minutesAgo: start - Double(index))
+            }
         }
-        let base = history.count
-        stored += [
-            Self.text(base + 1, from: "bot", "Salam! Clomni-yə xoş gəlmisiniz. Sizə necə kömək edə bilərik?", minutesAgo: 30),
-            Self.text(base + 2, from: "user", "Salam", minutesAgo: 29),
-            Self.text(base + 3, from: "user", "As", minutesAgo: 29),
-            Self.text(base + 4, from: "operator", "Salam, mən Leylayam. Sifarişinizi yoxlayıram, bir dəqiqə.", minutesAgo: 28),
-            Self.text(base + 5, from: "user", "Sifariş nömrəm 1042-dir. Dünən vermişdim, hələ gəlməyib.", minutesAgo: 27),
-            Self.text(base + 6, from: "operator", "**Yoxladım.** Kuryer bu gün saat 18:00-a qədər çatdıracaq.", minutesAgo: 25),
-            Self.text(base + 7, from: "user", "Çox sağ olun 🙏", minutesAgo: 24),
-            Self.text(base + 8, from: "operator", "Buyurun. Başqa sualınız olsa, yazın.", minutesAgo: 24),
-            // A flow's step: only an interactive one can be filled in (ChatController asks canAnswer for those).
-            Self.message(base + 9, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
-                         minutesAgo: 23, interactive: true),
-        ].compactMap { $0 }
-        answerable = ["msg_demo_\(base + 9)"]
-        readUpTo = base + 7
+        let pages = [messages(oldest, minutesAgo: 20_000), messages(older, minutesAgo: 10_000)]
+        var cached = messages(yesterday, minutesAgo: 1_500) + messages(today, minutesAgo: 30)
+        // A flow's step: only an interactive one can be filled in (ChatController asks canAnswer for those).
+        seq += 1
+        if let step = Self.message(seq, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
+                                   minutesAgo: 22, interactive: true) {
+            cached.append(step)
+        }
+        stored = cached
+        unloaded = pages.reversed()
+        answerable = ["msg_demo_\(seq)"]
+        readUpTo = seq - 2
     }
+
+    /// A line of the demo's history.
+    private enum Line {
+        case text(String, String)
+        case image(String, String, width: Int, height: Int, caption: String)
+
+        func message(_ seq: Int, minutesAgo: Double) -> Message? {
+            switch self {
+            case .text(let sender, let text):
+                return DemoChat.text(seq, from: sender, text, minutesAgo: minutesAgo)
+            case .image(let sender, let url, let width, let height, let caption):
+                let content: JSONValue = .object(["url": .string(url), "thumb_url": .string(url),
+                                                  "width": .number(Double(width)), "height": .number(Double(height)),
+                                                  "caption": .string(caption)])
+                return DemoChat.message(seq, from: sender, type: "image", content: content, fallback: "Şəkil: \(caption)",
+                                        minutesAgo: minutesAgo)
+            }
+        }
+    }
+
+    /// Pictures that are there at once, offline: a few pixels of one colour, drawn at the message's size.
+    private static let greyPicture = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEUlEQVR4nGOYtWwHHDHg5AAAy34Xof7627gAAAAASUVORK5CYII="
+    private static let sandPicture = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEElEQVR4nGM4uakfjhhwcgDgEhh5OBSDDAAAAABJRU5ErkJggg=="
 
     private static func text(_ seq: Int, from sender: String, _ text: String, minutesAgo: Double) -> Message? {
         message(seq, from: sender, type: "text", content: .object(["text": .string(text)]), fallback: text,
@@ -119,6 +192,16 @@ actor DemoChat: ChatDataSource {
         if let message = Self.text((stored.last?.seq ?? 0) + 1, from: sender, text, minutesAgo: 0) {
             stored.append(message)
         }
+        notify()
+    }
+
+    /// The next page of history, above what is there.
+    private func prependPage() {
+        guard !unloaded.isEmpty else { return }
+        stored.insert(contentsOf: unloaded.removeFirst(), at: 0)
+    }
+
+    private func notify() {
         for observer in observers.values { observer(.messages(conversationId: Self.conversationId)) }
     }
 
@@ -132,7 +215,16 @@ actor DemoChat: ChatDataSource {
     /// The operator has read everything up to "Çox sağ olun": ✓✓ there, one ✓ after it.
     func readByOperator(in conversationId: String) -> Int? { readUpTo }
     func localFile(of pending: PendingMessage) -> URL? { nil }
-    func loadMessages(in conversationId: String) async throws {}
+    /// The first page 0.8 s after the cache, the second (with the first message) 0.8 s after that.
+    func loadMessages(in conversationId: String) async throws {
+        try? await Task.sleep(nanoseconds: 800_000_000)
+        prependPage()
+        Task {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            self.prependPage()
+            self.notify()
+        }
+    }
     func loadOlder(in conversationId: String) async throws -> Bool { false }
     func markRead(in conversationId: String) {}
     func setTyping(_ isTyping: Bool, in conversationId: String) {}
@@ -158,7 +250,7 @@ actor DemoChat: ChatDataSource {
 
     func submitForm(_ message: Message, values: [String: JSONValue]) -> PendingMessage {
         answerable.remove(message.id)
-        for observer in observers.values { observer(.messages(conversationId: Self.conversationId)) }
+        notify()
         return PendingMessage(text: "", in: message.conversationId)
     }
 
