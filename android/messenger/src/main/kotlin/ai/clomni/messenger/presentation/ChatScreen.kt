@@ -89,9 +89,9 @@ internal data class Bubble(
     val position: Position,
     /** Next to the last bubble of an incoming run. */
     val avatar: ChatAvatar?,
-    /** Under the last bubble of an incoming run: when, "indi" or "12:42". */
-    val meta: String?,
-    /** Under the user's message when it is the last one, or when it failed. */
+    /** Inside the bubble, at its bottom end (G7, as WhatsApp): "12:42". */
+    val time: String?,
+    /** The user's message: its mark next to [time]; a failure in words under the bubble. */
     val status: Status?,
     val accessibilityLabel: String,
     /** Over the first bubble of an incoming run: who, the brand for the bot ("Clomni"), "Leyla". */
@@ -148,10 +148,8 @@ internal data class Bubble(
         val isFailure: Boolean,
         /** The client id to send again when the failure is tapped. */
         val retryId: String?,
-        /** The clock, then ✓, next to [time]; null for a failure. */
+        /** The clock, then ✓, then ✓✓ once read, after the bubble's time; null for a failure. */
         val mark: Mark? = null,
-        /** When it was sent, next to [mark]: "indi", "12:42". */
-        val time: String? = null,
     ) {
         enum class Mark { SENDING, SENT, READ }
     }

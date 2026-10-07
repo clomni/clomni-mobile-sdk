@@ -42,6 +42,7 @@ internal class RootState {
     var config by mutableStateOf<MessengerConfig?>(null)
     var source by mutableStateOf<String?>(null)
     var offline by mutableStateOf(false)
+    var userName by mutableStateOf<String?>(null)
 }
 
 /**
@@ -117,6 +118,7 @@ internal object MessengerRuntime {
     fun login(identity: UserIdentity?, action: (ClomniEngine) -> Future<Unit>) {
         val engine = engine ?: return ClomniLog.error { "call Clomni.initialize first" }
         this.identity = identity
+        coordinator?.loggedIn(identity?.name)
         waits.execute {
             runCatching { action(engine).get() }.onFailure { ClomniLog.error { "login failed: ${it.cause ?: it}" } }
             main.post { coordinator?.start() }
@@ -238,6 +240,7 @@ internal object MessengerRuntime {
         root.failed = coordinator.prepareFailed
         root.config = coordinator.config
         root.source = coordinator.source
+        root.userName = coordinator.userName
         (coordinator.route as? MessengerRoute.Conversation)?.let { open -> app?.let { PushNotifier.cancel(it, open.id) } }
         val shown = messenger?.get()
         if (coordinator.route != null && shown == null && !opening) {

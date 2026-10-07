@@ -106,10 +106,9 @@ class ChatPresenterTest {
             list.map { it.position },
         )
         assertNull(list[0].avatar)
-        assertNull(list[0].meta)
-        assertEquals("the author over the first of the run, the time under the last: the bot speaks as the brand", "Apar", list[0].author)
+        assertEquals("the author over the first of the run: the bot speaks as the brand", "Apar", list[0].author)
         assertNull(list[1].author)
-        assertEquals("indi", list[1].meta)
+        assertEquals("each bubble has its own clock inside it, no line under the run (G7)", listOf("10:30", "10:31", "10:32"), list.map { it.time })
         assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.aparConfig.brand.logoUrl, "A", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
         assertEquals("Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
@@ -131,7 +130,7 @@ class ChatPresenterTest {
             screen(listOf(ChatFixture.message("02-text-operator-markdown.json", "created_at" to "2026-10-01T10:30:00Z"))),
         ).first()
         assertEquals("Leyla", reply.author)
-        assertEquals("after a minute, the clock", "10:30", reply.meta)
+        assertEquals("10:30", reply.time)
         assertEquals("L", reply.avatar?.initial)
         val runs = (reply.body as Bubble.TextBody).runs
         assertEquals(TextRun("Gedişinizi yoxladıq.", bold = true), runs.first())
@@ -140,31 +139,30 @@ class ChatPresenterTest {
     }
 
     @Test
-    fun statusOfTheUsersLastMessage() {
+    fun everyMessageOfTheUserHasItsStatus() {
         val mine = ChatFixture.message("03-text-user.json")
         assertEquals("Göndərildi", bubbles(screen(listOf(mine))).last().status?.text)
         assertEquals("Oxundu", bubbles(screen(listOf(mine)) { it.copy(readUpTo = 3) }).last().status?.text)
         assertEquals("Göndərildi", bubbles(screen(listOf(mine)) { it.copy(readUpTo = 2) }).last().status?.text)
-        // A bot message after it: no status under the user's, nor under the bot's.
+        // A bot message after it: the user's keeps its mark (G7, as WhatsApp); the bot's has none.
         val answer = ChatFixture.message("01-text-bot.json", "seq" to 4, "created_at" to "2026-10-01T10:36:00Z")
-        assertNull(bubbles(screen(listOf(mine, answer))).first().status)
+        assertEquals(Bubble.Status.Mark.SENT, bubbles(screen(listOf(mine, answer))).first().status?.mark)
         assertNull(bubbles(screen(listOf(mine, answer))).last().status)
         val alone = bubbles(screen(listOf(mine))).last()
         assertEquals(Bubble.Side.OUTGOING, alone.side)
         assertNull(alone.avatar)
-        assertNull(alone.meta)
     }
 
-    /** No words under the user's message: its time and the clock, then ✓; the words are TalkBack's (operator, 2026-10-06). */
+    /** No words on the user's message: its time and the clock, then ✓, inside the bubble; the words are TalkBack's (G7). */
     @Test
     fun statusIsAMarkWithTheTime() {
         val sending = pending(ClientMessage.Text("Salam"), "Salam")
-        assertEquals(
-            Bubble.Status("Göndərilir", false, null, Bubble.Status.Mark.SENDING, "indi"),
-            bubbles(screen(emptyList()) { it.copy(pending = listOf(sending)) }).single().status,
-        )
+        val goes = bubbles(screen(emptyList()) { it.copy(pending = listOf(sending)) }).single()
+        assertEquals(Bubble.Status("Göndərilir", false, null, Bubble.Status.Mark.SENDING), goes.status)
+        assertEquals("the clock, not \"indi\"", "10:32", goes.time)
         val mine = ChatFixture.message("03-text-user.json", "created_at" to "2026-10-01T10:30:00Z")
-        assertEquals(Bubble.Status("Göndərildi", false, null, Bubble.Status.Mark.SENT, "10:30"), bubbles(screen(listOf(mine))).single().status)
+        assertEquals(Bubble.Status("Göndərildi", false, null, Bubble.Status.Mark.SENT), bubbles(screen(listOf(mine))).single().status)
+        assertEquals("10:30", bubbles(screen(listOf(mine))).single().time)
         assertEquals(Bubble.Status.Mark.READ, bubbles(screen(listOf(mine)) { it.copy(readUpTo = 3) }).single().status?.mark)
         val failed = sending.copy(state = PendingMessage.State.FAILED)
         assertNull("a failure is in words", bubbles(screen(emptyList()) { it.copy(pending = listOf(failed)) }).single().status?.mark)
@@ -177,7 +175,7 @@ class ChatPresenterTest {
         val botTyping = screen(listOf(bot)) { it.copy(typing = Sender(SenderType.BOT, "bot_other")) }
         assertTrue(botTyping.items.last() is ChatItem.TypingItem)
         assertNull("the bot's run gives its avatar to the typing row", bubbles(botTyping).single().avatar)
-        assertEquals("indi", bubbles(botTyping).single().meta)
+        assertEquals("10:31", bubbles(botTyping).single().time)
         val leylaTyping = screen(listOf(bot)) { it.copy(typing = Sender(SenderType.OPERATOR, name = "Leyla")) }
         assertNotNull("someone else typing: the bot keeps its own", bubbles(leylaTyping).single().avatar)
 
@@ -217,7 +215,7 @@ class ChatPresenterTest {
         val mine = ChatFixture.message("03-text-user.json", "created_at" to "2026-10-01T10:31:30Z")
         val sending = pending(ClientMessage.Text("Hələ yoldadır"), "Hələ yoldadır")
         val list = bubbles(screen(listOf(mine)) { it.copy(pending = listOf(sending)) })
-        assertNull("only the last message has a status", list[0].status)
+        assertEquals("every message of the user has its mark (G7)", Bubble.Status.Mark.SENT, list[0].status?.mark)
         assertEquals("Hələ yoldadır", text(list[1]))
         assertEquals("Göndərilir", list[1].status?.text)
         assertEquals(

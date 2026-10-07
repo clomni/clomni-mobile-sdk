@@ -11,21 +11,27 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
@@ -158,7 +165,14 @@ private fun FormFieldView(
         .onFocusChanged { focused = it.isFocused }
     val text = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary)
     val hint = clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // G4: the field with the cursor, its label and its error stay over the keyboard as it rises, frame by frame.
+    val requester = remember { BringIntoViewRequester() }
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    LaunchedEffect(focused) {
+        if (focused) snapshotFlow { ime.getBottom(density) }.collect { requester.bringIntoView() }
+    }
+    Column(Modifier.bringIntoViewRequester(requester), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Read with the field itself ("Ad, soyad, məcburi"), not as a line of its own.
         BasicText(
             field.shownLabel,

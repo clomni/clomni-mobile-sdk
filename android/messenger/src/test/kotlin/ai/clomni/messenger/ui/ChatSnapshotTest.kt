@@ -292,7 +292,7 @@ class ChatSnapshotTest {
         val answerBubble = answered.items.filterIsInstance<ChatItem.BubbleItem>().last().bubble
         assertEquals("the typing row has the run's avatar", null, answerBubble.avatar)
         frame("choice_3_answered", answered) { found ->
-            assertEquals("bot, user, bot, typing: $found", listOf("Apar bot", "Siz", "Apar bot", "Apar yazır"), found.map { it.label.substringBefore(",") })
+            assertEquals("bot, user, ✓, bot, typing: $found", listOf("Apar bot", "Siz", "Göndərildi", "Apar bot", "Apar yazır"), found.map { it.label.substringBefore(",") })
         }
     }
 

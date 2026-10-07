@@ -353,6 +353,23 @@ class MessengerCoordinatorTest {
         assertEquals("read once", 1, changes)
     }
 
+    /** G6: `loginUser`'s name is there at once, also for a Home already open; `logout` forgets it. */
+    @Test
+    fun theUsersNameComesWithTheLogin() {
+        session.loggedIn = true
+        val messenger = coordinator()
+        messenger.start()
+        messenger.present()
+        var changes = 0
+        messenger.onChange = { changes++ }
+        assertNull(messenger.userName)
+        messenger.loggedIn("Aysel")
+        assertEquals("Aysel", messenger.userName)
+        assertEquals("Home is redrawn with it", 1, changes)
+        messenger.loggedOut()
+        assertNull(messenger.userName)
+    }
+
     /** DESIGN-PASS-2 1, 8: Home → the list → a conversation; back retraces them, and from Home it closes. */
     @Test
     fun backRetracesTheWay() {

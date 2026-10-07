@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The live step's choices (DESIGN-PASS-3 A3): capsules side by side, wrapping, aligned to the end, 8 apart both ways,
- * 12 under the last message; then a grey "← Geri". M5: new ones come 150 ms after their message, 40 ms apart, 6 up and
- * fading in. A tap is a light tick; then all of them, the chosen one too, fade out and fold their height away in
+ * 12 under the last message; then a grey "← Geri". New ones come 150 ms after their message, all at once in one 180 ms
+ * fade, no stagger (G2). A tap is a light tick; then all of them, the chosen one too, fade out and fold their height away in
  * [CHOICE_FOLD_MS] (only fade with the system's animations off), and the choice comes in as the user's message after
  * that ([folded] already: drawn folded).
  */
@@ -85,15 +85,11 @@ private fun Choices(
     Box(Modifier.fillMaxWidth().padding(top = 12.dp), Alignment.CenterEnd) {
         // Side by side, each as wide as its text, wrapping to the next line; a long choice wraps inside 85% of the width.
         FlowRow(
-            Modifier.fillMaxWidth(0.85f),
+            Modifier.fillMaxWidth(0.85f).entrance(arriving, 0f, 1f, 180, 150),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            buttons.forEachIndexed { index, button ->
-                Box(Modifier.entrance(arriving, 6f, 1f, 200, 150 + 40 * index)) {
-                    Pill(button, button === block.back, theme, enabled, choose)
-                }
-            }
+            buttons.forEach { button -> Pill(button, button === block.back, theme, enabled, choose) }
         }
     }
 }

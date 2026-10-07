@@ -303,8 +303,19 @@ internal class MessengerCoordinator(
         changed()
     }
 
+    /** Who Home greets: `Clomni.loginUser`'s name, until `logout` (G6). */
+    var userName: String? = null
+        private set
+
+    /** `Clomni.loginUser`: Home greets the user by name at once, also when it is already open (G6). */
+    fun loggedIn(name: String?) {
+        userName = name
+        changed()
+    }
+
     /** After `logout`: the messenger closes, the count goes to 0, and nothing shows until the next login. */
     fun loggedOut() {
+        userName = null
         dismiss()
         if (readiness == Readiness.READY) readiness = Readiness.NOT_READY
         updateUnread(0)
