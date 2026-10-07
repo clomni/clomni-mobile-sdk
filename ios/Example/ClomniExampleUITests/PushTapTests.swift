@@ -35,7 +35,9 @@ final class PushTapTests: XCTestCase {
     /// background 3 s after an activation sent 0.5 s after the press, before the app had left the foreground: state 3,
     /// alive, not a crash, and the same steps had passed on the run before.
     private func goHomeAndBack(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        XCUIDevice.shared.press(.home)
+        // Springboard to the front rather than the home button: on CI (f22aecb) a press left the app in the foreground
+        // for the whole 10 s.
+        XCUIApplication(bundleIdentifier: "com.apple.springboard").activate()
         let deadline = Date().addingTimeInterval(10)
         while app.state == .runningForeground, Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
         XCTAssertNotEqual(app.state, .runningForeground, "the app went to the background", file: file, line: line)
