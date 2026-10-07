@@ -65,11 +65,17 @@ targets:
         CLOMNI_APP_ID: ""
         CLOMNI_API_KEY: ""
       # Debug runs from Xcode get development APNs; Release (TestFlight, App Store) production.
+      # Release is signed manually for distribution, with the profiles of .github/workflows/ios-signing-setup.yml;
+      # the TestFlight workflow passes their names as CLOMNI_PROFILE_APP and CLOMNI_PROFILE_NSE, and DEVELOPMENT_TEAM.
+      # Set per target, so the Swift package's resource bundle is not given a profile. Debug stays automatic.
       configs:
         Debug:
           APS_ENVIRONMENT: development
         Release:
           APS_ENVIRONMENT: production
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: $(CLOMNI_PROFILE_APP)
     scheme: {}
 
   # The operator's photo on notifications: ios/Examples/NotificationService, unchanged.
@@ -91,3 +97,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.clomni.example.NotificationService
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: $(CLOMNI_PROFILE_NSE)

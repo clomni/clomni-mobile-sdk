@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyLists-1.0.dtd">
-<!-- For .github/workflows/ios-testflight.yml: an App Store Connect build, signed by Xcode with the API key.
-     The workflow adds teamID from the APPLE_TEAM_ID secret. -->
+<!-- For .github/workflows/ios-testflight.yml: an App Store Connect build, signed manually with the Apple Distribution
+     certificate and the App Store profiles of ios-signing-setup.yml. The workflow adds teamID (APPLE_TEAM_ID) and fills
+     provisioningProfiles, bundle id to profile name (IOS_PROFILE_APP_NAME, IOS_PROFILE_NSE_NAME). -->
 <plist version="1.0">
 <dict>
 	<key>method</key>
@@ -9,7 +10,11 @@
 	<key>destination</key>
 	<string>export</string>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
+	<key>provisioningProfiles</key>
+	<dict/>
 	<key>manageAppVersionAndBuildNumber</key>
 	<false/>
 	<key>uploadSymbols</key>

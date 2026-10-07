@@ -1,0 +1,64 @@
+name: iOS signing setup
+
+# Run once, before iOS TestFlight, and again when the certificate or a profile expires (a year) or an App ID's
+# capabilities change. With the App Store Connect API key it makes an Apple Distribution certificate and an App Store
+# profile for ai.clomni.example and ai.clomni.example.NotificationService, and writes them to this repository's
+# secrets: IOS_DIST_P12, IOS_DIST_P12_PASSWORD, IOS_PROFILE_APP, IOS_PROFILE_NSE, IOS_PROFILE_APP_NAME,
+# IOS_PROFILE_NSE_NAME. No Mac and no registered device are needed. The work is .github/scripts/ios_signing_setup.py.
+#
+# Secrets: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (Admin role: certificates and profiles), and GH_SECRETS_TOKEN, a
+# fine-grained token for this repository with Secrets: write.
+on:
+  workflow_dispatch:
+    inputs:
+      revoke_old:
+        description: 'Revoke every Apple Distribution certificate of the team first (the team may hold only 2-3). Builds signed with them elsewhere (EAS, Xcode) need new ones.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-signing-setup
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python packages
+        run: pip install --quiet pyjwt cryptography pynacl
+
+      - name: Certificate, profiles, secrets
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          GH_SECRETS_TOKEN: ${{ secrets.GH_SECRETS_TOKEN }}
+          REVOKE_OLD: ${{ inputs.revoke_old }}
+          APP_BUNDLE_ID: ai.clomni.example
+          NSE_BUNDLE_ID: ai.clomni.example.NotificationService
+          APP_PROFILE_NAME: Clomni Example AppStore
+          NSE_PROFILE_NAME: Clomni Example NSE AppStore
+        run: |
+          missing=""
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 GH_SECRETS_TOKEN; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets not set:$missing (see ios/Example/README.md, TestFlight)."
+            exit 1
+          fi
+          python3 .github/scripts/ios_signing_setup.py
+
+      - name: Remove the working files
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ios-signing"
