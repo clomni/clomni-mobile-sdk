@@ -504,39 +504,47 @@ internal class ChatPresenter(
         val failed = pending?.state == PendingMessage.State.FAILED
         val submitted = rating.submitted
         val given = when {
-            submitted != null -> GivenRating(
+            submitted != null -> Pair(
                 (submitted["score"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 1..5 } ?: 0,
                 (submitted["comment"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() },
             )
-            sending != null && !failed -> GivenRating(sending.score, sending.comment)
+            sending != null && !failed -> sending.score to sending.comment
             failed -> null
             else -> snapshot.rated[message.id]
         }
-        val comment = when (rating.comment) {
-            MessageContent.RatingComment.OPTIONAL -> "${strings[Key.RATING_COMMENT]} ${strings[Key.OPTIONAL]}"
-            else -> strings[Key.RATING_COMMENT]
-        }
+        val required = rating.comment == MessageContent.RatingComment.REQUIRED
+        val comment = strings[Key.RATING_COMMENT]
         return RatingCard(
             messageId = message.id,
             text = LimitedMarkdown.parse(rating.text),
             textAccessibilityLabel = label(message, snapshot),
             scale = rating.scale,
-            options = (1..5).map { score ->
-                when (rating.scale) {
-                    MessageContent.RatingScale.EMOJI_5 ->
-                        RatingCard.Option(score, FACES[score - 1], strings[RATING_WORDS[score - 1]])
-                    MessageContent.RatingScale.STAR_5 -> RatingCard.Option(score, null, strings.format(Key.RATING_STARS, score))
-                }
+            labels = (1..5).map { score ->
+                if (rating.scale == MessageContent.RatingScale.STAR_5) strings.format(Key.RATING_STARS, score) else strings[RATING_WORDS[score - 1]]
             },
             comment = rating.comment,
-            commentLabel = comment,
+            commentField = FormCard.Field(
+                id = "comment",
+                type = MessageContent.FormFieldType.TEXTAREA,
+                label = comment,
+                required = required,
+                accessibilityLabel = if (required) "$comment, ${strings[Key.REQUIRED]}" else comment,
+                placeholder = null,
+                maxLength = COMMENT_CHARS,
+                options = emptyList(),
+                initialValue = "",
+                shownLabel = if (required) comment else "$comment ${strings[Key.OPTIONAL]}",
+            ),
             submitTitle = strings[Key.SEND],
             commentRequired = strings[Key.FIELD_REQUIRED],
             given = given != null,
-            score = given?.score?.takeIf { it > 0 } ?: sending?.score?.takeIf { failed },
-            commentText = given?.comment ?: sending?.comment?.takeIf { failed },
-            thanks = strings[Key.RATING_THANKS],
-            failure = if (failed) strings[Key.FAILED] else null,
+            score = given?.first?.takeIf { it > 0 } ?: sending?.score?.takeIf { failed },
+            commentText = given?.second ?: sending?.comment?.takeIf { failed },
+            note = when {
+                given != null -> strings[Key.RATING_THANKS]
+                failed -> strings[Key.FAILED]
+                else -> null
+            },
         )
     }
 
@@ -574,12 +582,13 @@ internal class ChatPresenter(
         if (name.isEmpty()) "" else String(Character.toChars(name.codePointAt(0))).uppercase(Locale.ROOT)
 
     companion object {
-        /** emoji_5, from 1 to 5, as the web widget draws them. */
-        private val FACES = listOf("😞", "😑", "😐", "😀", "😍")
         private val RATING_WORDS = listOf(Key.RATING_1, Key.RATING_2, Key.RATING_3, Key.RATING_4, Key.RATING_5)
 
         /** Messages of one sender less than this far apart share a run: one avatar, one meta line. */
         const val GROUP_WINDOW_MS = 60_000L
+
+        /** client-message.json: a rating's comment is at most this long. */
+        const val COMMENT_CHARS = 4_000
 
         /** The server's excerpts are at most this long; a local quote is cut to the same. */
         private const val EXCERPT_CHARS = 120

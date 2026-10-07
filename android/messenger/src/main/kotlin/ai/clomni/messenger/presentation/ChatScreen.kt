@@ -220,28 +220,22 @@ internal data class RatingCard(
     /** TalkBack's reading of [text]: "Clomni bot, 10:30: …". */
     val textAccessibilityLabel: String,
     val scale: MessageContent.RatingScale,
-    val options: List<Option>,
+    /** TalkBack's names of the five, from 1: "Çox pis" … "Əla", or "1 ulduz" … "5 ulduz". */
+    val labels: List<String>,
     val comment: MessageContent.RatingComment,
-    /** The field's hint and name: "Şərh yazın", with "(istəyə görə)" when optional. */
-    val commentLabel: String,
+    /** The comment's textarea, drawn as a form's: "Şərh", with "(istəyə görə)" when optional. */
+    val commentField: FormCard.Field,
     val submitTitle: String,
     /** "Bu sahəni doldurun", under a required comment left empty. */
     val commentRequired: String,
-    /** True once given: read-only, with [score], [commentText] and [thanks]. */
+    /** True once given: read-only, with [score], [commentText] and the thanks in [note]. */
     val given: Boolean,
     /** The score given; open again after a failure, the one that failed. */
     val score: Int?,
     val commentText: String?,
-    val thanks: String,
-    /** "Göndərilmədi": the last attempt failed and the card is open again. */
-    val failure: String?,
-) : Bubble.Body {
-    /** [glyph]: the face of emoji_5; null for a star. [label]: TalkBack's name ("Əla", "4 ulduz"). */
-    data class Option(val score: Int, val glyph: String?, val label: String)
-}
-
-/** A rating the user gave here, until the server's copy carries it. */
-internal data class GivenRating(val score: Int, val comment: String?)
+    /** Given: "Rəyiniz üçün təşəkkür edirik". Open again after a failure: "Göndərilmədi". */
+    val note: String?,
+) : Bubble.Body
 
 internal data class ChatComposer(
     val mode: Mode,
@@ -310,6 +304,6 @@ internal data class ChatSnapshot(
     val known: Map<String, String> = emptyMap(),
     /** The message the user is answering (swipe or "Cavabla"), until it is sent or dismissed. */
     val replyingTo: String? = null,
-    /** Ratings given on this screen, by message id: shown at once, and after the outbox has sent them. */
-    val rated: Map<String, GivenRating> = emptyMap(),
+    /** Ratings given on this screen (score, comment) by message id: shown at once, until the server's copy has them. */
+    val rated: Map<String, Pair<Int, String?>> = emptyMap(),
 )

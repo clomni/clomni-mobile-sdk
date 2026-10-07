@@ -586,9 +586,8 @@ class ChatPresenterTest {
         val open = card()
         assertFalse(open.given)
         assertNull(open.score)
-        assertEquals(listOf("😞", "😑", "😐", "😀", "😍"), open.options.map { it.glyph })
-        assertEquals(listOf("Çox pis", "Pis", "Orta", "Yaxşı", "Əla"), open.options.map { it.label })
-        assertEquals("Şərh yazın (istəyə görə)", open.commentLabel)
+        assertEquals(listOf("Çox pis", "Pis", "Orta", "Yaxşı", "Əla"), open.labels)
+        assertEquals("Şərh (istəyə görə)", open.commentField.shownLabel)
         assertEquals("Apar bot, 11:02: Xidmətimizi qiymətləndirin", open.textAccessibilityLabel)
         assertFalse("no quoting a rating", bubbles(screen(listOf(rating))).single().replyable)
 
@@ -599,15 +598,15 @@ class ChatPresenterTest {
             assertTrue(it.given)
             assertEquals(4, it.score)
             assertEquals("Tez", it.commentText)
-            assertEquals("Rəyiniz üçün təşəkkür edirik", it.thanks)
+            assertEquals("Rəyiniz üçün təşəkkür edirik", it.note)
         }
 
-        val failed = card({ it.copy(pending = listOf(sending.copy(state = PendingMessage.State.FAILED)), rated = mapOf(rating.id to GivenRating(4, "Tez"))) })
+        val failed = card({ it.copy(pending = listOf(sending.copy(state = PendingMessage.State.FAILED)), rated = mapOf(rating.id to (4 to "Tez"))) })
         assertFalse("open again", failed.given)
-        assertEquals("Göndərilmədi", failed.failure)
+        assertEquals("Göndərilmədi", failed.note)
         assertEquals("with what failed", 4 to "Tez", failed.score to failed.commentText)
 
-        assertEquals("sent, before the server's copy", 2, card({ it.copy(rated = mapOf(rating.id to GivenRating(2, null))) }).score)
+        assertEquals("sent, before the server's copy", 2, card({ it.copy(rated = mapOf(rating.id to (2 to null))) }).score)
 
         val stars = rating.copy(
             content = MessageContent.Rating(
@@ -620,9 +619,8 @@ class ChatPresenterTest {
         card(message = stars).let {
             assertTrue("the server's copy", it.given)
             assertEquals(5 to "Əla xidmət", it.score to it.commentText)
-            assertEquals(listOf(null, null, null, null, null), it.options.map { option -> option.glyph })
-            assertEquals("3 ulduz", it.options[2].label)
-            assertEquals("Şərh yazın", it.commentLabel)
+            assertEquals("3 ulduz", it.labels[2])
+            assertEquals("Şərh, məcburi", it.commentField.accessibilityLabel)
         }
     }
 

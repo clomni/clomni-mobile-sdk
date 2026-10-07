@@ -274,7 +274,7 @@ class ChatSnapshotTest {
         }
         val stars = card.copy(
             scale = MessageContent.RatingScale.STAR_5,
-            options = card.options.map { it.copy(glyph = null) },
+            labels = (1..5).map { "$it ulduz" },
             comment = MessageContent.RatingComment.HIDDEN,
         )
         snapCard("chat_rating_stars_light", stars, dark = false, chosen = 3)

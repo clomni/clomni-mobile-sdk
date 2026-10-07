@@ -26,7 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -141,7 +141,7 @@ internal val LocalOpenLink = staticCompositionLocalOf<((String) -> Unit)?> { nul
 internal fun linkOpener(): (String) -> Unit {
     val uriHandler = LocalUriHandler.current
     val open = LocalOpenLink.current
-    return remember(open, uriHandler) { { url -> runCatching { open?.invoke(url) ?: uriHandler.openUri(url) } } }
+    return { url -> runCatching { open?.invoke(url) ?: uriHandler.openUri(url) } }
 }
 
 /** The styled runs as one text: bold and italic spans; links underlined and tappable (see [TextRun.link]). */
@@ -372,17 +372,13 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
 }
 
 /**
- * A long press on a bubble, on its links too: watched before the link's own tap (the initial pass), which the long press
- * then cancels, so holding a link opens the menu and not the link.
+ * A long press on a bubble, on its links too (a link takes the touch's down, so it is not required unconsumed). The rest
+ * of the touch is taken before the link sees it (the initial pass): holding a link opens the menu and not the link.
  */
 private fun Modifier.longPressOverLinks(longPress: () -> Unit): Modifier = pointerInput(Unit) {
     awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        val ended = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-            waitForUpOrCancellation(PointerEventPass.Initial)
-            true
-        }
-        if (ended != null) return@awaitEachGesture
+        val down = awaitFirstDown(requireUnconsumed = false)
+        awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
         longPress()
         do {
             val event = awaitPointerEvent(PointerEventPass.Initial)

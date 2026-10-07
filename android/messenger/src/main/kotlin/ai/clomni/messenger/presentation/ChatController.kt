@@ -270,7 +270,7 @@ internal class ChatController(
         val message = snapshot.messages.firstOrNull { it.id == messageId } ?: return
         if (message.content !is MessageContent.Rating) return
         val id = conversationId
-        snapshot = snapshot.copy(rated = snapshot.rated + (messageId to GivenRating(score, comment)))
+        snapshot = snapshot.copy(rated = snapshot.rated + (messageId to (score to comment)))
         render()
         sound(ChatSound.SENT)
         worker.execute {
