@@ -15,6 +15,16 @@ open ClomniExample.xcodeproj
 Before running: the App ID and iOS API key from Clomni (Channels → Mobile app) in `AppDelegate.swift` (or the build
 settings `CLOMNI_APP_ID` and `CLOMNI_API_KEY`), and a team for signing. Push needs a real device or a Simulator on macOS 13+, and the APNs key (.p8) in the Clomni panel.
 
+## UI tests
+
+[ClomniExampleUITests](ClomniExampleUITests) start the app with `-ClomniDemoConversation`: no Clomni account, no push
+prompt, and the messenger's conversation over a fixed conversation (debug builds only, `UITestMode.swift`). They tap a
+form field and the composer, wait for the software keyboard and check on screen that the field, the composer and the
+last message stay over it, and that a message arriving while the user reads further up brings "Yeni mesaj ↓". Each
+test keeps screenshots with the keyboard up. CI: the `ui-test` job of
+[`.github/workflows/ios.yml`](../../.github/workflows/ios.yml), artifact `ui-test-screenshots`. Locally: the Simulator's
+I/O → Keyboard → Connect Hardware Keyboard off, then ⌘U on the ClomniExample scheme.
+
 ## TestFlight
 
 [`.github/workflows/ios-testflight.yml`](../../.github/workflows/ios-testflight.yml) builds this app on a macOS runner,

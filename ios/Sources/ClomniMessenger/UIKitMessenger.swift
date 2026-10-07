@@ -82,10 +82,8 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         guard let top = Self.topViewController() else {
             return ClomniLog.error("no window to present the messenger from")
         }
-        let navigation = MessengerNavigationController()
+        let navigation = Self.sheet()
         navigation.delegate = self
-        // A card over the app, which stays visible behind it; swiping it down closes the messenger.
-        navigation.modalPresentationStyle = .pageSheet
         navigation.presentationController?.delegate = self
         self.navigation = navigation
         shown = []
@@ -106,7 +104,20 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     }
 
     private func host(_ route: MessengerRoute) -> UIViewController {
-        let host = UIHostingController(rootView: ScreenRoot(model: rootModel, content: screen(route)))
+        Self.host(ScreenRoot(model: rootModel, content: screen(route)))
+    }
+
+    /// The messenger's sheet: a card over the app, which stays visible behind it; swiping it down closes the messenger.
+    /// Its screens are in the system's navigation, the bar hidden. The UI tests' demo conversation is in one too.
+    static func sheet() -> MessengerNavigationController {
+        let navigation = MessengerNavigationController()
+        navigation.modalPresentationStyle = .pageSheet
+        return navigation
+    }
+
+    /// One screen of the sheet.
+    static func host<Content: View>(_ root: Content) -> UIViewController {
+        let host = UIHostingController(rootView: root)
         // The screens draw their own bars, ✕ and back.
         host.navigationItem.largeTitleDisplayMode = .never
         return host

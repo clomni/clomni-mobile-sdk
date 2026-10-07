@@ -13,8 +13,8 @@ enum Motion {
     static let spring = Animation.spring(response: 0.35, dampingFraction: 0.86)
     /// The offline capsule's 200 ms spring (CM-077): damping 0.86, stiffness ≈ 1000.
     static let capsule = Animation.spring(response: 0.2, dampingFraction: 0.86)
-    /// The keyboard's own 250 ms, for what moves with it (G4).
-    static let keyboard = Animation.easeOut(duration: 0.25)
+    /// The keyboard's own spring, closely: for what moves with it (G4, H1).
+    static let keyboard = Animation.interpolatingSpring(mass: 3, stiffness: 1000, damping: 500, initialVelocity: 0)
     /// A press and its release (M6): damping 0.6, stiffness ≈ 800.
     static let press = Animation.spring(response: 0.22, dampingFraction: 0.6)
 

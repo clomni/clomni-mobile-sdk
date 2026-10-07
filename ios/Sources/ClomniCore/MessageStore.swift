@@ -142,6 +142,14 @@ package struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
     package var id: String { message.clientId }
 }
 
+extension PendingMessage {
+    /// A text on its way, for a source other than the engine (the debug build's demo conversation).
+    package init(text: String, in conversationId: String) {
+        self.init(conversationId: conversationId, message: ClientMessage(content: .text(text)), preview: text,
+                  createdAt: Date())
+    }
+}
+
 /// An attached file on its way: uploaded first (POST /uploads), then sent as an `attachment` message.
 package struct PendingUpload: Sendable, Equatable, Codable {
     package let fileName: String

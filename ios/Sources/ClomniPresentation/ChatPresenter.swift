@@ -42,7 +42,8 @@ package struct ChatPresenter: Sendable {
             connected: strings[.connected],
             failure: phase == .failed ? HomeScreen.Failure(message: strings[.error], retry: strings[.retry]) : nil,
             announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) },
-            loadingLabel: strings[.loading], replyLabel: strings[.reply], copyLabel: strings[.copy])
+            loadingLabel: strings[.loading], replyLabel: strings[.reply], copyLabel: strings[.copy],
+            newMessageLabel: strings[.newMessage])
     }
 
     // MARK: - Header

@@ -233,7 +233,8 @@ struct BubbleBody: View {
                     .foregroundStyle(ink)
                     .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(bubble.quote == nil ? EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+                    // The stamp 6 over the bubble's bottom edge (H4): 8 of padding, less the 2 it sits under the line.
+                    .padding(bubble.quote == nil ? EdgeInsets(top: 10, leading: 14, bottom: 8, trailing: 14)
                              : EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
                     .accessibilityLabel(Text(bubble.accessibilityLabel))
             }
@@ -337,7 +338,7 @@ struct ImageBubble: View {
             // Without a caption the time is on the picture, white on a dark capsule.
             .overlay(alignment: .bottomTrailing) {
                 if image.caption == nil {
-                    StampView(stamp: stamp, color: .white)
+                    StampView(stamp: stamp, color: .white, muted: false)
                         .padding(.vertical, 2)
                         .padding(.horizontal, 6)
                         .background(Capsule().fill(Color.black.opacity(0.4)))
@@ -449,10 +450,17 @@ struct FailureLine: View {
     }
 }
 
-/// The time in a bubble's bottom-trailing corner, WhatsApp's way (operator, 2026-10-07, G7), and on the user's message
-/// its mark after it: the clock while it goes, ✓ once sent, two once read. 11 pt at 70%: on_primary in the user's
-/// bubble, text_muted in the others. VoiceOver reads it with the bubble.
+/// The time in a bubble's bottom-trailing corner, WhatsApp's way (operator, 2026-10-07, G7 and H4), and on the user's
+/// message its mark after it: the clock while it goes, ✓ once sent, two once read. The time is 11 and grows with the
+/// text size only up to 13; on the user's bubble it is on_primary at 65%, the mark too until it is read, then 100%; on
+/// the others text_muted. VoiceOver reads it with the bubble.
 struct BubbleStamp {
+    /// The time's size, and its largest with Dynamic Type.
+    static let size: CGFloat = 11
+    static let largest: CGFloat = 13
+    /// The time and the mark, and the corner's ink, at 65% on the user's bubble.
+    static let muted = 0.65
+
     let time: String
     let mark: Bubble.Status.Mark?
     let outgoing: Bool
@@ -464,51 +472,99 @@ struct BubbleStamp {
     }
 
     /// The time and `mark` as one text, so the room kept for it in a message's last line is exactly as wide. No
-    /// break inside it.
-    func text(mark: Bubble.Status.Mark?) -> Text {
-        let time = Text(verbatim: self.time)
+    /// break inside it. `muted`: the time, and the mark until read, at 65% of `color`.
+    @MainActor
+    func text(mark: Bubble.Status.Mark?, color: Color, muted: Bool) -> Text {
+        let time = Text(verbatim: self.time).foregroundColor(muted && outgoing ? color.opacity(Self.muted) : color)
         guard let mark else { return time }
-        let tick = Text(Image(systemName: "checkmark"))
-        let icon: Text
-        switch mark {
-        case .sending: icon = Text(Image(systemName: "clock"))
-        case .sent: icon = tick
-        // Two, the second half over the first, never on two lines.
-        case .read: icon = tick.kerning(-5) + Text(verbatim: "\u{2060}") + tick
-        }
-        return time + Text(verbatim: "\u{00A0}") + icon
+        let ink = muted && mark != .read ? color.opacity(Self.muted) : color
+        return time + Text(verbatim: "\u{00A0}") + Text(StampGlyph.image(mark)).foregroundColor(ink)
     }
 
-    /// What a message's last line keeps free for the stamp: a gap, then the stamp at its widest (two ✓ on the user's),
-    /// so a change of status moves nothing. A normal space before it: when the line is full it goes to a line of its own.
+    /// What a message's last line keeps free for the stamp: 6 of gap, then the stamp at its widest (two ✓ on the
+    /// user's). A normal space before it: when the line is full it goes to a line of its own.
+    @MainActor
     var room: Text {
-        Text(verbatim: " \u{00A0}") + text(mark: outgoing ? .read : nil)
+        Text(verbatim: " \u{00A0}") + text(mark: outgoing ? .read : nil, color: .clear, muted: false)
     }
 
     func color(_ theme: ClomniTheme) -> Color {
-        (outgoing ? theme.colors.onPrimary : theme.colors.textSecondary).color.opacity(0.7)
+        (outgoing ? theme.colors.onPrimary : theme.colors.textSecondary).color
     }
 
-    /// 11, scaled with the text, in the app's family when it has one.
+    /// 11, at most 13 with Dynamic Type, in the app's family when it has one.
     static func font(_ typeface: Typeface?, scaled: CGFloat) -> Font {
-        typeface.map { Font.custom($0.face(for: Font.Weight.regular.css), size: 11, relativeTo: .caption2) }
-            ?? .system(size: scaled)
+        let size = min(scaled, largest)
+        return typeface.map { Font.custom($0.face(for: Font.Weight.regular.css), fixedSize: size) } ?? .system(size: size)
+    }
+}
+
+/// The marks of the stamp, drawn as template images so they sit in its line of text (H4): ✓ 11×8, ✓✓ 15×8 with the
+/// second over the first, the clock 8×8; lines 1.5, round ends. An SF Symbol at the text's size was too big and too
+/// heavy, and two of them did not overlap.
+@MainActor
+enum StampGlyph {
+    private static var drawn: [Bubble.Status.Mark: Image] = [:]
+
+    static func size(_ mark: Bubble.Status.Mark) -> CGSize {
+        switch mark {
+        case .sending: return CGSize(width: 8, height: 8)
+        case .sent: return CGSize(width: 11, height: 8)
+        case .read: return CGSize(width: 15, height: 8)
+        }
+    }
+
+    static func image(_ mark: Bubble.Status.Mark) -> Image {
+        if let image = drawn[mark] { return image }
+        let picture = UIGraphicsImageRenderer(size: size(mark)).image { _ in
+            let path = UIBezierPath()
+            path.lineWidth = 1.5
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            switch mark {
+            case .sending:
+                path.lineWidth = 1.2
+                path.append(UIBezierPath(ovalIn: CGRect(x: 0.6, y: 0.6, width: 6.8, height: 6.8)))
+                path.move(to: CGPoint(x: 4, y: 2.2))
+                path.addLine(to: CGPoint(x: 4, y: 4))
+                path.addLine(to: CGPoint(x: 5.3, y: 4.9))
+            case .sent:
+                tick(path)
+            case .read:
+                tick(path)
+                // The second one's short leg mostly hidden behind the first one's long leg.
+                path.move(to: CGPoint(x: 6.6, y: 5.9))
+                path.addLine(to: CGPoint(x: 7.9, y: 7.25))
+                path.addLine(to: CGPoint(x: 14.25, y: 0.75))
+            }
+            UIColor.black.setStroke()
+            path.stroke()
+        }
+        let image = Image(uiImage: picture.withRenderingMode(.alwaysTemplate))
+        drawn[mark] = image
+        return image
+    }
+
+    private static func tick(_ path: UIBezierPath) {
+        path.move(to: CGPoint(x: 0.75, y: 4.4))
+        path.addLine(to: CGPoint(x: 3.9, y: 7.25))
+        path.addLine(to: CGPoint(x: 10.25, y: 0.75))
     }
 }
 
 /// The stamp on its own: on a picture, in a file card, and over the room `StampedText` keeps for it. A change of mark
-/// only cross-fades, 150 ms (M3).
+/// only cross-fades, 150 ms (M3). `muted` false on a picture, where it is white on a dark capsule.
 struct StampView: View {
     let stamp: BubbleStamp
     let color: Color
-    @ScaledMetric(relativeTo: .caption2) private var size: CGFloat = 11
+    var muted = true
+    @ScaledMetric(relativeTo: .caption2) private var size: CGFloat = BubbleStamp.size
     @Environment(\.clomniTypeface) private var typeface
 
     var body: some View {
         ZStack {
-            stamp.text(mark: stamp.mark)
+            stamp.text(mark: stamp.mark, color: color, muted: muted)
                 .font(BubbleStamp.font(typeface, scaled: size))
-                .foregroundColor(color)
                 .lineLimit(1)
                 .fixedSize()
                 .id(stamp.mark)
@@ -520,19 +576,24 @@ struct StampView: View {
 }
 
 /// A message's text with the stamp at the end of its last line when it fits there, else on a line of its own under it:
-/// the line keeps room for it in clear text, and the stamp is drawn over that room in the corner.
+/// the line keeps room for it in clear text, and the stamp is drawn over that room in the corner, 2 under the line's
+/// bottom, so it sits a little below the text's baseline (H4).
 struct StampedText: View {
+    /// How far under the last line the stamp sits; the bubble's bottom padding is that much smaller.
+    static let drop: CGFloat = 2
     let text: AttributedString
     let size: Double
     let stamp: BubbleStamp
     let theme: ClomniTheme
-    @ScaledMetric(relativeTo: .caption2) private var stampSize: CGFloat = 11
+    @ScaledMetric(relativeTo: .caption2) private var stampSize: CGFloat = BubbleStamp.size
     @Environment(\.clomniTypeface) private var typeface
 
     var body: some View {
-        (Text(text) + stamp.room.font(BubbleStamp.font(typeface, scaled: stampSize)).foregroundColor(.clear))
+        (Text(text) + stamp.room.font(BubbleStamp.font(typeface, scaled: stampSize)))
             .clomniFont(size)
-            .overlay(alignment: .bottomTrailing) { StampView(stamp: stamp, color: stamp.color(theme)) }
+            .overlay(alignment: .bottomTrailing) {
+                StampView(stamp: stamp, color: stamp.color(theme)).offset(y: Self.drop)
+            }
     }
 }
 

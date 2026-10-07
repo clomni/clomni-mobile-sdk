@@ -140,7 +140,7 @@ package struct HomeScreen: Sendable, Equatable {
     package let loadingLabel: String
     /// The cards there are, in the panel's order.
     package let order: [MessengerConfig.HomeCard]
-    /// "Powered by Clomni" under the cards, unless the plan turned it off.
+    /// "Powered by" under the cards, with Clomni's wordmark after it (DESIGN-PASS-3 H3), unless the plan turned it off.
     package let poweredBy: String?
 }
 
@@ -243,7 +243,7 @@ package struct HomePresenter: Sendable {
                 case .news: return news != nil
                 }
             },
-            poweredBy: config?.poweredBy == false ? nil : "Powered by Clomni")
+            poweredBy: config?.poweredBy == false ? nil : "Powered by")
     }
 
     /// The open messenger before the SDK is ready: skeletons, or "Nəsə səhv getdi" with "Yenidən cəhd et" when

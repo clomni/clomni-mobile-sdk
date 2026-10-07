@@ -79,6 +79,7 @@ struct FormCardView: View {
                         .buttonStyle(PressShapeStyle(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)))
                         .disabled(sending)
                         .opacity(sending ? 0.6 : 1)
+                        .accessibilityIdentifier("clomni.form.submit")
                     }
                 }
             }
@@ -159,6 +160,7 @@ struct FormFieldView: View {
                 .animation(.easeOut(duration: 0.15), value: focused)
                 .accessibilityLabel(Text(field.accessibilityLabel))
                 .accessibilityHint(Text(error ?? ""))
+                .accessibilityIdentifier("clomni.form.\(field.id)")
             if let error {
                 // Read with the input, and announced when the submit comes back.
                 Text(error)
