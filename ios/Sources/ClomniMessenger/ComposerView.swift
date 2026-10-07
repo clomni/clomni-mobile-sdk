@@ -64,6 +64,9 @@ struct ComposerView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(theme.colors.border.color).frame(height: 1)
         }
+        // The bar as a whole, for the UI tests that measure what stands over it.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("clomni.composer")
         .animation(reduceMotion ? nil : Motion.decelerate(0.22), value: composer.quote)
         // Answering puts the cursor in the field.
         .onChange(of: composer.quote?.messageId) { id in if id != nil { focused = true } }

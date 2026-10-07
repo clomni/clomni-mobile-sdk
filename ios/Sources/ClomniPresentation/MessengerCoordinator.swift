@@ -19,6 +19,8 @@ package protocol MessengerSession: Sendable {
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation?
     func messages(in conversationId: String) async -> [Message]
+    /// true when the conversation is there, false when the server has none by that id, nil when it is not known.
+    func conversationExists(_ id: String) async -> Bool?
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
 }
 
@@ -109,6 +111,8 @@ package final class MessengerCoordinator {
     private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
     /// END messages already seen, per conversation; a conversation's first look reports none (they are history).
     private var finished: [String: Set<String>] = [:]
+    /// Whether the last push's conversation is on the server (`handlePush`); the tests wait for it.
+    package private(set) var pushCheck: Task<Void, Never>?
 
     package init(session: MessengerSession, language: String? = nil) {
         self.session = session
@@ -324,11 +328,25 @@ package final class MessengerCoordinator {
     // MARK: - Push
 
     /// `Clomni.handlePush`, for a tap on a Clomni notification: its conversation opens (`opened_from` "push") and its
-    /// unread count reaches the listeners. false when nothing opens.
+    /// unread count reaches the listeners. false when nothing opens. A conversation the server does not have (the
+    /// panel's test push sends "conv_test") gives way to Home once the server says so, not an empty conversation.
     @discardableResult
     package func handlePush(_ push: PushPayload) -> Bool {
         pushArrived(push)
-        return presentConversation(push.conversationId, source: "push")
+        let id = push.conversationId
+        guard presentConversation(id, source: "push") else { return false }
+        pushCheck = Task { [weak self, session] in
+            let exists = await session.conversationExists(id)
+            self?.pushChecked(id, exists: exists)
+        }
+        return true
+    }
+
+    private func pushChecked(_ id: String, exists: Bool?) {
+        // Only while the push's conversation is still the one on screen: the user may have moved on.
+        guard exists == false, route == .conversation(id) else { return }
+        ClomniLog.warning("push: conversation \(id) is not on the server; Home opens instead")
+        navigate(to: .home)
     }
 
     /// A Clomni push reached the app: the count it carries is the server's when it was sent; the socket's next count

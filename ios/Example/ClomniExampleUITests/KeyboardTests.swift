@@ -7,12 +7,43 @@ import XCTest
 @MainActor
 final class KeyboardTests: XCTestCase {
     private var app: XCUIApplication!
+    /// Under the last message when the list is at its end: ChatTranscript's bottom padding (Space.s).
+    private static let listBottomPadding: CGFloat = 8
 
-    private func launch() {
+    private func launch(_ arguments: [String] = []) {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-ClomniDemoConversation"]
+        app.launchArguments += ["-ClomniDemoConversation"] + arguments
         app.launch()
+    }
+
+    /// A long conversation opens at its end (what the cache kept), and the history that comes after it, in two pages
+    /// above, does not take it away from there: looked at all along, the last item stays over the composer and the
+    /// first message is far up, out of sight (operator's iPhone, CM-087). The demo holds the history back until 20 s
+    /// after the launch, so that it comes while the test looks, not while the app is being launched.
+    func testItOpensAtTheEndWhileTheHistoryComes() {
+        let historyAt = Date().addingTimeInterval(20)
+        launch(["-ClomniDemoHistoryAt", String(historyAt.timeIntervalSince1970)])
+        let submit = element("clomni.form.submit")
+        XCTAssertTrue(submit.waitForExistence(timeout: 15), "the conversation opens at its end, the form there")
+        let composer = element("clomni.composer")
+        var last = settled(submit)
+        keep("opened-at-the-end")
+        XCTAssertLessThanOrEqual(last.maxY, settled(composer).minY, "the last item \(last) is over the composer")
+        XCTAssertGreaterThan(last.minY, 0, "and on screen")
+        // Both pages come (at historyAt and 0.8 s later) while this looks; at every look the end is where it was.
+        while Date() < historyAt.addingTimeInterval(4) {
+            XCTAssertTrue(submit.exists, "the end stays in sight while the history comes")
+            let frame = submit.frame, bar = composer.frame
+            XCTAssertLessThanOrEqual(frame.maxY, bar.minY, "the last item \(frame) is over the composer \(bar)")
+            XCTAssertGreaterThan(frame.minY, 0, "and on screen")
+        }
+        last = settled(submit)
+        keep("history-came")
+        XCTAssertLessThanOrEqual(last.maxY, settled(composer).minY, "the last item \(last) is over the composer")
+        XCTAssertGreaterThan(last.minY, 0)
+        let first = labelled("Salam, kartla ödəniş keçmir")
+        XCTAssertFalse(first.exists && first.isHittable, "the first message is out of sight")
     }
 
     /// H1: a form field tapped near the bottom goes up with the keyboard and stays over it, the composer too.
@@ -52,7 +83,45 @@ final class KeyboardTests: XCTestCase {
         let bubble = settled(sent)
         keep("message-sent")
         XCTAssertLessThanOrEqual(bubble.maxY, settledKeyboard().minY, "the sent message \(bubble) is over the keyboard")
-        XCTAssertLessThanOrEqual(bubble.maxY, settled(composer).minY, "and over the composer")
+        // At the list's very end: its bottom padding shows between the bubble and the composer (operator, build 8).
+        let bar = settled(element("clomni.composer"))
+        XCTAssertEqual(bar.minY - bubble.maxY, Self.listBottomPadding, accuracy: 2,
+                       "the sent message \(bubble) stands the list's padding over the composer \(bar)")
+    }
+
+    /// The last item stays just over the composer while the keyboard comes up and while the composer grows to three
+    /// lines; what is sent then stands at the end, the list's padding over the composer (operator's iPhone, CM-087).
+    func testTheEndStaysOverAComposerGrowingToThreeLines() {
+        launch()
+        let field = element("clomni.composer.field")
+        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        let submit = element("clomni.form.submit")
+        let composer = element("clomni.composer")
+        field.tap()
+        let keyboard = settledKeyboard()
+        var last = settled(submit)
+        keep("end-over-keyboard")
+        XCTAssertLessThanOrEqual(last.maxY, keyboard.minY, "the last item \(last) is over the keyboard \(keyboard)")
+        XCTAssertLessThanOrEqual(last.maxY, settled(composer).minY, "and over the composer")
+        XCTAssertGreaterThan(last.minY, 0)
+
+        let oneLine = settled(field).height
+        field.typeText("Birinci sətir\nİkinci sətir\nÜçüncü sətir")
+        let threeLines = settled(field)
+        XCTAssertGreaterThan(threeLines.height, oneLine + 30, "the composer grew to three lines")
+        last = settled(submit)
+        keep("end-over-three-lines")
+        XCTAssertLessThanOrEqual(last.maxY, settled(composer).minY, "the last item \(last) is over the grown composer")
+        XCTAssertGreaterThan(last.minY, 0)
+
+        element("clomni.composer.send").tap()
+        let sent = labelled("Üçüncü sətir")
+        XCTAssertTrue(sent.waitForExistence(timeout: 5))
+        let bubble = settled(sent)
+        keep("three-lines-sent")
+        let bar = settled(composer)
+        XCTAssertEqual(bar.minY - bubble.maxY, Self.listBottomPadding, accuracy: 2,
+                       "the sent message \(bubble) stands the list's padding over the composer \(bar)")
     }
 
     /// H2: an answer that comes while the user reads further up does not pull the list; "Yeni mesaj ↓" shows, and
@@ -65,8 +134,7 @@ final class KeyboardTests: XCTestCase {
         _ = settledKeyboard()
         // The demo answers a question ten seconds later. Before that, the user drags the list 350 back into the
         // history, well past the 120 that still counts as the end, and the drag is over (held, so it does not fling
-        // to the top and pull the sheet down). A drag through the list also puts the keyboard down: the list is then
-        // at its end first, and 350 from it after.
+        // to the top and pull the sheet down).
         composer.typeText("Kuryer nə vaxt gələcək?")
         element("clomni.composer.send").tap()
         XCTAssertTrue(labelled("Kuryer nə vaxt gələcək?").waitForExistence(timeout: 3))
@@ -84,6 +152,9 @@ final class KeyboardTests: XCTestCase {
         let frame = settled(answer)
         keep("new-message-shown")
         XCTAssertLessThanOrEqual(frame.maxY, settled(composer).minY, "the answer \(frame) is in sight over the composer")
+        let bar = settled(element("clomni.composer"))
+        XCTAssertEqual(bar.minY - frame.maxY, Self.listBottomPadding, accuracy: 2,
+                       "at the end, the list's padding between the answer \(frame) and the composer \(bar)")
         XCTAssertFalse(capsule.exists, "the capsule is gone")
     }
 

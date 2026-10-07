@@ -72,16 +72,10 @@ struct ChatView: View {
     @State private var lit: String?
     /// The form field with the focus (`FormCardView.fieldKey`), kept over the keyboard.
     @State private var focusedField: String?
-    /// The transcript's height: when the keyboard takes some of it, the list goes up with the keyboard.
-    @State private var viewport: CGFloat = 0
     /// How far the keyboard reaches into the screen (`KeyboardProbe`): the screen ends that much higher (H1).
     @State private var keyboard: CGFloat = 0
-    /// Where the end of the list is, from the transcript's top edge; it changes with every scrolled frame, so it is
-    /// kept out of the view's state.
-    @State private var listEnd = Measure()
-    /// The user is within `followWithin` of the end. Decided when the list scrolls, not when it grows: a long message
-    /// arriving does not make the user "far" from an end they were at.
-    @State private var nearEnd = true
+    /// Holds the list at its end while the user is there: opening, history, messages, keyboard, composer.
+    @State private var pin = ScrollPin()
     /// A message came while the user read further up: "Yeni mesaj ↓" shows (H2).
     @State private var unseen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -105,6 +99,7 @@ struct ChatView: View {
                     if case .bubble(let bubble) = $0 { return bubble.messageId == messageId }
                     return false
                 })?.id else { return }
+                pin.release()
                 withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(target, anchor: UnitPoint(x: 0.5, y: 0.33)) }
                 lit = target
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { if lit == target { lit = nil } }
@@ -222,61 +217,36 @@ struct ChatView: View {
                                                value: proxy.frame(in: .named(ScrollTopOffset.space)).minY)
                     }
                     .frame(height: 0)
-                    ChatTranscript(items: model.screen.items, theme: theme, actions: actions(proxy), reachedTop: loadOlder)
-                        .background(GeometryReader { box in
-                            Color.clear.preference(key: ScrollEndOffset.self,
-                                                   value: box.frame(in: .named(ScrollTopOffset.space)).maxY)
-                        })
-                        .onAppear {
-                            if let last = model.screen.items.last?.id { proxy.scrollTo(last, anchor: .bottom) }
-                            // Shown once it stands at its end: the first frame is the bottom, nothing slides.
-                            DispatchQueue.main.async { atBottom = true }
-                        }
+                    ChatTranscript(items: model.screen.items, theme: theme, actions: actions(proxy), reachedTop: loadOlder,
+                                   pin: pin)
+                        .background(ScrollPinContent(pin: pin, first: model.screen.items.first?.id,
+                                                     animates: !reduceMotion, settled: { atBottom = true }))
+                        // Shown once it stands at its end (ScrollPin): the first frame is the bottom, nothing slides.
+                        // Should the scroll view not be found, it shows all the same.
+                        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { atBottom = true } }
                 }
                 .coordinateSpace(name: ScrollTopOffset.space)
-                .onPreferenceChange(ScrollEndOffset.self) { end in listEnd.value = end }
                 .onPreferenceChange(ScrollTopOffset.self) { top in
                     scrolled = top < -1
-                    measureNearEnd()
+                    if unseen, !pin.away { unseen = false }
                 }
-                // The keyboard came up (or the composer grew): the last message, or the form field being filled,
-                // stays in sight over it, moving with it (H1). Measured after the layout that made the room smaller.
-                .background(GeometryReader { box in
-                    Color.clear
-                        .onAppear { viewport = box.size.height }
-                        .onChange(of: box.size.height) { height in
-                            if height < viewport - 1 { keepInSight(proxy) }
-                            viewport = height
-                            // The keyboard went down (a drag through the list dismisses it): more of the end shows.
-                            measureNearEnd()
-                        }
-                })
-                .onChange(of: focusedField) { key in if key != nil { keepInSight(proxy) } }
-                .onChange(of: newest?.id) { _ in arrived(proxy) }
-                // The typing bubble shows at the end only to whom is there.
-                .onChange(of: model.screen.items.last?.id) { last in
-                    guard last == "typing", nearEnd else { return }
-                    withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo("typing", anchor: .bottom) }
+                // The keyboard came up or the composer grew: the last message, or the form field being filled, stays in
+                // sight over it, moving with it (H1).
+                .background(ScrollPinViewport(pin: pin))
+                .onChange(of: focusedField) { key in
+                    pin.fieldFocused = key != nil
+                    if key != nil { DispatchQueue.main.async { pin.revealFocusedField() } }
                 }
+                .onChange(of: newest?.id) { _ in arrived() }
                 .overlay(alignment: .bottom) {
                     ZStack {
-                        if unseen { newMessageCapsule(proxy) }
+                        if unseen { newMessageCapsule }
                     }
                     .animation(reduceMotion ? nil : Motion.capsule, value: unseen)
                 }
                 .opacity(atBottom ? 1 : 0)
             }
         }
-    }
-
-    /// Further than this from the end, the user is reading the history: a new message does not pull the list (H2).
-    static let followWithin: CGFloat = 120
-
-    /// Whether the user is near the end now, from where the list stands; "Yeni mesaj" goes once they are.
-    private func measureNearEnd() {
-        let near = listEnd.value - viewport <= Self.followWithin
-        if near != nearEnd { nearEnd = near }
-        if near, unseen { unseen = false }
     }
 
     /// The newest message or step: what decides whether the list follows. Not the typing bubble or a time line.
@@ -289,32 +259,34 @@ struct ChatView: View {
         }
     }
 
-    /// A new message or step (H2): the list goes to its end, softly, when the user is near the end anyway, sent it,
-    /// or it is choices or a form to fill; otherwise it stays where the user reads and "Yeni mesaj ↓" shows.
-    private func arrived(_ proxy: ScrollViewProxy) {
-        guard let item = newest, let last = model.screen.items.last?.id else { return }
-        var follows = nearEnd
+    /// A new message or step (H2): the list stays at its end when the user is near it anyway (ScrollPin), and goes there
+    /// when the user sent it or it is choices or a form to fill; otherwise it stays where the user reads and
+    /// "Yeni mesaj ↓" shows.
+    private func arrived() {
+        guard let item = newest else { return }
+        var follows = false
         switch item {
         case .bubble(let bubble):
-            if bubble.side == .outgoing { follows = true }
+            follows = bubble.side == .outgoing
             if case .form = bubble.body { follows = true }
         case .replies: follows = true
         default: break
         }
-        guard follows else {
+        if follows {
+            unseen = false
+            pin.follow()
+        } else if pin.away {
             if case .bubble = item { unseen = true }
-            return
+        } else {
+            unseen = false
         }
-        unseen = false
-        withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(last, anchor: .bottom) }
     }
 
     /// "Yeni mesaj ↓" over the bottom of the transcript: a tap goes to the end.
-    private func newMessageCapsule(_ proxy: ScrollViewProxy) -> some View {
+    private var newMessageCapsule: some View {
         Button {
             unseen = false
-            guard let last = model.screen.items.last?.id else { return }
-            withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(last, anchor: .bottom) }
+            pin.follow()
         } label: {
             HStack(spacing: 6) {
                 Text(model.screen.newMessageLabel)
@@ -333,12 +305,6 @@ struct ChatView: View {
         .accessibilityIdentifier("clomni.chat.newMessage")
         .padding(.bottom, CGFloat(ClomniTheme.Space.m))
         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-    }
-
-    /// The focused form field, else the last item, at the bottom of what the keyboard leaves of the list.
-    private func keepInSight(_ proxy: ScrollViewProxy) {
-        guard let target = focusedField ?? model.screen.items.last?.id else { return }
-        withAnimation(reduceMotion ? nil : Motion.keyboard) { proxy.scrollTo(target, anchor: .bottom) }
     }
 
     /// The attachment sheet at its rows' height; iOS 15 shows it at its full height.
@@ -418,20 +384,6 @@ struct ChatView: View {
         defer { announced = announcement.id }
         guard announced != nil, announced != announcement.id else { return }
         UIAccessibility.post(notification: .announcement, argument: announcement.text)
-    }
-}
-
-/// A number a view keeps without redrawing when it changes.
-final class Measure {
-    var value: CGFloat = 0
-}
-
-/// The bottom of the transcript's content, from the top of what shows of it.
-struct ScrollEndOffset: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

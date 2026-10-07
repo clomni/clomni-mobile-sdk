@@ -454,7 +454,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 Tətbiq hədəfinə Push Notifications capability əlavə edin.
 
 ```swift
-final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         Clomni.initialize(appId: "app_…", apiKey: "ios_…")
@@ -471,14 +471,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     // Tətbiq açıq olanda gələn push. Messenger açıqdırsa Clomni push-u göstərilmir.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+    @MainActor
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         Clomni.shouldShowForeground(notification.request.content.userInfo) ? [.banner, .list, .sound] : []
     }
 
-    // Bildirişə basanda: Clomni push-u öz söhbətini açır.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
+    // Bildirişə basanda: Clomni push-u öz söhbətini açır. nonisolated yox, @MainActor: sistem bu metodu arxa
+    // thread-dən çağıra bilər, Swift isə sistemin completion handler-ini metod harada bitirsə orada çağırır. Main
+    // thread-dən kənarda çağırılanda UIKit tətbiqi dayandırır ("Call must be made on main thread").
+    @MainActor
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         if Clomni.handlePush(response.notification.request.content.userInfo) { return }
         // tətbiqin öz push-u
     }

@@ -66,7 +66,12 @@ struct ChatTranscript: View {
     let actions: ChatActions
     /// Called when the top of the list comes into view.
     var reachedTop: () -> Void = {}
+    /// On screen: holds the list at its end (ChatView); its last row tells where the end is.
+    var pin: ScrollPin?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Under the last row.
+    static let bottomPadding = CGFloat(ClomniTheme.Space.s)
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
@@ -78,13 +83,16 @@ struct ChatTranscript: View {
                 // Fades in once, when it is new: an item is keyed by its client id from the moment it is written, so
                 // the server's copy changes only its status, and scrolling back is not an insertion.
                 ChatItemView(item: item, theme: theme, actions: actions)
+                    .background(alignment: .bottom) {
+                        if let pin, item.id == items.last?.id { ScrollPinLastRow(pin: pin) }
+                    }
                     .id(item.id)
                     .transition(Motion.arrival(item, still: reduceMotion))
             }
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.xl))
         .padding(.top, CGFloat(ClomniTheme.Space.xl))
-        .padding(.bottom, CGFloat(ClomniTheme.Space.s))
+        .padding(.bottom, Self.bottomPadding)
         // M3: new items come in on the emphasized easing and the rest move to their place; Reduce Motion: nothing moves.
         .animation(reduceMotion ? nil : Motion.decelerate(0.2), value: items.map(\.id))
     }
@@ -228,7 +236,8 @@ struct BubbleBody: View {
                 if let quote = bubble.quote {
                     QuoteBlock(quote: quote, ink: ink, outgoing: !incoming, jump: actions.jump)
                 }
-                StampedText(text: attributedText(runs), size: ClomniTheme.FontSize.message, stamp: stamp, theme: theme)
+                StampedText(text: attributedText(runs), size: ClomniTheme.FontSize.message, stamp: stamp, theme: theme,
+                            drawsStamp: bubble.quote == nil)
                     .lineSpacing(3)
                     .foregroundStyle(ink)
                     .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
@@ -237,6 +246,14 @@ struct BubbleBody: View {
                     .padding(bubble.quote == nil ? EdgeInsets(top: 10, leading: 14, bottom: 8, trailing: 14)
                              : EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
                     .accessibilityLabel(Text(bubble.accessibilityLabel))
+            }
+            .overlay(alignment: .bottomTrailing) {
+                // With a quote the stamp keeps the bubble's corner, where the text's own room would leave it mid-way.
+                if bubble.quote != nil {
+                    StampView(stamp: stamp, color: stamp.color(theme))
+                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 8))
+                        .offset(y: StampedText.drop)
+                }
             }
             .padding(bubble.quote == nil ? 0 : 6)
             .background(shape.fill(fill))
@@ -585,6 +602,9 @@ struct StampedText: View {
     let size: Double
     let stamp: BubbleStamp
     let theme: ClomniTheme
+    /// False when the bubble is wider than the text (a quote over it): the bubble then draws the stamp in its own
+    /// corner, so it does not hang in the middle with the bubble's right side empty (operator, 2026-10-07).
+    var drawsStamp = true
     @ScaledMetric(relativeTo: .caption2) private var stampSize: CGFloat = BubbleStamp.size
     @Environment(\.clomniTypeface) private var typeface
 
@@ -592,7 +612,7 @@ struct StampedText: View {
         (Text(text) + stamp.room.font(BubbleStamp.font(typeface, scaled: stampSize)))
             .clomniFont(size)
             .overlay(alignment: .bottomTrailing) {
-                StampView(stamp: stamp, color: stamp.color(theme)).offset(y: Self.drop)
+                if drawsStamp { StampView(stamp: stamp, color: stamp.color(theme)).offset(y: Self.drop) }
             }
     }
 }

@@ -85,6 +85,11 @@ actor FakeSession: MessengerSession {
 
     func messages(in conversationId: String) async -> [Message] { stored[conversationId] ?? [] }
 
+    /// Conversations the server answers 404 for.
+    var missing: Set<String> = []
+    func conversationExists(_ id: String) async -> Bool? { offline ? nil : !missing.contains(id) }
+    func set(missing: Set<String>) { self.missing = missing }
+
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID {
         let token = UUID()
         observers[token] = handler
@@ -558,6 +563,37 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertEqual(messenger.route, .conversation("conv_7"))
         XCTAssertEqual(heard.opened, ["push"])
         XCTAssertEqual(counts, [0, 2], "no count in the push, no change")
+    }
+
+    /// The panel's test push names "conv_test", which no server has: Home, not an empty conversation. Unknown
+    /// (offline) keeps the conversation, which says so itself; so does a user who has already moved on.
+    func testAPushForAConversationTheServerDoesNotHaveOpensHome() async {
+        await session.set(loggedIn: true)
+        await session.set(missing: ["conv_test", "conv_gone"])
+        let messenger = coordinator()
+        await messenger.start()
+
+        XCTAssertTrue(messenger.handlePush(push("conv_test")))
+        XCTAssertEqual(messenger.route, .conversation("conv_test"), "at once, before the server answers")
+        await messenger.pushCheck?.value
+        XCTAssertEqual(messenger.stack, [.home])
+        XCTAssertEqual(heard.opened, ["push"], "still open, once")
+
+        XCTAssertTrue(messenger.handlePush(push("conv_5521")))
+        await messenger.pushCheck?.value
+        XCTAssertEqual(messenger.stack, [.home, .conversation("conv_5521")], "a real one stays")
+
+        messenger.dismiss()
+        await session.goOffline(true)
+        XCTAssertTrue(messenger.handlePush(push("conv_test")))
+        await messenger.pushCheck?.value
+        XCTAssertEqual(messenger.route, .conversation("conv_test"), "offline: not known, kept")
+
+        await session.goOffline(false)
+        XCTAssertTrue(messenger.handlePush(push("conv_gone")))
+        messenger.navigate(to: .messages)
+        await messenger.pushCheck?.value
+        XCTAssertEqual(messenger.stack, [.home, .conversation("conv_gone"), .messages], "the user moved on")
     }
 
     /// Brief 4.4 and 8 · 5.5: while the messenger is open, on any screen, a Clomni push is not shown.
