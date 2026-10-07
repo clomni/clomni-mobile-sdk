@@ -49,6 +49,9 @@ internal interface ChatDataSource {
 
     fun submitForm(message: Message, values: Map<String, JsonElement>): Future<PendingMessage>
 
+    /** A rating (CSAT): [score] 1–5 and the comment, if any. One that failed to go may be given again. */
+    fun submitRating(message: Message, score: Int, comment: String?): Future<PendingMessage>
+
     fun sendFile(
         data: ByteArray,
         fileName: String,

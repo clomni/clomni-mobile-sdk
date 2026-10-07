@@ -262,6 +262,23 @@ internal class ChatController(
         return emptyMap()
     }
 
+    /**
+     * A rating (CSAT): shown as given at once, then sent through the outbox. Refused (no longer open), the card opens
+     * again.
+     */
+    fun rate(messageId: String, score: Int, comment: String?) {
+        val message = snapshot.messages.firstOrNull { it.id == messageId } ?: return
+        if (message.content !is MessageContent.Rating) return
+        val id = conversationId
+        snapshot = snapshot.copy(rated = snapshot.rated + (messageId to (score to comment)))
+        render()
+        sound(ChatSound.SENT)
+        worker.execute {
+            val refused = runCatching { source.submitRating(message, score, comment).get() }.isFailure
+            publish(read(id)) { if (refused) snapshot = snapshot.copy(rated = snapshot.rated - messageId) }
+        }
+    }
+
     /** "Göndərilmədi · Yenidən cəhd et". */
     fun retrySending(clientId: String) {
         worker.execute { runCatching { source.retry(clientId).get() } }

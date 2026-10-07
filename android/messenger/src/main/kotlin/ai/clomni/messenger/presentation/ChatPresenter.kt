@@ -11,6 +11,9 @@ import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
 import ai.clomni.messenger.store.PendingMessage
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import java.util.Locale
 import java.util.TimeZone
 
@@ -176,7 +179,7 @@ internal class ChatPresenter(
                     draft(message, body, snapshot).copy(
                         quote = message.replyTo?.let { quote(it, snapshot) },
                         messageId = message.id,
-                        replyable = canReply && body !is FormCard,
+                        replyable = canReply && body !is FormCard && body !is RatingCard,
                         copyText = copyText(message.content),
                     ),
                 )
@@ -372,6 +375,7 @@ internal class ChatPresenter(
             "${strings[Key.FILE]}: ${content.name}, ${Media.fileSize(content.size, strings.language)}"
         is MessageContent.QuickReplies -> content.text?.let(LimitedMarkdown::plainText) ?: message.fallbackText
         is MessageContent.Form -> content.text?.let(LimitedMarkdown::plainText) ?: message.fallbackText
+        is MessageContent.Rating -> content.text
         else -> message.fallbackText
     }
 
@@ -398,10 +402,10 @@ internal class ChatPresenter(
             content.url,
         )
         is MessageContent.Form -> card(message, content, snapshot)
+        is MessageContent.Rating -> rating(message, content, snapshot)
         is MessageContent.System -> null
         // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
-        is MessageContent.Card, is MessageContent.Rating, is MessageContent.Unknown ->
-            Bubble.TextBody(listOf(TextRun(message.fallbackText)))
+        is MessageContent.Card, is MessageContent.Unknown -> Bubble.TextBody(LimitedMarkdown.linked(message.fallbackText))
     }
 
     /**
@@ -410,12 +414,12 @@ internal class ChatPresenter(
      */
     private fun body(pending: PendingMessage, snapshot: ChatSnapshot): Bubble.Body? =
         when (val message = pending.message) {
-            is ClientMessage.Text -> Bubble.TextBody(listOf(TextRun(message.text)))
+            is ClientMessage.Text -> Bubble.TextBody(LimitedMarkdown.linked(message.text))
             is ClientMessage.ButtonReply -> Bubble.TextBody(listOf(TextRun(pending.preview ?: strings[Key.BACK])))
             is ClientMessage.Attachment -> {
                 val upload = pending.upload
                 when {
-                    upload == null -> message.caption?.let { Bubble.TextBody(listOf(TextRun(it))) }
+                    upload == null -> message.caption?.let { Bubble.TextBody(LimitedMarkdown.linked(it)) }
                     Media.isImage(upload.mime) -> {
                         val box = Media.imageBox(null, null)
                         Bubble.ImageBody(
@@ -425,7 +429,7 @@ internal class ChatPresenter(
                             width = box.width,
                             height = box.height,
                             sizeKnown = false,
-                            caption = message.caption?.let { listOf(TextRun(it)) },
+                            caption = message.caption?.let { LimitedMarkdown.linked(it) },
                         )
                     }
                     else -> Bubble.FileBody(
@@ -490,6 +494,60 @@ internal class ChatPresenter(
         )
     }
 
+    /**
+     * The rating as it stands: the server's copy when it carries `submitted`; otherwise the user's answer on its way
+     * (the outbox) or sent from this screen; open again, with the "Göndərilmədi" line, when the outbox gave up on it.
+     */
+    private fun rating(message: Message, rating: MessageContent.Rating, snapshot: ChatSnapshot): RatingCard {
+        val pending = snapshot.pending.lastOrNull { (it.message as? ClientMessage.RatingSubmit)?.replyTo == message.id }
+        val sending = pending?.message as? ClientMessage.RatingSubmit
+        val failed = pending?.state == PendingMessage.State.FAILED
+        val submitted = rating.submitted
+        val given = when {
+            submitted != null -> Pair(
+                (submitted["score"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 1..5 } ?: 0,
+                (submitted["comment"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() },
+            )
+            sending != null && !failed -> sending.score to sending.comment
+            failed -> null
+            else -> snapshot.rated[message.id]
+        }
+        val required = rating.comment == MessageContent.RatingComment.REQUIRED
+        val comment = strings[Key.RATING_COMMENT]
+        return RatingCard(
+            messageId = message.id,
+            text = LimitedMarkdown.parse(rating.text),
+            textAccessibilityLabel = label(message, snapshot),
+            scale = rating.scale,
+            labels = (1..5).map { score ->
+                if (rating.scale == MessageContent.RatingScale.STAR_5) strings.format(Key.RATING_STARS, score) else strings[RATING_WORDS[score - 1]]
+            },
+            comment = rating.comment,
+            commentField = FormCard.Field(
+                id = "comment",
+                type = MessageContent.FormFieldType.TEXTAREA,
+                label = comment,
+                required = required,
+                accessibilityLabel = if (required) "$comment, ${strings[Key.REQUIRED]}" else comment,
+                placeholder = null,
+                maxLength = COMMENT_CHARS,
+                options = emptyList(),
+                initialValue = "",
+                shownLabel = if (required) comment else "$comment ${strings[Key.OPTIONAL]}",
+            ),
+            submitTitle = strings[Key.SEND],
+            commentRequired = strings[Key.FIELD_REQUIRED],
+            given = given != null,
+            score = given?.first?.takeIf { it > 0 } ?: sending?.score?.takeIf { failed },
+            commentText = given?.second ?: sending?.comment?.takeIf { failed },
+            note = when {
+                given != null -> strings[Key.RATING_THANKS]
+                failed -> strings[Key.FAILED]
+                else -> null
+            },
+        )
+    }
+
     private fun systemAvatars(event: MessageContent.SystemEvent, snapshot: ChatSnapshot): List<ChatAvatar> =
         when (event) {
             MessageContent.SystemEvent.OperatorJoined -> listOfNotNull(
@@ -524,8 +582,13 @@ internal class ChatPresenter(
         if (name.isEmpty()) "" else String(Character.toChars(name.codePointAt(0))).uppercase(Locale.ROOT)
 
     companion object {
+        private val RATING_WORDS = listOf(Key.RATING_1, Key.RATING_2, Key.RATING_3, Key.RATING_4, Key.RATING_5)
+
         /** Messages of one sender less than this far apart share a run: one avatar, one meta line. */
         const val GROUP_WINDOW_MS = 60_000L
+
+        /** client-message.json: a rating's comment is at most this long. */
+        const val COMMENT_CHARS = 4_000
 
         /** The server's excerpts are at most this long; a local quote is cut to the same. */
         private const val EXCERPT_CHARS = 120

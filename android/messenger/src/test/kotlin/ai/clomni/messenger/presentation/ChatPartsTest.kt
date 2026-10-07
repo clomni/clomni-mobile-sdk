@@ -44,6 +44,42 @@ class LimitedMarkdownTest {
     }
 
     @Test
+    fun addressesInTheTextAreLinks() {
+        fun links(text: String) = LimitedMarkdown.parse(text).filter { it.link != null }.map { it.text to it.link }
+        assertEquals(listOf("https://apar.az/sertler" to "https://apar.az/sertler"), links("Şərtlər: https://apar.az/sertler."))
+        assertEquals(listOf("http://apar.az" to "http://apar.az"), links("Sayt (http://apar.az), baxın"))
+        assertEquals(listOf("WWW.apar.az/a" to "https://WWW.apar.az/a"), links("WWW.apar.az/a!"))
+        assertEquals(
+            "a bracket of the address itself stays",
+            listOf("https://az.wikipedia.org/wiki/Bakı_(şəhər)" to "https://az.wikipedia.org/wiki/Bakı_(şəhər)"),
+            links("Bax: https://az.wikipedia.org/wiki/Bakı_(şəhər)."),
+        )
+        assertEquals(listOf("info@apar.az" to "mailto:info@apar.az"), links("Yazın: info@apar.az."))
+        assertEquals(listOf("+994 50 123 45 67" to "tel:+994501234567"), links("Zəng edin: +994 50 123 45 67."))
+        assertEquals(listOf("(050) 123-45-67" to "tel:0501234567"), links("Nömrə (050) 123-45-67"))
+        assertEquals(listOf("0501234567" to "tel:0501234567", "994501234567" to "tel:994501234567"), links("0501234567, 994501234567"))
+        assertEquals(
+            "one address: the e-mail and the number in a web address are part of it",
+            listOf("https://apar.az/u?m=a@b.az&t=0501234567" to "https://apar.az/u?m=a@b.az&t=0501234567"),
+            links("https://apar.az/u?m=a@b.az&t=0501234567"),
+        )
+        assertEquals(
+            "not addresses",
+            emptyList<Pair<String, String?>>(),
+            links("2026-10-07 11:00, 1 000 000 000 AZN, 12345678, https://x, AZ12345678901, 05.10.2026, a@b, x.az"),
+        )
+        assertEquals(
+            listOf(TextRun("Sayt: ", bold = true), TextRun("https://apar.az", bold = true, link = "https://apar.az"), TextRun(" bax")),
+            LimitedMarkdown.parse("**Sayt: https://apar.az** bax"),
+        )
+        assertEquals(
+            "the user's own text: addresses, no markdown",
+            listOf(TextRun("*a* "), TextRun("www.b.az", link = "https://www.b.az")),
+            LimitedMarkdown.linked("*a* www.b.az"),
+        )
+    }
+
+    @Test
     fun markersWithoutTheirPairAreText() {
         assertEquals(listOf(TextRun("2*3 və 2 * 3 * 4")), LimitedMarkdown.parse("2*3 və 2 * 3 * 4"))
         assertEquals(listOf(TextRun("**yarım")), LimitedMarkdown.parse("**yarım"))

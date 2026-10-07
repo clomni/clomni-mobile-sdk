@@ -219,7 +219,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         openLink = openLink,
     )
     val intro = remember { HomeIntro(played = false) }
-    CompositionLocalProvider(LocalHomeIntro provides intro) {
+    CompositionLocalProvider(LocalHomeIntro provides intro, LocalOpenLink provides openLink) {
     MessengerSheet(theme, closing, closed, dismiss = close) {
         if (!state.ready || route == null) {
             // Not ready yet: the grey skeleton, the indicator in the middle while there is no look kept, ✕ working.

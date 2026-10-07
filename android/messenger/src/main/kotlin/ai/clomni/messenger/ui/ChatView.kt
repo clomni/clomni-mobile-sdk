@@ -10,6 +10,7 @@ import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ChatScreen
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.FormCard
+import ai.clomni.messenger.presentation.RatingCard
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.toward
@@ -192,6 +193,7 @@ internal fun ClomniChat(
         },
         tap = controller::tap,
         submit = controller::submit,
+        rate = controller::rate,
         retry = controller::retrySending,
         retryLoad = controller::retry,
         openImage = { fullScreen = it },
@@ -519,7 +521,7 @@ private fun LazyTranscript(
 /** H2: the user's own message, choices and a form take the transcript to its end wherever the user was reading. */
 private fun ChatItem.takesToEnd(): Boolean = when (this) {
     is ChatItem.RepliesItem -> true
-    is ChatItem.BubbleItem -> bubble.side == Bubble.Side.OUTGOING || bubble.body is FormCard
+    is ChatItem.BubbleItem -> bubble.side == Bubble.Side.OUTGOING || bubble.body is FormCard || bubble.body is RatingCard
     else -> false
 }
 

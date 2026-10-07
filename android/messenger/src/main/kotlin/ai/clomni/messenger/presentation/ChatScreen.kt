@@ -209,6 +209,34 @@ internal data class FormCard(
     data class Line(val label: String, val value: String)
 }
 
+/**
+ * A rating (CSAT) in its own card: the question, then five faces or stars. With a comment asked for, a choice opens the
+ * field and "Göndər"; without one it goes at once. Given (sent, on its way, or the server's copy), the card keeps the
+ * score and says thanks.
+ */
+internal data class RatingCard(
+    val messageId: String,
+    val text: List<TextRun>,
+    /** TalkBack's reading of [text]: "Clomni bot, 10:30: …". */
+    val textAccessibilityLabel: String,
+    val scale: MessageContent.RatingScale,
+    /** TalkBack's names of the five, from 1: "Çox pis" … "Əla", or "1 ulduz" … "5 ulduz". */
+    val labels: List<String>,
+    val comment: MessageContent.RatingComment,
+    /** The comment's textarea, drawn as a form's: "Şərh", with "(istəyə görə)" when optional. */
+    val commentField: FormCard.Field,
+    val submitTitle: String,
+    /** "Bu sahəni doldurun", under a required comment left empty. */
+    val commentRequired: String,
+    /** True once given: read-only, with [score], [commentText] and the thanks in [note]. */
+    val given: Boolean,
+    /** The score given; open again after a failure, the one that failed. */
+    val score: Int?,
+    val commentText: String?,
+    /** Given: "Rəyiniz üçün təşəkkür edirik". Open again after a failure: "Göndərilmədi". */
+    val note: String?,
+) : Bubble.Body
+
 internal data class ChatComposer(
     val mode: Mode,
     val placeholder: String,
@@ -276,4 +304,6 @@ internal data class ChatSnapshot(
     val known: Map<String, String> = emptyMap(),
     /** The message the user is answering (swipe or "Cavabla"), until it is sent or dismissed. */
     val replyingTo: String? = null,
+    /** Ratings given on this screen (score, comment) by message id: shown at once, until the server's copy has them. */
+    val rated: Map<String, Pair<Int, String?>> = emptyMap(),
 )

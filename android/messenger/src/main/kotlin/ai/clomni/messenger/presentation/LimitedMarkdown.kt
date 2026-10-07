@@ -3,7 +3,10 @@ package ai.clomni.messenger.presentation
 import java.net.URI
 import java.util.Locale
 
-/** A piece of message text with one style. [link] is only ever an https:, tel: or mailto: address. */
+/**
+ * A piece of message text with one style. [link] is only ever an https:, tel: or mailto: address, or an http: one the
+ * message wrote out in full.
+ */
 internal data class TextRun(
     val text: String,
     val bold: Boolean = false,
@@ -14,7 +17,8 @@ internal data class TextRun(
 /**
  * The markdown messages may carry (brief 8·3): **bold**, *italic*, [text](url), line breaks and emoji. A link with any
  * other scheme (javascript:, http:, data:…) keeps its text and loses the link. A marker without its pair, or with a
- * space on its inner side ("2 * 3 * 4"), is plain text. The same rules as the iOS SDK.
+ * space on its inner side ("2 * 3 * 4"), is plain text. Addresses written out in the text become links too ([linked]).
+ * The same rules as the iOS SDK.
  */
 internal object LimitedMarkdown {
     val linkSchemes = setOf("https", "tel", "mailto")
@@ -34,10 +38,84 @@ internal object LimitedMarkdown {
         return target.takeIf { scheme in linkSchemes }
     }
 
+    /**
+     * Plain text with the addresses in it made links: https:// and http:// as written, www. over https, an e-mail
+     * (mailto:) and a phone number, +994… or nine digits and more (tel:). A full stop, comma or unpaired bracket after
+     * an address stays text.
+     */
+    fun linked(text: String, bold: Boolean = false, italic: Boolean = false): List<TextRun> {
+        val runs = mutableListOf<TextRun>()
+        var index = 0
+        while (index < text.length) {
+            // The earliest; at one place a web address before an e-mail before a phone number.
+            val found = listOfNotNull(web(text, index), email(text, index), phone(text, index)).minByOrNull { it.start } ?: break
+            if (found.start > index) runs += TextRun(text.substring(index, found.start), bold, italic)
+            runs += TextRun(text.substring(found.start, found.end), bold, italic, found.target)
+            index = found.end
+        }
+        if (index < text.length) runs += TextRun(text.substring(index), bold, italic)
+        return runs
+    }
+
+    private class Address(val start: Int, val end: Int, val target: String)
+
+    private val WEB = Regex("""(?<![\p{L}\p{N}@./_-])(?:https?://|www\.)[^\s<>"]+""", RegexOption.IGNORE_CASE)
+    private val EMAIL = Regex("""(?<![\p{L}\p{N}._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\p{L}\p{N}-])""")
+
+    /**
+     * +994 50 123 45 67, (050) 123-45-67, 0501234567: spaces, hyphens and brackets only after a + or a leading 0 and a
+     * code, so a date or a sum ("2026-10-07 11:00", "1 000 000 000") stays text; otherwise nine digits in a row.
+     */
+    private val PHONE = Regex(
+        """(?<![\p{L}\p{N}+@/._-])(?:(?:\+|\((?=0[1-9])|(?=0[1-9]))\d+(?:(?:[ -]|\) ?|[ -]?\()\d+)*|\d{9,})(?![\p{L}\p{N}])""",
+    )
+
+    private fun web(text: String, from: Int): Address? {
+        var match = WEB.find(text, from)
+        while (match != null) {
+            var end = match.range.last + 1
+            while (end > match.range.first && unpaired(text, match.range.first, end)) end--
+            val found = text.substring(match.range.first, end)
+            val target = if (found.startsWith("www.", ignoreCase = true)) "https://$found" else found
+            // A host with a dot in it: "https://x" is not an address yet.
+            val host = found.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
+            if (host.trimEnd('.').contains('.')) return Address(match.range.first, end, target)
+            match = match.next()
+        }
+        return null
+    }
+
+    /** The last character of text[start, end) is punctuation after the address, not part of it. */
+    private fun unpaired(text: String, start: Int, end: Int): Boolean {
+        val last = text[end - 1]
+        if (last in ".,;:!?'*") return true
+        val open = when (last) {
+            ')' -> '('
+            ']' -> '['
+            '}' -> '{'
+            else -> return false
+        }
+        val part = text.subSequence(start, end)
+        return part.count { it == open } < part.count { it == last }
+    }
+
+    private fun email(text: String, from: Int): Address? =
+        EMAIL.find(text, from)?.let { Address(it.range.first, it.range.last + 1, "mailto:${it.value}") }
+
+    private fun phone(text: String, from: Int): Address? {
+        var match = PHONE.find(text, from)
+        while (match != null) {
+            val number = match.value.filter { it.isDigit() || it == '+' }
+            if (number.count(Char::isDigit) in 9..15) return Address(match.range.first, match.range.last + 1, "tel:$number")
+            match = match.next()
+        }
+        return null
+    }
+
     private fun parse(chars: String, bold: Boolean, italic: Boolean, runs: MutableList<TextRun>) {
         val buffer = StringBuilder()
         fun flush() {
-            if (buffer.isNotEmpty()) runs += TextRun(buffer.toString(), bold, italic)
+            if (buffer.isNotEmpty()) runs += linked(buffer.toString(), bold, italic)
             buffer.setLength(0)
         }
         var index = 0

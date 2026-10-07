@@ -113,25 +113,27 @@ internal fun FormCardView(
                     }
                 }
                 if (!card.readOnly) {
-                    val enabled = !sent
-                    val shape = RoundedCornerShape(10.dp)
-                    Box(
-                        Modifier.fillMaxWidth().fieldBox(theme.colors.primary.color.copy(alpha = if (enabled) 1f else 0.6f))
-                            .let { box ->
-                                if (!enabled) box else box.button(card.submitTitle, shape) {
-                                    val found = submit(values.toMap())
-                                    errors.clear()
-                                    errors.putAll(found)
-                                    sent = found.isEmpty()
-                                }
-                            },
-                        Alignment.Center,
-                    ) {
-                        BasicText(card.submitTitle, style = clomniText(15f, theme.colors.onPrimary, FontWeight.SemiBold))
+                    FormButton(card.submitTitle, theme, enabled = !sent) {
+                        val found = submit(values.toMap())
+                        errors.clear()
+                        errors.putAll(found)
+                        sent = found.isEmpty()
                     }
                 }
             }
         }
+    }
+}
+
+/** The full-width brand button of a form or a rating ("Göndər"), faded while it cannot be pressed. */
+@Composable
+internal fun FormButton(title: String, theme: ClomniTheme, enabled: Boolean = true, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().fieldBox(theme.colors.primary.color.copy(alpha = if (enabled) 1f else 0.6f))
+            .let { box -> if (!enabled) box else box.button(title, RoundedCornerShape(10.dp), onClick = onClick) },
+        Alignment.Center,
+    ) {
+        BasicText(title, style = clomniText(15f, theme.colors.onPrimary, FontWeight.SemiBold))
     }
 }
 
@@ -147,7 +149,7 @@ private fun mapSaver() = androidx.compose.runtime.saveable.Saver<androidx.compos
 
 /** One field by its type: text, textarea, phone, email, number, select, date. */
 @Composable
-private fun FormFieldView(
+internal fun FormFieldView(
     field: FormCard.Field,
     value: String,
     error: String?,
@@ -325,7 +327,7 @@ private fun DateChoice(
  * A field or the send button: [height] (44) drawn with radius 10 in [fill], [edge] 1.5 dp around it, while the tap
  * target reaches 48 (2 dp above and below, laid over the 12 dp gaps).
  */
-private fun Modifier.fieldBox(fill: Color, edge: Color = Color.Transparent, height: Dp = 44.dp): Modifier =
+internal fun Modifier.fieldBox(fill: Color, edge: Color = Color.Transparent, height: Dp = 44.dp): Modifier =
     bleed(vertical = 2.dp).heightIn(min = height + 4.dp).drawBehind {
         val inset = 2.dp.toPx()
         val corner = CornerRadius(10.dp.toPx())
