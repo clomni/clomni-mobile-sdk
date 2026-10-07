@@ -201,32 +201,33 @@ package struct ChatPresenter: Sendable {
             }
             entries.append(.typing(TypingLine(avatar: who.avatar, accessibilityLabel: "\(who.name) \(strings[.typing])")))
         }
-        markLastStatus(&entries, snapshot)
+        markStatuses(&entries, snapshot)
         return runs(entries)
     }
 
-    /// The status of the user's last message shows when nothing came after it: the clock while it goes, then ✓, with
-    /// its time; VoiceOver reads "Göndərilir", "Göndərildi" or "Oxundu". A failure shows on its own message wherever
-    /// it is.
-    private func markLastStatus(_ entries: inout [Entry], _ snapshot: ChatSnapshot) {
-        guard let index = entries.lastIndex(where: { if case .draft = $0 { return true }; return false }),
-              case .draft(var last) = entries[index], last.side == .outgoing, last.status == nil else { return }
-        let mark: Bubble.Status.Mark
-        if snapshot.pending.contains(where: { $0.id == last.id }) {
-            mark = .sending
-        } else {
-            let seq = snapshot.messages.first { key($0) == last.id }?.seq ?? 0
-            mark = snapshot.readUpTo.map { $0 >= seq } == true ? .read : .sent
+    /// Every message of the user's has its mark after its time, in the bubble (G7): the clock while it goes, then ✓,
+    /// two once read; VoiceOver reads "Göndərilir", "Göndərildi" or "Oxundu". A failure is in words instead.
+    private func markStatuses(_ entries: inout [Entry], _ snapshot: ChatSnapshot) {
+        let pending = Set(snapshot.pending.map(\.id))
+        let seqs = Dictionary(snapshot.messages.map { (key($0), $0.seq) }, uniquingKeysWith: { first, _ in first })
+        for index in entries.indices {
+            guard case .draft(var draft) = entries[index], draft.side == .outgoing, draft.status == nil else { continue }
+            let mark: Bubble.Status.Mark
+            if pending.contains(draft.id) {
+                mark = .sending
+            } else {
+                let seq = seqs[draft.id] ?? 0
+                mark = snapshot.readUpTo.map { $0 >= seq } == true ? .read : .sent
+            }
+            let text: String
+            switch mark {
+            case .sending: text = strings[.sending]
+            case .sent: text = strings[.sent]
+            case .read: text = strings[.read]
+            }
+            draft.status = Bubble.Status(text: text, isFailure: false, retryId: nil, mark: mark)
+            entries[index] = .draft(draft)
         }
-        let text: String
-        switch mark {
-        case .sending: text = strings[.sending]
-        case .sent: text = strings[.sent]
-        case .read: text = strings[.read]
-        }
-        last.status = Bubble.Status(text: text, isFailure: false, retryId: nil, mark: mark,
-                                    time: time.stamp(last.date, now: now))
-        entries[index] = .draft(last)
     }
 
     /// Bubbles of one sender within a minute of each other, with nothing between them, form a run.
@@ -255,13 +256,12 @@ package struct ChatPresenter: Sendable {
                 let position: Bubble.Position = run.count == 1 ? .single
                     : offset == 0 ? .first : offset == run.count - 1 ? .last : .middle
                 let closesRun = offset == run.count - 1 && draft.side == .incoming
-                // Under the last of a run only when ("indi", then "12:42"); who is over its first.
-                let meta = draft.author.map { _ in time.stamp(draft.date, now: now) }
+                // Who is over its first; when is in every bubble.
                 let opensRun = (offset == 0) && draft.side == .incoming
                 let status = draft.status.flatMap { $0.isFailure ? nil : $0.text }
                 items.append(.bubble(Bubble(id: draft.id, side: draft.side, body: draft.body, position: position,
                                             avatar: closesRun ? draft.avatar : nil,
-                                            nameLine: opensRun ? draft.author : nil, meta: closesRun ? meta : nil,
+                                            nameLine: opensRun ? draft.author : nil, time: time.clock(draft.date),
                                             status: draft.status,
                                             accessibilityLabel: draft.accessibilityLabel + (status.map { ". \($0)" } ?? ""),
                                             accessibilityHint: hint(draft.body), quote: draft.quote,

@@ -187,6 +187,8 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(ClomniTheme.Radius.homeCard, 16)
         XCTAssertEqual([ClomniTheme.Size.closeCircle, ClomniTheme.Size.closeGlyph, ClomniTheme.Size.closeStroke,
                         ClomniTheme.Size.barEdge, ClomniTheme.Size.barTop, ClomniTheme.Size.barRow], [40, 20, 2, 16, 16, 48], "one close button")
+        XCTAssertEqual([ClomniTheme.Size.homeEdge, ClomniTheme.Size.homeBarTop], [20, 20],
+                       "Home's logo row and greeting: 20 from the side and under the safe area (G1, G5)")
         XCTAssertEqual(ClomniTheme.Shadow.card, ClomniTheme.Shadow(opacity: 0.06, radius: 8, y: 2), "one, very light")
         XCTAssertEqual([ClomniTheme.Radius.message, ClomniTheme.Radius.messageJoined], [20, 6])
     }

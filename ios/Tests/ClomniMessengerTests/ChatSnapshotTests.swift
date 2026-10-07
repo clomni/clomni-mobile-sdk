@@ -108,7 +108,7 @@ final class ChatSnapshotTests: XCTestCase {
     }
 
     /// A choice's way out (operator, 2026-10-06): folded, its capsules take no height, so the user's message comes in
-    /// under nothing and over nothing; under it its time and ✓ (no words), then the bot's typing row, one avatar.
+    /// under nothing and over nothing; in it its time and ✓ (no words), then the bot's typing row, one avatar.
     func testAChoiceNeverOverlaps() throws {
         func message(_ file: String, _ changes: [String: JSONValue] = [:]) throws -> Message {
             guard case .object(var fields)? = ProtocolJSON.decode(try Data(contentsOf: fixtures.appendingPathComponent(file)))
@@ -151,6 +151,44 @@ final class ChatSnapshotTests: XCTestCase {
         for (name, moment) in moments {
             let image = Snapshot.render(SnapshotScene(screen: moment, theme: theme, size: .large), width: 390, dark: false)
             try Snapshot.assert(image, named: name)
+        }
+    }
+
+    /// G7 (operator, 2026-10-07): the time, and the user's mark after it, in the bubble's bottom-trailing corner. A
+    /// short message keeps them on its one line; when the last line is full they take a line of their own.
+    func testTheTimeIsInTheBubble() throws {
+        func message(_ file: String, _ text: String, seq: Int) throws -> Message {
+            guard case .object(var fields)? = ProtocolJSON.decode(try Data(contentsOf: fixtures.appendingPathComponent(file)))
+            else { throw XCTSkip(file) }
+            fields["id"] = .string("msg_t\(seq)")
+            fields["client_id"] = .string("cm_t\(seq)")
+            fields["seq"] = .number(Double(seq))
+            fields["created_at"] = "2026-10-01T11:30:00Z"
+            fields["content"] = ["text": .string(text)]
+            return try XCTUnwrap(ProtocolJSON.parseMessage(.object(fields)))
+        }
+        var snapshot = ChatSnapshot(messages: [
+            try message("01-text-bot.json", "Salam", seq: 1),
+            try message("03-text-user.json", "Zəng et", seq: 2),
+            try message("03-text-user.json", String(repeating: "Sifarişim hələ gəlməyib, ", count: 3) + "zəng edin", seq: 3),
+        ])
+        snapshot.load = .loaded
+        snapshot.readUpTo = 2
+        let screen = ChatPresenter(strings: ClomniStrings(language: "az"), timeZone: TimeZone(identifier: "UTC")!,
+                                   now: now).screen(snapshot)
+        let bubbles = screen.items.compactMap { item -> Bubble? in
+            if case .bubble(let bubble) = item { return bubble }
+            return nil
+        }
+        XCTAssertEqual(bubbles.map(\.time), ["11:30", "11:30", "11:30"])
+        let theme = ClomniTheme.make(brand: nil, dark: false)
+        let short = Snapshot.render(BubbleBody(bubble: bubbles[1], theme: theme, shape: BubbleShape(topLeft: 20, topRight: 20,
+                                    bottomLeft: 20, bottomRight: 6), actions: ChatActions()), width: 300, dark: false)
+        XCTAssertLessThan(short.size.height, 48, "\"Zəng et 11:30 ✓✓\" is one line")
+        for variant in Variant.all where variant.size == .large {
+            let image = Snapshot.render(SnapshotScene(screen: screen, theme: ClomniTheme.make(brand: nil, dark: variant.dark),
+                                                      size: variant.size), width: 390, dark: variant.dark)
+            try Snapshot.assert(image, named: "chat-time-in-bubble" + variant.suffix)
         }
     }
 

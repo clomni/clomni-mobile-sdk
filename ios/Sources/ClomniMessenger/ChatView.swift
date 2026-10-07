@@ -70,6 +70,10 @@ struct ChatView: View {
     @State private var loadingOlder = false
     /// The bubble a tapped quote led to, lit for a second.
     @State private var lit: String?
+    /// The form field with the focus (`FormCardView.fieldKey`), kept over the keyboard.
+    @State private var focusedField: String?
+    /// The transcript's height: when the keyboard takes some of it, the list goes up with the keyboard.
+    @State private var viewport: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
@@ -94,6 +98,9 @@ struct ChatView: View {
                 withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(target, anchor: UnitPoint(x: 0.5, y: 0.33)) }
                 lit = target
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { if lit == target { lit = nil } }
+            },
+            focus: { key, focused in
+                if focused { focusedField = key } else if focusedField == key { focusedField = nil }
             },
             highlighted: lit, replyLabel: model.screen.replyLabel, copyLabel: model.screen.copyLabel)
     }
@@ -207,6 +214,17 @@ struct ChatView: View {
                 }
                 .coordinateSpace(name: ScrollTopOffset.space)
                 .onPreferenceChange(ScrollTopOffset.self) { top in scrolled = top < -1 }
+                // The keyboard came up (or the composer grew): the last message, or the form field being filled,
+                // stays in sight over it, moving with it (operator, 2026-10-07, G4).
+                .background(GeometryReader { box in
+                    Color.clear
+                        .onAppear { viewport = box.size.height }
+                        .onChange(of: box.size.height) { height in
+                            if height < viewport - 1 { keepInSight(proxy) }
+                            viewport = height
+                        }
+                })
+                .onChange(of: focusedField) { key in if key != nil { keepInSight(proxy) } }
                 .opacity(atBottom ? 1 : 0)
                 .onChange(of: model.screen.items.last?.id) { last in
                     guard let last else { return }
@@ -215,6 +233,12 @@ struct ChatView: View {
                 }
             }
         }
+    }
+
+    /// The focused form field, else the last item, at the bottom of what the keyboard leaves of the list.
+    private func keepInSight(_ proxy: ScrollViewProxy) {
+        guard let target = focusedField ?? model.screen.items.last?.id else { return }
+        withAnimation(reduceMotion ? nil : Motion.keyboard) { proxy.scrollTo(target, anchor: .bottom) }
     }
 
     /// The attachment sheet at its rows' height; iOS 15 shows it at its full height.

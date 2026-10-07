@@ -11,6 +11,8 @@ package protocol MessengerDataSource: Sendable {
     func conversations() async -> [Conversation]
     func refreshConversations() async throws
     var unreadTotal: Int { get async }
+    /// The logged-in user's name, for the greeting.
+    var userName: String? { get async }
     func draftConversation(openedFrom: String?) async -> String
     var news: [NewsItem] { get async }
     func refreshNews() async -> [NewsItem]
@@ -33,9 +35,12 @@ package final class HomeController {
     /// For the theme: the brand's colours and appearance.
     package var config: MessengerConfig? { snapshot.config }
 
+    /// The greeting's name when the app gives one here; else the logged-in user's, from the engine.
     package var userName: String? {
         didSet { render() }
     }
+    /// The logged-in user's name as the engine last said (G6): read with everything else, so a login redraws it.
+    private var loggedInName: String?
 
     /// The offline capsule (CM-077); set from the app's reachability.
     package var isOffline = false {
@@ -142,10 +147,11 @@ package final class HomeController {
         snapshot.conversations = await source.conversations()
         snapshot.unreadTotal = await source.unreadTotal
         snapshot.news = await source.news
+        loggedInName = await source.userName
     }
 
     private func render() {
-        snapshot.userName = userName
+        snapshot.userName = userName ?? loggedInName
         snapshot.isOffline = isOffline
         let strings = ClomniStrings(language: snapshot.config.speaks(language),
                                     overrides: snapshot.config?.strings ?? [:])

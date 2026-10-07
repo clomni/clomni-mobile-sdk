@@ -27,11 +27,13 @@ struct QuickRepliesView: View {
     var body: some View {
         // Right-aligned over the composer, 8 pt apart; the transcript keeps them 16 pt from the screen's edges.
         layout
+            // All of them at once, 150 ms after their message: one fade over 180 ms (operator, 2026-10-07, G2).
+            .entrance(rise: 0, delay: 0.15, duration: 0.18)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.top, CGFloat(ClomniTheme.Space.l))
             .opacity(gone ? 0 : 1)
-            // Folded, they stay folded should they still be there. Cut to the shrinking height only then: their
-            // 6 pt rise as they come in reaches past it.
+            // Folded, they stay folded should they still be there. Cut to the shrinking height only then: a pill's
+            // press reaches past it.
             .frame(height: gone && !reduceMotion ? 0 : nil, alignment: .top)
             .mask(alignment: .top) { Rectangle().padding(.bottom, gone ? 0 : -CGFloat(ClomniTheme.Space.xl)) }
             .allowsHitTesting(!gone)
@@ -52,20 +54,17 @@ struct QuickRepliesView: View {
         }
     }
 
-    /// M5: 150 ms after their message, 40 ms apart, each rising 6 and fading in.
     @ViewBuilder
     private var pills: some View {
-        ForEach(Array(block.buttons.enumerated()), id: \.element.id) { index, button in
+        ForEach(block.buttons) { button in
             PillButton(title: button.title, accessibilityLabel: button.accessibilityLabel, isBack: false, theme: theme) {
                 choose(button.id)
             }
-            .entrance(rise: 6, delay: 0.15 + 0.04 * Double(index))
         }
         if let back = block.back {
             PillButton(title: back.title, accessibilityLabel: back.accessibilityLabel, isBack: true, theme: theme) {
                 choose(back.id)
             }
-            .entrance(rise: 6, delay: 0.15 + 0.04 * Double(block.buttons.count))
         }
     }
 

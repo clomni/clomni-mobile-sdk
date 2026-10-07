@@ -122,6 +122,11 @@ package actor ClomniEngine {
         get async { await api.session != nil }
     }
 
+    /// The logged-in user's name, for Home's greeting; nil for an anonymous visitor or a user without one.
+    package var userName: String? {
+        get async { await api.identity?.name }
+    }
+
     /// An anonymous visitor; the same one again on this device until logout.
     package func loginUnidentifiedUser() async throws {
         try await login(.anonymous)
@@ -135,6 +140,7 @@ package actor ClomniEngine {
 
     private func login(_ identity: SessionIdentity) async throws {
         let previous = await api.session
+        let previousName = await userName
         let session: MobileSession
         do {
             session = try await api.session(for: identity)
@@ -144,7 +150,11 @@ package actor ClomniEngine {
         }
         isAppDisabled = false
         Task { await self.registerPush() }
-        guard session.sessionToken != previous?.sessionToken else { return deliver() }
+        guard session.sessionToken != previous?.sessionToken else {
+            // The same session under a new name: Home greets them by it at once (G6).
+            if await userName != previousName { notify(.session) }
+            return deliver()
+        }
         // Another identified user's conversations are not this one's.
         if let previous, !previous.anonymous, previous.userId != session.userId {
             clearLocalData()
@@ -720,7 +730,10 @@ package actor ClomniEngine {
 
     /// Only the fields given change; `custom_attributes` are merged on the server.
     package func updateUser(_ fields: [String: JSONValue]) async throws -> MobileUser {
-        try await api.updateUser(fields)
+        let before = await userName
+        let user = try await api.updateUser(fields)
+        if await userName != before { notify(.session) }
+        return user
     }
 
     /// `Clomni.setDeviceToken`: the APNs token as hex, and whether the app is signed for the APNs sandbox. It is kept

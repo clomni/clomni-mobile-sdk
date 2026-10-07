@@ -98,6 +98,10 @@ package struct ClomniTheme: Sendable, Equatable {
         package static let barEdge: Double = 16
         package static let barTop: Double = 16
         package static let barRow: Double = 48
+        /// Home's logo row and greeting (operator, 2026-10-07, G1 and G5): 20 from the side, the row 20 under the
+        /// safe area; ✕ keeps the bar's 16 from the side and the row's centre line.
+        package static let homeEdge: Double = 20
+        package static let homeBarTop: Double = 20
         /// Under the row of the list's, a conversation's and a news item's bar, so a two-line middle never touches
         /// its end (72 in all).
         package static let barBottom: Double = 8

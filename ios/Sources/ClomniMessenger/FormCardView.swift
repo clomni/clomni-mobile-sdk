@@ -18,7 +18,11 @@ struct FormCardView: View {
     let theme: ClomniTheme
     let bubble: BubbleShape
     let bubbleFill: Color
+    /// The time, in the corner of the bot's text over the card (G7).
+    let stamp: BubbleStamp
     let submit: ([String: String]) async -> [String: String]
+    /// A field's key (`fieldKey`) and whether it has the focus.
+    var focus: (String, Bool) -> Void = { _, _ in }
     @State private var values: [String: String] = [:]
     @State private var errors: [String: String] = [:]
     @State private var sending = false
@@ -26,8 +30,7 @@ struct FormCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
             if let text = card.text {
-                Text(attributedText(text))
-                    .clomniFont(ClomniTheme.FontSize.text)
+                StampedText(text: attributedText(text), size: ClomniTheme.FontSize.text, stamp: stamp, theme: theme)
                     .lineSpacing(3)
                     .foregroundStyle(theme.colors.textPrimary.color)
                     .fixedSize(horizontal: false, vertical: true)
@@ -56,8 +59,13 @@ struct FormCardView: View {
                     }
                 } else {
                     ForEach(card.fields) { field in
+                        let key = Self.fieldKey(card.messageId, field.id)
                         FormFieldView(field: field, value: binding(field.id), error: errors[field.id],
-                                      disabled: card.readOnly, theme: theme)
+                                      disabled: card.readOnly, theme: theme) { focus(key, $0) }
+                            // What the list scrolls to over the keyboard: the field and 12 under it (G4).
+                            .padding(.bottom, 12)
+                            .id(key)
+                            .padding(.bottom, -12)
                     }
                     if !card.readOnly {
                         Button(action: send) {
@@ -86,6 +94,11 @@ struct FormCardView: View {
         }
     }
 
+    /// A field's place in the transcript, for `ScrollViewProxy.scrollTo`.
+    static func fieldKey(_ messageId: String, _ fieldId: String) -> String {
+        "\(messageId)#\(fieldId)"
+    }
+
     private func binding(_ key: String) -> Binding<String> {
         Binding(get: { values[key] ?? "" }, set: { value in
             values[key] = value
@@ -112,6 +125,7 @@ struct FormFieldView: View {
     let error: String?
     let disabled: Bool
     let theme: ClomniTheme
+    var focusChanged: (Bool) -> Void = { _ in }
 
     private static let dates: DateFormatter = {
         let formatter = DateFormatter()
@@ -154,6 +168,7 @@ struct FormFieldView: View {
             }
         }
         .disabled(disabled)
+        .onChange(of: focused) { focusChanged($0) }
     }
 
     @ViewBuilder

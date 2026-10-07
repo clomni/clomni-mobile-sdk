@@ -13,6 +13,8 @@ enum Motion {
     static let spring = Animation.spring(response: 0.35, dampingFraction: 0.86)
     /// The offline capsule's 200 ms spring (CM-077): damping 0.86, stiffness ≈ 1000.
     static let capsule = Animation.spring(response: 0.2, dampingFraction: 0.86)
+    /// The keyboard's own 250 ms, for what moves with it (G4).
+    static let keyboard = Animation.easeOut(duration: 0.25)
     /// A press and its release (M6): damping 0.6, stiffness ≈ 800.
     static let press = Animation.spring(response: 0.22, dampingFraction: 0.6)
 
@@ -50,16 +52,17 @@ extension View {
         return scaleEffect(pressed && !still ? scale : 1).animation(still ? nil : Motion.press, value: pressed)
     }
 
-    /// Comes in once, `delay` seconds after it first appears: `rise` pt up and fading in (M5, M8). Not when `enabled`
-    /// is false; with Reduce Motion it only fades.
-    func entrance(rise: CGFloat, delay: Double = 0, enabled: Bool = true) -> some View {
-        modifier(Entrance(rise: rise, delay: delay, enabled: enabled))
+    /// Comes in once, `delay` seconds after it first appears: `rise` pt up and fading in over `duration` (M5, M8).
+    /// Not when `enabled` is false; with Reduce Motion it only fades.
+    func entrance(rise: CGFloat, delay: Double = 0, duration: Double = 0.2, enabled: Bool = true) -> some View {
+        modifier(Entrance(rise: rise, delay: delay, duration: duration, enabled: enabled))
     }
 }
 
 private struct Entrance: ViewModifier {
     let rise: CGFloat
     let delay: Double
+    let duration: Double
     let enabled: Bool
     @State private var shown = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -72,7 +75,7 @@ private struct Entrance: ViewModifier {
             .offset(y: hidden && !reduceMotion ? rise : 0)
             .onAppear {
                 guard hidden else { return }
-                withAnimation(Motion.decelerate(0.2).delay(delay)) { shown = true }
+                withAnimation(Motion.decelerate(duration).delay(delay)) { shown = true }
             }
     }
 }

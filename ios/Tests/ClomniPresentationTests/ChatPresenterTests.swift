@@ -60,10 +60,9 @@ final class ChatPresenterTests: XCTestCase {
         let list = bubbles(screen([first, second, later]))
         XCTAssertEqual(list.map(\.position), [.first, .last, .single], "70 s later starts a new run")
         XCTAssertNil(list[0].avatar)
-        XCTAssertNil(list[0].meta)
-        // The bot speaks as the brand over its run, with no "· Bot" (DESIGN-PASS-3 B2); when, under it.
+        // The bot speaks as the brand over its run, with no "· Bot" (DESIGN-PASS-3 B2); when, in every bubble (G7).
         XCTAssertEqual(list.map(\.nameLine), ["Apar", nil, "Apar"])
-        XCTAssertEqual(list[1].meta, "indi", "within a minute")
+        XCTAssertEqual(list.map(\.time), ["10:30", "10:31", "10:32"], "the clock, not \"indi\"")
         XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true),
                        "the bot is the company: its logo")
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
@@ -86,7 +85,7 @@ final class ChatPresenterTests: XCTestCase {
         let reply = bubbles(screen([Fixture.message("02-text-operator-markdown.json",
                                                     ["created_at": "2026-10-01T10:30:00Z"])])).first
         XCTAssertEqual(reply?.nameLine, "Leyla")
-        XCTAssertEqual(reply?.meta, "10:30", "a minute ago or more: the clock")
+        XCTAssertEqual(reply?.time, "10:30")
         XCTAssertEqual(reply?.avatar?.initial, "L")
         guard case .text(let runs)? = reply?.body else { return XCTFail() }
         XCTAssertEqual(runs.first, TextRun("Gedişinizi yoxladıq.", bold: true))
@@ -105,11 +104,10 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(bubbles(screen([mine]) { $0.readUpTo = 2 }).last?.status?.text, "Göndərildi")
         // A bot message after it: no status under the user's.
         let answer = Fixture.message("01-text-bot.json", ["seq": 4, "created_at": "2026-10-01T10:36:00Z"])
-        XCTAssertNil(bubbles(screen([mine, answer])).first?.status)
-        XCTAssertNil(bubbles(screen([mine, answer])).last?.status, "nor under the bot's")
+        XCTAssertEqual(bubbles(screen([mine, answer])).first?.status?.mark, .sent, "a bot message after it: still its mark")
+        XCTAssertNil(bubbles(screen([mine, answer])).last?.status, "none on the bot's")
         XCTAssertEqual(bubbles(screen([mine])).last?.side, .outgoing)
         XCTAssertNil(bubbles(screen([mine])).last?.avatar)
-        XCTAssertNil(bubbles(screen([mine])).last?.meta)
     }
 
     /// The user's message is one item from the moment it is written: the server's copy changes only its status, so
@@ -133,7 +131,7 @@ final class ChatPresenterTests: XCTestCase {
         let sending = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Hələ yoldadır")),
                                      preview: "Hələ yoldadır", createdAt: now)
         let list = bubbles(screen([mine]) { $0.pending = [sending] })
-        XCTAssertNil(list[0].status, "only the last message has a status")
+        XCTAssertEqual(list[0].status?.mark, .sent, "every message of the user's has its mark (G7)")
         XCTAssertEqual(text(list[1]), "Hələ yoldadır")
         XCTAssertEqual(list[1].status?.text, "Göndərilir")
         XCTAssertEqual(list.map(\.position), [.first, .last], "the user's messages a minute apart form a run")
@@ -501,10 +499,11 @@ final class ChatPresenterTests: XCTestCase {
         let sending = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Salam")),
                                      preview: "Salam", createdAt: now)
         XCTAssertEqual(bubbles(screen([]) { $0.pending = [sending] }).first?.status,
-                       Bubble.Status(text: "Göndərilir", isFailure: false, retryId: nil, mark: .sending, time: "indi"))
+                       Bubble.Status(text: "Göndərilir", isFailure: false, retryId: nil, mark: .sending))
         let mine = Fixture.message("03-text-user.json", ["created_at": "2026-10-01T10:30:00Z"])
         XCTAssertEqual(bubbles(screen([mine])).first?.status,
-                       Bubble.Status(text: "Göndərildi", isFailure: false, retryId: nil, mark: .sent, time: "10:30"))
+                       Bubble.Status(text: "Göndərildi", isFailure: false, retryId: nil, mark: .sent))
+        XCTAssertEqual(bubbles(screen([mine])).first?.time, "10:30")
         XCTAssertEqual(bubbles(screen([mine]) { $0.readUpTo = 3 }).first?.status?.mark, .read)
         XCTAssertTrue(bubbles(screen([mine]) { $0.readUpTo = 3 }).first?.accessibilityLabel.hasSuffix(". Oxundu") == true,
                       "VoiceOver still reads it")
@@ -513,13 +512,31 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertNil(bubbles(screen([]) { $0.pending = [failed] }).first?.status?.mark, "a failure is in words")
     }
 
+    /// The time and the mark are in each bubble (operator, 2026-10-07, G7): the user's run has a mark on every
+    /// message, read up to where the operator read; no line of its own under a run.
+    func testTheTimeAndMarkAreInEveryBubble() {
+        let first = Fixture.message("03-text-user.json", ["id": "msg_u1", "client_id": "cm_u1", "seq": 3, "created_at": "2026-10-01T10:30:00Z"])
+        let second = Fixture.message("03-text-user.json", ["id": "msg_u2", "client_id": "cm_u2", "seq": 4, "created_at": "2026-10-01T10:30:40Z",
+                                                           "content": ["text": "Bir də bu"]])
+        let sending = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("Üçüncü")),
+                                     preview: "Üçüncü", createdAt: now.addingTimeInterval(-60))
+        let list = bubbles(screen([first, second]) {
+            $0.readUpTo = 3
+            $0.pending = [sending]
+        })
+        XCTAssertEqual(list.map(\.position), [.first, .middle, .last])
+        XCTAssertEqual(list.compactMap(\.status?.mark), [.read, .sent, .sending])
+        XCTAssertEqual(list.map(\.time), ["10:30", "10:30", "10:31"])
+        XCTAssertTrue(list[0].accessibilityLabel.hasSuffix(". Oxundu"), list[0].accessibilityLabel)
+    }
+
     /// The typing row: one avatar, at the end; none while the flow waits for a choice (operator, 2026-10-06).
     func testTypingRowTakesTheAvatarAndWaitsForNoChoice() {
         let bot = Fixture.message("01-text-bot.json", ["created_at": "2026-10-01T10:31:30Z"])
         let botTyping = screen([bot]) { $0.typing = Sender(type: .bot, id: "bot_other") }
         guard case .typing? = botTyping.items.last else { return XCTFail("typing is a row of its own at the end") }
         XCTAssertNil(bubbles(botTyping).first?.avatar, "the bot's run gives its avatar to the typing row")
-        XCTAssertEqual(bubbles(botTyping).first?.meta, "indi")
+        XCTAssertEqual(bubbles(botTyping).first?.time, "10:31")
         let leylaTyping = screen([bot]) { $0.typing = Sender(type: .operator, name: "Leyla") }
         XCTAssertNotNil(bubbles(leylaTyping).first?.avatar, "someone else typing: the bot keeps its own")
 

@@ -183,6 +183,30 @@ final class EngineTests: EngineTestCase {
         XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 2)
     }
 
+    /// G6: the greeting's name is the logged-in user's. A new name on the same session says so with `.session`; a
+    /// login without one keeps it; logout forgets it.
+    func testTheLoggedInUsersNameIsKnown() async throws {
+        let phone = await device()
+        var name = await phone.engine.userName
+        XCTAssertNil(name)
+        try await phone.engine.loginUser(UserIdentity(userId: "5", email: "aysel@example.com", name: " Aysel "),
+                                          userHash: nil)
+        name = await phone.engine.userName
+        XCTAssertEqual(name, "Aysel")
+        let sessions = phone.changes.all.filter { $0 == .session }.count
+        try await phone.engine.loginUser(UserIdentity(userId: "5", name: "Aysel Məmmədova"), userHash: nil)
+        name = await phone.engine.userName
+        XCTAssertEqual(name, "Aysel Məmmədova")
+        XCTAssertEqual(phone.changes.all.filter { $0 == .session }.count, sessions + 1, "Home redraws the greeting")
+        try await phone.engine.loginUser(UserIdentity(userId: "5"), userHash: nil)
+        name = await phone.engine.userName
+        XCTAssertEqual(name, "Aysel Məmmədova", "a login without a name keeps the one known")
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 1)
+        await phone.engine.logout()
+        name = await phone.engine.userName
+        XCTAssertNil(name)
+    }
+
     func testAnotherPersonGetsANewSession() async throws {
         let phone = await device()
         try await phone.engine.loginUser(UserIdentity(userId: "1"), userHash: "hash_1")

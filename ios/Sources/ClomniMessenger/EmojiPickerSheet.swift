@@ -7,7 +7,7 @@ import ClomniPresentation
 
 /// iOS has no emoji picker of its own to show (DESIGN-PASS-3 A6): a sheet with the recently used ones first, then
 /// eight categories of the common emoji, a tab per category. The list is small and fixed (500), so the SDK stays
-/// small; the keyboard's own emoji are always there for the rest.
+/// small; the keyboard's own emoji are always there for the rest. A tap picks one; whoever shows the sheet closes it.
 struct EmojiPickerSheet: View {
     let title: String
     let theme: ClomniTheme
@@ -128,6 +128,18 @@ enum TextInsertion {
         return input.offset(from: input.beginningOfDocument, to: range.start)
         #else
         return nil
+        #endif
+    }
+
+    /// Puts the first responder's cursor at a UTF-16 offset, if it is a text input and the offset is in it.
+    @MainActor
+    static func placeCursor(atUTF16 offset: Int) {
+        #if canImport(ObjectiveC)
+        FirstResponder.current = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.clomniFindFirstResponder(_:)), to: nil, from: nil, for: nil)
+        guard let input = FirstResponder.current as? UITextInput,
+              let place = input.position(from: input.beginningOfDocument, offset: offset) else { return }
+        input.selectedTextRange = input.textRange(from: place, to: place)
         #endif
     }
 

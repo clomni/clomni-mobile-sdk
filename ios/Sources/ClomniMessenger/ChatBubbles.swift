@@ -32,6 +32,8 @@ struct ChatActions {
     var reply: (_ messageId: String) -> Void = { _ in }
     /// A tap on a quote: scroll to the quoted message.
     var jump: (_ messageId: String) -> Void = { _ in }
+    /// A form field took or lost the focus: the list keeps it over the keyboard (G4).
+    var focus: (_ key: String, _ focused: Bool) -> Void = { _, _ in }
     /// The bubble a quote has just led to, lit for a second.
     var highlighted: String?
     var replyLabel = ""
@@ -181,16 +183,9 @@ struct BubbleRow: View {
                 if let id = bubble.messageId { actions.reply(id) }
             })
             .background(alignment: .leading) { if incoming { ReplyArrow(pulled: pulled, theme: theme) } }
-            if let meta = bubble.meta {
-                Text(meta)
-                    .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption2)
-                    .foregroundStyle(theme.colors.textSecondary.color)
-                    // Under the bubble, past the avatar's slot.
-                    .padding(.leading, CGFloat(ClomniTheme.Size.avatar + ClomniTheme.Space.s))
-                    .accessibilityHidden(true)
-            }
-            if let status = bubble.status {
-                StatusLine(status: status, theme: theme, retry: actions.retry)
+            // The time and the mark are in the bubble (G7); only a failure is under it, in words.
+            if let status = bubble.status, let retryId = status.retryId {
+                FailureLine(text: status.text, retryId: retryId, theme: theme, retry: actions.retry)
             }
         }
         .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
@@ -223,6 +218,7 @@ struct BubbleBody: View {
     private var incoming: Bool { bubble.side == .incoming }
     private var fill: Color { incoming ? theme.colors.surface.color : theme.colors.primary.color }
     private var ink: Color { incoming ? theme.colors.textPrimary.color : theme.colors.onPrimary.color }
+    private var stamp: BubbleStamp { BubbleStamp(bubble) }
 
     var body: some View {
         switch bubble.body {
@@ -232,8 +228,7 @@ struct BubbleBody: View {
                 if let quote = bubble.quote {
                     QuoteBlock(quote: quote, ink: ink, outgoing: !incoming, jump: actions.jump)
                 }
-                Text(attributedText(runs))
-                    .clomniFont(ClomniTheme.FontSize.message)
+                StampedText(text: attributedText(runs), size: ClomniTheme.FontSize.message, stamp: stamp, theme: theme)
                     .lineSpacing(3)
                     .foregroundStyle(ink)
                     .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
@@ -247,7 +242,7 @@ struct BubbleBody: View {
             .fixedSize(horizontal: false, vertical: true)
         case .image(let image):
             // Brief 7.4: an image is rounded 12 all round, not cut to the bubble's shape.
-            quoted(ImageBubble(image: image, theme: theme, fill: fill, ink: ink, open: actions.openImage)
+            quoted(ImageBubble(image: image, theme: theme, fill: fill, ink: ink, stamp: stamp, open: actions.openImage)
                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.card), style: .continuous))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(bubble.accessibilityLabel))
@@ -258,7 +253,7 @@ struct BubbleBody: View {
             quoted(Button {
                 if let url = file.url { openURL(url) }
             } label: {
-                FileCard(file: file, theme: theme, ink: ink)
+                FileCard(file: file, theme: theme, ink: ink, stamp: stamp)
                     .background(shape.fill(bubble.quote == nil ? fill : .clear))
             }
             .buttonStyle(PlainButtonStyle())
@@ -266,7 +261,8 @@ struct BubbleBody: View {
             .accessibilityHint(Text(bubble.accessibilityHint ?? "")))
         case .form(let card):
             FormCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill,
-                         submit: { values in await actions.submit(card.messageId, values) })
+                         stamp: stamp, submit: { values in await actions.submit(card.messageId, values) },
+                         focus: actions.focus)
         }
     }
 }
@@ -325,6 +321,7 @@ struct ImageBubble: View {
     let theme: ClomniTheme
     let fill: Color
     let ink: Color
+    let stamp: BubbleStamp
     let open: (URL) -> Void
     @Environment(\.clomniLoadsRemoteImages) private var loadsImages
     @Environment(\.clomniLoadingLabel) private var loadingLabel
@@ -337,9 +334,18 @@ struct ImageBubble: View {
                 picture
             }
             .buttonStyle(PlainButtonStyle())
+            // Without a caption the time is on the picture, white on a dark capsule.
+            .overlay(alignment: .bottomTrailing) {
+                if image.caption == nil {
+                    StampView(stamp: stamp, color: .white)
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 6)
+                        .background(Capsule().fill(Color.black.opacity(0.4)))
+                        .padding(6)
+                }
+            }
             if let caption = image.caption {
-                Text(attributedText(caption))
-                    .clomniFont(ClomniTheme.FontSize.text)
+                StampedText(text: attributedText(caption), size: ClomniTheme.FontSize.text, stamp: stamp, theme: theme)
                     .foregroundStyle(ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, CGFloat(ClomniTheme.Space.s))
@@ -393,6 +399,7 @@ struct FileCard: View {
     let file: Bubble.FileBody
     let theme: ClomniTheme
     let ink: Color
+    let stamp: BubbleStamp
 
     var body: some View {
         HStack(spacing: CGFloat(ClomniTheme.Space.m)) {
@@ -404,9 +411,13 @@ struct FileCard: View {
                     .clomniFont(ClomniTheme.FontSize.text, .medium)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text(file.size)
-                    .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption)
-                    .opacity(0.7)
+                HStack(alignment: .lastTextBaseline, spacing: CGFloat(ClomniTheme.Space.s)) {
+                    Text(file.size)
+                        .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption)
+                        .opacity(0.7)
+                    Spacer(minLength: 0)
+                    StampView(stamp: stamp, color: stamp.color(theme))
+                }
             }
         }
         .foregroundStyle(ink)
@@ -416,56 +427,112 @@ struct FileCard: View {
     }
 }
 
-/// Under the user's last message, at the end: its time and a small clock, then ✓ (in the brand colour once read); no
-/// words on screen, VoiceOver reads "Göndərildi" with the bubble. A failure in red words, tapping it sends again.
-struct StatusLine: View {
-    let status: Bubble.Status
+/// A failure under the user's message, in red words; tapping it sends again.
+struct FailureLine: View {
+    let text: String
+    let retryId: String
     let theme: ClomniTheme
     let retry: (String) -> Void
 
     var body: some View {
-        if let mark = status.mark {
-            HStack(spacing: CGFloat(ClomniTheme.Space.xxs)) {
-                if let time = status.time {
-                    Text(time)
-                        .clomniFont(ClomniTheme.FontSize.label, relativeTo: .caption2)
-                        .foregroundStyle(theme.colors.textSecondary.color)
-                }
-                // The clock becomes ✓ in place: only the icon cross-fades, nothing moves (M3, 150 ms).
-                ZStack { icon(mark).id(mark).transition(.opacity) }
-                    .frame(width: 14, height: 14)
-                    .animation(.easeOut(duration: 0.15), value: mark)
-            }
-            .accessibilityHidden(true)
-        } else if let retryId = status.retryId {
-            Button {
-                retry(retryId)
-            } label: {
-                label
-                    .padding(.vertical, 12)
-                    .contentShape(Rectangle())
-                    .padding(.vertical, -12)
-            }
-            .buttonStyle(PlainButtonStyle())
-        } else {
-            // M3: a change of status only cross-fades, 150 ms.
-            ZStack { label.id(status.text).transition(.opacity) }
-                .animation(.easeOut(duration: 0.15), value: status.text)
+        Button {
+            retry(retryId)
+        } label: {
+            Text(text)
+                .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
+                .foregroundStyle(theme.colors.unread.color)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+                .padding(.vertical, -12)
         }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+/// The time in a bubble's bottom-trailing corner, WhatsApp's way (operator, 2026-10-07, G7), and on the user's message
+/// its mark after it: the clock while it goes, ✓ once sent, two once read. 11 pt at 70%: on_primary in the user's
+/// bubble, text_muted in the others. VoiceOver reads it with the bubble.
+struct BubbleStamp {
+    let time: String
+    let mark: Bubble.Status.Mark?
+    let outgoing: Bool
+
+    init(_ bubble: Bubble) {
+        time = bubble.time
+        mark = bubble.status?.mark
+        outgoing = bubble.side == .outgoing
     }
 
-    private func icon(_ mark: Bubble.Status.Mark) -> some View {
-        Image(systemName: mark == .sending ? "clock" : "checkmark")
-            .font(.system(size: mark == .sending ? 11 : 12, weight: .semibold))
-            .foregroundStyle(mark == .read ? theme.colors.primary.color : theme.colors.textSecondary.color)
+    /// The time and `mark` as one text, so the room kept for it in a message's last line is exactly as wide. No
+    /// break inside it.
+    func text(mark: Bubble.Status.Mark?) -> Text {
+        let time = Text(verbatim: self.time)
+        guard let mark else { return time }
+        let tick = Text(Image(systemName: "checkmark"))
+        let icon: Text
+        switch mark {
+        case .sending: icon = Text(Image(systemName: "clock"))
+        case .sent: icon = tick
+        // Two, the second half over the first, never on two lines.
+        case .read: icon = tick.kerning(-5) + Text(verbatim: "\u{2060}") + tick
+        }
+        return time + Text(verbatim: "\u{00A0}") + icon
     }
 
-    /// Only the failure stays its own element (a button); "Göndərildi" and "Oxundu" are read with the bubble.
-    private var label: some View {
-        Text(status.text)
-            .accessibilityHidden(!status.isFailure)
-            .clomniFont(ClomniTheme.FontSize.meta, relativeTo: .caption2)
-            .foregroundStyle(status.isFailure ? theme.colors.unread.color : theme.colors.textSecondary.color)
+    /// What a message's last line keeps free for the stamp: a gap, then the stamp at its widest (two ✓ on the user's),
+    /// so a change of status moves nothing. A normal space before it: when the line is full it goes to a line of its own.
+    var room: Text {
+        Text(verbatim: " \u{00A0}") + text(mark: outgoing ? .read : nil)
+    }
+
+    func color(_ theme: ClomniTheme) -> Color {
+        (outgoing ? theme.colors.onPrimary : theme.colors.textSecondary).color.opacity(0.7)
+    }
+
+    /// 11, scaled with the text, in the app's family when it has one.
+    static func font(_ typeface: Typeface?, scaled: CGFloat) -> Font {
+        typeface.map { Font.custom($0.face(for: Font.Weight.regular.css), size: 11, relativeTo: .caption2) }
+            ?? .system(size: scaled)
+    }
+}
+
+/// The stamp on its own: on a picture, in a file card, and over the room `StampedText` keeps for it. A change of mark
+/// only cross-fades, 150 ms (M3).
+struct StampView: View {
+    let stamp: BubbleStamp
+    let color: Color
+    @ScaledMetric(relativeTo: .caption2) private var size: CGFloat = 11
+    @Environment(\.clomniTypeface) private var typeface
+
+    var body: some View {
+        ZStack {
+            stamp.text(mark: stamp.mark)
+                .font(BubbleStamp.font(typeface, scaled: size))
+                .foregroundColor(color)
+                .lineLimit(1)
+                .fixedSize()
+                .id(stamp.mark)
+                .transition(.opacity)
+        }
+        .animation(.easeOut(duration: 0.15), value: stamp.mark)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A message's text with the stamp at the end of its last line when it fits there, else on a line of its own under it:
+/// the line keeps room for it in clear text, and the stamp is drawn over that room in the corner.
+struct StampedText: View {
+    let text: AttributedString
+    let size: Double
+    let stamp: BubbleStamp
+    let theme: ClomniTheme
+    @ScaledMetric(relativeTo: .caption2) private var stampSize: CGFloat = 11
+    @Environment(\.clomniTypeface) private var typeface
+
+    var body: some View {
+        (Text(text) + stamp.room.font(BubbleStamp.font(typeface, scaled: stampSize)).foregroundColor(.clear))
+            .clomniFont(size)
+            .overlay(alignment: .bottomTrailing) { StampView(stamp: stamp, color: stamp.color(theme)) }
     }
 }
 

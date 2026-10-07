@@ -122,17 +122,14 @@ package struct Bubble: Sendable, Equatable, Identifiable {
         package let isFailure: Bool
         /// The client id to send again when the failure is tapped.
         package let retryId: String?
-        /// Next to `time`; nil for a failure.
+        /// After the bubble's time, in the bubble; nil for a failure.
         package let mark: Mark?
-        /// When it was sent, next to `mark`: "indi", "12:42".
-        package let time: String?
 
-        package init(text: String, isFailure: Bool, retryId: String?, mark: Mark? = nil, time: String? = nil) {
+        package init(text: String, isFailure: Bool, retryId: String?, mark: Mark? = nil) {
             self.text = text
             self.isFailure = isFailure
             self.retryId = retryId
             self.mark = mark
-            self.time = time
         }
     }
 
@@ -145,9 +142,9 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     /// Over the first bubble of an incoming run, outside it: who, the brand for the bot ("Clomni"), "Leyla"
     /// (DESIGN-PASS-3 B2).
     package let nameLine: String?
-    /// Under the last bubble of an incoming run: when, "indi" or "12:42".
-    package let meta: String?
-    /// Under the user's message when it is the last one, or when it failed.
+    /// In the bubble's bottom-trailing corner, every bubble's (operator, 2026-10-07, G7): "12:42".
+    package let time: String
+    /// On every message of the user's: its mark after the time, or a failure in words under the bubble.
     package let status: Status?
     /// The message, who sent it and when, and its status unless that is a failure (which is a button of its own):
     /// "Siz, 10:30: Salam. Oxundu". VoiceOver reads the bubble, its meta line and its status as one element.

@@ -42,7 +42,7 @@ struct HomeView: View {
                         HomeTopBar(header: screen.header, theme: theme, close: actions.close, width: proxy.size.width)
                         GreetingView(header: screen.header, theme: theme)
                             .frame(maxWidth: proxy.size.width * 0.8, alignment: .leading)
-                            .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
+                            .padding(.horizontal, CGFloat(ClomniTheme.Size.homeEdge))
                             .padding(.top, CGFloat(ClomniTheme.Space.xxxl))
                     }
                     .background(GeometryReader { measured in
@@ -65,10 +65,10 @@ struct HomeView: View {
             }
             .ignoresSafeArea(.container, edges: .top)
         }
-        // 8 under the logo's 48 pt row, which starts 16 under the safe area; it stays there as the page scrolls.
+        // 8 under the logo's 48 pt row, which starts 20 under the safe area; it stays there as the page scrolls.
         .overlay(alignment: .top) {
             OfflineCapsule(offline: screen.offline, connected: screen.connected, theme: theme)
-                .padding(.top, CGFloat(ClomniTheme.Size.barTop + ClomniTheme.Size.barRow) + 8)
+                .padding(.top, CGFloat(ClomniTheme.Size.homeBarTop + ClomniTheme.Size.barRow) + 8)
         }
         // The page: canvas grey in light mode (the white cards stand on it, the fade ends in it), background in dark.
         .background((theme.isDark ? theme.colors.background : theme.colors.canvas).color.ignoresSafeArea())
@@ -128,7 +128,8 @@ extension RGBColor {
 }
 
 /// The logo top left (nothing when there is none, as Intercom: no initial), the team's faces 12 pt before ✕ top
-/// right, all on the bar's centre line, on Home's colours.
+/// right, all on the bar's centre line, on Home's colours. The row is 20 under the safe area and the logo 20 from the
+/// side, on the greeting's line (operator, 2026-10-07, G1).
 struct HomeTopBar: View {
     let header: HomeScreen.Header
     let theme: ClomniTheme
@@ -138,7 +139,8 @@ struct HomeTopBar: View {
     var body: some View {
         // Its circle 8 pt above the bar's end, as before the row grew to 48.
         ScreenBar(closeLabel: header.closeLabel, closeStyle: .onBrand, theme: theme, close: close,
-                  below: CGFloat(ClomniTheme.Space.s - (ClomniTheme.Size.barRow - ClomniTheme.Size.closeCircle) / 2)) {
+                  below: CGFloat(ClomniTheme.Space.s - (ClomniTheme.Size.barRow - ClomniTheme.Size.closeCircle) / 2),
+                  top: CGFloat(ClomniTheme.Size.homeBarTop)) {
             Group {
                 if let wordmark = header.wordmark {
                     WordmarkView(wordmark: wordmark, header: header, theme: theme, maxWidth: width * 0.6)
@@ -150,7 +152,8 @@ struct HomeTopBar: View {
                         .accessibilityLabel(Text(header.brandName))
                 }
             }
-            .padding(.leading, ScreenBar<EmptyView>.overhang)
+            .padding(.leading, ScreenBar<EmptyView>.overhang
+                     + CGFloat(ClomniTheme.Size.homeEdge - ClomniTheme.Size.barEdge))
             if !header.teamAvatars.isEmpty {
                 Spacer(minLength: 0)
                 // 12 pt from ✕'s circle: the bar's 8 pt gap and the 2 pt its target reaches past the circle, plus 2.

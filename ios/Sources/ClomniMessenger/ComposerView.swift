@@ -41,6 +41,8 @@ struct ComposerView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Where the cursor stood when the emoji sheet opened (UTF-16), so the emoji goes there.
     @State private var emojiAt: Int?
+    /// An emoji was picked: the field takes the focus back when the sheet has gone.
+    @State private var emojiPicked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
@@ -107,9 +109,11 @@ struct ComposerView: View {
             if composer.showsEmoji {
                 iconButton("face.smiling", label: composer.emojiLabel) {
                     emojiAt = focused ? TextInsertion.cursorOffset() : nil
+                    emojiPicked = false
                     choosingEmoji = true
                 }
-                .sheet(isPresented: $choosingEmoji) { emojiSheet }
+                // The keyboard comes back once the sheet has gone, the cursor after the emoji (G3).
+                .sheet(isPresented: $choosingEmoji, onDismiss: refocus) { emojiSheet }
             }
             ZStack {
                 if canSend {
@@ -176,17 +180,29 @@ struct ComposerView: View {
         .accessibilityLabel(Text(label))
     }
 
+    /// One emoji (operator, 2026-10-07, G3): it goes where the cursor was, and the sheet closes.
     @ViewBuilder
     private var emojiSheet: some View {
         let sheet = EmojiPickerSheet(title: composer.emojiLabel, theme: theme) { emoji in
-            text = TextInsertion.insert(emoji, into: text, atUTF16: emojiAt)
-            emojiAt = emojiAt.map { $0 + emoji.utf16.count }
+            let at = emojiAt ?? text.utf16.count
+            text = TextInsertion.insert(emoji, into: text, atUTF16: at)
+            emojiAt = at + emoji.utf16.count
+            emojiPicked = true
+            choosingEmoji = false
         }
         if #available(iOS 16.0, *) {
             sheet.presentationDetents([.medium, .large])
         } else {
             sheet
         }
+    }
+
+    /// The field takes the focus back; the cursor goes where the emoji ended once the field is the first responder.
+    private func refocus() {
+        guard emojiPicked else { return }
+        focused = true
+        let cursor = emojiAt
+        DispatchQueue.main.async { if let cursor { TextInsertion.placeCursor(atUTF16: cursor) } }
     }
 }
 

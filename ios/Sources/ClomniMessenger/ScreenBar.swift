@@ -111,6 +111,8 @@ struct ScreenBar<Leading: View>: View {
     let close: () -> Void
     /// Under the 48 pt row: 8 on the list, a conversation and a news item; Home keeps its circle 8 above its end.
     var below = CGFloat(ClomniTheme.Size.barBottom)
+    /// Over the 48 pt row, under the safe area: 16, Home's 20.
+    var top = CGFloat(ClomniTheme.Size.barTop)
     @ViewBuilder let leading: () -> Leading
 
     static var overhang: CGFloat {
@@ -127,7 +129,7 @@ struct ScreenBar<Leading: View>: View {
         }
         .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.barRow))
         .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge) - Self.overhang)
-        .padding(.top, CGFloat(ClomniTheme.Size.barTop))
+        .padding(.top, top)
         .padding(.bottom, below)
     }
 }

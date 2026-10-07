@@ -59,6 +59,15 @@ actor FakeSource: MessengerDataSource {
         self.conversationsFail = conversationsFail
     }
 
+    var name: String?
+    var userName: String? { name }
+
+    /// The app's user logs in: the engine knows their name and says the session changed.
+    func login(name: String) {
+        self.name = name
+        observers.values.forEach { $0(.session) }
+    }
+
     /// What the engine does when a socket event arrives.
     func push(unread: Int, _ change: ClomniChange) {
         self.unread = unread
@@ -183,6 +192,17 @@ final class HomeControllerTests: XCTestCase {
         home.isOffline = true
         XCTAssertEqual(home.home.offline, "İnternet yoxdur")
         XCTAssertEqual(renders, 2)
+    }
+
+    /// G6 (operator, 2026-10-07): `Clomni.loginUser(… name: "Aysel")` while Home is open; the greeting takes the
+    /// name at once, from the engine. Nobody passes it in.
+    func testTheGreetingTakesTheLoggedInUsersName() async {
+        let home = controller(user: nil)
+        await home.load()
+        XCTAssertEqual(home.home.header.greeting, "Salam")
+        await source.login(name: "Aysel Məmmədova")
+        await home.settled()
+        XCTAssertEqual(home.home.header.greeting, "Salam, Aysel")
     }
 
     func testTheEngineIsADataSource() {

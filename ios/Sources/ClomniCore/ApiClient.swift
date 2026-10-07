@@ -55,6 +55,22 @@ enum SessionIdentity: Sendable, Equatable, Codable {
     }
 }
 
+extension SessionIdentity {
+    /// The user's name for Home's greeting (G6): the one logged in with or set by `updateUser`; nil when anonymous.
+    var name: String? {
+        guard case .user(let user, _) = self,
+              let name = user.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return nil }
+        return name
+    }
+
+    /// The same person logged in again without a name keeps the one known.
+    func keepingName(of kept: SessionIdentity) -> SessionIdentity {
+        guard case .user(var user, let hash) = self, user.name == nil, case .user(let before, _) = kept else { return self }
+        user.name = before.name
+        return .user(user, hash: hash)
+    }
+}
+
 extension UserIdentity {
     /// What the server knows the user by: user_id, else the email (lower case, trimmed).
     var key: String? {
@@ -149,6 +165,7 @@ actor ApiClient {
     /// token is refused); a new one only for another person. An app launch does not cost a login.
     func session(for identity: SessionIdentity) async throws -> MobileSession {
         if session != nil, let kept = self.identity, kept.isSamePerson(as: identity) {
+            let identity = identity.keepingName(of: kept)
             self.identity = identity
             vault.setValue(identity, for: Key.identity)
             return try await validSession()
@@ -293,7 +310,14 @@ actor ApiClient {
 
     /// Only the fields given change; `custom_attributes` are merged on the server.
     func updateUser(_ fields: [String: JSONValue]) async throws -> MobileUser {
-        try read(try await request("PATCH", "/users/me", json: .object(fields)), ProtocolJSON.parseUser)
+        let user = try read(try await request("PATCH", "/users/me", json: .object(fields)), ProtocolJSON.parseUser)
+        // The greeting's name follows `updateUser(name:)`.
+        if case .user(var kept, let hash) = identity, let name = user.name, kept.name != name {
+            kept.name = name
+            identity = .user(kept, hash: hash)
+            vault.setValue(identity, for: Key.identity)
+        }
+        return user
     }
 
     func registerDevice(token: String, sandbox: Bool) async throws {
