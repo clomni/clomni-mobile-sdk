@@ -30,7 +30,8 @@ concurrency:
 
 jobs:
   testflight:
-    runs-on: macos-15
+    # App Store Connect takes only builds from the iOS 26 SDK (Xcode 26) on.
+    runs-on: macos-26
     timeout-minutes: 45
     environment: ${{ inputs.environment }}
     env:
@@ -88,7 +89,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.4'
+          xcode-version: '26'
 
       # The SDK has no public way to change its server, so a dev build gets the dev address in the checkout only,
       # as the Android test APK does. The repository keeps app.clomni.ai.
