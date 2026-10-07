@@ -45,6 +45,7 @@ internal class ChatPresenter(
             announcement = lastIncoming?.let { Announcement(it.id, label(it, snapshot)) },
             replyLabel = strings[Key.REPLY],
             copyLabel = strings[Key.COPY],
+            newMessageLabel = strings[Key.NEW_MESSAGE],
         )
     }
 

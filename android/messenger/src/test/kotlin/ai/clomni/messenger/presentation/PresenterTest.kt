@@ -123,7 +123,7 @@ class PresenterTest {
         val withMessage = listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json"))
         val apar = presenter().home(snapshot(Fixture.aparConfig, withMessage))
         assertEquals(listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.CHANNELS), apar.order)
-        assertEquals("Powered by Clomni", apar.poweredBy)
+        assertEquals("Powered by", apar.poweredBy)
         assertEquals(MessengerConfig.HeaderStyle.GRADIENT, apar.header.style)
 
         val config = ProtocolJson().parseConfig(

@@ -204,6 +204,10 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         onDispose {}
     }
     val screens = rememberMessengerScreens(home, live = state.ready)
+    val uriHandler = LocalUriHandler.current
+    val openLink: (String) -> Unit = remember(runtime, uriHandler) {
+        { url -> if (runtime.events.link?.invoke(url) != true) runCatching { uriHandler.openUri(url) } }
+    }
     val actions = rememberMessengerActions(
         home,
         state.source,
@@ -212,11 +216,8 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         openMessages = { coordinator.navigate(MessengerRoute.Messages) },
         openConversation = { coordinator.navigate(MessengerRoute.Conversation(it)) },
         openNews = { coordinator.navigate(MessengerRoute.News(it)) },
+        openLink = openLink,
     )
-    val uriHandler = LocalUriHandler.current
-    val openLink: (String) -> Unit = { url ->
-        if (runtime.events.link?.invoke(url) != true) runCatching { uriHandler.openUri(url) }
-    }
     val intro = remember { HomeIntro(played = false) }
     CompositionLocalProvider(LocalHomeIntro provides intro) {
     MessengerSheet(theme, closing, closed, dismiss = close) {

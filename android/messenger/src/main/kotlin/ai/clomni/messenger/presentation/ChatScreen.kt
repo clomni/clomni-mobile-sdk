@@ -27,6 +27,8 @@ internal data class ChatScreen(
     /** A message's long-press menu: "Cavabla", "Kopyala". */
     val replyLabel: String = "",
     val copyLabel: String = "",
+    /** H2: "Yeni mesaj", the capsule that takes a user reading further up to the end. */
+    val newMessageLabel: String = "",
 )
 
 internal data class Announcement(val id: String, val text: String)
