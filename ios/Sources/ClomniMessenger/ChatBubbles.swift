@@ -236,7 +236,8 @@ struct BubbleBody: View {
                 if let quote = bubble.quote {
                     QuoteBlock(quote: quote, ink: ink, outgoing: !incoming, jump: actions.jump)
                 }
-                StampedText(text: attributedText(runs), size: ClomniTheme.FontSize.message, stamp: stamp, theme: theme)
+                StampedText(text: attributedText(runs), size: ClomniTheme.FontSize.message, stamp: stamp, theme: theme,
+                            drawsStamp: bubble.quote == nil)
                     .lineSpacing(3)
                     .foregroundStyle(ink)
                     .tint(incoming ? theme.colors.primary.color : theme.colors.onPrimary.color)
@@ -245,6 +246,14 @@ struct BubbleBody: View {
                     .padding(bubble.quote == nil ? EdgeInsets(top: 10, leading: 14, bottom: 8, trailing: 14)
                              : EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
                     .accessibilityLabel(Text(bubble.accessibilityLabel))
+            }
+            .overlay(alignment: .bottomTrailing) {
+                // With a quote the stamp keeps the bubble's corner, where the text's own room would leave it mid-way.
+                if bubble.quote != nil {
+                    StampView(stamp: stamp, color: stamp.color(theme))
+                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 8))
+                        .offset(y: StampedText.drop)
+                }
             }
             .padding(bubble.quote == nil ? 0 : 6)
             .background(shape.fill(fill))
@@ -593,6 +602,9 @@ struct StampedText: View {
     let size: Double
     let stamp: BubbleStamp
     let theme: ClomniTheme
+    /// False when the bubble is wider than the text (a quote over it): the bubble then draws the stamp in its own
+    /// corner, so it does not hang in the middle with the bubble's right side empty (operator, 2026-10-07).
+    var drawsStamp = true
     @ScaledMetric(relativeTo: .caption2) private var stampSize: CGFloat = BubbleStamp.size
     @Environment(\.clomniTypeface) private var typeface
 
@@ -600,7 +612,7 @@ struct StampedText: View {
         (Text(text) + stamp.room.font(BubbleStamp.font(typeface, scaled: stampSize)))
             .clomniFont(size)
             .overlay(alignment: .bottomTrailing) {
-                StampView(stamp: stamp, color: stamp.color(theme)).offset(y: Self.drop)
+                if drawsStamp { StampView(stamp: stamp, color: stamp.color(theme)).offset(y: Self.drop) }
             }
     }
 }
