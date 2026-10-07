@@ -25,7 +25,7 @@ Android 6.0 (API 23) or newer. The SDK adds nothing to the app's screens and ask
 In the app's `Application` (named in the manifest with `android:name`), so that a notification that starts the app
 finds the SDK ready:
 
-<!-- sample: kotlin/ai/clomni/messenger/sample/SampleApp.kt#L7-L16 -->
+<!-- sample: kotlin/ai/clomni/messenger/sample/SampleApp.kt#L9-L22 -->
 ```kotlin
 class SampleApp : Application() {
     override fun onCreate() {
@@ -35,6 +35,10 @@ class SampleApp : Application() {
         Clomni.initialize(this, appId = BuildConfig.CLOMNI_APP_ID, apiKey = BuildConfig.CLOMNI_API_KEY)
         // Integration mistakes (a wrong key or user_hash) and more show in logcat under the tag "Clomni".
         if (BuildConfig.DEBUG) Clomni.setLogLevel(ClomniLogLevel.DEBUG)
+        // FCM only when the build had a google-services.json; the token can change, so hand it over at every start.
+        if (FirebaseApp.getApps(this).isNotEmpty()) {
+            FirebaseMessaging.getInstance().token.addOnSuccessListener(Clomni::setDeviceToken)
+        }
     }
 }
 ```

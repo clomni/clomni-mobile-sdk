@@ -193,9 +193,14 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     SideEffect { window?.barIcons(darkStatus = false, darkNavigation = !theme.isDark) }
     val close = coordinator::dismiss
     val back = coordinator::back
-    val home = remember(engine) { AndroidMessenger.homeController(engine, runtime.language, runtime.identity?.name) }
+    val home = remember(engine) { AndroidMessenger.homeController(engine, runtime.language, state.userName) }
     DisposableEffect(home, state.offline) {
         home.isOffline = state.offline
+        onDispose {}
+    }
+    // G6: a login while the messenger is open greets by name at once (the name was read only when Home was built).
+    DisposableEffect(home, state.userName) {
+        home.userName = state.userName
         onDispose {}
     }
     val screens = rememberMessengerScreens(home, live = state.ready)

@@ -41,6 +41,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -70,9 +72,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -255,9 +259,13 @@ internal fun ChatScreenView(
     fold: ChoiceFold = remember { ChoiceFold() },
 ) {
     WithOfflineCapsule(screen.offline, screen.connected, theme) { bar ->
-        Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color)) {
+        // G4: the whole screen stands on the keyboard, frame by frame with its animation; the composer keeps the
+        // navigation bar's room only while the keyboard is down.
+        Column((if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).background(theme.colors.background.color).imePadding()) {
             // The bar's line shows once the transcript has something above what is on screen.
             var scrolled by remember { mutableStateOf(false) }
+            // The composer has the cursor: the keyboard takes the transcript's end up with it.
+            var typing by remember { mutableStateOf(false) }
             Box(bar) { ChatHeaderView(screen.header, theme, actions, scrolled) }
             val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
             val inner = if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
@@ -273,7 +281,7 @@ internal fun ChatScreenView(
                         screen.failure?.let { FailureView(it, theme, actions.retryLoad) }
                     }
                     HomeScreen.Phase.READY -> if (lazy) {
-                        LazyTranscript(screen, theme, actions, inner, fold, loadingOlder) { scrolled = it }
+                        LazyTranscript(screen, theme, actions, inner, fold, loadingOlder, typing) { scrolled = it }
                     } else {
                         Column(
                             inner.padding(start = ClomniTheme.Space.xl.dp, end = ClomniTheme.Space.xl.dp, top = ClomniTheme.Space.xl.dp, bottom = ClomniTheme.Space.s.dp),
@@ -293,7 +301,9 @@ internal fun ChatScreenView(
                 enter = if (still) fadeIn(tween(150)) else expandVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeIn(tween(220)),
                 exit = if (still) fadeOut(tween(150)) else shrinkVertically(tween(220, easing = Motion.EmphasizedDecelerate)) + fadeOut(tween(220)),
             ) {
-                ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
+                Box(Modifier.onFocusChanged { typing = it.hasFocus }) {
+                    ComposerView(screen.composer, theme, draft, changeDraft, writeAnyway, setWriteAnyway, actions, picked)
+                }
             }
             if (!composing) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
             Announcer(screen.announcement?.id, screen.announcement?.text)
@@ -342,6 +352,7 @@ private fun LazyTranscript(
     modifier: Modifier,
     fold: ChoiceFold,
     loadingOlder: Boolean = false,
+    typing: Boolean = false,
     scrolled: (Boolean) -> Unit = {},
 ) {
     val items = fold.shown(screen.items)
@@ -366,6 +377,15 @@ private fun LazyTranscript(
         if (items.isEmpty()) return@LaunchedEffect
         if (still || !placed) state.scrollToItem(last) else state.animateScrollToItem(last)
         placed = true
+    }
+    // G4: while the composer has the cursor, the keyboard rising (or going) keeps the last message just over it, frame
+    // by frame with the keyboard's own animation. A form field brings itself into view instead (FormCardView).
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val follow by rememberUpdatedState(typing)
+    val end by rememberUpdatedState(last)
+    LaunchedEffect(state) {
+        snapshotFlow { ime.getBottom(density) }.collect { if (follow && end >= 0) state.scrollToItem(end) }
     }
     // A tap on a quote: the quoted message is scrolled to (a third down the screen) and lit for a second.
     val scope = rememberCoroutineScope()

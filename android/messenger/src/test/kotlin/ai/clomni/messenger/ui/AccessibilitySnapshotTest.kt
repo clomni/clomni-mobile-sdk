@@ -127,7 +127,7 @@ class AccessibilitySnapshotTest {
 
     /**
      * DESIGN-PASS-2 6: one close button on every screen, the same size in the same place: a 48 dp target (its 40 dp
-     * circle 16 dp from the end edge), at the same height under the top.
+     * circle 16 dp from the end edge), at the same height under the top; on Home 4 dp lower, on its logo row (G1).
      */
     @Test
     fun theCloseButtonIsTheSameEverywhere() {
@@ -143,8 +143,8 @@ class AccessibilitySnapshotTest {
             assertEquals(48f, element.height, 0.5f)
             assertEquals("its circle 16 dp from the edge", 12f, element.fromEnd, 0.5f)
         }
-        assertEquals(onHome.top, onList.top, 0.5f)
-        assertEquals(onHome.top, inChat.top, 0.5f)
+        assertEquals("Home's ✕ is on its logo row, 20 under the safe area, the bars' 16 (G1)", onHome.top - 4f, onList.top, 0.5f)
+        assertEquals(onList.top, inChat.top, 0.5f)
     }
 
     /**
@@ -211,6 +211,7 @@ class AccessibilitySnapshotTest {
                 "Bu gün 10:30",
                 "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.",
                 "Siz, 10:35: Gedişim bitmədi, pul çıxılmağa davam edir",
+                "Göndərildi",
                 "Apar bot, 10:30: Salam, Clomni-yə xoş gəlmisiniz.\nZəhmət olmasa dil seçin.\nPlease choose your language.\nПожалуйста, выберите язык.",
                 "Azərbaycan dili, 1-ci, cəmi 3 [Button]",
                 "English, 2-ci, cəmi 3 [Button]",

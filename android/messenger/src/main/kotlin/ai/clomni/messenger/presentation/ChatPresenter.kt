@@ -208,31 +208,32 @@ internal class ChatPresenter(
             if (last?.from?.isTyping(sender) == true) entries[entries.lastIndex] = Entry.Draw(last.copy(avatar = null))
             entries += Entry.Typing(TypingLine(who.second, "${who.first} ${strings[Key.TYPING]}"))
         }
-        markLastStatus(entries, snapshot)
+        markStatuses(entries, snapshot)
         return runs(entries)
     }
 
     /**
-     * The status of the user's last message shows when nothing came after it: the clock while it goes, then ✓, with
-     * its time; TalkBack reads "Göndərilir", "Göndərildi" or "Oxundu". A failure shows on its own message wherever it is.
+     * Every message of the user carries its mark next to its time, inside the bubble (G7): the clock while it goes,
+     * then ✓, then ✓✓ once read; TalkBack reads "Göndərilir", "Göndərildi" or "Oxundu". A failure stays in words.
      */
-    private fun markLastStatus(entries: MutableList<Entry>, snapshot: ChatSnapshot) {
-        val index = entries.indexOfLast { it is Entry.Draw }
-        val last = (entries.getOrNull(index) as? Entry.Draw)?.draft ?: return
-        if (last.side != Bubble.Side.OUTGOING || last.status != null) return
-        val mark = if (snapshot.pending.any { it.id == last.id }) {
-            Bubble.Status.Mark.SENDING
-        } else {
-            val seq = snapshot.messages.firstOrNull { key(it) == last.id }?.seq ?: 0
-            if (snapshot.readUpTo?.let { it >= seq } == true) Bubble.Status.Mark.READ else Bubble.Status.Mark.SENT
+    private fun markStatuses(entries: MutableList<Entry>, snapshot: ChatSnapshot) {
+        val pending = snapshot.pending.mapTo(HashSet()) { it.id }
+        val seqs = snapshot.messages.associate { key(it) to it.seq }
+        entries.forEachIndexed { index, entry ->
+            val draft = (entry as? Entry.Draw)?.draft ?: return@forEachIndexed
+            if (draft.side != Bubble.Side.OUTGOING || draft.status != null) return@forEachIndexed
+            val mark = when {
+                draft.id in pending -> Bubble.Status.Mark.SENDING
+                snapshot.readUpTo?.let { it >= (seqs[draft.id] ?: 0L) } == true -> Bubble.Status.Mark.READ
+                else -> Bubble.Status.Mark.SENT
+            }
+            val text = when (mark) {
+                Bubble.Status.Mark.SENDING -> strings[Key.SENDING]
+                Bubble.Status.Mark.SENT -> strings[Key.SENT]
+                Bubble.Status.Mark.READ -> strings[Key.READ]
+            }
+            entries[index] = Entry.Draw(draft.copy(status = Bubble.Status(text, isFailure = false, retryId = null, mark = mark)))
         }
-        val text = when (mark) {
-            Bubble.Status.Mark.SENDING -> strings[Key.SENDING]
-            Bubble.Status.Mark.SENT -> strings[Key.SENT]
-            Bubble.Status.Mark.READ -> strings[Key.READ]
-        }
-        val status = Bubble.Status(text, isFailure = false, retryId = null, mark = mark, time = time.stamp(last.date, now))
-        entries[index] = Entry.Draw(last.copy(status = status))
     }
 
     /** Bubbles of one sender within a minute of each other, with nothing between them, form a run. */
@@ -261,12 +262,11 @@ internal class ChatPresenter(
                 }
                 val closesRun = offset == run.size - 1 && draft.side == Bubble.Side.INCOMING
                 val opensRun = offset == 0 && draft.side == Bubble.Side.INCOMING
-                val meta = draft.metaName?.let { time.stamp(draft.date, now) }
                 items += ChatItem.BubbleItem(
                     Bubble(
                         draft.id, draft.side, draft.body, position,
                         avatar = if (closesRun) draft.avatar else null,
-                        meta = if (closesRun) meta else null,
+                        time = time.clock(draft.date),
                         status = draft.status,
                         accessibilityLabel = draft.accessibilityLabel,
                         author = if (opensRun) draft.metaName else null,

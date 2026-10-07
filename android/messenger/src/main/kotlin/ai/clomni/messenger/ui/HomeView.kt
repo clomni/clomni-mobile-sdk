@@ -94,13 +94,13 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                 Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
             )
         }
-        // 8 under the logo's 48 dp row, which starts 16 under the status bar; it stays there as the page scrolls.
+        // 8 under the logo's 48 dp row, which starts 20 under the status bar; it stays there as the page scrolls.
         OfflineCapsule(
             screen.offline,
             screen.connected,
             theme,
             Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = (16f + ClomniTheme.Size.touchTarget + 8f).dp),
+                .padding(top = (HOME_TOP.value + ClomniTheme.Size.touchTarget + 8f).dp),
         )
     }
 }
@@ -160,13 +160,14 @@ private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)
 
 /**
- * The logo (or the written logo) at the top start, the team's faces and ✕ at the top end: one 48 dp row 16 under the
- * safe area, everything on its centre line; the faces 12 from ✕'s circle (8 from its 48 dp target).
+ * The logo (or the written logo) at the top start, the team's faces and ✕ at the top end: one 48 dp row 20 under the
+ * safe area (G1), the logo on the line of the greeting and the cards' text, everything on its centre line; the faces
+ * 12 from ✕'s circle (8 from its 48 dp target).
  */
 @Composable
 private fun HomeTop(header: HomeScreen.Header, theme: ClomniTheme, close: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(top = 16.dp, end = 16.dp - 4.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(start = HOME_START),
+        Modifier.fillMaxWidth().padding(top = HOME_TOP, end = 16.dp - 4.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp).padding(start = HOME_START),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val wordmark = (if (theme.isDark) header.wordmarkDarkUrl else null) ?: header.wordmarkUrl
@@ -181,8 +182,11 @@ private fun HomeTop(header: HomeScreen.Header, theme: ClomniTheme, close: () -> 
     }
 }
 
-/** Where Home's logo, greeting and the cards' text start: the cards' 16 and their padding 20. */
+/** Where Home's logo, greeting and the cards' text start: the cards' 16 and their padding 20 (G1, G5). */
 private val HOME_START = 36.dp
+
+/** The logo row's distance from the safe area (G1). */
+private val HOME_TOP = 20.dp
 
 /**
  * "Salam, Aysel" and "Necə kömək edə bilərik?", both 28 × the panel's title_scale (sp: the user's font size goes on

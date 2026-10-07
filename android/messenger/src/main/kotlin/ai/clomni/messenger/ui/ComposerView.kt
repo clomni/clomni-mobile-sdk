@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +54,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -64,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import kotlinx.coroutines.flow.first
 
 /** A file picked in the sheet, shown over the field until it is sent with the message, or removed. */
 internal class PickedPreview(
@@ -188,6 +191,16 @@ private fun Field(
     val canSend = hasPicked || ChatPresenter.canSend(text, composer.limit)
     var sheet by remember { mutableStateOf(false) }
     var emoji by remember { mutableStateOf(false) }
+    // G3: a picked emoji closes the sheet and gives the field the cursor and the keyboard back, once the sheet's window
+    // has gone and the messenger's has the focus again.
+    var refocus by remember { mutableStateOf(0) }
+    val window = LocalWindowInfo.current
+    LaunchedEffect(refocus) {
+        if (refocus == 0) return@LaunchedEffect
+        snapshotFlow { window.isWindowFocused }.first { it }
+        runCatching { focus.requestFocus() }
+        keyboard?.show()
+    }
     // The field keeps its cursor, so a picked emoji goes where the cursor is; the text itself is the screen's.
     var field by remember { mutableStateOf(TextFieldValue(text, TextRange(text.length))) }
     if (field.text != text) field = TextFieldValue(text, TextRange(text.length))
@@ -263,6 +276,7 @@ private fun Field(
             val next = field.text.replaceRange(at.min, at.max, picked)
             field = TextFieldValue(next, TextRange(at.min + picked.length))
             changeText(next)
+            refocus++
         }) { emoji = false }
     }
 }

@@ -32,8 +32,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -138,14 +140,25 @@ private fun SheetRow(icon: Int, label: String, theme: ClomniTheme, pick: () -> U
     }
 }
 
-/** The emoji button's sheet: the system's emoji picker (categories, recently used); a pick closes it. */
+/**
+ * The emoji button's sheet: the system's emoji picker (categories, recently used). One pick goes in at the cursor at
+ * once and closes the sheet (G3); a second tap while it slides away adds nothing.
+ */
 @Composable
 internal fun EmojiSheet(theme: ClomniTheme, pick: (String) -> Unit, dismiss: () -> Unit) {
+    val picks by rememberUpdatedState(pick)
     BottomSheet(theme, dismiss, dragAnywhere = false) { close ->
         AndroidView(
             { context ->
+                var picked = false
                 androidx.emoji2.emojipicker.EmojiPickerView(context).apply {
-                    setOnEmojiPickedListener { item -> close { pick(item.emoji) } }
+                    setOnEmojiPickedListener { item ->
+                        if (!picked) {
+                            picked = true
+                            picks(item.emoji)
+                            close {}
+                        }
+                    }
                 }
             },
             Modifier.fillMaxWidth().height(320.dp),
