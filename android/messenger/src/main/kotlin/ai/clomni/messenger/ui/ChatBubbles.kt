@@ -7,6 +7,7 @@ import ai.clomni.messenger.presentation.ChatItem
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.ImageSizing
 import ai.clomni.messenger.presentation.Media
+import ai.clomni.messenger.presentation.RatingCard
 import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.SystemLine
 import ai.clomni.messenger.presentation.TextRun
@@ -23,7 +24,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,6 +58,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -115,6 +120,8 @@ internal class ChatActions(
     val tap: (buttonId: String, messageId: String) -> Unit = { _, _ -> },
     /** The errors to show by field; empty when the form went. */
     val submit: (messageId: String, values: Map<String, String>) -> Map<String, String> = { _, _ -> emptyMap() },
+    /** A rating's score, and its comment if any. */
+    val rate: (messageId: String, score: Int, comment: String?) -> Unit = { _, _, _ -> },
     val retry: (clientId: String) -> Unit = {},
     /** "Yenidən cəhd et" after a failed first load. */
     val retryLoad: () -> Unit = {},
@@ -126,10 +133,21 @@ internal class ChatActions(
     val cancelReply: () -> Unit = {},
 )
 
-/** The styled runs as one text: bold and italic spans; links underlined and tappable (https, tel, mailto only). */
+/** Where a link in a message goes: `Clomni.onLink` first, then the system. The messenger's activity sets it. */
+internal val LocalOpenLink = staticCompositionLocalOf<((String) -> Unit)?> { null }
+
+/** Opens a message's link; an app that cannot open a tel: or mailto: link must not crash the conversation. */
+@Composable
+internal fun linkOpener(): (String) -> Unit {
+    val uriHandler = LocalUriHandler.current
+    val open = LocalOpenLink.current
+    return remember(open, uriHandler) { { url -> runCatching { open?.invoke(url) ?: uriHandler.openUri(url) } } }
+}
+
+/** The styled runs as one text: bold and italic spans; links underlined and tappable (see [TextRun.link]). */
 @Composable
 internal fun attributedText(runs: List<TextRun>, linkColor: RgbColor): AnnotatedString {
-    val uriHandler = LocalUriHandler.current
+    val open = linkOpener()
     return buildAnnotatedString {
         for (run in runs) {
             val style = SpanStyle(
@@ -141,8 +159,7 @@ internal fun attributedText(runs: List<TextRun>, linkColor: RgbColor): Annotated
                 withStyle(style) { append(run.text) }
             } else {
                 val styles = TextLinkStyles(SpanStyle(color = linkColor.color, textDecoration = TextDecoration.Underline))
-                // An app that cannot open a tel: or mailto: link must not crash the conversation.
-                withLink(LinkAnnotation.Url(link, styles) { runCatching { uriHandler.openUri(link) } }) {
+                withLink(LinkAnnotation.Url(link, styles) { open(link) }) {
                     withStyle(style) { append(run.text) }
                 }
             }
@@ -300,13 +317,14 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
     // H4: on_primary at 65% on the user's bubble, text_muted on the others'.
     val metaInk = if (incoming) theme.colors.textSecondary else theme.colors.onPrimary.over(fill, META_OPACITY.toDouble())
     val meta: @Composable (RgbColor?) -> Unit = { over -> BubbleMeta(bubble, over ?: metaInk, over ?: ink) }
+    val open = linkOpener()
     when (val body = bubble.body) {
         // With a quote the bubble is as wide as the wider of the two, and the time goes to its bottom end (as WhatsApp).
         is Bubble.TextBody -> Column(
             Modifier.then(if (quote != null) Modifier.width(IntrinsicSize.Max) else Modifier)
                 .clip(shape)
                 .background(fill.color)
-                .then(if (longPress != null) Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { longPress() }) } else Modifier)
+                .then(if (longPress != null) Modifier.longPressOverLinks(longPress) else Modifier)
                 .padding(top = if (quote != null) 6.dp else 10.dp, bottom = META_BOTTOM, start = if (quote != null) 6.dp else 14.dp, end = if (quote != null) 6.dp else 14.dp),
         ) {
             if (quote != null) QuoteBlock(quote, ink, !incoming, Modifier.padding(bottom = 4.dp))
@@ -316,10 +334,15 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
                 if (quote != null) Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp) else Modifier,
                 Modifier.clearAndSetSemantics {
                     contentDescription = bubble.accessibilityLabel
-                    if (a11y.isNotEmpty()) customActions = a11y
+                    // TalkBack reads the bubble as one text: each link is an action of its own.
+                    val actions = a11y + body.runs.mapNotNull { run ->
+                        run.link?.let { link -> CustomAccessibilityAction(run.text) { open(link); true } }
+                    }
+                    if (actions.isNotEmpty()) customActions = actions
                 },
             ) { meta(null) }
         }
+        is RatingCard -> RatingCardView(body, theme) { score, comment -> actions.rate(body.messageId, score, comment) }
         is Bubble.ImageBody -> Quoted(quote, shape, fill, ink, !incoming) {
             ImageBubble(body, bubble.accessibilityLabel, theme, fill, ink, actions.openImage, longPress, a11y, meta)
         }
@@ -345,6 +368,26 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
             theme,
             Modifier.clip(shape).background(fill.color),
         ) { values -> actions.submit(body.messageId, values) }
+    }
+}
+
+/**
+ * A long press on a bubble, on its links too: watched before the link's own tap (the initial pass), which the long press
+ * then cancels, so holding a link opens the menu and not the link.
+ */
+private fun Modifier.longPressOverLinks(longPress: () -> Unit): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val ended = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            waitForUpOrCancellation(PointerEventPass.Initial)
+            true
+        }
+        if (ended != null) return@awaitEachGesture
+        longPress()
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
     }
 }
 

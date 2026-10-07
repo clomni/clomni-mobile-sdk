@@ -467,11 +467,10 @@ class ChatPresenterTest {
         val nobody = screen(listOf(ChatFixture.message("23-system-operator-joined.json")))
         assertTrue(nobody.items.filterIsInstance<ChatItem.SystemItem>().single().line.avatars.isEmpty())
 
-        // card, carousel and rating are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
+        // card and carousel are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
         for ((file, fallback) in listOf(
             "26-card.json" to "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az",
             "27-carousel.json" to "Tarif 1 / Tarif 2 / Tarif 3",
-            "28-rating.json" to "Xidmətimizi 1-5 qiymətləndirin",
             "29-unknown-type.json" to "Hansı saat uyğundur? 10:00 / 14:00",
         )) {
             val bubble = bubbles(screen(listOf(ChatFixture.message(file)))).first()
@@ -479,6 +478,8 @@ class ChatPresenterTest {
             assertEquals(file, Bubble.Side.INCOMING, bubble.side)
             assertTrue(file, bubble.accessibilityLabel.endsWith(fallback))
         }
+        val card = bubbles(screen(listOf(ChatFixture.message("26-card.json")))).single().body as Bubble.TextBody
+        assertEquals("the address in a fallback text is a link", "https://apar.az", card.runs.last().link)
     }
 
     @Test
@@ -574,6 +575,55 @@ class ChatPresenterTest {
         assertNull(menu.composer.quote)
         assertFalse(bubbles(menu).single().replyable)
         assertNotNull(bubbles(menu).single().copyText)
+    }
+
+    @Test
+    fun ratings() {
+        val rating = ChatFixture.message("28-rating.json")
+        fun card(build: (ChatSnapshot) -> ChatSnapshot = { it }, message: Message = rating) =
+            bubbles(screen(listOf(message), build)).single().body as RatingCard
+
+        val open = card()
+        assertFalse(open.given)
+        assertNull(open.score)
+        assertEquals(listOf("😞", "😑", "😐", "😀", "😍"), open.options.map { it.glyph })
+        assertEquals(listOf("Çox pis", "Pis", "Orta", "Yaxşı", "Əla"), open.options.map { it.label })
+        assertEquals("Şərh yazın (istəyə görə)", open.commentLabel)
+        assertEquals("Apar bot, 11:02: Xidmətimizi qiymətləndirin", open.textAccessibilityLabel)
+        assertFalse("no quoting a rating", bubbles(screen(listOf(rating))).single().replyable)
+
+        val sending = pending(ClientMessage.RatingSubmit(rating.id, 4, "Tez"), null)
+        val onItsWay = screen(listOf(rating)) { it.copy(pending = listOf(sending)) }
+        assertEquals("the answer has no bubble of its own", 1, bubbles(onItsWay).size)
+        (bubbles(onItsWay).single().body as RatingCard).let {
+            assertTrue(it.given)
+            assertEquals(4, it.score)
+            assertEquals("Tez", it.commentText)
+            assertEquals("Rəyiniz üçün təşəkkür edirik", it.thanks)
+        }
+
+        val failed = card({ it.copy(pending = listOf(sending.copy(state = PendingMessage.State.FAILED)), rated = mapOf(rating.id to GivenRating(4, "Tez"))) })
+        assertFalse("open again", failed.given)
+        assertEquals("Göndərilmədi", failed.failure)
+        assertEquals("with what failed", 4 to "Tez", failed.score to failed.commentText)
+
+        assertEquals("sent, before the server's copy", 2, card({ it.copy(rated = mapOf(rating.id to GivenRating(2, null))) }).score)
+
+        val stars = rating.copy(
+            content = MessageContent.Rating(
+                "Qiymət",
+                MessageContent.RatingScale.STAR_5,
+                MessageContent.RatingComment.REQUIRED,
+                mapOf("score" to JsonPrimitive(5), "comment" to JsonPrimitive("Əla xidmət")),
+            ),
+        )
+        card(message = stars).let {
+            assertTrue("the server's copy", it.given)
+            assertEquals(5 to "Əla xidmət", it.score to it.commentText)
+            assertEquals(listOf(null, null, null, null, null), it.options.map { option -> option.glyph })
+            assertEquals("3 ulduz", it.options[2].label)
+            assertEquals("Şərh yazın", it.commentLabel)
+        }
     }
 
     @Test

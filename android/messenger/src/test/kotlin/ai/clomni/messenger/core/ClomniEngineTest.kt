@@ -875,6 +875,28 @@ class ClomniEngineTest {
     }
 
     @Test
+    fun aRatingFailedCanBeGivenAgainAndThenOnlyOnce() {
+        val (phone, conversation) = ready()
+        val asked = fake.botRates(conversation, comment = "optional").getValue("id").jsonPrimitive.content
+        eventually("the rating") { phone.engine.messages(conversation).any { it.id == asked } }
+        val rating = phone.engine.messages(conversation).single { it.id == asked }
+
+        fake.refusals["POST /v1/conversations/$conversation/messages"] = 400
+        phone.engine.submitRating(rating, 2, null).await()
+        eventually("refused") { phone.engine.pending(conversation).singleOrNull()?.state == PendingMessage.State.FAILED }
+
+        phone.engine.submitRating(rating, 5, "Tez cavab verdiniz").await()
+        rejected { phone.engine.submitRating(rating, 4, null) }
+        eventually("the server's copy") { phone.engine.pending(conversation).isEmpty() }
+        val submitted = (phone.engine.messages(conversation).single { it.id == asked }.content as MessageContent.Rating).submitted
+        assertEquals(JsonPrimitive(5), submitted?.get("score"))
+        assertEquals(JsonPrimitive("Tez cavab verdiniz"), submitted?.get("comment"))
+        assertEquals("no message of the user's", emptyList<JsonObject>(), fake.userMessages(conversation))
+        assertEquals(2, sends(conversation))
+        rejected { phone.engine.submitRating(phone.engine.messages(conversation).single { it.id == asked }, 1, null) }
+    }
+
+    @Test
     fun theOtherWaysToAnswerAndSend() {
         val (phone, conversation) = ready()
         val greeting = phone.greeting(conversation)

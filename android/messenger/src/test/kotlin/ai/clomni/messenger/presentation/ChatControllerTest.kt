@@ -121,6 +121,14 @@ private class FakeChat : ChatDataSource {
         return done(queue(ClientMessage.back(message.id), message.conversationId, null))
     }
 
+    var refuseRatings = false
+
+    override fun submitRating(message: Message, score: Int, comment: String?): Future<PendingMessage> {
+        calls += "rate ${message.id} $score $comment"
+        if (refuseRatings) return failed(ClomniError.Rejected("rating not open"))
+        return done(queue(ClientMessage.RatingSubmit(message.id, score, comment), message.conversationId, null))
+    }
+
     override fun submitForm(message: Message, values: Map<String, JsonElement>): Future<PendingMessage> {
         calls += "form ${message.id} ${JsonObject(values.toSortedMap())}"
         return done(queue(ClientMessage.FormSubmit(message.id, "frm", values), message.conversationId, null))
@@ -246,6 +254,22 @@ class ChatControllerTest {
         chat.load()
         chat.tap("x", text.id)
         assertTrue("not quick replies: nothing", source.calls.none { it.startsWith("reply msg_f01") })
+    }
+
+    @Test
+    fun aRatingRefusedOpensAgain() {
+        val rating = ChatFixture.message("28-rating.json")
+        source.set(listOf(rating))
+        val chat = controller()
+        chat.load()
+        fun card() = chat.screen.items.filterIsInstance<ChatItem.BubbleItem>().single().bubble.body as RatingCard
+        source.refuseRatings = true
+        chat.rate(rating.id, 2, null)
+        assertFalse(card().given)
+        source.refuseRatings = false
+        chat.rate(rating.id, 5, "Tez")
+        assertEquals(true to 5, card().given to card().score)
+        assertEquals(listOf("rate msg_f28 2 null", "rate msg_f28 5 Tez"), source.calls.filter { it.startsWith("rate") })
     }
 
     @Test

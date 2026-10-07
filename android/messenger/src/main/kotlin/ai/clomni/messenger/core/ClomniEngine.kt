@@ -350,11 +350,16 @@ internal class ClomniEngine(
         enqueue(ClientMessage.FormSubmit(message.id, form.formId, values), message.conversationId, null)
     }
 
-    fun submitRating(message: Message, score: Int, comment: String?): Future<PendingMessage> = submit {
+    override fun submitRating(message: Message, score: Int, comment: String?): Future<PendingMessage> = submit {
         val rating = message.content as? MessageContent.Rating
-        if (rating == null || rating.submitted != null || score !in 1..5 || store.isAnswered(message.id)) {
+        // A rating the outbox gave up on is open again: the new answer takes the failed one's place.
+        val failed = store.outbox.entries(message.conversationId).filter {
+            it.state == PendingMessage.State.FAILED && (it.message as? ClientMessage.RatingSubmit)?.replyTo == message.id
+        }
+        if (rating == null || rating.submitted != null || score !in 1..5 || (store.isAnswered(message.id) && failed.isEmpty())) {
             throw ClomniError.Rejected("rating not open")
         }
+        failed.forEach { store.outbox.remove(it.id) }
         store.markAnswered(message.id)
         enqueue(ClientMessage.RatingSubmit(message.id, score, comment), message.conversationId, null)
     }

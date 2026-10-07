@@ -325,7 +325,7 @@ private fun DateChoice(
  * A field or the send button: [height] (44) drawn with radius 10 in [fill], [edge] 1.5 dp around it, while the tap
  * target reaches 48 (2 dp above and below, laid over the 12 dp gaps).
  */
-private fun Modifier.fieldBox(fill: Color, edge: Color = Color.Transparent, height: Dp = 44.dp): Modifier =
+internal fun Modifier.fieldBox(fill: Color, edge: Color = Color.Transparent, height: Dp = 44.dp): Modifier =
     bleed(vertical = 2.dp).heightIn(min = height + 4.dp).drawBehind {
         val inset = 2.dp.toPx()
         val corner = CornerRadius(10.dp.toPx())

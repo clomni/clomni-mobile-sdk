@@ -308,7 +308,8 @@ public object Clomni {
     }
 
     /**
-     * A link the messenger is about to open (a news item's button: a web address or the app's own deep link). Return
+     * A link the messenger is about to open (a link in a message, a news item's button: a web address, an e-mail or phone
+     * link, or the app's own deep link). Return
      * true when the app opened it; false, or no listener, lets the system open it. One listener; null removes it.
      */
     @JvmStatic

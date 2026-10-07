@@ -9,6 +9,8 @@ import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.Fixture
 import ai.clomni.messenger.presentation.MessengerSnapshot
+import ai.clomni.messenger.presentation.RatingCard
+import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.ProtocolFiles
@@ -23,6 +25,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -252,6 +256,41 @@ class ChatSnapshotTest {
         ).copy(conversation = ChatFixture.conversation("open", leyla), typing = Sender(SenderType.OPERATOR, name = "Leyla")),
         now = 1_790_851_260_000L,
     )
+
+    /**
+     * A rating: open, a face chosen with the comment field open, and given (on its way); stars chosen. The chosen state
+     * lives in the card, so that one is the card alone.
+     */
+    @Test
+    fun ratings() {
+        val rating = ChatFixture.message("28-rating.json", "created_at" to "2026-10-01T10:31:00Z")
+        val given = PendingMessage("conv_5521", ClientMessage.RatingSubmit(rating.id, 5, "Tez cavab verdiniz"), null, NOW)
+        val card = present(loaded(rating)).items.filterIsInstance<ChatItem.BubbleItem>().single().bubble.body as RatingCard
+        for (dark in listOf(false, true)) {
+            val look = if (dark) "dark" else "light"
+            snap("chat_rating_open_$look", loaded(rating), dark)
+            snapCard("chat_rating_chosen_$look", card, dark, chosen = 4)
+            snap("chat_rating_given_$look", loaded(rating).copy(pending = listOf(given)), dark)
+        }
+        val stars = card.copy(
+            scale = MessageContent.RatingScale.STAR_5,
+            options = card.options.map { it.copy(glyph = null) },
+            comment = MessageContent.RatingComment.HIDDEN,
+        )
+        snapCard("chat_rating_stars_light", stars, dark = false, chosen = 3)
+    }
+
+    private fun snapCard(name: String, card: RatingCard, dark: Boolean, chosen: Int?) {
+        val theme = ClomniTheme.make(Fixture.aparConfig.brand, dark)
+        paparazzi.snapshot(name) {
+            CompositionLocalProvider(LocalInspectionMode provides true) {
+                Box(Modifier.fillMaxSize().background(theme.colors.background.color).padding(16.dp)) {
+                    Box(Modifier.width(300.dp)) { RatingCardView(card, theme, chosenAtStart = chosen) { _, _ -> } }
+                }
+            }
+        }
+        semantics.assertTouchTargets(name)
+    }
 
     @Test
     fun failedToSend() {

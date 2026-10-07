@@ -169,6 +169,21 @@ internal class FakeMobileServer : Dispatcher() {
         return message
     }
 
+    /** A rating (CSAT) from the bot; [comment]: none, optional or required. */
+    @Synchronized
+    fun botRates(conversationId: String, comment: String = "none"): JsonObject {
+        val conv = conversations.getValue(conversationId)
+        val content = buildJsonObject {
+            put("text", "Xidmətimizi qiymətləndirin")
+            put("scale", "emoji_5")
+            put("comment", comment)
+            put("submitted", JsonNull)
+        }
+        return newMessage(conv, "bot", "rating", content, "Xidmətimizi 1-5 qiymətləndirin").also {
+            broadcast(conv.userId, "message.created", it)
+        }
+    }
+
     /** [message] over the socket once more, as a re-delivered copy. */
     @Synchronized
     fun redeliver(conversationId: String, message: JsonObject) =
@@ -415,6 +430,7 @@ internal class FakeMobileServer : Dispatcher() {
         val clientId = body.getValue("client_id").jsonPrimitive.content
         val content = body.getValue("content").jsonObject
         val key = "${session.userId}/$clientId"
+        if (body.getValue("type").jsonPrimitive.content == "rating_submit") return rate(conv, content)
         val message = sent[key] ?: run {
             val text = when (body.getValue("type").jsonPrimitive.content) {
                 "button_reply" -> answer(conv, content) ?: return@run null
@@ -430,6 +446,22 @@ internal class FakeMobileServer : Dispatcher() {
             return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
         }
         return json(message, 201)
+    }
+
+    /** The rating itself answers, `submitted` filled in, and goes out as message.updated: there is no message of the user's. */
+    private fun rate(conv: Conv, content: JsonObject): MockResponse {
+        val target = conv.messages.firstOrNull { it.id == content.getValue("reply_to").jsonPrimitive.content }
+            ?: return error(400, "reply_to invalid")
+        val question = target.getValue("content").jsonObject
+        if (question["submitted"] !is JsonNull) return error(409, "already_answered")
+        val submitted = buildJsonObject {
+            put("score", content.getValue("score"))
+            put("comment", content["comment"] ?: JsonNull)
+        }
+        val rated = JsonObject(target + ("content" to JsonObject(question + ("submitted" to submitted))))
+        replace(conv, rated)
+        broadcast(conv.userId, "message.updated", rated)
+        return json(rated, 201)
     }
 
     private var conflict = error(409, "already_answered")

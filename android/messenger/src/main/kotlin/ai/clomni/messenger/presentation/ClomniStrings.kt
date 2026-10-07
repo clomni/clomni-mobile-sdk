@@ -91,6 +91,16 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
 
         // H2: the capsule over the transcript's end while the user reads further up.
         NEW_MESSAGE("new_message"),
+
+        // A rating (CSAT): TalkBack's names of the five faces and of a star, the comment field, the thanks.
+        RATING_1("rating_1"),
+        RATING_2("rating_2"),
+        RATING_3("rating_3"),
+        RATING_4("rating_4"),
+        RATING_5("rating_5"),
+        RATING_STARS("rating_stars"),
+        RATING_COMMENT("rating_comment"),
+        RATING_THANKS("rating_thanks"),
     }
 
     /** az, en or ru; anything else reads as az. */
@@ -181,6 +191,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FILE_TOO_LARGE to "Fayl çox böyükdür (maks. %d MB)", Key.SUPPORT_MESSAGES to "Dəstək mesajları",
                 Key.REPLY to "Cavabla", Key.COPY to "Kopyala", Key.QUOTE_DELETED to "Mesaj silinib",
                 Key.NEW_MESSAGE to "Yeni mesaj",
+                Key.RATING_1 to "Çox pis", Key.RATING_2 to "Pis", Key.RATING_3 to "Orta", Key.RATING_4 to "Yaxşı",
+                Key.RATING_5 to "Əla", Key.RATING_STARS to "%d ulduz", Key.RATING_COMMENT to "Şərh yazın",
+                Key.RATING_THANKS to "Rəyiniz üçün təşəkkür edirik",
                 Key.OPTIONAL to "(istəyə görə)",
             ),
             "en" to mapOf(
@@ -209,6 +222,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FILE_TOO_LARGE to "The file is too large (max %d MB)", Key.SUPPORT_MESSAGES to "Support messages",
                 Key.REPLY to "Reply", Key.COPY to "Copy", Key.QUOTE_DELETED to "Message deleted",
                 Key.NEW_MESSAGE to "New message",
+                Key.RATING_1 to "Terrible", Key.RATING_2 to "Bad", Key.RATING_3 to "Okay", Key.RATING_4 to "Good",
+                Key.RATING_5 to "Great", Key.RATING_STARS to "%d out of 5", Key.RATING_COMMENT to "Add a comment",
+                Key.RATING_THANKS to "Thanks for your feedback",
                 Key.OPTIONAL to "(optional)",
             ),
             "ru" to mapOf(
@@ -235,6 +251,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FILE_TOO_LARGE to "Файл слишком большой (макс. %d МБ)", Key.SUPPORT_MESSAGES to "Сообщения поддержки",
                 Key.REPLY to "Ответить", Key.COPY to "Копировать", Key.QUOTE_DELETED to "Сообщение удалено",
                 Key.NEW_MESSAGE to "Новое сообщение",
+                Key.RATING_1 to "Очень плохо", Key.RATING_2 to "Плохо", Key.RATING_3 to "Нормально", Key.RATING_4 to "Хорошо",
+                Key.RATING_5 to "Отлично", Key.RATING_STARS to "%d из 5", Key.RATING_COMMENT to "Добавьте комментарий",
+                Key.RATING_THANKS to "Спасибо за отзыв",
                 Key.OPTIONAL to "(необязательно)",
             ),
         )
