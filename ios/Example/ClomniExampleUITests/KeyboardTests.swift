@@ -10,29 +10,36 @@ final class KeyboardTests: XCTestCase {
     /// Under the last message when the list is at its end: ChatTranscript's bottom padding (Space.s).
     private static let listBottomPadding: CGFloat = 8
 
-    private func launch() {
+    private func launch(_ arguments: [String] = []) {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-ClomniDemoConversation"]
+        app.launchArguments += ["-ClomniDemoConversation"] + arguments
         app.launch()
     }
 
-    /// A long conversation opens at its end, and the history that comes after the cache, in two pages above it (the demo
-    /// sends them 0.8 s and 1.6 s after the screen opens), does not take it away from there: looked at all along, the
-    /// last item stays over the composer. The first message is far up, out of sight (operator's iPhone, CM-087).
+    /// A long conversation opens at its end (what the cache kept), and the history that comes after it, in two pages
+    /// above, does not take it away from there: looked at all along, the last item stays over the composer and the
+    /// first message is far up, out of sight (operator's iPhone, CM-087). The demo holds the history back until 20 s
+    /// after the launch, so that it comes while the test looks, not while the app is being launched.
     func testItOpensAtTheEndWhileTheHistoryComes() {
-        launch()
+        let historyAt = Date().addingTimeInterval(20)
+        launch(["-ClomniDemoHistoryAt", String(historyAt.timeIntervalSince1970)])
         let submit = element("clomni.form.submit")
-        XCTAssertTrue(submit.waitForExistence(timeout: 15), "the demo conversation and its form are on screen")
+        XCTAssertTrue(submit.waitForExistence(timeout: 15), "the conversation opens at its end, the form there")
         let composer = element("clomni.composer")
-        let until = Date().addingTimeInterval(3)
-        while Date() < until {
-            let last = submit.frame, bar = composer.frame
-            XCTAssertLessThanOrEqual(last.maxY, bar.minY, "the last item \(last) is over the composer \(bar)")
-            XCTAssertGreaterThan(last.minY, 0, "and on screen")
-        }
-        let last = settled(submit)
+        var last = settled(submit)
         keep("opened-at-the-end")
+        XCTAssertLessThanOrEqual(last.maxY, settled(composer).minY, "the last item \(last) is over the composer")
+        XCTAssertGreaterThan(last.minY, 0, "and on screen")
+        // Both pages come (at historyAt and 0.8 s later) while this looks; at every look the end is where it was.
+        while Date() < historyAt.addingTimeInterval(4) {
+            XCTAssertTrue(submit.exists, "the end stays in sight while the history comes")
+            let frame = submit.frame, bar = composer.frame
+            XCTAssertLessThanOrEqual(frame.maxY, bar.minY, "the last item \(frame) is over the composer \(bar)")
+            XCTAssertGreaterThan(frame.minY, 0, "and on screen")
+        }
+        last = settled(submit)
+        keep("history-came")
         XCTAssertLessThanOrEqual(last.maxY, settled(composer).minY, "the last item \(last) is over the composer")
         XCTAssertGreaterThan(last.minY, 0)
         let first = labelled("Salam, kartla ödəniş keçmir")

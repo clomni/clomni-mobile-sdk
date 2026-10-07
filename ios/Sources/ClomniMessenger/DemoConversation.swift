@@ -215,9 +215,15 @@ actor DemoChat: ChatDataSource {
     /// The operator has read everything up to "Çox sağ olun": ✓✓ there, one ✓ after it.
     func readByOperator(in conversationId: String) -> Int? { readUpTo }
     func localFile(of pending: PendingMessage) -> URL? { nil }
-    /// The first page 0.8 s after the cache, the second (with the first message) 0.8 s after that.
+    /// The first page 0.8 s after the cache, the second (with the first message) 0.8 s after that. A UI test that
+    /// watches the history come holds it back until it looks: `-ClomniDemoHistoryAt <seconds since 1970>`.
     func loadMessages(in conversationId: String) async throws {
-        try? await Task.sleep(nanoseconds: 800_000_000)
+        let arguments = ProcessInfo.processInfo.arguments
+        let at = arguments.firstIndex(of: "-ClomniDemoHistoryAt").flatMap { index in
+            arguments.indices.contains(index + 1) ? Double(arguments[index + 1]) : nil
+        } ?? 0
+        let wait = max(0.8, at - Date().timeIntervalSince1970)
+        try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
         prependPage()
         Task {
             try? await Task.sleep(nanoseconds: 800_000_000)

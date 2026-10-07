@@ -99,6 +99,7 @@ struct ChatView: View {
                     if case .bubble(let bubble) = $0 { return bubble.messageId == messageId }
                     return false
                 })?.id else { return }
+                pin.release()
                 withAnimation(reduceMotion ? nil : Motion.spring) { proxy.scrollTo(target, anchor: UnitPoint(x: 0.5, y: 0.33)) }
                 lit = target
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { if lit == target { lit = nil } }
