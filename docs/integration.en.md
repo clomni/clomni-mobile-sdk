@@ -454,7 +454,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 Add the Push Notifications capability to the app target.
 
 ```swift
-final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         Clomni.initialize(appId: "app_…", apiKey: "ios_…")
@@ -471,14 +471,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     // A push while the app is open. Clomni's are not shown while the messenger is open.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+    @MainActor
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         Clomni.shouldShowForeground(notification.request.content.userInfo) ? [.banner, .list, .sound] : []
     }
 
-    // A tap on a notification: a Clomni push opens its conversation.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
+    // A tap on a notification: a Clomni push opens its conversation. @MainActor, not nonisolated: the system may
+    // call this from a background queue, and Swift calls the system's completion handler where this method ends.
+    // Ended off the main thread, UIKit stops the app ("Call must be made on main thread").
+    @MainActor
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         if Clomni.handlePush(response.notification.request.content.userInfo) { return }
         // the app's own push
     }
