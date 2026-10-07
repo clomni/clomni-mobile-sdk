@@ -69,7 +69,13 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.layout.IntrinsicMeasurable
+import androidx.compose.ui.layout.IntrinsicMeasureScope
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -84,6 +90,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -294,8 +301,10 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
     val metaInk = if (incoming) theme.colors.textSecondary else theme.colors.onPrimary.over(fill, META_OPACITY.toDouble())
     val meta: @Composable (RgbColor?) -> Unit = { over -> BubbleMeta(bubble, over ?: metaInk, over ?: ink) }
     when (val body = bubble.body) {
+        // With a quote the bubble is as wide as the wider of the two, and the time goes to its bottom end (as WhatsApp).
         is Bubble.TextBody -> Column(
-            Modifier.clip(shape)
+            Modifier.then(if (quote != null) Modifier.width(IntrinsicSize.Max) else Modifier)
+                .clip(shape)
                 .background(fill.color)
                 .then(if (longPress != null) Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { longPress() }) } else Modifier)
                 .padding(top = if (quote != null) 6.dp else 10.dp, bottom = META_BOTTOM, start = if (quote != null) 6.dp else 14.dp, end = if (quote != null) 6.dp else 14.dp),
@@ -304,7 +313,7 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
             TimedText(
                 attributedText(body.runs, if (incoming) theme.colors.primaryText else theme.colors.onPrimary),
                 clomniText(ClomniTheme.FontSize.message, ink),
-                if (quote != null) Modifier.padding(start = 8.dp, end = 8.dp) else Modifier,
+                if (quote != null) Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp) else Modifier,
                 Modifier.clearAndSetSemantics {
                     contentDescription = bubble.accessibilityLabel
                     if (a11y.isNotEmpty()) customActions = a11y
@@ -525,14 +534,22 @@ private fun TimedText(
     Layout({
         BasicText(text, textModifier, style = style, onTextLayout = { laidOut[0] = it })
         meta()
-    }, modifier) { measurables, constraints ->
+    }, modifier, remember { TimedTextPolicy(laidOut) })
+}
+
+/**
+ * [TimedText]'s layout. Its intrinsic width counts the time beside the text, so a bubble as wide as the wider of a quote
+ * and its text (`IntrinsicSize.Max`) keeps room for the time on the text's line.
+ */
+private class TimedTextPolicy(private val laidOut: Array<TextLayoutResult?>) : MeasurePolicy {
+    override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val words = measurables[0].measure(loose)
         val time = measurables.getOrNull(1)?.measure(loose)
         val result = laidOut[0]
         val drop = META_DROP.roundToPx()
         if (time == null || time.width == 0 || result == null) {
-            return@Layout layout(words.width, words.height + drop) { words.placeRelative(0, 0) }
+            return layout(words.width, words.height + drop) { words.placeRelative(0, 0) }
         }
         val last = result.lineCount - 1
         val lastLine = ceil(result.getLineRight(last) - result.getLineLeft(last)).toInt()
@@ -542,11 +559,31 @@ private fun TimedText(
             .coerceIn(constraints.minWidth, constraints.maxWidth)
         // Inline, the time sits a little under the last line's baseline (H4).
         val height = if (inline) maxOf(words.height + drop, time.height) else words.height + time.height
-        layout(width, height) {
+        return layout(width, height) {
             words.placeRelative(0, 0)
             time.placeRelative(width - time.width, height - time.height)
         }
     }
+
+    override fun IntrinsicMeasureScope.maxIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int): Int {
+        val words = measurables[0].maxIntrinsicWidth(height)
+        val time = measurables.getOrNull(1)?.maxIntrinsicWidth(height) ?: 0
+        return if (time == 0) words else words + META_GAP.roundToPx() + time
+    }
+
+    override fun IntrinsicMeasureScope.minIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int): Int =
+        maxOf(measurables[0].minIntrinsicWidth(height), measurables.getOrNull(1)?.minIntrinsicWidth(height) ?: 0)
+
+    override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int): Int =
+        height(measurables, width)
+
+    override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int): Int =
+        height(measurables, width)
+
+    // The time under the text: the most it can take, wherever the time ends up.
+    private fun IntrinsicMeasureScope.height(measurables: List<IntrinsicMeasurable>, width: Int): Int =
+        measurables[0].maxIntrinsicHeight(width) +
+            maxOf(META_DROP.roundToPx(), measurables.getOrNull(1)?.maxIntrinsicHeight(Constraints.Infinity) ?: 0)
 }
 
 private val META_GAP = 6.dp
