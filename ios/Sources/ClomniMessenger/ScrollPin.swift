@@ -1,36 +1,42 @@
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
 import UIKit
+#if canImport(ClomniPresentation)
+import ClomniPresentation
+#endif
 
 /// Holds the conversation at the very end of its list while the user is there (operator's iPhone, 2026-10-07): it
 /// opens at the end, and history coming in above, a new message, the keyboard and a composer growing to more lines
 /// all leave the last message where it was, over the composer with the list's bottom padding under it.
 ///
-/// `ScrollViewProxy.scrollTo` could not do it. It puts an item's edge at the bottom, not the list's end, so the
-/// padding stayed under the composer. Called from `onAppear` it ran before the scroll view's first layout, against a
-/// LazyVStack's estimated heights. Nothing answered content growing above the end: a scroll view keeps its offset
-/// from the top, so a page of history pushed the end out of sight. So the UIScrollView under SwiftUI's ScrollView is
-/// moved here, whenever its content, its height or its offset changes.
+/// `ScrollViewProxy.scrollTo` could not do it: it puts an item's edge at the bottom, not the list's end; called from
+/// `onAppear` it ran before the first layout, against a LazyVStack's estimated heights; and a scroll view keeps its
+/// offset from the top, so a page of history pushed the end out of sight. So the UIScrollView under SwiftUI's
+/// ScrollView is moved here.
 ///
-/// Whether the list follows is the user's intent, kept in `pinned`, not worked out again from the geometry at each
-/// change: on CI (iOS 26) the list stood near the top of the oldest page after the history came, because the
-/// earlier version asked at every layout whether the list was still near its end, measured against the previous
-/// layout, and once an offset that SwiftUI set on its own between two layouts made the answer "no", the list was let
-/// go for good. Now only the user lets go: dragging or flinging it more than `within` from the end, VoiceOver
-/// scrolling it, or a tap on a quote. Every other move away from the end while pinned is put back.
+/// Whether the list follows is the user's intent (`pinned`): only the user's own scrolling (more than `within` from
+/// the end), VoiceOver or a tapped quote lets go of it.
+///
+/// Where the end is, is read from the last row as UIKit has placed it, frame after frame, until it has stopped moving
+/// (`track`). SwiftUI does not place the rows in the pass that tells of a change: after a page of history above, it
+/// set the content's size first and moved the rows below later, on CI after a slow pass, with no change of size that
+/// KVO or a probe's layout would report. Fixed windows of looks (0-300 ms) missed that move on CI, more often the
+/// slower the simulator (CM-087, 3 of 3 on aa63422), and the list stayed where the history had pushed it.
 @MainActor
 final class ScrollPin {
     /// Further than this from the end the user reads the history: what comes does not move the list (H2).
     static let within: CGFloat = 120
     /// Over the bottom of what shows, under a focused form field: the rest of its box and 12 (G4).
     static let fieldMargin: CGFloat = 24
+    /// The end stands still this many frames in a row: the list is laid out, tracking stops.
+    private static let steadyFrames = 30
+    /// Tracking never runs longer than this after the last change.
+    private static let longestTrack: TimeInterval = 5
 
     /// The list stands at its end for the first time and can be shown.
     var settled: () -> Void = {}
     /// The list moves softly to its end (off with Reduce Motion).
     var animates = true
-    /// The first item's id; when it changes, history came in above and the move is instant.
-    var first: String?
     /// A form field in the list has the focus: that field stays in sight rather than the end.
     var fieldFocused = false
     /// Shown, at its end.
@@ -39,22 +45,23 @@ final class ScrollPin {
     private(set) var pinned = true
 
     private weak var scrollView: UIScrollView?
-    /// The list itself, inside the scroll view: its bottom is the end while its last row is not drawn.
-    private weak var content: UIView?
-    /// Behind the list's last row (ScrollPinLastRow): where the list really ends. A LazyVStack's own frame is partly
-    /// an estimate; after a page of history above it ran 461 pt past the last row on CI, and the list was held there.
-    weak var lastRow: UIView?
-    /// The series of looks after a change (`lookAgain`); a newer change starts its own.
-    private var looks = 0
+    /// Behind the list's last row (ScrollPinLastRow): where the list really ends, as drawn.
+    weak var lastRow: UIView? {
+        didSet { if lastRow !== oldValue { track() } }
+    }
     private var observations: [NSKeyValueObservation] = []
-    private var heldFirst: String?
     /// The offset is being set here: the change it makes is not news.
     private var adjusting = false
     /// A soft move to the end is under way until then: the offsets it passes through are not the user's.
     private var movingUntil = Date.distantPast
-    /// A move back to the end is already on its way (once per turn of the run loop).
-    private var holdQueued = false
+    /// The last item changed since the list last moved to its end.
+    private var newLast = false
+    private var listed: (first: String?, count: Int, last: String?) = (nil, 0, nil)
     private var viewport: CGFloat = 0
+    private var timer: Timer?
+    private var trackUntil = Date.distantPast
+    private var steady = 0
+    private var lastEnd = CGFloat.nan
 
     nonisolated init() {}
 
@@ -62,13 +69,11 @@ final class ScrollPin {
     var away: Bool { revealed && !pinned }
 
     /// The list's scroll view, found from inside its content. A new one (the screen's phase changed) opens at the end.
-    func attach(_ view: UIScrollView, content: UIView) {
-        self.content = content
+    func attach(_ view: UIScrollView) {
         guard view !== scrollView else { return }
         scrollView = view
         pinned = true
         revealed = false
-        heldFirst = first
         observations = [
             view.observe(\.contentSize, options: [.old, .new]) { [weak self] _, change in
                 guard change.oldValue != change.newValue else { return }
@@ -78,31 +83,43 @@ final class ScrollPin {
                 MainActor.assumeIsolated { self?.scrolled() }
             },
         ]
-        settle(tries: 20, last: -1)
+        track()
     }
 
     /// The content was laid out again (it grew, shrank, or history came in above): at the end, it stays there.
     func contentChanged() {
-        let above = first != heldFirst
-        heldFirst = first
         guard pinned || !revealed else { return }
-        hold(animated: revealed && !above)
-        lookAgain()
+        hold()
+        track()
     }
 
-    /// The room for the list changed (the keyboard, the composer): the focused field, or the end, stays in sight.
+    /// The list's items as SwiftUI updates them, before its layout: when they changed, the end is followed until it
+    /// stands still. A new last item is a new message at the end, which the list goes to softly; anything else (a page
+    /// of history above, a row changing its height) moves it at once.
+    func list(first: String?, count: Int, last: String?) {
+        guard (first, count, last) != listed else { return }
+        if last != listed.last { newLast = true }
+        listed = (first, count, last)
+        if pinned || !revealed { track() }
+    }
+
+    /// The room for the list changed (the keyboard, the composer): the focused field, or the end, stays in sight, in
+    /// this frame, so that the list moves with the keyboard.
     func viewportLaidOut(_ height: CGFloat) {
         guard abs(height - viewport) > 0.5 else { return }
         viewport = height
         guard scrollView != nil else { return }
         if fieldFocused, revealField() { return }
-        if pinned || !revealed { hold(animated: false) }
+        guard pinned || !revealed else { return }
+        hold(soft: false)
+        track()
     }
 
-    /// To the end now, softly, and held there.
+    /// To the end, softly, and held there.
     func follow() {
         pinned = true
-        hold(animated: true)
+        hold(soft: true)
+        track()
     }
 
     /// The list goes somewhere else on purpose (a tapped quote): it is not held at the end.
@@ -116,7 +133,7 @@ final class ScrollPin {
     }
 
     /// The offset changed. The user's own scrolling decides whether the list is held; any other move away from the end
-    /// while it is held (SwiftUI's own, while it lays the list out) is put back.
+    /// while it is held (SwiftUI's own, while it lays the list out) is put back by the tracking.
     private func scrolled() {
         guard !adjusting, let view = scrollView else { return }
         let user = view.isTracking || view.isDragging || view.isDecelerating || UIAccessibility.isVoiceOverRunning
@@ -124,46 +141,51 @@ final class ScrollPin {
             pinned = distance(view) <= Self.within
             return
         }
-        guard pinned, Date() >= movingUntil, abs(view.contentOffset.y - endOffset(view)) > 0.5 else { return }
-        queueHold()
+        if pinned || !revealed { track() }
     }
 
-    private func queueHold() {
-        guard !holdQueued else { return }
-        holdQueued = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.holdQueued = false
-            if self.pinned || !self.revealed { self.hold(animated: false) }
-        }
-    }
-
-    /// The bottom of the list, in the scroll view's content: under its last row, else the list's own frame; not past
-    /// the content's size while SwiftUI has yet to set it (its own change brings the list there next).
-    private func end(_ view: UIScrollView) -> CGFloat {
-        let bottom: CGFloat
-        if let row = lastRow, row.window != nil, row.isDescendant(of: view) {
-            bottom = row.convert(row.bounds, to: view).maxY + ChatTranscript.bottomPadding
-        } else if let content, content.isDescendant(of: view) {
-            bottom = content.convert(content.bounds, to: view).maxY
-        } else {
-            return view.contentSize.height
-        }
-        return view.contentSize.height > 0 ? min(bottom, view.contentSize.height) : bottom
-    }
-
-    /// SwiftUI places the rows after it has set the content's size, and moves them again once rows it estimated are
-    /// drawn, without a size change that would tell: the end is looked at again over the next 300 ms.
-    private func lookAgain() {
-        looks += 1
-        let series = looks
-        for delay in [0.0, 0.05, 0.15, 0.3] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard let self, self.looks == series, self.pinned || !self.revealed,
-                      Date() >= self.movingUntil else { return }
-                self.hold(animated: false, again: false)
+    /// Looks at the end every frame from now until it has stood still for `steadyFrames` frames, putting the list back
+    /// at it whenever it is not there. Counted in frames, not time: a slow pass delays the frames, not the count.
+    private func track() {
+        trackUntil = Date().addingTimeInterval(Self.longestTrack)
+        steady = 0
+        guard timer == nil, scrollView != nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self else { return timer.invalidate() }
+                self.frame()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    private func frame() {
+        guard let view = scrollView, pinned || !revealed, Date() < trackUntil else { return stopTracking() }
+        let end = end(view)
+        if abs(end - lastEnd) > 0.5 || abs(view.contentOffset.y - endOffset(view)) > 0.5 { steady = 0 }
+        lastEnd = end
+        hold()
+        steady += 1
+        // Shown once it has stood at its end for a few frames; followed on until it has stood still for longer.
+        if !revealed, steady >= 3 {
+            revealed = true
+            settled()
+        }
+        if steady >= Self.steadyFrames { stopTracking() }
+    }
+
+    private func stopTracking() {
+        timer?.invalidate()
+        timer = nil
+        newLast = false
+    }
+
+    /// The bottom of the list, in the scroll view's content: under its last row as drawn; while that row is not drawn
+    /// (far from it), the content's size, which brings the list where the row gets drawn.
+    private func end(_ view: UIScrollView) -> CGFloat {
+        guard let row = lastRow, row.window != nil, row.isDescendant(of: view) else { return view.contentSize.height }
+        return row.convert(row.bounds, to: view).maxY + ChatTranscript.bottomPadding
     }
 
     /// How far the end of the list is under the bottom of what shows.
@@ -180,42 +202,20 @@ final class ScrollPin {
         clamped(.greatestFiniteMagnitude, in: view)
     }
 
-    /// The bottom of the list at the bottom of what shows, or the focused form field over it. Never under the user's
-    /// finger.
-    private func hold(animated: Bool, again: Bool = true) {
-        guard let view = scrollView, !view.isTracking else { return }
+    /// The bottom of the list at the bottom of what shows, or the focused form field over it: softly for a new last
+    /// item, else at once. Never under the user's finger, and not while a soft move is under way.
+    private func hold(soft wanted: Bool? = nil) {
+        guard let view = scrollView, !view.isTracking, Date() >= movingUntil else { return }
         if fieldFocused, revealField() { return }
         let target = endOffset(view)
         guard abs(view.contentOffset.y - target) > 0.5 else { return }
-        let soft = animated && animates && revealed
+        let soft = (wanted ?? newLast) && animates && revealed
         adjusting = true
         view.setContentOffset(CGPoint(x: view.contentOffset.x, y: target), animated: soft)
         adjusting = false
-        guard soft else {
-            // SwiftUI may answer the move in the same pass, unseen while `adjusting`.
-            if again { lookAgain() }
-            return
-        }
-        // The soft move's frames are not the user's; once it is over, the end is checked again.
-        movingUntil = Date().addingTimeInterval(0.4)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
-            guard let self, self.pinned else { return }
-            self.hold(animated: false)
-        }
-    }
-
-    /// Until the end has been drawn its height is an estimate: the list shows once two looks a frame apart agree.
-    private func settle(tries: Int, last: CGFloat) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
-            guard let self, let view = self.scrollView, !self.revealed else { return }
-            self.hold(animated: false)
-            let now = self.end(view)
-            if (abs(now - last) < 0.5 && abs(view.contentOffset.y - self.endOffset(view)) < 0.5) || tries == 0 {
-                self.revealed = true
-                self.settled()
-            } else {
-                self.settle(tries: tries - 1, last: now)
-            }
+        if soft {
+            newLast = false
+            movingUntil = Date().addingTimeInterval(0.4)
         }
     }
 
@@ -245,11 +245,11 @@ final class ScrollPin {
     }
 }
 
-/// Behind the list's content: finds the scroll view around it and stands for the list's end; reports each time the
-/// list's size changes. Its first id says whether what came is history above.
+/// Behind the list's content: finds the scroll view around it; tells the pin when the list changes, and whether its last
+/// item is a new one.
 struct ScrollPinContent: UIViewRepresentable {
     let pin: ScrollPin
-    let first: String?
+    let items: [ChatItem]
     let animates: Bool
     let settled: () -> Void
 
@@ -260,9 +260,9 @@ struct ScrollPinContent: UIViewRepresentable {
     }
 
     func updateUIView(_ view: ScrollPinContentView, context: Context) {
-        pin.first = first
         pin.animates = animates
         pin.settled = settled
+        pin.list(first: items.first?.id, count: items.count, last: items.last?.id)
     }
 }
 
@@ -294,7 +294,7 @@ final class ScrollPinContentView: UIView {
         var ancestor = superview
         while let view = ancestor, !(view is UIScrollView) { ancestor = view.superview }
         guard let scrollView = ancestor as? UIScrollView else { return }
-        pin.attach(scrollView, content: self)
+        pin.attach(scrollView)
         pin.contentChanged()
     }
 }

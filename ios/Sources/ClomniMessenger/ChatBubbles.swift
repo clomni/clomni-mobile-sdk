@@ -109,7 +109,9 @@ struct ChatTranscript: View {
         .padding(.top, CGFloat(ClomniTheme.Space.xl))
         .padding(.bottom, Self.bottomPadding)
         // M3: new items come in on the emphasized easing and the rest move to their place; Reduce Motion: nothing moves.
-        .animation(reduceMotion ? nil : Motion.decelerate(0.2), value: items.map(\.id))
+        // Only for a change at the end: a page of history above lands in one pass, not sliding the rows under the
+        // ScrollPin for 200 ms (CM-087).
+        .animation(reduceMotion ? nil : Motion.decelerate(0.2), value: items.last?.id)
     }
 }
 

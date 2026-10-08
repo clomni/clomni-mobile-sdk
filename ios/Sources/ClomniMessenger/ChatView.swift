@@ -220,7 +220,7 @@ struct ChatView: View {
                     .frame(height: 0)
                     ChatTranscript(items: model.screen.items, theme: theme, actions: actions(proxy), reachedTop: loadOlder,
                                    pin: pin)
-                        .background(ScrollPinContent(pin: pin, first: model.screen.items.first?.id,
+                        .background(ScrollPinContent(pin: pin, items: model.screen.items,
                                                      animates: !reduceMotion, settled: { atBottom = true }))
                         // Shown once it stands at its end (ScrollPin): the first frame is the bottom, nothing slides.
                         // Should the scroll view not be found, it shows all the same.

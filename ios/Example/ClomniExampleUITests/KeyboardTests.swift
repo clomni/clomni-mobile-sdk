@@ -33,8 +33,11 @@ final class KeyboardTests: XCTestCase {
         XCTAssertGreaterThan(last.minY, 0, "and on screen")
         // Both pages come (at historyAt and 0.8 s later) while this looks; at every look the end is where it was.
         while Date() < historyAt.addingTimeInterval(4) {
+            // What the screen showed when the end was lost, for the result bundle and CI's screenshots.
+            if !submit.exists { keep("history-lost") }
             XCTAssertTrue(submit.exists, "the end stays in sight while the history comes")
             let frame = submit.frame, bar = composer.frame
+            if frame.maxY > bar.minY || frame.minY <= 0 { keep("history-lost") }
             XCTAssertLessThanOrEqual(frame.maxY, bar.minY, "the last item \(frame) is over the composer \(bar)")
             XCTAssertGreaterThan(frame.minY, 0, "and on screen")
         }
