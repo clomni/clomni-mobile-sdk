@@ -136,7 +136,8 @@ apiValidation {
 
 // Brief 11 said 1.5 MB for the release AAR (a library: not shrunk here, R8 runs in the app); raised to 1.75 MB by the
 // coordinator on 2026-10-03 (BRIEF-DEVIATIONS 21) when Home v2 and the news left ~11 KB of room, and to 2 MB on
-// 2026-10-05 (BRIEF-DEVIATIONS 23) for the reply and the motion pass. Part of CI.
+// 2026-10-05 (BRIEF-DEVIATIONS 23) for the reply and the motion pass, and to 2.25 MB on 2026-10-08
+// (BRIEF-DEVIATIONS 25): the CSAT card, links and the start guard took it to 2 001 384 bytes. Part of CI.
 val checkAarSize by tasks.registering {
     description = "Fails when the release AAR is larger than 2 MB."
     group = "verification"
@@ -145,9 +146,9 @@ val checkAarSize by tasks.registering {
     inputs.file(aar)
     doLast {
         val bytes = aar.get().asFile.length()
-        val limit = 2_000_000L
+        val limit = 2_250_000L
         logger.lifecycle("messenger-release.aar: $bytes bytes (limit $limit)")
-        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over 2 MB (BRIEF-DEVIATIONS 21, 23)" }
+        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over 2.25 MB (BRIEF-DEVIATIONS 21, 23, 25)" }
     }
 }
 
