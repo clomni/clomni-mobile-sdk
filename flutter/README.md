@@ -11,8 +11,18 @@ Flutter 3.16 or later; iOS 15, Android API 24.
 flutter pub add clomni_flutter
 ```
 
-The iOS side brings the iOS SDK (`ClomniMessenger`, CocoaPods or Swift Package Manager), the Android side the Android
-SDK (`ai.clomni:messenger`, Maven Central).
+The Android side brings the Android SDK (`ai.clomni:messenger`, Maven Central). The iOS side brings the iOS SDK
+(`ClomniMessenger`), which is a Swift package and not on CocoaPods trunk:
+
+- **Swift Package Manager** (on by default in current Flutter, e.g. 3.47; from 3.24 with
+  `flutter config --enable-swift-package-manager`): nothing to add. The plugin's `Package.swift` takes the SDK from `https://github.com/clomni/clomni-mobile-sdk.git`, version
+  1.0.0 up to the next major. Xcode 15 or later.
+- **CocoaPods**: add one line to `ios/Podfile`, in `target 'Runner'`, then `pod install`. Without it `pod install`
+  stops and prints this line.
+
+  ```ruby
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+  ```
 
 **Android: the app's `MainActivity` extends `FlutterFragmentActivity`**, not `FlutterActivity`: the messenger's
 optional launcher draws on the app's activity and needs an AndroidX activity under it.
@@ -21,9 +31,9 @@ optional launcher draws on the app's activity and needs an AndroidX activity und
 class MainActivity : FlutterFragmentActivity()
 ```
 
-Until the native SDKs are published, point both to a checkout of this repository:
+To build against a checkout of this repository instead:
 
-- iOS, in `ios/Podfile`: `pod 'ClomniMessenger', :path => '../path/to/clomni-mobile-sdk'`
+- iOS with CocoaPods, in `ios/Podfile`: `pod 'ClomniMessenger', :path => '../path/to/clomni-mobile-sdk'`
 - Android: publish the SDK to the local Maven repository, then add `mavenLocal()` to the app's repositories (the
   example does). An included build does not work here: Flutter 3.47's apps use AGP 9, the SDK AGP 8, and one Gradle
   build cannot hold both.

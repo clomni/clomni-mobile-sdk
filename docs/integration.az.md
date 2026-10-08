@@ -11,7 +11,7 @@ native düymələrlə işləyir.
 |---|---|
 | Android | Android 6.0 (API 23) |
 | iOS | iOS 15, Xcode 15 |
-| React Native | React Native 0.72 (New Architecture üçün 0.76); Expo SDK 50, development build ilə |
+| React Native | React Native 0.75 (New Architecture üçün 0.76); Expo SDK 52, development build ilə |
 | Flutter | Flutter 3.16; iOS 15, Android API 24 |
 
 ## 1. Panel tərəfi
@@ -52,12 +52,17 @@ dependencies {
 SDK özü heç bir icazə istəmir və tətbiqin ekranlarına heç nə əlavə etmir.
 
 **iOS**, Swift Package Manager: File → Add Package Dependencies →
-`https://github.com/clomni/clomni-mobile-sdk.git`, versiya `1.0.0`, məhsul `ClomniMessenger`.
+`https://github.com/clomni/clomni-mobile-sdk.git`, qayda "Up to Next Major Version", `1.0.0`-dan, məhsul
+`ClomniMessenger`. `Package.swift`-də:
 
-**iOS**, CocoaPods:
+```swift
+.package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.0")
+```
+
+iOS SDK CocoaPods trunk-da yoxdur. CocoaPods layihəsi pod-u repo-nun teqindən götürür:
 
 ```ruby
-pod 'ClomniMessenger', '~> 1.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
 ```
 
 **React Native**:
@@ -66,6 +71,12 @@ pod 'ClomniMessenger', '~> 1.0'
 npm install @clomni/react-native
 cd ios && pod install
 ```
+
+`pod install` iOS SDK-nı Pods layihəsinə Swift paketi kimi əlavə edir (React Native-in `spm_dependency`-si, ona görə
+0.75 və ya daha yenisi lazımdır); Xcode onu ilk build-də yükləyir. Tətbiq pod-ları statik bağlayanda (default belədir)
+React Native bunun "linker xətalarına səbəb ola biləcəyi" barədə xəbərdarlıq verir. Bağlama (link) alınmasa və ya
+React Native daha köhnədirsə, yuxarıdakı "iOS" bölməsindəki CocoaPods sətrini `ios/Podfile`-a əlavə edin: paket o
+zaman həmin pod-u götürür.
 
 Expo-da development build lazımdır (`npx expo prebuild` və ya EAS build). Expo Go native modulları yükləyə bilmir.
 Paketin config plugin-i native layihələrə lazım olanı yazır:
@@ -87,6 +98,11 @@ plugins: [
 ```sh
 flutter pub add clomni_flutter
 ```
+
+iOS-da Swift Package Manager ilə (yeni Flutter versiyalarında default açıqdır; 3.24-dən
+`flutter config --enable-swift-package-manager` ilə), plugin iOS SDK-nı repo-dan özü götürür.
+CocoaPods ilə yuxarıdakı "iOS" bölməsindəki CocoaPods sətrini `ios/Podfile`-a, `target 'Runner'` içinə əlavə edin;
+o olmasa `pod install` dayanır və həmin sətri göstərir.
 
 Android-də tətbiqin `MainActivity`-si `FlutterFragmentActivity`-dən törəməlidir, `FlutterActivity`-dən yox:
 

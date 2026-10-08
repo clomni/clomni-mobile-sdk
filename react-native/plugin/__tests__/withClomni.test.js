@@ -87,7 +87,7 @@ describe('Android manifest', () => {
   });
 });
 
-describe('localSdk, until the native SDKs are published', () => {
+describe('localSdk, a checkout in place of the published SDKs', () => {
   const podfile = "target 'Apar' do\n  use_expo_modules!\n  config = use_native_modules!\nend\n";
 
   it('puts the iOS SDK pod after use_expo_modules!, once', () => {

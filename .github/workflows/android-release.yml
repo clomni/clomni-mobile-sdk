@@ -6,6 +6,10 @@ name: Android release
 #
 # Secrets: CLOMNI_SIGNING_KEY (ASCII-armoured private PGP key), CLOMNI_SIGNING_PASSWORD, CENTRAL_USERNAME and
 # CENTRAL_PASSWORD (a Central Portal user token for the verified namespace ai.clomni).
+#
+# The upload is USER_MANAGED: the workflow prints the deployment id and waits until the Portal has validated it. It then
+# stays there until someone presses "Publish" in the Portal, or the workflow is run with publish ticked, which
+# publishes it to Maven Central (final: a version on Maven Central can never be changed or removed).
 on:
   push:
     tags: ['android-v*']
@@ -16,6 +20,10 @@ on:
         required: true
       upload:
         description: 'Upload to the Central Portal (needs the secrets)'
+        type: boolean
+        default: false
+      publish:
+        description: 'After validation, publish to Maven Central (needs upload; cannot be undone)'
         type: boolean
         default: false
 
@@ -72,10 +80,38 @@ jobs:
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         run: |
           token=$(printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 -w0)
-          # USER_MANAGED: the deployment waits in the Portal for a person to press "Publish".
-          curl --fail-with-body -sS -X POST \
+          api=https://central.sonatype.com/api/v1/publisher
+          # USER_MANAGED: the deployment waits in the Portal for a person (or `publish` below) to publish it.
+          id=$(curl --fail-with-body -sS -X POST \
             -H "Authorization: Bearer $token" \
             -F "bundle=@messenger/build/central-bundle.zip" \
-            "https://central.sonatype.com/api/v1/publisher/upload?name=messenger-${{ steps.version.outputs.version }}&publishingType=USER_MANAGED"
+            "$api/upload?name=messenger-${{ steps.version.outputs.version }}&publishingType=USER_MANAGED")
+          echo "Deployment id: $id"
+          echo "### Central Portal deployment \`$id\`" >> "$GITHUB_STEP_SUMMARY"
+
+          # PENDING → VALIDATING → VALIDATED (or FAILED, with the reasons). Usually a minute or two.
+          state=
+          for _ in $(seq 1 90); do
+            status=$(curl --fail-with-body -sS -X POST -H "Authorization: Bearer $token" "$api/status?id=$id")
+            state=$(echo "$status" | jq -r .deploymentState)
+            echo "state: $state"
+            case "$state" in
+              VALIDATED) break ;;
+              FAILED) echo "$status" | jq .errors; echo "::error::deployment $id failed validation"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          [ "$state" = VALIDATED ] || { echo "::error::deployment $id is $state, not VALIDATED"; exit 1; }
+          echo "Validated: $(echo "$status" | jq -c .purls)"
+
+          if [ "$PUBLISH" = true ]; then
+            curl --fail-with-body -sS -X POST -H "Authorization: Bearer $token" "$api/deployment/$id"
+            echo "Publishing deployment $id to Maven Central."
+            echo "Publish requested: Maven Central has it within about 30 minutes." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::notice::Deployment $id is validated and waits in the Central Portal; publish it there or run with publish."
+            echo "Validated; waiting in the Central Portal for Publish." >> "$GITHUB_STEP_SUMMARY"
+          fi
