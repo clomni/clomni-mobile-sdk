@@ -50,7 +50,7 @@ const NOTIFICATION_ICON = 'clomni_notification_icon';
  * @property {'development' | 'production'} [apsEnvironment] iOS: the aps-environment to write (default development,
  *   when the app has none; a store build is signed for production anyway).
  * @property {string} [notificationIcon] Android: a white silhouette PNG in the project, for Clomni's notifications.
- * @property {string} [localSdk] Until the native SDKs are published: a checkout of clomni-mobile-sdk, whose iOS pod
+ * @property {string} [localSdk] A checkout of clomni-mobile-sdk, whose iOS pod
  *   (Podfile) and Android build (settings.gradle) replace the published ones.
  */
 

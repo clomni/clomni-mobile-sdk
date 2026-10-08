@@ -11,7 +11,7 @@ operator) run here with native buttons.
 |---|---|
 | Android | Android 6.0 (API 23) |
 | iOS | iOS 15, Xcode 15 |
-| React Native | React Native 0.72 (0.76 for the New Architecture); Expo SDK 50 in a development build |
+| React Native | React Native 0.75 (0.76 for the New Architecture); Expo SDK 52 in a development build |
 | Flutter | Flutter 3.16; iOS 15, Android API 24 |
 
 ## 1. In the Clomni panel
@@ -51,12 +51,17 @@ dependencies {
 The SDK asks for no permission itself and adds nothing to the app's screens.
 
 **iOS**, Swift Package Manager: File → Add Package Dependencies →
-`https://github.com/clomni/clomni-mobile-sdk.git`, version `1.0.0`, product `ClomniMessenger`.
+`https://github.com/clomni/clomni-mobile-sdk.git`, rule "Up to Next Major Version" from `1.0.0`, product
+`ClomniMessenger`. In a `Package.swift`:
 
-**iOS**, CocoaPods:
+```swift
+.package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.0")
+```
+
+The iOS SDK is not on CocoaPods trunk. A CocoaPods project takes the pod from the repository's tag:
 
 ```ruby
-pod 'ClomniMessenger', '~> 1.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
 ```
 
 **React Native**:
@@ -65,6 +70,11 @@ pod 'ClomniMessenger', '~> 1.0'
 npm install @clomni/react-native
 cd ios && pod install
 ```
+
+`pod install` adds the iOS SDK to the Pods project as a Swift package (React Native's `spm_dependency`, hence 0.75 or
+later); Xcode fetches it on the first build. When the app links pods statically (the default), React Native warns that
+this "might cause linker errors". If the link fails, or on an older React Native, add the CocoaPods line from "iOS"
+above to `ios/Podfile`: the package then uses that pod instead.
 
 Expo needs a development build (`npx expo prebuild` or an EAS build). Expo Go cannot load native modules. The
 package's config plugin writes what the native projects need:
@@ -86,6 +96,11 @@ plugins: [
 ```sh
 flutter pub add clomni_flutter
 ```
+
+On iOS, with Swift Package Manager (on by default in current Flutter; 3.24 or later with
+`flutter config --enable-swift-package-manager`), the plugin takes the iOS SDK from the
+repository by itself. With CocoaPods, add the CocoaPods line from "iOS" above to `ios/Podfile`, in `target 'Runner'`;
+without it `pod install` stops and prints that line.
 
 On Android the app's `MainActivity` extends `FlutterFragmentActivity`, not `FlutterActivity`:
 

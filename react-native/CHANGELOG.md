@@ -1,8 +1,7 @@
 # @clomni/react-native — changelog
 
-## 1.0.0 (unreleased)
+## 1.0.0
 
 The first release: the Clomni Messenger through the native iOS and Android SDKs, for both React Native architectures
-and Expo development builds (opening it, users, push, the unread count and events, log level and font). The look
-comes from the panel; `setTheme({ primaryColor, typeface, mode })` puts the app's own colour, font and mode over it.
-`setSoundsEnabled`, `setLanguage` and `onLink` (a news item's link goes to the app) as in the native SDKs.
+(0.75+) and Expo development builds (SDK 52+). The iOS SDK comes as a Swift package through React Native's
+`spm_dependency`, or as a pod from the repository's tag when the Podfile names it.

@@ -1,0 +1,70 @@
+name: React Native release
+
+# @clomni/react-native to npm. "Run workflow" with the version in react-native/package.json: it is tested, packed and,
+# with publish ticked, published with provenance. Unticked it is a dry run (npm publish --dry-run).
+#
+# Secret: NPM_TOKEN (an npm automation or granular token that may publish @clomni/react-native).
+# The iOS SDK is not on CocoaPods trunk: the package's podspec takes it as a Swift package from this repository's
+# tag, so the iOS tag (e.g. 1.0.0) must exist before this is published.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 1.0.0 (must equal react-native/package.json)'
+        required: true
+      publish:
+        description: 'Publish to npm (needs NPM_TOKEN); otherwise a dry run'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write   # npm provenance
+
+concurrency:
+  group: react-native-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: react-native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "not a version: $VERSION"; exit 1; }
+          pkg=$(node -p "require('./package.json').version")
+          [ "$pkg" = "$VERSION" ] || { echo "package.json says $pkg, not $VERSION"; exit 1; }
+          grep -Eq "^## ${VERSION//./\\.}( |$)" CHANGELOG.md || { echo "CHANGELOG.md has no \"## $VERSION\" section"; exit 1; }
+          if npm view "@clomni/react-native@$VERSION" version >/dev/null 2>&1; then
+            echo "@clomni/react-native@$VERSION is already on npm"; exit 1
+          fi
+          # The iOS SDK (spm_dependency, from 1.0.0 up to the next major) and the Android SDK must exist at the
+          # versions this package asks for.
+          ios=$(git ls-remote --tags https://github.com/clomni/clomni-mobile-sdk.git | grep -Ec 'refs/tags/1\.[0-9]+\.[0-9]+$' || true)
+          [ "$ios" -gt 0 ] || echo "::warning::no iOS SDK tag 1.x.y yet: pod install in an app will not find ClomniMessenger"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - name: Pack
+        run: npm pack --dry-run
+      - name: Publish
+        if: inputs.publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          [ -n "$NODE_AUTH_TOKEN" ] || { echo "NPM_TOKEN is not set"; exit 1; }
+          npm publish --access public --provenance
+      - name: Dry run
+        if: ${{ !inputs.publish }}
+        run: npm publish --access public --dry-run

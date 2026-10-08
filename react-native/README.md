@@ -3,9 +3,9 @@
 The Clomni Messenger in a React Native app. The JS API only calls the native iOS and Android SDKs, which draw the
 messenger natively. It does not use a WebView.
 
-React Native 0.72 or later; the New Architecture (TurboModule) needs 0.76 or later, older versions use the old
-architecture's bridge. Expo SDK 50 or later in a development build (`npx expo prebuild`); Expo Go cannot load native
-modules.
+React Native 0.75 or later; the New Architecture (TurboModule) needs 0.76 or later, older versions use the old
+architecture's bridge. Expo SDK 52 or later in a development build (`npx expo prebuild`); Expo Go cannot load native
+modules. Xcode 15 or later.
 
 ## Install
 
@@ -14,10 +14,23 @@ npm install @clomni/react-native
 cd ios && pod install
 ```
 
-The iOS pod (`ClomniReactNative`) brings the iOS SDK (`ClomniMessenger`, CocoaPods); the Android module brings the
-Android SDK (`ai.clomni:messenger`, Maven Central). Autolinking does the rest.
+Autolinking does the rest. The Android module brings the Android SDK (`ai.clomni:messenger`, Maven Central). The iOS
+pod (`ClomniReactNative`) brings the iOS SDK (`ClomniMessenger`) as a Swift package from
+`https://github.com/clomni/clomni-mobile-sdk.git`, version 1.0.0 up to the next major: `pod install` adds it to the
+Pods project through React Native's `spm_dependency`, and Xcode fetches it on the first build. The iOS SDK is not on
+CocoaPods trunk.
 
-Until the native SDKs are published, point both to a checkout of this repository:
+`pod install` prints a warning from React Native when the app links pods statically (the default): a Swift package in
+a static pod "might cause linker errors". If the app's link fails on `ClomniMessenger` symbols, or on React Native
+older than 0.75, take the iOS SDK as a pod from the repository's tag instead. The podspec then uses that pod and adds
+no Swift package:
+
+```ruby
+# ios/Podfile, in the app's target
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+```
+
+To build against a checkout of this repository instead:
 
 - iOS, in the app's `Podfile`: `pod 'ClomniMessenger', :path => '../path/to/clomni-mobile-sdk'`
 - Android, in the app's `android/settings.gradle`:
@@ -32,7 +45,7 @@ Until the native SDKs are published, point both to a checkout of this repository
 
 ## Expo
 
-Expo SDK 50 or later, in a development build: the package's config plugin writes what the native projects need, and
+Expo SDK 52 or later, in a development build: the package's config plugin writes what the native projects need, and
 `npx expo prebuild` (or an EAS build) applies it. Expo Go cannot load the native modules.
 
 ```ts
@@ -57,7 +70,7 @@ plugins: [
 | `push` (default `true`) | iOS `aps-environment` and `UIBackgroundModes: remote-notification`; Android `POST_NOTIFICATIONS` (Android 13+; the app asks the user for it) |
 | `apsEnvironment` | iOS `aps-environment`, when the app should not keep its own |
 | `notificationIcon` | Android `res/drawable/clomni_notification_icon.png`: then call `Clomni.setNotificationIcon('clomni_notification_icon')` |
-| `localSdk` | until the native SDKs are published: a checkout of this repository, whose `ClomniMessenger` pod and Android build replace the published ones |
+| `localSdk` | a checkout of this repository, whose `ClomniMessenger` pod and Android build replace the published ones |
 
 What the app already has stays: a text, an entitlement, a background mode or a permission is only added where it is
 missing, unless an option names it. MainActivity is not changed; React Native needs nothing there.
@@ -67,14 +80,14 @@ missing, unless an option names it. MainActivity is not changed; React Native ne
 That app already sets both Info.plist texts, `aps-environment: production`, `UIBackgroundModes` with
 `remote-notification`, and `POST_NOTIFICATIONS`, and uses `@react-native-firebase/messaging`:
 
-1. `pnpm add @clomni/react-native` (before publishing: `"@clomni/react-native": "file:../clomni-mobile-sdk/react-native"`).
+1. `pnpm add @clomni/react-native`.
 2. In `app.config.ts`, after `'@react-native-firebase/messaging'`:
 
    ```ts
-   ['@clomni/react-native', { notificationIcon: './src/assets/images/notification-icon.png', localSdk: '../clomni-mobile-sdk' }],
+   ['@clomni/react-native', { notificationIcon: './src/assets/images/notification-icon.png' }],
    ```
 
-   The plugin keeps the app's texts and its production entitlement; `localSdk` only until the SDKs are published.
+   The plugin keeps the app's texts and its production entitlement.
 3. `npx expo prebuild --clean`, then `npx expo run:ios` / `run:android` or an EAS build.
 4. In JS, next to the app's own Firebase handlers:
 

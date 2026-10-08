@@ -8,7 +8,7 @@ closed.
 | Directory | Package |
 |---|---|
 | `android/` | `ai.clomni:messenger` (Kotlin, Jetpack Compose) |
-| `ios/` | `ClomniMessenger` (Swift Package Manager, CocoaPods) |
+| `ios/` | `ClomniMessenger` (Swift Package Manager) |
 | `react-native/` | `@clomni/react-native` (wraps the native SDKs) |
 | `flutter/` | `clomni_flutter` (wraps the native SDKs) |
 | `unity/` | `ai.clomni.messenger` (Unity package, wraps the native SDKs) |
@@ -23,10 +23,10 @@ iOS 15 or later, Xcode 15 or later.
 **Swift Package Manager**: File → Add Package Dependencies → `https://github.com/clomni/clomni-mobile-sdk.git`,
 version 1.0.0 or later, product `ClomniMessenger`.
 
-**CocoaPods**:
+**CocoaPods**: the SDK is not on CocoaPods trunk; take the pod from the tag:
 
 ```ruby
-pod 'ClomniMessenger', '~> 1.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
 ```
 
 Then, at launch, with the App ID and the iOS API key from Clomni (Channels → Mobile app):
