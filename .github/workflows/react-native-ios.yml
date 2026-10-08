@@ -1,0 +1,187 @@
+name: React Native iOS
+
+# A new React Native app (the newest stable release) installs @clomni/react-native from its npm tarball, runs
+# pod install and builds for the iOS Simulator: proof that the package compiles and links in an app, which jest and
+# tsc are not.
+#
+# sdk_source decides where the iOS SDK comes from:
+# - path: the app's Podfile names the ClomniMessenger pod from this checkout (the README's fallback). The podspec then
+#   takes that pod and skips Swift Package Manager.
+# - spm: what an app gets by default. spm_dependency fetches the iOS SDK from this repository's 1.x tag on GitHub, not
+#   from this checkout. React Native warns that a Swift package with static linking may fail to link; this build is
+#   the answer. Without a 1.x tag there is nothing to fetch, and the job says so and stops.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_source:
+        description: 'iOS SDK: path (this checkout, named in the Podfile) or spm (the 1.x tag, spm_dependency)'
+        type: choice
+        options: [path, spm]
+        default: path
+  pull_request:
+    paths:
+      - 'react-native/**'
+      - 'ios/**'
+      - 'ClomniMessenger.podspec'
+      - '.github/workflows/react-native-ios.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      # A pull request has no inputs: it builds against this checkout.
+      SDK_SOURCE: ${{ inputs.sdk_source || 'path' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: iOS SDK source
+        id: source
+        run: |
+          echo "APP=$RUNNER_TEMP/ClomniSmoke" >> "$GITHUB_ENV"
+          case "$SDK_SOURCE" in
+            path) build=true ;;
+            spm)
+              refs=$(git ls-remote --tags --refs https://github.com/clomni/clomni-mobile-sdk.git)
+              tags=$(printf '%s\n' "$refs" | grep -Ec 'refs/tags/1\.[0-9]+\.[0-9]+$' || true)
+              if [ "$tags" -gt 0 ]; then
+                build=true
+              else
+                build=false
+                msg="No iOS SDK tag 1.x.y on GitHub yet: spm_dependency has nothing to fetch, so the spm build is skipped. Run with sdk_source=path, or tag the iOS SDK first."
+                echo "::notice::$msg"
+                echo "**sdk_source=spm: skipped.** $msg" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              ;;
+            *) echo "sdk_source must be path or spm, not '$SDK_SOURCE'"; exit 1 ;;
+          esac
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: steps.source.outputs.build == 'true'
+        with:
+          xcode-version: '26'
+
+      - uses: actions/setup-node@v4
+        if: steps.source.outputs.build == 'true'
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: react-native/package-lock.json
+
+      # prepack compiles lib/; the tarball holds exactly what npm publish would.
+      - name: Pack @clomni/react-native
+        if: steps.source.outputs.build == 'true'
+        working-directory: react-native
+        run: |
+          npm ci
+          npm pack --pack-destination "$RUNNER_TEMP"
+          tgz=$(ls "$RUNNER_TEMP"/clomni-react-native-*.tgz)
+          echo "TGZ=$tgz" >> "$GITHUB_ENV"
+
+      - name: Create a React Native app
+        if: steps.source.outputs.build == 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          npx --yes @react-native-community/cli@latest init ClomniSmoke \
+            --version latest --pm npm --skip-git-init --install-pods false
+          cd "$APP"
+          rn=$(node -p "require('react-native/package.json').version")
+          echo "React Native $rn"
+          {
+            echo "| | |"
+            echo "|---|---|"
+            echo "| React Native | $rn |"
+            echo "| Xcode | $(xcodebuild -version | head -1) |"
+            echo "| Node | $(node --version) |"
+            echo "| iOS SDK source | $SDK_SOURCE |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The call at startup goes to the native module (RCTClomni); the Release build below bundles this file, so the
+      # package's JS entry has to resolve too.
+      - name: Install @clomni/react-native from the tarball
+        if: steps.source.outputs.build == 'true'
+        working-directory: ${{ runner.temp }}/ClomniSmoke
+        run: |
+          npm install "$TGZ"
+          cat > App.tsx <<'EOF'
+          import React from 'react';
+          import { Text, View } from 'react-native';
+          import { Clomni } from '@clomni/react-native';
+
+          Clomni.setLogLevel('debug');
+
+          export default function App() {
+            return (
+              <View>
+                <Text>Clomni</Text>
+              </View>
+            );
+          }
+          EOF
+
+      - name: 'Podfile: ClomniMessenger from this checkout'
+        if: steps.source.outputs.build == 'true' && env.SDK_SOURCE == 'path'
+        working-directory: ${{ runner.temp }}/ClomniSmoke/ios
+        run: |
+          perl -0pi -e "s{^(target '[^']+' do\n)}{\$1  pod 'ClomniMessenger', :path => '\$ENV{GITHUB_WORKSPACE}'\n}m" Podfile
+          grep -n "pod 'ClomniMessenger'" Podfile
+
+      # The app's Gemfile pins the CocoaPods its React Native version was made with, as the React Native docs run it.
+      - name: pod install
+        if: steps.source.outputs.build == 'true'
+        working-directory: ${{ runner.temp }}/ClomniSmoke
+        run: |
+          bundle config set --local path vendor/bundle
+          bundle install
+          cd ios
+          echo "| CocoaPods | $(bundle exec pod --version) |" >> "$GITHUB_STEP_SUMMARY"
+          bundle exec pod install 2>&1 | tee "$RUNNER_TEMP/pod-install.log"
+          grep -nE "ClomniReactNative|ClomniMessenger" Podfile.lock
+          if grep -q '\[SPM\] WARNING.*static linking' "$RUNNER_TEMP/pod-install.log"; then
+            echo "::warning::React Native warns that a Swift package with static linking might not link; the build step says whether it does."
+            echo "| SPM static-linking warning | yes |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Release: Debug on the Simulator leaves the JS to Metro, Release bundles App.tsx into the app.
+      - name: Build for the iOS Simulator
+        if: steps.source.outputs.build == 'true'
+        working-directory: ${{ runner.temp }}/ClomniSmoke/ios
+        run: |
+          xcodebuild build -quiet \
+            -workspace ClomniSmoke.xcworkspace \
+            -scheme ClomniSmoke \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # The native module and the SDK are in the app's binary, and the package's JS is in its bundle.
+      - name: Check the app
+        if: steps.source.outputs.build == 'true'
+        run: |
+          app="$RUNNER_TEMP/dd/Build/Products/Release-iphonesimulator/ClomniSmoke.app"
+          nm -U "$app/ClomniSmoke" > "$RUNNER_TEMP/symbols.txt"
+          grep -qF 'OBJC_CLASS_$_RCTClomni' "$RUNNER_TEMP/symbols.txt" || { echo "RCTClomni is not in the app"; exit 1; }
+          grep -qF 'ClomniMessenger' "$RUNNER_TEMP/symbols.txt" || { echo "ClomniMessenger is not in the app"; exit 1; }
+          grep -aqF '@clomni/react-native' "$app/main.jsbundle" || { echo "the package's JS is not in main.jsbundle"; exit 1; }
+          echo "| App | $(du -sh "$app" | cut -f1), RCTClomni and ClomniMessenger linked |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-ios-${{ env.SDK_SOURCE }}
+          path: |
+            ${{ runner.temp }}/pod-install.log
+            ${{ runner.temp }}/ClomniSmoke/ios/Podfile
+            ${{ runner.temp }}/ClomniSmoke/ios/Podfile.lock
+          if-no-files-found: ignore
