@@ -52,7 +52,7 @@ dependencies {
 SDK özü heç bir icazə istəmir və tətbiqin ekranlarına heç nə əlavə etmir.
 
 **iOS**, Swift Package Manager: File → Add Package Dependencies →
-`https://github.com/rzayevkenann/clomni-mobile-sdk.git`, versiya `1.0.0`, məhsul `ClomniMessenger`.
+`https://github.com/clomni/clomni-mobile-sdk.git`, versiya `1.0.0`, məhsul `ClomniMessenger`.
 
 **iOS**, CocoaPods:
 

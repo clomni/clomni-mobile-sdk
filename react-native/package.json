@@ -6,7 +6,7 @@
   "homepage": "https://clomni.ai",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rzayevkenann/clomni-mobile-sdk.git",
+    "url": "git+https://github.com/clomni/clomni-mobile-sdk.git",
     "directory": "react-native"
   },
   "main": "lib/index.js",

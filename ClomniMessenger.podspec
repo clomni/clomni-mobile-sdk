@@ -9,15 +9,15 @@ Pod::Spec.new do |s|
   s.homepage = 'https://clomni.ai'
   s.license = { :type => 'Commercial', :text => 'Copyright (c) Clomni. All rights reserved.' }
   s.author = 'Clomni'
-  s.source = { :git => 'https://github.com/rzayevkenann/clomni-mobile-sdk.git', :tag => s.version.to_s }
+  s.source = { :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '15.0'
   # The language mode, as Package.swift builds it (tools 5.9, Swift 5 mode). Xcode's SWIFT_VERSION takes only 4.0,
   # 4.2, 5.0 or 6.0; the compiler must still be Swift 5.9 or later (Xcode 15): the sources use `package` access.
   s.swift_versions = ['5.0']
   s.cocoapods_version = '>= 1.12'
-  s.readme = "https://github.com/rzayevkenann/clomni-mobile-sdk/blob/#{s.version}/README.md"
-  s.changelog = "https://github.com/rzayevkenann/clomni-mobile-sdk/blob/#{s.version}/ios/CHANGELOG.md"
+  s.readme = "https://github.com/clomni/clomni-mobile-sdk/blob/#{s.version}/README.md"
+  s.changelog = "https://github.com/clomni/clomni-mobile-sdk/blob/#{s.version}/ios/CHANGELOG.md"
 
   # All four SwiftPM targets compile into this one module; system frameworks only. What is not the app's to use is
   # declared `package` (SwiftPM shares it between its four modules); here the package is this module alone, so

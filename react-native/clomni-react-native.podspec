@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.license      = { :type => "Commercial", :text => "Copyright (c) Clomni. All rights reserved." }
   s.author       = "Clomni"
   s.platforms    = { :ios => "15.0" }
-  s.source       = { :git => "https://github.com/rzayevkenann/clomni-mobile-sdk.git", :tag => "react-native-#{s.version}" }
+  s.source       = { :git => "https://github.com/clomni/clomni-mobile-sdk.git", :tag => "react-native-#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
   s.swift_version = "5.0"

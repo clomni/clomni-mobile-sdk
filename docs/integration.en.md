@@ -51,7 +51,7 @@ dependencies {
 The SDK asks for no permission itself and adds nothing to the app's screens.
 
 **iOS**, Swift Package Manager: File → Add Package Dependencies →
-`https://github.com/rzayevkenann/clomni-mobile-sdk.git`, version `1.0.0`, product `ClomniMessenger`.
+`https://github.com/clomni/clomni-mobile-sdk.git`, version `1.0.0`, product `ClomniMessenger`.
 
 **iOS**, CocoaPods:
 

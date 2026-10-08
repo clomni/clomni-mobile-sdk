@@ -178,8 +178,8 @@ publishing {
                     }
                 }
                 scm {
-                    url.set("https://github.com/rzayevkenann/clomni-mobile-sdk")
-                    connection.set("scm:git:https://github.com/rzayevkenann/clomni-mobile-sdk.git")
+                    url.set("https://github.com/clomni/clomni-mobile-sdk")
+                    connection.set("scm:git:https://github.com/clomni/clomni-mobile-sdk.git")
                 }
             }
         }

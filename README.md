@@ -20,7 +20,7 @@ Both native SDKs render the same `protocol/fixtures`; their tests fail when a fi
 
 iOS 15 or later, Xcode 15 or later.
 
-**Swift Package Manager**: File → Add Package Dependencies → `https://github.com/rzayevkenann/clomni-mobile-sdk.git`,
+**Swift Package Manager**: File → Add Package Dependencies → `https://github.com/clomni/clomni-mobile-sdk.git`,
 version 1.0.0 or later, product `ClomniMessenger`.
 
 **CocoaPods**:

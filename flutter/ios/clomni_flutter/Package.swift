@@ -14,7 +14,7 @@ let package = Package(
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
         // The iOS SDK (before it is published, an app can point Xcode at a checkout instead; README.md).
-        .package(url: "https://github.com/rzayevkenann/clomni-mobile-sdk.git", from: "1.0.0")
+        .package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.0")
     ],
     targets: [
         .target(

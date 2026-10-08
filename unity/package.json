@@ -8,8 +8,8 @@
     "name": "Clomni",
     "url": "https://clomni.ai"
   },
-  "documentationUrl": "https://github.com/rzayevkenann/clomni-mobile-sdk/blob/main/unity/README.md",
-  "changelogUrl": "https://github.com/rzayevkenann/clomni-mobile-sdk/blob/main/unity/CHANGELOG.md",
+  "documentationUrl": "https://github.com/clomni/clomni-mobile-sdk/blob/main/unity/README.md",
+  "changelogUrl": "https://github.com/clomni/clomni-mobile-sdk/blob/main/unity/CHANGELOG.md",
   "keywords": ["clomni", "messenger", "chat", "support"],
   "samples": [
     {
