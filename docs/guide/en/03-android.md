@@ -5,7 +5,7 @@
 - Android 6.0 (API 23) or newer.
 - A recent `compileSdk` (35 or newer).
 - Kotlin 1.8 or newer. Java works too (see the end of this chapter).
-- The App ID and the Android API key (`android_…`) from the panel's Installation tab.
+- The App ID and the Android API key (`android_…`) from **Installation** in the panel's side menu.
 
 The SDK asks for no permission of its own except network access, and adds nothing to your screens.
 
@@ -352,7 +352,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 ### Test it
 
 1. Run the app on a phone, allow notifications and open the Messenger once.
-2. In the panel: Push tab → **Test push** → choose the device → **Send**.
+2. In the panel: **Push** in the side menu → **Test push** → choose the device → **Send**.
 
 To see a Clomni notification without the server, hand `ClomniPush.handle` a map yourself:
 

@@ -1,7 +1,7 @@
 # Push keys
 
 Clomni sends push notifications with your own keys: a Firebase service account for Android and an APNs key for
-iOS. Both are uploaded on the inbox's **Push** tab (or in step 4 of the wizard).
+iOS. Both are uploaded under **Push** in the inbox's side menu (or in step 4 of the wizard).
 
 | Platform | What the panel needs | Where it comes from |
 |---|---|---|
@@ -107,7 +107,7 @@ the first push: use Test push.
 ## Test push
 
 Once the app runs on a phone with notifications allowed and has handed over its token, the device appears in the
-**Test push** list on the Push tab. Choose it and press **Send**. The answer is FCM's or APNs' own.
+**Test push** list under **Push**. Choose it and press **Send**. The answer is FCM's or APNs' own.
 
 | Answer | Meaning | What to do |
 |---|---|---|
@@ -120,5 +120,5 @@ Once the app runs on a phone with notifications allowed and has handed over its 
 | `UNREGISTERED` (FCM) | The app was removed from the device or the token expired | Open the app again so it sends a new token |
 | Not sent: no key | No key is uploaded for that platform | Upload the key |
 
-A token that APNs or FCM reports as dead is removed by Clomni. The "Removed tokens" column of the Push tab counts
+A token that APNs or FCM reports as dead is removed by Clomni. The "Removed tokens" column under **Push** counts
 them.

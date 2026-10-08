@@ -3,6 +3,8 @@
 Every app is one "Mobile app (App SDK)" inbox in Clomni. This chapter creates the inbox and shows where each setting
 lives afterwards. You need the Administrator role in the Clomni account.
 
+> This guide is also in the panel: the inbox page → side menu → **Guide**. See [Guide](#guide).
+
 ## Create the inbox
 
 1. Open **Settings** (the gear in the left rail) → **Workspace settings** → **Inboxes** → **Add Inbox**.
@@ -28,7 +30,7 @@ on the inbox page.
 This step shows the **App ID** and the **API keys** of each platform, with code to copy.
 
 > **Copy the API keys now.** They are shown in full only in this step. Later the panel shows only their beginning.
-> If a key is lost, make a new one on the Installation tab (see below).
+> If a key is lost, make a new one under **Installation** (see below).
 
 ### Step 3. Identity verification
 
@@ -47,39 +49,45 @@ get these files: [Push keys](08-push-keys.md).
 ### Step 5. Appearance
 
 The main colour, the logo, the greeting, the theme and the floating button. The starting values come from your
-website chat. Everything else is on the Appearance tab.
+website chat. Everything else is under **Appearance**.
 
 ### Step 6. Flows
 
-Choose the flow that runs when a user starts a new conversation. It is copied to this inbox as a draft. Publish it on
-the Flows tab, otherwise the Messenger does not run it.
+Choose the flow that runs when a user starts a new conversation. It is copied to this inbox as a draft. Publish it under
+**Flows**, otherwise the Messenger does not run it.
 
 ## The inbox page
 
-Open the inbox later from **Settings → Workspace settings → Inboxes**. The tabs you need for the SDK:
+Open the inbox later from **Settings → Workspace settings → Inboxes**. The inbox's settings are in their own column
+next to the panel's sidebar: **← Inboxes** and the inbox name at the top, then the sections in three groups. The
+ones you need for the SDK:
 
-| Tab | What is there |
-|---|---|
-| Overview | The state of the channel, warnings, devices seen last |
-| Installation | App ID, API keys, code for each platform, recent devices |
-| Security | Identity verification mode, Identity Secret, hash tester |
-| Push | Firebase and APNs keys, notification title, test push |
-| Appearance | Colours, logo, texts, languages, Home cards, theme |
-| Flows | The flows of this inbox, by what starts them |
-| News | News items on the Messenger's Home screen |
-| Analytics | Active devices, conversations, pushes, SDK versions |
+| Group | Section | What is there |
+|---|---|---|
+| APP | Overview | The state of the channel, warnings, devices seen last |
+| | Installation | App ID, API keys, code for each platform, recent devices |
+| | Security | Identity verification mode, Identity Secret, hash tester |
+| | Push | Firebase and APNs keys, notification title, test push |
+| | Guide | This guide as a PDF, and the package for each platform |
+| MESSENGER | Appearance | Colours, logo, texts, languages, Home cards, theme |
+| | Flows | The flows of this inbox, by what starts them |
+| | News | News items on the Messenger's Home screen |
+| INBOX | Analytics | Active devices, conversations, pushes, SDK versions |
+
+The INBOX group also has the settings every inbox has: settings, collaborators, business hours. In the screenshots
+the open section of the menu has a red frame. On a narrow screen the menu becomes a dropdown above the page.
 
 ### Overview
 
-![Overview tab with a warning](../images/panel-overview-en.png)
+![Overview with a warning](../images/panel-overview-en.png)
 
 The first place to look when something does not work. Each platform shows whether the SDK has connected and whether
 push is active. Warnings (1) name the problem, for example logins refused because of a wrong hash, and **Fix** opens
-the tab where it is solved.
+the section where it is solved.
 
 ### Installation: App ID and API keys
 
-![Installation tab: the API keys](../images/panel-install-keys-en.png)
+![Installation: the API keys](../images/panel-install-keys-en.png)
 
 - **API keys** (1): the App ID with a **Copy** button, then the keys of each platform. Only the beginning of a key is
   shown.
@@ -91,14 +99,14 @@ the tab where it is solved.
 Further down, the **Code** block has ready-made code for Android, iOS, React Native and Flutter with your App ID
 filled in.
 
-![Installation tab: code for each platform](../images/panel-install-code-en.png)
+![Installation: code for each platform](../images/panel-install-code-en.png)
 
 **Recent devices** lists the devices that connected last, with the app version and the SDK version. A device appears
 here a few seconds after the app calls `initialize` and opens a session.
 
 ### Security
 
-![Security tab](../images/panel-security-en.png)
+![Security](../images/panel-security-en.png)
 
 1. **Mode**: Off, Recommended or Enforced. See [Identifying users](02-identity.md#modes).
 2. **Make a new secret**: the new secret is shown once. The old one keeps working for 7 days, so move your server
@@ -108,7 +116,7 @@ here a few seconds after the app calls `initialize` and opens a session.
 
 ### Push
 
-![Push tab: Firebase and APNs keys](../images/panel-push-en.png)
+![Push: Firebase and APNs keys](../images/panel-push-en.png)
 
 1. **Android · Firebase Cloud Messaging**: the Firebase project's service account JSON.
 2. **iOS · Apple Push Notification service**: the `.p8` key with its Key ID, Team ID and Bundle ID.
@@ -135,7 +143,7 @@ The list is empty until the app has called `setDeviceToken` on a phone where not
 
 ### Appearance
 
-![Appearance tab](../images/panel-appearance-en.png)
+![Appearance](../images/panel-appearance-en.png)
 
 Changes are kept in a draft. Apps see only the published version.
 
@@ -146,17 +154,17 @@ Changes are kept in a draft. Apps see only the published version.
 The **Languages** section decides which languages the Messenger speaks. The app can pick one of them with
 `setLanguage`; without it the Messenger follows the phone's language.
 
-![Appearance tab: languages](../images/panel-appearance-languages-en.png)
+![Appearance: languages](../images/panel-appearance-languages-en.png)
 
 The **Theme** section has the mode (1: follow the phone, light, dark), the message sounds and the floating button (2)
 with its position and distance from the bottom. A value the app sets in code (`setTheme`, `setLauncherVisible`) wins
 over the panel.
 
-![Appearance tab: theme and floating button](../images/panel-appearance-theme-en.png)
+![Appearance: theme and floating button](../images/panel-appearance-theme-en.png)
 
 ### Flows
 
-![Flows tab](../images/panel-flows-en.png)
+![Flows](../images/panel-flows-en.png)
 
 The flows of this inbox, grouped by what starts them:
 
@@ -170,8 +178,18 @@ enter the event name and publish the flow.
 
 ### News
 
-![News tab](../images/panel-news-en.png)
+![News](../images/panel-news-en.png)
 
 News items appear on the Messenger's Home screen: the first three published items. **New item** (1) creates one with
 a cover image, a title, a short text, a full text and an optional button. The button can open a web address or a
 deep link of your app (see `onLink` in your platform's chapter).
+
+### Guide
+
+![Guide](../images/panel-guide-en.png)
+
+This guide is also in the panel.
+
+1. The guide as a PDF in four languages: Azerbaijani, English, Turkish and Russian. The panel's language comes first.
+2. **Online guide language**: the links below open the guide's chapters in this language.
+3. **Online guide** opens your platform's chapter. The card has the package's install command; take it with **Copy**.

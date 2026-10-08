@@ -7,7 +7,7 @@
 - React Native 0.75 və ya daha yeni (New Architecture üçün 0.76 və ya daha yeni). Expo SDK 52 və ya daha yeni,
   development build ilə.
 - iOS 15, Android 6.0 (API 23).
-- Panelin Quraşdırma tabından App ID və hər iki API açarı (`android_…`, `ios_…`).
+- Paneldə soldakı menyunun **Quraşdırma** bölməsindən App ID və hər iki API açarı (`android_…`, `ios_…`).
 
 ## Quraşdırma
 

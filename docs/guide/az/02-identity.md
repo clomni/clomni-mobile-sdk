@@ -250,7 +250,7 @@ Clomni.Logout();         // Unity
 
 ## Rejimlər
 
-Rejim panelin **Təhlükəsizlik** tabında seçilir.
+Rejim paneldə, soldakı menyunun **Təhlükəsizlik** bölməsində seçilir.
 
 | Rejim | Nə baş verir |
 |---|---|
@@ -258,10 +258,10 @@ Rejim panelin **Təhlükəsizlik** tabında seçilir.
 | Tövsiyə olunan (standart) | Göndərilən hash düzgün olmalıdır, səhv hash girişi rədd edir. Hash olmadan istifadəçi qəbul olunur, amma təsdiqlənmir. İstifadəçi bir dəfə təsdiqlənmiş hash ilə daxil olandan sonra, ondan hər dəfə hash tələb olunur. |
 | Məcburi | Düzgün hash olmadan giriş yoxdur: server `403 identity_verification_failed` qaytarır. Tətbiqdən ilk təsdiqlənmiş girişdən sonra yandırmaq olar. Hash göndərməyən tətbiq versiyaları artıq qoşula bilmir. |
 
-Yaxşı ardıcıllıq: tətbiqi `user_hash` ilə Tövsiyə olunan rejimdə buraxın, Ümumi baxış tabında hash ilə bağlı
+Yaxşı ardıcıllıq: tətbiqi `user_hash` ilə Tövsiyə olunan rejimdə buraxın, **Ümumi baxış** bölməsində hash ilə bağlı
 xəbərdarlıq qalmayana qədər izləyin, sonra Məcburi rejimə keçin.
 
 ## Secret-in dəyişdirilməsi
 
-Təhlükəsizlik tabı → **Yeni secret yarat**. Yeni secret bir dəfə göstərilir. Köhnəsi daha 7 gün işləyir: bu müddətdə
-serverinizi yeni secret-ə keçirin. **Hash-i yoxla** hash-in hansı secret ilə hazırlandığını deyir.
+Soldakı menyuda **Təhlükəsizlik** → **Yeni secret yarat**. Yeni secret bir dəfə göstərilir. Köhnəsi daha 7 gün
+işləyir: bu müddətdə serverinizi yeni secret-ə keçirin. **Hash-i yoxla** hash-in hansı secret ilə hazırlandığını deyir.

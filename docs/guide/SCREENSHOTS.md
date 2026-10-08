@@ -24,5 +24,12 @@ naviqasiya yolu, lazımi seçim və rəsmi sənədin linki. Konsolların şəkil
 ## Panel şəkilləri
 
 `panel-*-az.png` və `panel-*-en.png` dev.clomni.co-da (hesab 7, "Clomni Demo tətbiq" kanalı) Playwright ilə
-çəkilib. Açarlar, Key ID, Team ID və Firebase layihəsinin adı bulanıqlaşdırılıb. Panel dəyişəndə onları yenidən
-çəkmək lazım ola bilər.
+çəkilib. Açarlar, Key ID, Team ID, e-poçtlar və Firebase layihəsinin adı bulanıqlaşdırılıb. Panel dəyişəndə onları
+yenidən çəkmək lazım ola bilər.
+
+- Kanal səhifəsinin hər şəklində kanalın ayarlar sütunu (panelin sol paneli yanındakı menyu) də var. Açıq bölmə
+  nömrəsiz qırmızı çərçivədədir, səhifədəki addımlar nömrəli çərçivələrdədir.
+- Bölmələr sütundakı bəndə klikləməklə açılır, URL ilə yox.
+- Səhifənin aşağısındakı hissələr (test push, dillər, tema və s.) səhifə həmin yerə sürüşdürülüb çəkilir. Sütun
+  yerində qalır, ona görə bu şəkillərdə də görünür.
+- Türkcə və rusca təlimat ingiliscə panel şəkillərini işlədir: panel yalnız Azərbaycanca və ingiliscədir.

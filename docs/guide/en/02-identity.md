@@ -247,7 +247,7 @@ After `logout` the Messenger works again for a new anonymous visitor.
 
 ## Modes
 
-The mode is chosen on the panel's **Security** tab.
+The mode is chosen under **Security** in the panel's side menu.
 
 | Mode | What happens |
 |---|---|
@@ -255,10 +255,11 @@ The mode is chosen on the panel's **Security** tab.
 | Recommended (default) | A hash that is sent must be right; a wrong one refuses the login. Without a hash the user is accepted but not verified. Once a user has logged in with a verified hash, a hash is required for that user from then on. |
 | Enforced | No login without a right hash: the server answers `403 identity_verification_failed`. It can be turned on after the first verified login from the app. App versions that send no hash can no longer connect. |
 
-A good order: release the app with `user_hash` in Recommended mode, watch the Overview tab until no warnings about
+A good order: release the app with `user_hash` in Recommended mode, watch **Overview** until no warnings about
 the hash are left, then switch to Enforced.
 
 ## Replacing the secret
 
-Security tab → **Make a new secret**. The new secret is shown once. The old one keeps working for 7 days: move your
-server to the new secret within that time. **Test a hash** tells you which secret a hash was made with.
+**Security** in the side menu → **Make a new secret**. The new secret is shown once. The old one keeps working for
+7 days: move your server to the new secret within that time. **Test a hash** tells you which secret a hash was made
+with.
