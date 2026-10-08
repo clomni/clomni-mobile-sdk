@@ -113,6 +113,16 @@ package final class MessengerCoordinator {
     private var finished: [String: Set<String>] = [:]
     /// Whether the last push's conversation is on the server (`handlePush`); the tests wait for it.
     package private(set) var pushCheck: Task<Void, Never>?
+    /// `startFlow` calls still out. The same call again joins its run: a second tap while the first is still on its
+    /// way must not start a second conversation.
+    private var startingFlows: [(start: FlowStart, run: Task<String?, Never>)] = []
+
+    private struct FlowStart: Equatable {
+        let event: String
+        let data: [String: JSONValue]
+        let openMessenger: Bool
+        let source: String?
+    }
 
     package init(session: MessengerSession, language: String? = nil) {
         self.session = session
@@ -259,6 +269,19 @@ package final class MessengerCoordinator {
     @discardableResult
     package func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                           source: String? = nil) async -> String? {
+        let start = FlowStart(event: event, data: data, openMessenger: openMessenger, source: source)
+        if let running = startingFlows.first(where: { $0.start == start }) { return await running.run.value }
+        let run = Task {
+            let started = await self.runFlow(start)
+            self.startingFlows.removeAll { $0.start == start }
+            return started
+        }
+        startingFlows.append((start, run))
+        return await run.value
+    }
+
+    private func runFlow(_ start: FlowStart) async -> String? {
+        let (event, data, openMessenger, source) = (start.event, start.data, start.openMessenger, start.source)
         guard readiness != .disabled, await prepare() else { return nil }
         let started = try? await session.startFlow(event, data: data, openMessenger: openMessenger, openedFrom: source)
         guard let conversation = started ?? nil else { return nil }

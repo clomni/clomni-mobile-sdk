@@ -418,6 +418,30 @@ class MessengerCoordinatorTest {
         assertNull(ids.last())
     }
 
+    /** A second tap while the first start is still on its way joins it: one request, one conversation, one callback. */
+    @Test
+    fun theSameFlowStartedAgainWhileOutJoinsTheFirst() {
+        session.loggedIn = true
+        val queued = ArrayDeque<Runnable>()
+        val messenger = coordinator(worker = Executor { queued += it })
+        val ids = mutableListOf<String?>()
+        val ride = JsonObject(mapOf("ride_id" to JsonPrimitive("R-1042")))
+        repeat(2) { messenger.startFlow("ride_problem", ride, openMessenger = true, source = "ride_detail") { ids += it } }
+        while (queued.isNotEmpty()) queued.removeFirst().run()
+
+        assertEquals(listOf<String?>("conv_5521", "conv_5521"), ids)
+        assertEquals(
+            listOf("""flow ride_problem true ride_detail {"ride_id":"R-1042"}"""),
+            session.calls.filter { it.startsWith("flow") },
+        )
+        assertEquals(listOf("conv_5521"), started)
+        assertEquals(MessengerRoute.Conversation("conv_5521"), messenger.route)
+
+        messenger.startFlow("ride_problem", ride, openMessenger = true, source = "ride_detail") { ids += it }
+        while (queued.isNotEmpty()) queued.removeFirst().run()
+        assertEquals("once the first is back, a new tap is a new start", 2, session.calls.count { it.startsWith("flow") })
+    }
+
     @Test
     fun unreadCount() {
         session.loggedIn = true
