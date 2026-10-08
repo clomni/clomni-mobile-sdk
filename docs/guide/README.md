@@ -17,5 +17,8 @@ node docs/guide/build-pdf.mjs --lang az --out /tmp/guide
 
 The TOC's page numbers need `pdftotext` (poppler-utils). The PDFs are not kept in the repository.
 
+The guide is also in the Clomni panel: the inbox page → side menu → **Guide**. Both PDFs download from there
+(`public/docs/mobile-sdk/` in the Clomni repository).
+
 Where the screenshots come from, and how to add real ones for Firebase, Apple, Xcode, Android Studio and Unity
 (the guide gives a text path there): [SCREENSHOTS.md](SCREENSHOTS.md).

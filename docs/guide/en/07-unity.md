@@ -10,7 +10,7 @@ and on other platforms every call does nothing, and the first call says so once 
 - iOS: Target minimum iOS Version 15.0, Xcode 15 or newer.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). It brings the
   native SDKs: `ai.clomni:messenger:1.0.0` through Gradle and the `ClomniMessenger` pod through CocoaPods.
-- The App ID and both API keys (`android_…`, `ios_…`) from the panel's Installation tab.
+- The App ID and both API keys (`android_…`, `ios_…`) from **Installation** in the panel's side menu.
 
 ## Install
 

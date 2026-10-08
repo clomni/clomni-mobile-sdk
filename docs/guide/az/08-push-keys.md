@@ -1,7 +1,7 @@
 # Push açarları
 
 Clomni push bildirişlərini sizin öz açarlarınızla göndərir: Android üçün Firebase service account, iOS üçün APNs
-açarı. Hər ikisi kanalın **Push** tabında (və ya sehrbazın 4-cü addımında) yüklənir.
+açarı. Hər ikisi kanal səhifəsində, soldakı menyunun **Push** bölməsində (və ya sehrbazın 4-cü addımında) yüklənir.
 
 | Platforma | Panelə nə lazımdır | Haradan gəlir |
 |---|---|---|
@@ -107,7 +107,7 @@ bilinir: Test push işlədin.
 
 ## Test push
 
-Tətbiq bildirişlərə icazə verilmiş telefonda işləyib tokenini verəndən sonra cihaz Push tabındakı **Test push**
+Tətbiq bildirişlərə icazə verilmiş telefonda işləyib tokenini verəndən sonra cihaz **Push** bölməsindəki **Test push**
 siyahısında görünür. Onu seçin və **Göndər** basın. Cavab FCM və ya APNs-in öz cavabıdır.
 
 | Cavab | Mənası | Nə etməli |
@@ -121,4 +121,4 @@ siyahısında görünür. Onu seçin və **Göndər** basın. Cavab FCM və ya A
 | `UNREGISTERED` (FCM) | Tətbiq cihazdan silinib və ya tokenin vaxtı keçib | Tətbiqi yenidən açın ki, yeni token göndərsin |
 | Göndərilmədi: açar yoxdur | Bu platforma üçün açar yüklənməyib | Açarı yükləyin |
 
-APNs və ya FCM-in ölü saydığı tokeni Clomni silir. Push tabındakı "Silinmiş token" sütunu onları sayır.
+APNs və ya FCM-in ölü saydığı tokeni Clomni silir. **Push** bölməsindəki "Silinmiş token" sütunu onları sayır.

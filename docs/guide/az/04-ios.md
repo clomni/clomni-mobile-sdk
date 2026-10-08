@@ -3,7 +3,7 @@
 ## Tələblər
 
 - iOS 15 və ya daha yeni, Xcode 15 və ya daha yeni.
-- Panelin Quraşdırma tabından App ID və iOS API açarı (`ios_…`).
+- Paneldə soldakı menyunun **Quraşdırma** bölməsindən App ID və iOS API açarı (`ios_…`).
 - Push üçün: Apple Developer hesabı və APNs açarı ([Push açarları](08-push-keys.md)).
 
 ## Quraşdırma
@@ -399,7 +399,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
 1. Tətbiqi real iPhone-da işə salın (simulyator Clomni-dən APNs push-u qəbul edə bilmir), bildirişlərə icazə verin
    və Messenger-i bir dəfə açın.
-2. Paneldə: Push tabı → **Test push** → cihazı seçin → **Göndər**.
+2. Paneldə: soldakı menyuda **Push** → **Test push** → cihazı seçin → **Göndər**.
 
 ## Problemlər
 
@@ -409,7 +409,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 | Messenger açılmır, logda `no window to present the messenger from yet` | `present`-i ekran göstəriləndən sonra çağırın |
 | `font family "…" is not in the app; the system font stays` | Şrift faylını hədəfə və `UIAppFonts`-a əlavə edin |
 | Test push `BadEnvironmentKeyInToken` deyir | APNs açarı bir mühitlə məhdudlaşıb. Sandbox & Production açarı yaradın ([Push açarları](08-push-keys.md)) |
-| Test push `DeviceTokenNotForTopic` deyir | Push tabındakı Bundle ID tətbiqin Bundle ID-si deyil |
+| Test push `DeviceTokenNotForTopic` deyir | **Push** bölməsindəki Bundle ID tətbiqin Bundle ID-si deyil |
 | Test push siyahısında cihaz yoxdur | Telefonda bildirişlərə icazə verilməyib və ya `setDeviceToken` heç çağırılmır |
 | Bildirişə toxunanda tətbiq "Call must be made on main thread" ilə dayanır | Delegate metodlarını yuxarıdakı kimi `@MainActor` edin |
 

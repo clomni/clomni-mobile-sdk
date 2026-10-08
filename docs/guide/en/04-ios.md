@@ -3,7 +3,7 @@
 ## Requirements
 
 - iOS 15 or newer, Xcode 15 or newer.
-- The App ID and the iOS API key (`ios_…`) from the panel's Installation tab.
+- The App ID and the iOS API key (`ios_…`) from **Installation** in the panel's side menu.
 - For push: an Apple Developer account and an APNs key ([Push keys](08-push-keys.md)).
 
 ## Install
@@ -399,7 +399,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
 1. Run the app on a real iPhone (the simulator cannot receive APNs pushes from Clomni), allow notifications and open
    the Messenger once.
-2. In the panel: Push tab → **Test push** → choose the device → **Send**.
+2. In the panel: **Push** in the side menu → **Test push** → choose the device → **Send**.
 
 ## Problems
 
@@ -409,7 +409,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 | The Messenger does not open, the log says `no window to present the messenger from yet` | Call `present` after a screen is shown |
 | `font family "…" is not in the app; the system font stays` | Add the font file to the target and to `UIAppFonts` |
 | Test push says `BadEnvironmentKeyInToken` | The APNs key is limited to one environment. Make a key for Sandbox & Production ([Push keys](08-push-keys.md)) |
-| Test push says `DeviceTokenNotForTopic` | The Bundle ID on the Push tab is not the app's Bundle ID |
+| Test push says `DeviceTokenNotForTopic` | The Bundle ID under **Push** is not the app's Bundle ID |
 | No device in the Test push list | Notifications are not allowed on the phone, or `setDeviceToken` is never called |
 | The app crashes on a notification tap with "Call must be made on main thread" | Mark the delegate methods `@MainActor` as above |
 

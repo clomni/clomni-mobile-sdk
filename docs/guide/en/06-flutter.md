@@ -6,7 +6,7 @@ The plugin `clomni_flutter` wraps the native Android and iOS SDKs. The screens a
 
 - Flutter 3.16 or newer.
 - iOS 15, Android API 24.
-- The App ID and both API keys (`android_…`, `ios_…`) from the panel's Installation tab.
+- The App ID and both API keys (`android_…`, `ios_…`) from **Installation** in the panel's side menu.
 
 ## Install
 

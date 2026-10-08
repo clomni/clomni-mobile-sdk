@@ -2,7 +2,7 @@
 
 ## Əvvəlcə haraya baxmalı
 
-1. **Panelin Ümumi baxış tabı.** Orada hər platformanın qoşulub-qoşulmadığı, push-un aktiv olub-olmadığı və "səhv
+1. **Panelin Ümumi baxış bölməsi.** Orada hər platformanın qoşulub-qoşulmadığı, push-un aktiv olub-olmadığı və "səhv
    hash səbəbindən rədd olunan girişlər", "push qurulmayıb" kimi xəbərdarlıqlar görünür, hər birinin yanında
    **Düzəlt** düyməsi var.
 2. **SDK-nın logu.** Tərtibat zamanı debug səviyyəsini yandırın. Standart səviyyə `warning`-dir, inteqrasiya
@@ -25,7 +25,7 @@ logda göründüyü kimi yazılıb.
 |---|---|---|
 | `call Clomni.initialize first` | Metod `initialize`-dən əvvəl çağırılıb | `initialize`-i açılışda çağırın; Android-də `Application.onCreate`-də |
 | `initialize was called before; the first call stays` | `initialize` iki dəfə çağırılıb | Bir dəfə çağırın. Açarı dəyişmək üçün tətbiqi yenidən başladın |
-| `api_key səhvdir və ya bu platforma üçün deyil` | API açarı səhvdir, ləğv olunub, yeni açar yaradılandan 7 gün keçib, ya da o biri platformanındır | Android-də `android_…`, iOS-da `ios_…` açarı. Açarı Quraşdırma tabında yoxlayın |
+| `api_key səhvdir və ya bu platforma üçün deyil` | API açarı səhvdir, ləğv olunub, yeni açar yaradılandan 7 gün keçib, ya da o biri platformanındır | Android-də `android_…`, iOS-da `ios_…` açarı. Açarı **Quraşdırma** bölməsində yoxlayın |
 | `this App SDK inbox is switched off in Clomni` | Kanal paneldə söndürülüb | Onu yandırın. O vaxta qədər `present()` heç nə etmir |
 | Heç nə açılmır, logda heç nə yoxdur | Log səviyyəsi aşağıdır, ya da çağırış Unity Editor-dadır | Debug səviyyəsini yandırın; cihazda sınayın |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Rəngin formatı | `#` ilə altı hex rəqəm, məsələn `#0A66C2` |
@@ -46,7 +46,7 @@ logda göründüyü kimi yazılıb.
 
 | Əlamət | Səbəb | Nə etməli |
 |---|---|---|
-| `startFlow` heç nə etmir | Hadisəyə bağlı dərc olunmuş flow yoxdur | Flow qurucusunda: "Tətbiq hadisəsi" trigger-i, eyni ad, dərc olunub. Flow-lar tabında hadisənin adı görünür |
+| `startFlow` heç nə etmir | Hadisəyə bağlı dərc olunmuş flow yoxdur | Flow qurucusunda: "Tətbiq hadisəsi" trigger-i, eyni ad, dərc olunub. **Flow-lar** bölməsində hadisənin adı görünür |
 | Flow mətnində `{{data.…}}` boş qalır | `startFlow` datasındakı açarın adı başqadır | Tətbiqdə və flow-da eyni açarı işlədin |
 | Paneldəki dəyişiklik tətbiqdə görünmür | Görünüş qaralaması dərc olunmayıb | Görünüş → **Dərc et** |
 | Messenger gözlənilən dildə danışmır | `setLanguage` sönülü dili seçib, ya da heç dil seçilməyib | Dili Görünüş → Dillər bölməsində yandırın və ya `setLanguage` çağırın |
@@ -55,7 +55,7 @@ logda göründüyü kimi yazılıb.
 
 ## Push bildirişləri
 
-Push tabındakı **Test push**-dan başlayın. Oradakı cavab FCM və ya APNs-in öz cavabıdır, hər cavab
+Soldakı menyuda **Push** → **Test push**-dan başlayın. Oradakı cavab FCM və ya APNs-in öz cavabıdır, hər cavab
 [Push açarları](08-push-keys.md#test-push) bölməsindəki cədvəldə izah olunub.
 
 | Əlamət | Səbəb | Nə etməli |
@@ -68,7 +68,7 @@ Push tabındakı **Test push**-dan başlayın. Oradakı cavab FCM və ya APNs-in
 | Android: `SENDER_ID_MISMATCH` | Service account və `google-services.json` fərqli Firebase layihələrindəndir | Tətbiqin layihəsinin service account-unu yükləyin |
 | iOS: `BadEnvironmentKeyInToken` | APNs açarı bir mühitlə məhdudlaşıb | Sandbox & Production açarı yaradın |
 | iOS: `InvalidProviderToken` | Key ID və ya Team ID səhvdir, ya da açar ləğv olunub | Hər iki ID-ni yoxlayın, açarı yenidən yükləyin |
-| iOS: `DeviceTokenNotForTopic` | Push tabındakı Bundle ID tətbiqinki deyil | Tətbiqin Bundle ID-sini yazın |
+| iOS: `DeviceTokenNotForTopic` | **Push** bölməsindəki Bundle ID tətbiqinki deyil | Tətbiqin Bundle ID-sini yazın |
 | iOS: Xcode-dan işləyir, TestFlight-dan yox (və ya əksinə) | Açar yalnız bir mühiti əhatə edir | Sandbox & Production açarı |
 | iOS: Clomni bildirişinə toxunanda yalnız tətbiq açılır | Toxunuş `handlePush`-a çatmır | Native iOS: AppDelegate-dəki delegate. React Native və Flutter: öz bölmələrindəki native delegate; Firebase kitabxanaları iOS-da Clomni push-larını görmür |
 | iOS: toxunuşda tətbiq "Call must be made on main thread" ilə çökür | Async delegate metodu `nonisolated`-dir | Onu `@MainActor` edin |
@@ -79,7 +79,7 @@ Push tabındakı **Test push**-dan başlayın. Oradakı cavab FCM və ya APNs-in
 - Yeni API açarı: köhnəsi daha 7 gün işləyir. Ondan sonra köhnə açarlı tətbiq versiyaları qoşula bilmir.
 - Ləğv olunan API açarı dərhal dayanır.
 - Yeni Identity Secret: köhnəsi daha 7 gün işləyir. Hash-i yoxla hash-in hansı secret ilə hazırlandığını deyir.
-- Yeni push açarı: onu Push tabında yükləyin, növbəti push onu işlədir.
+- Yeni push açarı: onu **Push** bölməsində yükləyin, növbəti push onu işlədir.
 
 ## Kömək istəmək
 
@@ -87,5 +87,5 @@ Clomni dəstəyinə yazın və bunları əlavə edin:
 
 - platforma və SDK versiyası (Kotlin və Swift-də `Clomni.version`);
 - App ID (heç vaxt Identity Secret və ya tam API açarı yox);
-- Ümumi baxış tabının dedikləri və problem anında debug səviyyəsində SDK logu;
+- **Ümumi baxış** bölməsinin dedikləri və problem anında debug səviyyəsində SDK logu;
 - push üçün: Test push-un cavabı.

@@ -3,6 +3,8 @@
 Clomni-də hər tətbiq bir "Mobil tətbiq (App SDK)" kanalıdır. Bu bölmədə kanal yaradılır və sonra hər ayarın harada
 olduğu göstərilir. Clomni hesabında Administrator rolu lazımdır.
 
+> Bu təlimat paneldə də var: kanal səhifəsi → soldakı menyu → **Təlimat**. Bax: [Təlimat](#təlimat).
+
 ## Kanalı yaradın
 
 1. **Parametrlər** (sol paneldəki çarx) → **İş sahəsi parametrləri** → **Gələn qutular** → **Gələn qutu əlavə et**.
@@ -28,7 +30,7 @@ bitirmək olar.
 Bu addımda **App ID** və hər platformanın **API açarları** görünür, yanında kopyalamaq üçün kod var.
 
 > **API açarlarını indi kopyalayın.** Onlar tam şəkildə yalnız bu addımda görünür. Sonra panel yalnız açarın
-> əvvəlini göstərir. Açar itsə, Quraşdırma tabında yenisini yaradın (aşağıya baxın).
+> əvvəlini göstərir. Açar itsə, **Quraşdırma** bölməsində yenisini yaradın (aşağıya baxın).
 
 ### 3-cü addım. Identity verification
 
@@ -47,40 +49,45 @@ Bu faylları necə almaq olar: [Push açarları](08-push-keys.md).
 
 ### 5-ci addım. Görünüş
 
-Əsas rəng, loqo, salamlama, tema və üzən düymə. Başlanğıc dəyərlər sayt çatınızdan götürülür. Qalan hər şey Görünüş
-tabındadır.
+Əsas rəng, loqo, salamlama, tema və üzən düymə. Başlanğıc dəyərlər sayt çatınızdan götürülür. Qalan hər şey **Görünüş**
+bölməsindədir.
 
 ### 6-cı addım. Flow-lar
 
-İstifadəçi yeni söhbət başlayanda işləyəcək flow-u seçin. O, bu kanala qaralama kimi köçürülür. Onu Flow-lar tabında
-dərc edin, yoxsa Messenger onu işlətmir.
+İstifadəçi yeni söhbət başlayanda işləyəcək flow-u seçin. O, bu kanala qaralama kimi köçürülür. Onu **Flow-lar**
+bölməsində dərc edin, yoxsa Messenger onu işlətmir.
 
 ## Kanal səhifəsi
 
-Kanalı sonra **Parametrlər → İş sahəsi parametrləri → Gələn qutular** bölməsindən açın. SDK üçün lazım olan tablar:
+Kanalı sonra **Parametrlər → İş sahəsi parametrləri → Gələn qutular** bölməsindən açın. Kanal səhifəsinin solunda
+menyu var. Bölmələr orada üç qrupa bölünüb. SDK üçün lazım olanlar:
 
-| Tab | Orada nə var |
-|---|---|
-| Ümumi baxış | Kanalın vəziyyəti, xəbərdarlıqlar, son görünən cihazlar |
-| Quraşdırma | App ID, API açarları, hər platforma üçün kod, son cihazlar |
-| Təhlükəsizlik | Identity verification rejimi, Identity Secret, hash yoxlayıcı |
-| Push | Firebase və APNs açarları, bildirişin başlığı, test push |
-| Görünüş | Rənglər, loqo, mətnlər, dillər, ana səhifənin kartları, tema |
-| Flow-lar | Bu kanalın flow-ları, nə ilə başladıqlarına görə |
-| Xəbərlər | Messenger-in ana səhifəsindəki xəbərlər |
-| Analitika | Aktiv cihazlar, söhbətlər, push-lar, SDK versiyaları |
+| Qrup | Bölmə | Orada nə var |
+|---|---|---|
+| TƏTBİQ | Ümumi baxış | Kanalın vəziyyəti, xəbərdarlıqlar, son görünən cihazlar |
+| | Quraşdırma | App ID, API açarları, hər platforma üçün kod, son cihazlar |
+| | Təhlükəsizlik | Identity verification rejimi, Identity Secret, hash yoxlayıcı |
+| | Push | Firebase və APNs açarları, bildirişin başlığı, test push |
+| | Təlimat | Bu təlimatın PDF-i və hər platforma üçün paket |
+| MESSENGER | Görünüş | Rənglər, loqo, mətnlər, dillər, ana səhifənin kartları, tema |
+| | Flow-lar | Bu kanalın flow-ları, nə ilə başladıqlarına görə |
+| | Xəbərlər | Messenger-in ana səhifəsindəki xəbərlər |
+| INBOX | Analitika | Aktiv cihazlar, söhbətlər, push-lar, SDK versiyaları |
+
+INBOX qrupunda bütün kanallarda olan ayarlar da var: parametrlər, əməkdaşlar, iş saatları. Şəkillərdə menyunun açıq
+bölməsi qırmızı çərçivədədir. Dar ekranda menyu səhifənin yuxarısında açılan siyahı olur.
 
 ### Ümumi baxış
 
-![Xəbərdarlığı olan Ümumi baxış tabı](../images/panel-overview-az.png)
+![Xəbərdarlığı olan Ümumi baxış bölməsi](../images/panel-overview-az.png)
 
 Nə isə işləməyəndə ilk baxılacaq yer. Hər platforma üçün SDK-nın qoşulub-qoşulmadığı və push-un aktiv olub-olmadığı
 görünür. Xəbərdarlıqlar (1) problemi adı ilə deyir, məsələn səhv hash səbəbindən rədd olunan girişləri. **Düzəlt**
-problemin həll olunduğu tabı açır.
+problemin həll olunduğu bölməni açır.
 
 ### Quraşdırma: App ID və API açarları
 
-![Quraşdırma tabı: API açarları](../images/panel-install-keys-az.png)
+![Quraşdırma bölməsi: API açarları](../images/panel-install-keys-az.png)
 
 - **API açarları** (1): **Kopyala** düyməsi ilə App ID, sonra hər platformanın açarları. Açarın yalnız əvvəli
   görünür.
@@ -91,14 +98,14 @@ problemin həll olunduğu tabı açır.
 
 Aşağıdakı **Kod** blokunda Android, iOS, React Native və Flutter üçün App ID-niz yazılmış hazır kod var.
 
-![Quraşdırma tabı: hər platforma üçün kod](../images/panel-install-code-az.png)
+![Quraşdırma bölməsi: hər platforma üçün kod](../images/panel-install-code-az.png)
 
 **Son cihazlar** son qoşulan cihazları tətbiq və SDK versiyası ilə göstərir. Tətbiq `initialize` çağırıb sessiya
 açandan bir neçə saniyə sonra cihaz burada görünür.
 
 ### Təhlükəsizlik
 
-![Təhlükəsizlik tabı](../images/panel-security-az.png)
+![Təhlükəsizlik bölməsi](../images/panel-security-az.png)
 
 1. **Rejim**: Söndürülüb, Tövsiyə olunan və ya Məcburi. Bax: [İstifadəçinin tanıdılması](02-identity.md#rejimlər).
 2. **Yeni secret yarat**: yeni secret bir dəfə göstərilir. Köhnəsi daha 7 gün işləyir, bu müddətdə serverinizi yeni
@@ -108,7 +115,7 @@ açandan bir neçə saniyə sonra cihaz burada görünür.
 
 ### Push
 
-![Push tabı: Firebase və APNs açarları](../images/panel-push-az.png)
+![Push bölməsi: Firebase və APNs açarları](../images/panel-push-az.png)
 
 1. **Android · Firebase Cloud Messaging**: Firebase layihəsinin service account JSON faylı.
 2. **iOS · Apple Push Notification service**: `.p8` açarı, Key ID, Team ID və Bundle ID ilə birlikdə.
@@ -135,7 +142,7 @@ Tətbiq bildirişlərə icazə verilmiş telefonda `setDeviceToken` çağırana 
 
 ### Görünüş
 
-![Görünüş tabı](../images/panel-appearance-az.png)
+![Görünüş bölməsi](../images/panel-appearance-az.png)
 
 Dəyişikliklər qaralamada saxlanır. Tətbiqlər yalnız dərc olunmuş versiyanı görür.
 
@@ -147,16 +154,16 @@ Dəyişikliklər qaralamada saxlanır. Tətbiqlər yalnız dərc olunmuş versiy
 **Dillər** bölməsi Messenger-in hansı dillərdə danışdığını təyin edir. Tətbiq `setLanguage` ilə onlardan birini seçə
 bilər. Seçməsə, Messenger telefonun dilinə uyğunlaşır.
 
-![Görünüş tabı: dillər](../images/panel-appearance-languages-az.png)
+![Görünüş bölməsi: dillər](../images/panel-appearance-languages-az.png)
 
 **Tema** bölməsində rejim (1: telefona görə, açıq, tünd), mesaj səsləri və üzən düymə (2) var, düymənin yeri və
 aşağıdan məsafəsi ilə birlikdə. Tətbiqin kodda verdiyi dəyər (`setTheme`, `setLauncherVisible`) paneldən üstündür.
 
-![Görünüş tabı: tema və üzən düymə](../images/panel-appearance-theme-az.png)
+![Görünüş bölməsi: tema və üzən düymə](../images/panel-appearance-theme-az.png)
 
 ### Flow-lar
 
-![Flow-lar tabı](../images/panel-flows-az.png)
+![Flow-lar bölməsi](../images/panel-flows-az.png)
 
 Bu kanalın flow-ları nə ilə başladıqlarına görə qruplanıb:
 
@@ -170,8 +177,17 @@ seçin, hadisənin adını yazın və flow-u dərc edin.
 
 ### Xəbərlər
 
-![Xəbərlər tabı](../images/panel-news-az.png)
+![Xəbərlər bölməsi](../images/panel-news-az.png)
 
 Xəbərlər Messenger-in ana səhifəsində görünür: dərc olunmuş ilk üç xəbər. **Yeni xəbər** (1) üz şəkli, başlıq, qısa
 mətn, tam mətn və istəyə görə düymə ilə xəbər yaradır. Düymə veb ünvanı və ya tətbiqinizin deep link-ini aça bilər
 (platformanızın bölməsində `onLink`-ə baxın).
+
+### Təlimat
+
+![Təlimat bölməsi](../images/panel-guide-az.png)
+
+Bu təlimat paneldə də var.
+
+1. Təlimatın PDF-i, Azərbaycanca və ingiliscə.
+2. **Onlayn təlimat** platformanızın bölməsini açır. Kartda paketin quraşdırma əmri var, **Kopyala** ilə götürün.

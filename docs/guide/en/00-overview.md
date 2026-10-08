@@ -47,7 +47,7 @@ an MDM profile only allows listed hosts, add this one.
    [Unity](07-unity.md).
 4. **Push notifications**: upload the Firebase and APNs keys to the panel ([Push keys](08-push-keys.md)) and hand
    the device token to the SDK (the push section of your platform's chapter).
-5. **Check** with "Test push" and the Overview tab in the panel. If something does not work, see
+5. **Check** with "Test push" and **Overview** in the panel. If something does not work, see
    [Troubleshooting](09-troubleshooting.md).
 
 ## The keys

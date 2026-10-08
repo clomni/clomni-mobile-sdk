@@ -47,7 +47,7 @@ və ya MDM profiliniz yalnız siyahıdakı hostlara icazə verirsə, bu hostu ə
    [Unity](07-unity.md).
 4. **Push bildirişləri**: Firebase və APNs açarlarını panelə yükləyin ([Push açarları](08-push-keys.md)) və cihazın
    tokenini SDK-ya verin (platformanızın bölməsindəki push hissəsi).
-5. **Yoxlayın**: paneldə "Test push" və Ümumi baxış tabı ilə. Nə isə işləməsə,
+5. **Yoxlayın**: paneldə "Test push" və **Ümumi baxış** bölməsi ilə. Nə isə işləməsə,
    [Problemlərin həlli](09-troubleshooting.md) bölməsinə baxın.
 
 ## Açarlar
