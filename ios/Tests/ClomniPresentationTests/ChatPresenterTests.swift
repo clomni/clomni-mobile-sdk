@@ -63,7 +63,7 @@ final class ChatPresenterTests: XCTestCase {
         // The bot speaks as the brand over its run, with no "· Bot" (DESIGN-PASS-3 B2); when, in every bubble (G7).
         XCTAssertEqual(list.map(\.nameLine), ["Example", nil, "Example"])
         XCTAssertEqual(list.map(\.time), ["10:30", "10:31", "10:32"], "the clock, not \"indi\"")
-        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "A", isBot: true),
+        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true),
                        "the bot is the company: its logo")
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
         XCTAssertEqual(list[0].accessibilityLabel, "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.")
@@ -180,7 +180,7 @@ final class ChatPresenterTests: XCTestCase {
 
     func testHeader() {
         let bot = screen([]).header
-        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "A", isBot: true))
+        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true))
         XCTAssertEqual(bot.lead, logo, "no operator: the company's logo, never a person's face")
         XCTAssertEqual(bot.title, "Example")
         XCTAssertEqual(bot.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk", "the config's header_subtitle, as it came")
@@ -214,7 +214,7 @@ final class ChatPresenterTests: XCTestCase {
             $0.conversation = Fixture.conversation(status: "queued")
         }.header
         XCTAssertEqual(afterHours.subtitle, "Hazırda iş saatı deyil", "no next_open_at: just that it is closed")
-        XCTAssertEqual(afterHours.lead, .brand(ChatAvatar(url: nil, initial: "A", isBot: true)))
+        XCTAssertEqual(afterHours.lead, .brand(ChatAvatar(url: nil, initial: "E", isBot: true)))
 
         let nextOpen = ProtocolJSON.parseConfig(Data(##"""
             {"brand":{"name":"Example","primary_color":"#1F9D63"},
@@ -241,7 +241,7 @@ final class ChatPresenterTests: XCTestCase {
         let rauf: JSONValue = ["name": "Rauf", "online": true]
         XCTAssertEqual(screen(wrote) { $0.conversation = Fixture.conversation(status: "open", assignee: rauf) }.header.title,
                        "Rauf", "the assignee before the last writer")
-        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "A", isBot: true))
+        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true))
         XCTAssertEqual(screen(Array(wrote.dropFirst())).header.lead, logo, "only the bot wrote: the company")
     }
 

@@ -228,13 +228,13 @@ class AppearanceSnapshotTest {
         /** Stand-ins for the panel's uploads: a logo mark, its dark-mode version, faces, a bot, a landscape. */
         val pictures: Map<String, ImageBitmap> by lazy {
             mapOf(
-                LOGO to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "A"),
+                LOGO to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "E"),
                 // Protocol fixture 42's own pictures.
-                "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN" to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "A"),
+                "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN" to mark(0xFF1F9D63.toInt(), 0xFFFFFFFF.toInt(), "E"),
                 "$FIXTURE_TEAM/leyla.png" to face(0xFFC2410C.toInt(), "L"),
                 "$FIXTURE_TEAM/rauf.png" to face(0xFF7C3AED.toInt(), "R"),
                 "$FIXTURE_TEAM/nigar.png" to face(0xFF0E7490.toInt(), "N"),
-                LOGO_DARK to mark(0xFF0B0C0E.toInt(), 0xFF34B57A.toInt(), "A"),
+                LOGO_DARK to mark(0xFF0B0C0E.toInt(), 0xFF34B57A.toInt(), "E"),
                 BOT to bot(),
                 "https://app.clomni.ai/a/bot.png" to bot(),
                 LEYLA to face(0xFFC2410C.toInt(), "L"),

@@ -68,7 +68,7 @@ class PresenterTest {
     fun header() {
         val header = presenter().home(snapshot()).header
         assertEquals("Example", header.brandName)
-        assertEquals("A", header.brandInitial)
+        assertEquals("E", header.brandInitial)
         assertEquals("https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN", header.logoUrl)
         assertEquals(3, header.teamAvatars.size)
         assertEquals("Salam, Aysel", header.greeting)

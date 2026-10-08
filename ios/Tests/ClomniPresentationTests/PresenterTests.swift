@@ -50,7 +50,7 @@ final class PresenterTests: XCTestCase {
     func testHeader() throws {
         let header = presenter().home(snapshot()).header
         XCTAssertEqual(header.brandName, "Example")
-        XCTAssertEqual(header.brandInitial, "A")
+        XCTAssertEqual(header.brandInitial, "E")
         XCTAssertEqual(header.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
         XCTAssertNil(header.logoDarkUrl, "dark mode keeps the logo")
         XCTAssertEqual(header.style, .gradient)

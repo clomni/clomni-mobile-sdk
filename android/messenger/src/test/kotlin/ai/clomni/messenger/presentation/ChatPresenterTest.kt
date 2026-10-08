@@ -109,7 +109,7 @@ class ChatPresenterTest {
         assertEquals("the author over the first of the run: the bot speaks as the brand", "Example", list[0].author)
         assertNull(list[1].author)
         assertEquals("each bubble has its own clock inside it, no line under the run (G7)", listOf("10:30", "10:31", "10:32"), list.map { it.time })
-        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "A", true), list[1].avatar)
+        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "E", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
         assertEquals("Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
     }
@@ -258,7 +258,7 @@ class ChatPresenterTest {
     @Test
     fun header() {
         val bot = screen(emptyList()).header
-        val logo = ChatHeader.Lead.Brand(ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "A", true))
+        val logo = ChatHeader.Lead.Brand(ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "E", true))
         assertEquals("no operator: the company's logo, never a person's face", logo, bot.lead)
         assertEquals("Example", bot.title)
         assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", bot.subtitle)
@@ -300,7 +300,7 @@ class ChatPresenterTest {
             it.copy(config = closedHours, conversation = ChatFixture.conversation("queued"))
         }.header
         assertEquals("no next_open_at: just that it is closed", "Hazırda iş saatı deyil", afterHours.subtitle)
-        assertEquals(ChatHeader.Lead.Brand(ChatAvatar(null, "A", true)), afterHours.lead)
+        assertEquals(ChatHeader.Lead.Brand(ChatAvatar(null, "E", true)), afterHours.lead)
 
         val nextOpen = ChatFixture.config(
             """{"brand":{"name":"Example","primary_color":"#1F9D63"},
