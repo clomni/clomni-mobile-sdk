@@ -192,10 +192,10 @@ final class FacadeTests: XCTestCase {
     private var clomniPush: [AnyHashable: Any] { Self.clomniPushInfo() }
 
     nonisolated private static func clomniPushInfo() -> [AnyHashable: Any] { [
-        "aps": ["alert": ["title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı."], "sound": "default",
+        "aps": ["alert": ["title": "Leyla · Example", "body": "Balansınıza 2 AZN qaytarıldı."], "sound": "default",
                 "badge": 1, "mutable-content": 1] as [String: Any],
         "clomni": "1", "type": "message", "conversation_id": "conv_5521", "message_id": "msg_f02",
-        "title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı.", "unread_total": 1,
+        "title": "Leyla · Example", "body": "Balansınıza 2 AZN qaytarıldı.", "unread_total": 1,
     ] }
     private let ownPush: [AnyHashable: Any] = ["aps": ["alert": "Sifarişiniz yoldadır"] as [String: Any], "order_id": 7]
 
@@ -240,7 +240,7 @@ final class FacadeTests: XCTestCase {
 
     func testLoginUpdateAndLogout() async {
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
-        Clomni.loginUser(ClomniUser(userId: "5", email: "aysel@apar.az", name: "Aysel"), userHash: "a1b2")
+        Clomni.loginUser(ClomniUser(userId: "5", email: "aysel@example.com", name: "Aysel"), userHash: "a1b2")
         await settle()
         var made = await calls()
         XCTAssertEqual(made.first, "loginUser 5 Aysel a1b2")

@@ -34,7 +34,7 @@ final class ChatPresenterTests: XCTestCase {
     private let utc = TimeZone(identifier: "UTC")!
 
     private func screen(_ messages: [Message], _ build: (inout ChatSnapshot) -> Void = { _ in }) -> ChatScreen {
-        var snapshot = ChatSnapshot(config: Fixture.aparConfig, conversation: Fixture.conversation(status: "bot"),
+        var snapshot = ChatSnapshot(config: Fixture.exampleConfig, conversation: Fixture.conversation(status: "bot"),
                                     messages: messages)
         snapshot.load = .loaded
         build(&snapshot)
@@ -61,12 +61,12 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(list.map(\.position), [.first, .last, .single], "70 s later starts a new run")
         XCTAssertNil(list[0].avatar)
         // The bot speaks as the brand over its run, with no "· Bot" (DESIGN-PASS-3 B2); when, in every bubble (G7).
-        XCTAssertEqual(list.map(\.nameLine), ["Apar", nil, "Apar"])
+        XCTAssertEqual(list.map(\.nameLine), ["Example", nil, "Example"])
         XCTAssertEqual(list.map(\.time), ["10:30", "10:31", "10:32"], "the clock, not \"indi\"")
-        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true),
+        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true),
                        "the bot is the company: its logo")
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
-        XCTAssertEqual(list[0].accessibilityLabel, "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.")
+        XCTAssertEqual(list[0].accessibilityLabel, "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.")
     }
 
     func testTimeSeparators() {
@@ -89,7 +89,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(reply?.avatar?.initial, "L")
         guard case .text(let runs)? = reply?.body else { return XCTFail() }
         XCTAssertEqual(runs.first, TextRun("Gedişinizi yoxladıq.", bold: true))
-        XCTAssertEqual(runs.last?.link?.absoluteString, "https://apar.az/sertler")
+        XCTAssertEqual(runs.last?.link?.absoluteString, "https://example.com/sertler")
         XCTAssertEqual(reply?.accessibilityLabel,
                        "Leyla, 10:30: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı.\nƏtraflı: şərtlər")
     }
@@ -180,9 +180,9 @@ final class ChatPresenterTests: XCTestCase {
 
     func testHeader() {
         let bot = screen([]).header
-        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true))
+        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true))
         XCTAssertEqual(bot.lead, logo, "no operator: the company's logo, never a person's face")
-        XCTAssertEqual(bot.title, "Apar")
+        XCTAssertEqual(bot.title, "Example")
         XCTAssertEqual(bot.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk", "the config's header_subtitle, as it came")
         // Without one in the config, the SDK's own: the server's default, the minutes reply time.
         let plain = screen([]) { $0.config = Fixture.minimalConfig }.header
@@ -200,24 +200,24 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(open.lead, .person(ChatAvatar(url: URL(string: "https://app.clomni.ai/a/leyla.png"), initial: "L",
                                                      isBot: false), online: true))
         XCTAssertEqual(open.title, "Leyla")
-        XCTAssertEqual(open.subtitle, "Apar", "only the company: online is the dot")
+        XCTAssertEqual(open.subtitle, "Example", "only the company: online is the dot")
 
         let away: JSONValue = ["name": "Leyla", "online": false]
         XCTAssertEqual(screen([]) { $0.conversation = Fixture.conversation(status: "open", assignee: away) }.header.subtitle,
-                       "Apar")
+                       "Example")
 
         let closedHours = ProtocolJSON.parseConfig(Data(##"""
-            {"brand":{"name":"Apar","primary_color":"#1F9D63"},"team":{"office_hours":{"open_now":false},"reply_time":"Tez"}}
+            {"brand":{"name":"Example","primary_color":"#1F9D63"},"team":{"office_hours":{"open_now":false},"reply_time":"Tez"}}
             """##.utf8))
         let afterHours = screen([]) {
             $0.config = closedHours
             $0.conversation = Fixture.conversation(status: "queued")
         }.header
         XCTAssertEqual(afterHours.subtitle, "Hazırda iş saatı deyil", "no next_open_at: just that it is closed")
-        XCTAssertEqual(afterHours.lead, .brand(ChatAvatar(url: nil, initial: "A", isBot: true)))
+        XCTAssertEqual(afterHours.lead, .brand(ChatAvatar(url: nil, initial: "E", isBot: true)))
 
         let nextOpen = ProtocolJSON.parseConfig(Data(##"""
-            {"brand":{"name":"Apar","primary_color":"#1F9D63"},
+            {"brand":{"name":"Example","primary_color":"#1F9D63"},
              "team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}
             """##.utf8))
         let untilMorning = screen([]) { $0.config = nextOpen }.header
@@ -237,11 +237,11 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(unassigned.lead, .person(ChatAvatar(url: URL(string: "https://app.clomni.ai/a/leyla.png"), initial: "L",
                                                            isBot: false), online: false))
         XCTAssertEqual(unassigned.title, "Leyla", "a bot's message after hers changes nothing")
-        XCTAssertEqual(unassigned.subtitle, "Apar")
+        XCTAssertEqual(unassigned.subtitle, "Example")
         let rauf: JSONValue = ["name": "Rauf", "online": true]
         XCTAssertEqual(screen(wrote) { $0.conversation = Fixture.conversation(status: "open", assignee: rauf) }.header.title,
                        "Rauf", "the assignee before the last writer")
-        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.aparConfig.brand.logoUrl, initial: "A", isBot: true))
+        let logo = ChatHeader.Lead.brand(ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true))
         XCTAssertEqual(screen(Array(wrote.dropFirst())).header.lead, logo, "only the bot wrote: the company")
     }
 
@@ -251,8 +251,8 @@ final class ChatPresenterTests: XCTestCase {
         func choices(_ screen: ChatScreen) -> [String] {
             screen.items.compactMap { if case .replies(let block) = $0 { return block.messageId }; return nil }
         }
-        let first = Fixture.message("09-apar-level1-A.json")
-        let second = Fixture.message("10-apar-level2-S-chips.json")
+        let first = Fixture.message("09-example-level1-A.json")
+        let second = Fixture.message("10-example-level2-S-chips.json")
         let both = screen([first, second]) { $0.answerable = [first.id, second.id] }
         XCTAssertEqual(choices(both), [second.id], "the older step's choices are history")
 
@@ -295,8 +295,8 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertFalse(answered.items.contains { if case .replies = $0 { return true }; return false })
         XCTAssertEqual(bubbles(answered).count, 1)
 
-        // Apar S: chips, the back button, the composer locked.
-        let step = Fixture.message("10-apar-level2-S-chips.json")
+        // Example S: chips, the back button, the composer locked.
+        let step = Fixture.message("10-example-level2-S-chips.json")
         let chips = screen([step]) {
             $0.answerable = [step.id]
             $0.conversation = Fixture.onAMenu
@@ -326,7 +326,7 @@ final class ChatPresenterTests: XCTestCase {
     }
 
     func testTheFlowsOwnRestartButtonLeavesNoSecondBack() {
-        let restart = Fixture.message("10-apar-level2-S-chips.json", ["content": [
+        let restart = Fixture.message("10-example-level2-S-chips.json", ["content": [
             "text": "Seçin", "allow_back": true,
             "buttons": [["id": "a", "title": "Kart", "payload": "a"], ["id": "r", "title": "↺ Yenidən başla", "payload": "r"]],
         ]])
@@ -420,7 +420,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertTrue(bubbles(system).isEmpty)
 
         // card and carousel are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
-        for (file, fallback) in [("26-card.json", "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az"),
+        for (file, fallback) in [("26-card.json", "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://example.com"),
                                  ("27-carousel.json", "Tarif 1 / Tarif 2 / Tarif 3"),
                                  ("29-unknown-type.json", "Hansı saat uyğundur? 10:00 / 14:00")] {
             let bubble = bubbles(screen([Fixture.message(file)])).first
@@ -448,7 +448,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertNil(open.sentAccessibilityLabel)
         let bubble = try XCTUnwrap(bubbles(screen([rating]) { $0.answerable = [rating.id] }).first)
         XCTAssertFalse(bubble.replyable, "answered in its card, not quoted")
-        XCTAssertEqual(bubble.accessibilityLabel, "Apar bot, 11:02: Xidmətimizi qiymətləndirin")
+        XCTAssertEqual(bubble.accessibilityLabel, "Example bot, 11:02: Xidmətimizi qiymətləndirin")
 
         let answer = PendingMessage(conversationId: "conv_5521",
                                     message: ClientMessage(content: .ratingSubmit(replyTo: rating.id, score: 5,
@@ -487,16 +487,16 @@ final class ChatPresenterTests: XCTestCase {
 
     /// CM-087: addresses, emails and phones in a message's text are links, the user's own too.
     func testLinksInMessages() throws {
-        let bot = Fixture.message("01-text-bot.json", ["content": ["text": "**Yazın:** info@apar.az və ya +994501234567"]])
+        let bot = Fixture.message("01-text-bot.json", ["content": ["text": "**Yazın:** info@example.com və ya +994501234567"]])
         guard case .text(let runs)? = bubbles(screen([bot])).first?.body else { return XCTFail() }
-        XCTAssertEqual(runs.compactMap(\.link?.absoluteString), ["mailto:info@apar.az", "tel:+994501234567"])
+        XCTAssertEqual(runs.compactMap(\.link?.absoluteString), ["mailto:info@example.com", "tel:+994501234567"])
         XCTAssertEqual(runs.first, TextRun("Yazın:", bold: true))
-        let mine = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("www.apar.az")),
-                                  preview: "www.apar.az", createdAt: now)
+        let mine = PendingMessage(conversationId: "conv_5521", message: ClientMessage(content: .text("www.example.com")),
+                                  preview: "www.example.com", createdAt: now)
         guard case .text(let sent)? = bubbles(screen([]) { $0.pending = [mine] }).first?.body else { return XCTFail() }
-        XCTAssertEqual(sent, [TextRun("www.apar.az", link: URL(string: "https://www.apar.az"))])
+        XCTAssertEqual(sent, [TextRun("www.example.com", link: URL(string: "https://www.example.com"))])
         XCTAssertEqual(text(bubbles(screen([Fixture.message("26-card.json")])).first),
-                       "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az")
+                       "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://example.com")
     }
 
     func testComposer() {
@@ -547,7 +547,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(line.accessibilityLabel, "Leyla yazır")
         XCTAssertEqual(line.avatar.initial, "L")
         XCTAssertEqual(operatorTyping.announcement,
-                       Announcement(id: "msg_f01", text: "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."))
+                       Announcement(id: "msg_f01", text: "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."))
         XCTAssertNil(screen([Fixture.message("03-text-user.json")]).announcement, "the user's own message is not news")
 
         var loading = ChatSnapshot(config: nil)
@@ -609,7 +609,7 @@ final class ChatPresenterTests: XCTestCase {
         let leylaTyping = screen([bot]) { $0.typing = Sender(type: .operator, name: "Leyla") }
         XCTAssertNotNil(bubbles(leylaTyping).first?.avatar, "someone else typing: the bot keeps its own")
 
-        let step = Fixture.message("10-apar-level2-S-chips.json")
+        let step = Fixture.message("10-example-level2-S-chips.json")
         func typing(_ build: (inout ChatSnapshot) -> Void) -> Bool {
             let items = screen([step]) {
                 $0.conversation = Fixture.onAMenu

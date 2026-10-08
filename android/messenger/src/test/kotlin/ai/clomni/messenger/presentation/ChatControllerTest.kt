@@ -27,7 +27,7 @@ import java.util.concurrent.Future
 
 /** A conversation the test fills in, recording what the controller asked for. */
 private class FakeChat : ChatDataSource {
-    var cachedConfig: MessengerConfig? = Fixture.aparConfig
+    var cachedConfig: MessengerConfig? = Fixture.exampleConfig
     val conversations = mutableMapOf<String, Conversation>()
     val stored = mutableMapOf<String, List<Message>>()
     val outbox = mutableListOf<PendingMessage>()
@@ -214,8 +214,8 @@ class ChatControllerTest {
         assertEquals(HomeScreen.Phase.READY, chat.screen.phase)
         assertEquals(2, renders)
         assertEquals(listOf("refreshConversation conv_5521", "load conv_5521", "read conv_5521"), source.calls)
-        assertEquals("Apar", chat.screen.header.title)
-        assertEquals("Apar", chat.config?.brand?.name)
+        assertEquals("Example", chat.screen.header.title)
+        assertEquals("Example", chat.config?.brand?.name)
         chat.load()
         assertEquals("loading again does not listen twice", 1, source.observers.size)
         assertEquals("the conversation is known now", 1, source.calls.count { it.startsWith("refreshConversation") })
@@ -234,7 +234,7 @@ class ChatControllerTest {
 
     @Test
     fun buttonsBackAndASecondTap() {
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         source.set(listOf(step), answerable = setOf(step.id), flow = menu)
         val chat = controller()
         chat.load()
@@ -417,7 +417,7 @@ class ChatControllerTest {
         assertFalse("off is off, whoever it names", typing())
 
         // The flow's menu is the last word: a "typing" has nothing to show, nor a timer to keep.
-        val step = ChatFixture.message("10-apar-level2-S-chips.json", "seq" to 2)
+        val step = ChatFixture.message("10-example-level2-S-chips.json", "seq" to 2)
         source.set(listOf(bot, step), answerable = setOf(step.id), flow = menu)
         source.push(ClomniChange.Messages("conv_5521"))
         source.push(ClomniChange.Typing("conv_5521", Sender(SenderType.BOT), true))
@@ -470,7 +470,7 @@ class ChatControllerTest {
         chat.startNewConversation()
         assertEquals("draft_new", chat.conversationId)
         assertTrue(chat.screen.items.isEmpty())
-        assertEquals("the typing timer is gone; Apar starts with a flow, so the screen waits for it", 1, timers.pending.size)
+        assertEquals("the typing timer is gone; Example starts with a flow, so the screen waits for it", 1, timers.pending.size)
         assertEquals(HomeScreen.Phase.LOADING, chat.screen.phase)
         assertEquals(false, source.typingStates.last())
         source.push(ClomniChange.Messages("conv_5521"))
@@ -487,7 +487,7 @@ class ChatControllerTest {
     /** DESIGN-PASS-3 C5: from the first screen to the last, a conversation waiting for a choice has no composer. */
     @Test
     fun aFlowConversationNeverShowsTheComposer() {
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         val modes = mutableListOf<ChatComposer.Mode>()
 
         // Cached: right from the first frame.
@@ -516,8 +516,8 @@ class ChatControllerTest {
     /** A new conversation that starts with a flow waits for its first step; the composer only if none comes. */
     @Test
     fun aNewFlowConversationWaitsForItsFirstStep() {
-        assertTrue("Apar starts with a flow", source.config?.startsWithFlow == true)
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        assertTrue("Example starts with a flow", source.config?.startsWithFlow == true)
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         val modes = mutableListOf<ChatComposer.Mode>()
         val chat = controller(id = "draft_new")
         modes += chat.screen.composer.mode
@@ -554,7 +554,7 @@ class ChatControllerTest {
      */
     @Test
     fun theFlowKeepsTheComposerUntilAHandover() {
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         source.set(listOf(step), answerable = setOf(step.id), flow = menu)
         val chat = controller()
         val modes = mutableListOf(chat.screen.composer.mode)
@@ -566,7 +566,7 @@ class ChatControllerTest {
         source.outbox.clear()
         source.stored["conv_5521"] = listOf(step, ChatFixture.message("03-text-user.json", "seq" to 1_000))
         source.push(ClomniChange.Messages("conv_5521"))
-        val next = ChatFixture.message("11-apar-level3-U.json", "seq" to 1_001)
+        val next = ChatFixture.message("11-example-level3-U.json", "seq" to 1_001)
         source.set(source.stored.getValue("conv_5521") + next, answerable = setOf(next.id), flow = menu)
         source.push(ClomniChange.Messages("conv_5521"))
         assertTrue("never shown: $modes", modes.all { it == ChatComposer.Mode.Hidden })

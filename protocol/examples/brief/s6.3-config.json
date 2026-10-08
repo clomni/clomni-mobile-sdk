@@ -1,7 +1,7 @@
 {
   "version": 12,
   "brand": {
-    "name": "Apar",
+    "name": "Example",
     "logo_url": "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
     "logo_dark_url": null,
     "primary_color": "#1F9D63",
@@ -26,7 +26,7 @@
   "bot": { "name": "Clomni", "avatar_url": null },
   "home": {
     "cards": ["send", "recent", "channels"],
-    "channels": [ { "type": "instagram", "url": "https://instagram.com/apar.az" },
+    "channels": [ { "type": "instagram", "url": "https://instagram.com/example" },
                   { "type": "whatsapp", "url": "https://wa.me/994501234567" } ]
   },
   "theme": { "mode": "system", "launcher": { "enabled": false, "position": "right", "bottom_padding": 20 } },

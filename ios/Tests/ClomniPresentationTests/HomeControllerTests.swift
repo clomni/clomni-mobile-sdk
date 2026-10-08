@@ -96,13 +96,13 @@ final class HomeControllerTests: XCTestCase {
     }
 
     func testShowsTheCacheThenTheServersAnswer() async {
-        await source.set(cached: Fixture.minimalConfig, fresh: Fixture.aparConfig,
+        await source.set(cached: Fixture.minimalConfig, fresh: Fixture.exampleConfig,
                          list: [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")])
         let home = controller()
         await home.load()
         XCTAssertEqual(renders, 2, "once from the cache, once after the refresh")
         XCTAssertEqual(home.home.phase, .ready)
-        XCTAssertEqual(home.home.header.brandName, "Apar")
+        XCTAssertEqual(home.home.header.brandName, "Example")
         XCTAssertEqual(home.config?.brand.primaryColor, "#1F9D63")
         XCTAssertEqual(home.home.recent?.row.detail, "Leyla · 2 dəq")
         XCTAssertEqual(home.messages.rows.count, 1)
@@ -116,7 +116,7 @@ final class HomeControllerTests: XCTestCase {
         XCTAssertEqual(home.home.failure?.retry, "Yenidən cəhd et")
         XCTAssertEqual(home.messages.phase, .failed)
 
-        await source.set(fresh: Fixture.aparConfig)
+        await source.set(fresh: Fixture.exampleConfig)
         await home.retry()
         XCTAssertEqual(home.home.phase, .ready)
         XCTAssertEqual(home.messages.phase, .ready)
@@ -124,7 +124,7 @@ final class HomeControllerTests: XCTestCase {
     }
 
     func testEngineChangesRedraw() async throws {
-        await source.set(fresh: Fixture.aparConfig)
+        await source.set(fresh: Fixture.exampleConfig)
         let home = controller()
         await home.load()
         XCTAssertFalse(home.home.messagesCard.unread)
@@ -146,7 +146,7 @@ final class HomeControllerTests: XCTestCase {
     }
 
     func testStartingAConversation() async {
-        await source.set(fresh: Fixture.aparConfig)
+        await source.set(fresh: Fixture.exampleConfig)
         let home = controller()
         await home.load()
         let id = await home.startConversation(openedFrom: "home")
@@ -157,10 +157,10 @@ final class HomeControllerTests: XCTestCase {
     /// DESIGN-PASS-2 9: Home with a config is drawn with it from the first frame, and coming back to it (a load
     /// again) never passes through the SDK's default texts.
     func testHomeWithAConfigNeverShowsTheDefaults() async {
-        await source.set(cached: nil, fresh: Fixture.aparConfig)
-        let custom = Fixture.aparConfig.strings["greeting_line2"]
+        await source.set(cached: nil, fresh: Fixture.exampleConfig)
+        let custom = Fixture.exampleConfig.strings["greeting_line2"]
         XCTAssertEqual(custom, "Bizdən nəsə soruşun")
-        let home = HomeController(source: source, language: nil, userName: "Aysel", config: Fixture.aparConfig)
+        let home = HomeController(source: source, language: nil, userName: "Aysel", config: Fixture.exampleConfig)
         var titles = [home.home.header.title]
         XCTAssertEqual(home.home.phase, .ready, "the first frame")
         home.onChange = { titles.append(home.home.header.title) }
@@ -171,7 +171,7 @@ final class HomeControllerTests: XCTestCase {
     }
 
     func testNewsReachHomeAndAnItemOpens() async throws {
-        await source.set(fresh: Fixture.aparConfig)
+        await source.set(fresh: Fixture.exampleConfig)
         await source.set(news: try XCTUnwrap(ProtocolJSON.parseNews(Fixture.data("61-news.json"))))
         let home = controller()
         await home.load()

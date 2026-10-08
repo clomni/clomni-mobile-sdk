@@ -48,8 +48,8 @@ class RealtimeEventTest {
         }
         assertEquals(
             listOf(
-                Conversation.Flow(true, "menu", "flw_apar_az", "S"),
-                Conversation.Flow(true, "text", "flw_apar_az", "U"),
+                Conversation.Flow(true, "menu", "flw_example_az", "S"),
+                Conversation.Flow(true, "text", "flw_example_az", "U"),
                 Conversation.Flow(false, null),
             ),
             flows,

@@ -305,10 +305,10 @@ class ApiClientTest {
     @Test
     fun configUsesItsETag() {
         loggedIn()
-        server.enqueue(json("""{"brand":{"name":"Apar","primary_color":"#1F9D63"}}""").setHeader("ETag", "W/\"7f3a\""))
+        server.enqueue(json("""{"brand":{"name":"Example","primary_color":"#1F9D63"}}""").setHeader("ETag", "W/\"7f3a\""))
         server.enqueue(MockResponse().setResponseCode(304))
         val first = api.getConfig("az", null) as ConfigResponse.Changed
-        assertEquals("Apar", first.config.brand.name)
+        assertEquals("Example", first.config.brand.name)
         assertEquals("W/\"7f3a\"", first.etag)
         assertEquals(ConfigResponse.NotModified, api.getConfig("az", first.etag))
         assertNull(server.takeRequest().getHeader("If-None-Match"))

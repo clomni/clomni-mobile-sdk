@@ -69,7 +69,7 @@ Without it the SDK still keeps the unread count current; nothing is shown.
 
 ## 4. What the user sees
 
-- One notification per conversation: the operator and the brand as the title ("Leyla · Apar"), the message (at most
+- One notification per conversation: the operator and the brand as the title ("Leyla · Example"), the message (at most
   180 characters), the operator's photo. A newer message of the same conversation replaces it.
 - Channel `clomni_messages` (`ClomniPush.CHANNEL_ID`), named "Dəstək mesajları" in the messenger's language, made the
   first time a notification is shown, high importance.
@@ -90,7 +90,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 ```kotlin
 ClomniPush.handle(context, mapOf(
     "clomni" to "1", "type" to "message", "conversation_id" to "conv_5521",
-    "title" to "Leyla · Apar", "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
+    "title" to "Leyla · Example", "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
     "unread_total" to "1",
 ))
 ```

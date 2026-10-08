@@ -33,7 +33,7 @@ private class FakeSession : MessengerSession {
     var diskConfig: MessengerConfig? = null
 
     override fun cachedConfig(): MessengerConfig? = cachedConfig ?: diskConfig
-    var freshConfig: MessengerConfig? = Fixture.aparConfig
+    var freshConfig: MessengerConfig? = Fixture.exampleConfig
     var drafts = 0
     var flowBound = true
     val stored = mutableMapOf<String, List<Message>>()
@@ -119,12 +119,12 @@ class MessengerCoordinatorTest {
     @Test
     fun nothingShowsUntilTheAppAsks() {
         session.loggedIn = true
-        session.cachedConfig = Fixture.aparConfig
+        session.cachedConfig = Fixture.exampleConfig
         val messenger = coordinator()
         assertFalse(messenger.wantsAnyView)
         messenger.start()
         assertEquals(MessengerCoordinator.Readiness.READY, messenger.readiness)
-        assertNull("Apar's config has launcher.visible false", messenger.launcher)
+        assertNull("Example's config has launcher.visible false", messenger.launcher)
         assertNull(messenger.route)
         assertFalse("no overlay, no activity, nothing", messenger.wantsAnyView)
         assertEquals(listOf("connect", "config"), session.calls)
@@ -157,7 +157,7 @@ class MessengerCoordinatorTest {
 
         // The panel can turn it on, on the left; the app's choice wins over the panel's.
         val panelOn = ProtocolJson().parseConfig(
-            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},"theme":{"launcher":{"enabled":true,"position":"left","bottom_padding":0}}}""",
+            """{"brand":{"name":"Example","primary_color":"#1F9D63"},"theme":{"launcher":{"enabled":true,"position":"left","bottom_padding":0}}}""",
         )!!
         session.cachedConfig = panelOn
         session.freshConfig = panelOn
@@ -180,7 +180,7 @@ class MessengerCoordinatorTest {
     @Test
     fun readyOnTheCacheBeforeTheNetwork() {
         session.loggedIn = true
-        session.cachedConfig = Fixture.aparConfig
+        session.cachedConfig = Fixture.exampleConfig
         session.unread = 3
         val messenger = coordinator()
         val atConnect = mutableListOf<MessengerCoordinator.Readiness>()
@@ -248,7 +248,7 @@ class MessengerCoordinatorTest {
         val results = mutableListOf<Boolean>()
         messenger.prepare { results += it }
         assertEquals(MessengerCoordinator.Readiness.READY, messenger.readiness)
-        assertEquals("Apar", messenger.config?.brand?.name)
+        assertEquals("Example", messenger.config?.brand?.name)
         messenger.prepare { results += it }
         assertEquals(listOf(true, true), results)
         assertEquals(listOf("login", "connect", "config", "connect", "config"), session.calls)
@@ -469,16 +469,16 @@ class MessengerCoordinatorTest {
         session.loggedIn = true
         val messenger = coordinator()
         messenger.start()
-        val old = ChatFixture.message("50-apar-end.json", "id" to "msg_old_end")
+        val old = ChatFixture.message("50-example-end.json", "id" to "msg_old_end")
         session.stored["conv_5521"] = listOf(old)
         session.push(ClomniChange.Messages("conv_5521"))
         assertTrue(flows.isEmpty())
-        val step = ChatFixture.message("12-apar-level4-handoff.json")
-        val end = ChatFixture.message("50-apar-end.json")
+        val step = ChatFixture.message("12-example-level4-handoff.json")
+        val end = ChatFixture.message("50-example-end.json")
         session.stored["conv_5521"] = listOf(old, step, end)
         session.push(ClomniChange.Messages("conv_5521"))
         session.push(ClomniChange.Messages("conv_5521"))
-        assertEquals(listOf("flw_apar_az"), flows)
+        assertEquals(listOf("flw_example_az"), flows)
         session.cachedConfig = Fixture.minimalConfig
         session.push(ClomniChange.Config)
         assertEquals("Clomni, Inc.", messenger.config?.brand?.name)
@@ -505,7 +505,7 @@ class MessengerCoordinatorTest {
     // Push
 
     private fun push(conversation: String = "conv_5521", unread: Int? = 2) = PushPayload(
-        "message", conversation, "msg_f02", "Leyla · Apar", "Balansınıza 2 AZN qaytarıldı.", "https://app.clomni.ai/a/leyla.png", unread,
+        "message", conversation, "msg_f02", "Leyla · Example", "Balansınıza 2 AZN qaytarıldı.", "https://app.clomni.ai/a/leyla.png", unread,
     )
 
     @Test

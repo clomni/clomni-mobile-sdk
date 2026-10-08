@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "Apar",
+    "name": "Example",
     "primary_color": "#1F9D63",
     "header_style": "gradient",
     "glow": false,
@@ -43,7 +43,7 @@
     "channels": [
       {
         "type": "instagram",
-        "url": "https://instagram.com/apar.az",
+        "url": "https://instagram.com/example",
         "enabled": true
       },
       {
@@ -53,12 +53,12 @@
       },
       {
         "type": "linkedin",
-        "url": "https://linkedin.com/company/apar",
+        "url": "https://linkedin.com/company/example",
         "enabled": true
       },
       {
         "type": "email",
-        "url": "mailto:support@apar.az",
+        "url": "mailto:support@example.com",
         "enabled": true
       },
       {

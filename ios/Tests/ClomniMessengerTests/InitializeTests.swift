@@ -22,7 +22,7 @@ final class InitializeTests: XCTestCase {
         let appId = "app_probe_\(UUID().uuidString.prefix(8))"
         let cache = DiskCache.standard(appId: appId)
         defer { cache.clear() }
-        cache.write(Data(##"{"brand":{"name":"Apar","primary_color":"#1F9D63"}}"##.utf8), "config.json")
+        cache.write(Data(##"{"brand":{"name":"Example","primary_color":"#1F9D63"}}"##.utf8), "config.json")
         ClomniRuntime.shared = ClomniRuntime(makeRenderer: { _, _ in nil })
 
         IOProbe.start()
@@ -37,7 +37,7 @@ final class InitializeTests: XCTestCase {
             try await Task.sleep(nanoseconds: 2_000_000)
         }
         let accesses = IOProbe.stop()
-        XCTAssertEqual(ClomniRuntime.shared.coordinator?.config?.brand.name, "Apar")
+        XCTAssertEqual(ClomniRuntime.shared.coordinator?.config?.brand.name, "Example")
         XCTAssertTrue(accesses.contains(IOProbe.Access(what: "read config.json", onMainThread: false)), "\(accesses)")
         XCTAssertTrue(accesses.contains { $0.what == "vault read session" }, "\(accesses)")
         XCTAssertEqual(accesses.filter(\.onMainThread), [])

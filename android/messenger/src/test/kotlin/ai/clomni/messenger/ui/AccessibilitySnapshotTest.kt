@@ -69,7 +69,7 @@ class AccessibilitySnapshotTest {
         conversations: List<Conversation> = listOf(leyla),
         rtl: Boolean = false,
     ) {
-        val config = Fixture.aparConfig
+        val config = Fixture.exampleConfig
         val state = MessengerSnapshot(
             config = config,
             configLoad = MessengerSnapshot.Load.LOADED,
@@ -100,7 +100,7 @@ class AccessibilitySnapshotTest {
     }
 
     private fun conversation(vararg messages: Message, answerable: Set<String> = emptySet(), offline: Boolean = false) = ChatSnapshot(
-        config = Fixture.aparConfig,
+        config = Fixture.exampleConfig,
         conversation = ChatFixture.botConversation(messages.toList(), answerable),
         messages = messages.toList(),
         answerable = answerable,
@@ -183,7 +183,7 @@ class AccessibilitySnapshotTest {
         home("home_talkback")
         assertReads(
             listOf(
-                "Apar",
+                "Example",
                 "Bağla [Button]",
                 "Salam, Aysel Bizdən nəsə soruşun [heading]",
                 "Mesajlar, Oxunmamış mesaj var [Button]",
@@ -206,13 +206,13 @@ class AccessibilitySnapshotTest {
         assertReads(
             listOf(
                 "Geri [Button]",
-                "Apar Adətən bir neçə dəqiqəyə cavab veririk [heading]",
+                "Example Adətən bir neçə dəqiqəyə cavab veririk [heading]",
                 "Bağla [Button]",
                 "Bu gün 10:30",
-                "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.",
+                "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.",
                 "Siz, 10:35: Gedişim bitmədi, pul çıxılmağa davam edir",
                 "Göndərildi",
-                "Apar bot, 10:30: Salam, Clomni-yə xoş gəlmisiniz.\nZəhmət olmasa dil seçin.\nPlease choose your language.\nПожалуйста, выберите язык.",
+                "Example bot, 10:30: Salam, Clomni-yə xoş gəlmisiniz.\nZəhmət olmasa dil seçin.\nPlease choose your language.\nПожалуйста, выберите язык.",
                 "Azərbaycan dili, 1-ci, cəmi 3 [Button]",
                 "English, 2-ci, cəmi 3 [Button]",
                 "Русский, 3-cü, cəmi 3 [Button]",
@@ -227,10 +227,10 @@ class AccessibilitySnapshotTest {
         assertReads(
             listOf(
                 "Geri [Button]",
-                "Apar Adətən bir neçə dəqiqəyə cavab veririk [heading]",
+                "Example Adətən bir neçə dəqiqəyə cavab veririk [heading]",
                 "Bağla [Button]",
                 "Bu gün 10:30",
-                "Apar bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
+                "Example bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
                 "Ad, soyad, məcburi [click]",
                 "Telefon, məcburi [click]",
                 "Email [click]",

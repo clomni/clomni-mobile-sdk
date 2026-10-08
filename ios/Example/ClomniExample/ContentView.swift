@@ -52,7 +52,7 @@ struct ContentView: View {
                         .onChange(of: launcherOn) { Clomni.setLauncherVisible($0) }
                 }
             }
-            .navigationTitle("Apar")
+            .navigationTitle("Example")
         }
         .onAppear { if UITestMode.isOn { UITestMode.start() } }
     }

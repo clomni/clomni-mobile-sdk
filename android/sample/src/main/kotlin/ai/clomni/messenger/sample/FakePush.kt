@@ -12,7 +12,7 @@ object FakePush {
         "clomni" to "1",
         "type" to "message",
         "conversation_id" to "conv_sample",
-        "title" to "Leyla · Apar",
+        "title" to "Leyla · Example",
         "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
         "unread_total" to "1",
     )

@@ -60,7 +60,7 @@ final class MobileAPITests: ProtocolTestCase {
         let message = String(decoding: try Fixtures.data("02-text-operator-markdown.json"), as: UTF8.self)
         let conversation = #"""
         {"id":"conv_5521","status":"open","assignee":{"name":"Leyla","avatar_url":null,"online":true},"unread_count":1,
-         "last_message":\#(message),"flow":{"active":true,"awaiting":"menu","flow_id":"flw_apar_az","node_id":"S"},"opened_from":"profile_support",
+         "last_message":\#(message),"flow":{"active":true,"awaiting":"menu","flow_id":"flw_example_az","node_id":"S"},"opened_from":"profile_support",
          "created_at":"2026-10-01T10:30:00Z"}
         """#
         let parsed = try XCTUnwrap(ProtocolJSON.parseConversation(data(conversation)))
@@ -70,7 +70,7 @@ final class MobileAPITests: ProtocolTestCase {
         XCTAssertEqual(parsed.assignee?.online, true)
         XCTAssertEqual(parsed.unreadCount, 1)
         XCTAssertEqual(parsed.lastMessage?.id, "msg_f02")
-        XCTAssertEqual(parsed.flow, Conversation.FlowState(active: true, awaiting: "menu", flowId: "flw_apar_az", nodeId: "S"))
+        XCTAssertEqual(parsed.flow, Conversation.FlowState(active: true, awaiting: "menu", flowId: "flw_example_az", nodeId: "S"))
         XCTAssertEqual(parsed.flow?.holdsTheComposer, true)
         XCTAssertEqual(parsed.openedFrom, "profile_support")
         XCTAssertEqual(try JSONDecoder().decode(Conversation.self, from: try JSONEncoder().encode(parsed)), parsed)

@@ -233,7 +233,7 @@ paths:
                     locale: az-AZ
                     timezone: Asia/Baku
                     model: SM-A546
-                    app_identifier: az.apar.app
+                    app_identifier: com.example.app
               anonymous:
                 value:
                   device:
@@ -1218,7 +1218,7 @@ components:
         flow:
           active: true
           awaiting: menu
-          flow_id: flw_apar_az
+          flow_id: flw_example_az
           node_id: S
         opened_from: profile_support
         created_at: '2026-10-01T10:30:00Z'

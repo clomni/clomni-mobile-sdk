@@ -14,7 +14,7 @@ const {
   withClomni,
 } = plugin;
 
-const baseConfig = () => ({ name: 'Apar', slug: 'apar' });
+const baseConfig = () => ({ name: 'Example', slug: 'example' });
 
 /** Runs one registered mod with `modResults`, the way prebuild hands them over; returns what it made of them. */
 async function run(config, platform, name, modResults, projectRoot = '/project') {
@@ -88,22 +88,22 @@ describe('Android manifest', () => {
 });
 
 describe('localSdk, a checkout in place of the published SDKs', () => {
-  const podfile = "target 'Apar' do\n  use_expo_modules!\n  config = use_native_modules!\nend\n";
+  const podfile = "target 'Example' do\n  use_expo_modules!\n  config = use_native_modules!\nend\n";
 
   it('puts the iOS SDK pod after use_expo_modules!, once', () => {
     const once = usePodFromCheckout(podfile, '/src/clomni-mobile-sdk');
-    expect(once).toBe("target 'Apar' do\n  use_expo_modules!\n  pod 'ClomniMessenger', :path => '/src/clomni-mobile-sdk'\n" +
+    expect(once).toBe("target 'Example' do\n  use_expo_modules!\n  pod 'ClomniMessenger', :path => '/src/clomni-mobile-sdk'\n" +
       '  config = use_native_modules!\nend\n');
     expect(usePodFromCheckout(once, '/src/clomni-mobile-sdk')).toBe(once);
-    expect(() => usePodFromCheckout("target 'Apar' do\nend\n", '/x')).toThrow('no use_expo_modules!');
+    expect(() => usePodFromCheckout("target 'Example' do\nend\n", '/x')).toThrow('no use_expo_modules!');
   });
 
   it('builds ai.clomni:messenger from the checkout, in Groovy or Kotlin', () => {
-    const groovy = useAndroidBuildFromCheckout("rootProject.name = 'Apar'\n", 'groovy', '/src/sdk');
+    const groovy = useAndroidBuildFromCheckout("rootProject.name = 'Example'\n", 'groovy', '/src/sdk');
     expect(groovy).toContain("includeBuild('/src/sdk/android') {");
     expect(groovy).toContain("substitute(module('ai.clomni:messenger')).using(project(':messenger'))");
     expect(useAndroidBuildFromCheckout(groovy, 'groovy', '/src/sdk')).toBe(groovy);
-    const kotlin = useAndroidBuildFromCheckout('rootProject.name = "Apar"', 'kt', '/src/sdk');
+    const kotlin = useAndroidBuildFromCheckout('rootProject.name = "Example"', 'kt', '/src/sdk');
     expect(kotlin).toContain('includeBuild("/src/sdk/android") {');
   });
 
@@ -131,7 +131,7 @@ describe('the plugin in a prebuild', () => {
     expect(Object.keys(config.mods.ios).sort()).toEqual(['entitlements', 'infoPlist']);
     expect(Object.keys(config.mods.android)).toEqual(['manifest']);
 
-    const plist = await run(config, 'ios', 'infoPlist', { CFBundleName: 'Apar' });
+    const plist = await run(config, 'ios', 'infoPlist', { CFBundleName: 'Example' });
     expect(plist.NSCameraUsageDescription).toBe(DEFAULTS.cameraPermission);
     expect(plist.UIBackgroundModes).toEqual(['remote-notification']);
     expect(await run(config, 'ios', 'entitlements', {})).toEqual({ 'aps-environment': 'development' });

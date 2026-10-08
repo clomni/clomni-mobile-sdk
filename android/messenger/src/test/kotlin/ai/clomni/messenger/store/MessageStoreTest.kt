@@ -285,7 +285,7 @@ class MessageStoreTest {
         first.putConversation(conversation("conv_1"))
         first.putMessages("conv_1", (1L..150L).map { message(it, interactive = it == 150L) }, syncedThrough = 150)
         first.putMessages("conv/2", listOf(message(1, conversationId = "conv/2")), syncedThrough = null)
-        val body = """{"brand":{"name":"Apar","primary_color":"#1F9D63"}}"""
+        val body = """{"brand":{"name":"Example","primary_color":"#1F9D63"}}"""
         first.setConfig(protocol.parseConfig(body)!!, body, "W/\"1\"")
         first.setUnreadTotal(3)
         first.markReadByOperator("conv_1", 149)
@@ -307,7 +307,7 @@ class MessageStoreTest {
         assertEquals(listOf("msg_1"), second.messages("conv/2").map { it.id })
         assertEquals(150L, second.syncedSeq("conv_1"))
         assertNull(second.syncedSeq("conv/2"))
-        assertEquals("Apar", second.config?.brand?.name)
+        assertEquals("Example", second.config?.brand?.name)
         assertEquals("W/\"1\"", second.configEtag)
         assertEquals(3, second.unreadTotal)
         assertEquals(149L, second.readByOperator("conv_1"))

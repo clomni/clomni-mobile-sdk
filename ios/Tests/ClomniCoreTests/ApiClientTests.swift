@@ -52,8 +52,8 @@ final class ApiClientTests: XCTestCase {
         XCTAssertNil(body(request)?["user"])
 
         var info = DeviceInfo.current(deviceId: "d_1")
-        info.appIdentifier = "az.apar.app"
-        XCTAssertEqual(info.json["app_identifier"], "az.apar.app")
+        info.appIdentifier = "com.example.app"
+        XCTAssertEqual(info.json["app_identifier"], "com.example.app")
         info.appIdentifier = nil
         XCTAssertNil(info.json["app_identifier"], "left out when the process has no bundle id")
     }
@@ -235,7 +235,7 @@ final class ApiClientTests: XCTestCase {
         guard case .changed(let config, _, let etag) = try await api.config(language: "en", etag: nil) else {
             return XCTFail("expected a config")
         }
-        XCTAssertEqual(config.brand.name, "Apar")
+        XCTAssertEqual(config.brand.name, "Example")
         XCTAssertEqual(etag, server.configETag)
         XCTAssertEqual(server.requests.last?.url.query, "lang=en")
         let again = try await api.config(language: nil, etag: etag)

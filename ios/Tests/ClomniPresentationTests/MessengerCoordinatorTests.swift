@@ -12,7 +12,7 @@ actor FakeSession: MessengerSession {
     var offline = false
     var unread = 0
     var cachedConfig: MessengerConfig?
-    var freshConfig: MessengerConfig? = Fixture.aparConfig
+    var freshConfig: MessengerConfig? = Fixture.exampleConfig
     var flowBound = true
     var stored: [String: [Message]] = [:]
     var calls: [String] = []
@@ -30,7 +30,7 @@ actor FakeSession: MessengerSession {
     nonisolated func cachedConfigFromDisk() -> MessengerConfig? { onDisk.read { $0 } }
 
     func set(loggedIn: Bool = false, disabled: Bool = false, disableOnLogin: Bool = false, unread: Int = 0,
-             cached: MessengerConfig? = nil, fresh: MessengerConfig? = Fixture.aparConfig,
+             cached: MessengerConfig? = nil, fresh: MessengerConfig? = Fixture.exampleConfig,
              flowBound: Bool = true) {
         self.loggedIn = loggedIn
         self.disabled = disabled
@@ -183,12 +183,12 @@ final class MessengerCoordinatorTests: XCTestCase {
 
     /// Brief 7.2, "Bitdi": with the launcher off, the app shows no Clomni element at all.
     func testNothingShowsUntilTheAppAsks() async {
-        await session.set(loggedIn: true, cached: Fixture.aparConfig)
+        await session.set(loggedIn: true, cached: Fixture.exampleConfig)
         let messenger = coordinator()
         XCTAssertFalse(messenger.wantsAnyView)
         await messenger.start()
         XCTAssertEqual(messenger.readiness, .ready)
-        XCTAssertNil(messenger.launcher, "Apar's config has launcher.visible false")
+        XCTAssertNil(messenger.launcher, "Example's config has launcher.visible false")
         XCTAssertNil(messenger.route)
         XCTAssertFalse(messenger.wantsAnyView, "no overlay, no window, nothing")
         let made = await calls()
@@ -197,7 +197,7 @@ final class MessengerCoordinatorTests: XCTestCase {
 
     /// DESIGN-PASS-3 C1, C2: logged in with a kept look, the messenger is ready before the network has answered.
     func testReadyOnTheCacheBeforeTheNetwork() async {
-        await session.set(loggedIn: true, unread: 3, cached: Fixture.aparConfig)
+        await session.set(loggedIn: true, unread: 3, cached: Fixture.exampleConfig)
         let messenger = coordinator()
         await session.probe { await MainActor.run { messenger.readiness } }
         await messenger.start()
@@ -246,7 +246,7 @@ final class MessengerCoordinatorTests: XCTestCase {
 
     /// `Clomni.setLanguage`: spoken when the panel has it on, the config asked for in it; off, the default.
     func testSetLanguage() async {
-        await session.set(loggedIn: true, cached: Fixture.aparConfig)
+        await session.set(loggedIn: true, cached: Fixture.exampleConfig)
         let messenger = coordinator()
         await messenger.start()
         var asked = await session.configLanguages
@@ -257,7 +257,7 @@ final class MessengerCoordinatorTests: XCTestCase {
         asked = await session.configLanguages
         XCTAssertEqual(asked, ["az", "ru"])
         messenger.setLanguage("ru")
-        XCTAssertEqual(Fixture.aparConfig.speaks("de", device: "tr"), "az", "a language that is off: the panel's main")
+        XCTAssertEqual(Fixture.exampleConfig.speaks("de", device: "tr"), "az", "a language that is off: the panel's main")
     }
 
     func testTheLauncherRule() async throws {
@@ -281,7 +281,7 @@ final class MessengerCoordinatorTests: XCTestCase {
 
         // The panel can turn it on, on the left; the app's choice wins over the panel's.
         let panelOn = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
-            {"brand":{"name":"Apar","primary_color":"#1F9D63"},"theme":{"launcher":{"enabled":true,"position":"left","bottom_padding":0}}}
+            {"brand":{"name":"Example","primary_color":"#1F9D63"},"theme":{"launcher":{"enabled":true,"position":"left","bottom_padding":0}}}
             """##.utf8)))
         await session.set(loggedIn: true, unread: 120, cached: panelOn, fresh: panelOn)
         let fromPanel = coordinator()
@@ -336,7 +336,7 @@ final class MessengerCoordinatorTests: XCTestCase {
         let ready = await messenger.prepare()
         XCTAssertTrue(ready)
         XCTAssertEqual(messenger.readiness, .ready)
-        XCTAssertEqual(messenger.config?.brand.name, "Apar")
+        XCTAssertEqual(messenger.config?.brand.name, "Example")
         await messenger.prepare()
         let made = await calls()
         XCTAssertEqual(made, ["login", "connect", "config", "connect", "config"])
@@ -374,11 +374,11 @@ final class MessengerCoordinatorTests: XCTestCase {
     /// The first frame is in the brand's colours: opening before the engine handed over its cached config reads it
     /// from disk at once.
     func testOpeningReadsTheCachedConfigAtOnce() {
-        session.onDisk.write { $0 = Fixture.aparConfig }
+        session.onDisk.write { $0 = Fixture.exampleConfig }
         let messenger = coordinator()
         XCTAssertNil(messenger.config)
         messenger.present()
-        XCTAssertEqual(messenger.config?.brand.name, "Apar", "before any await")
+        XCTAssertEqual(messenger.config?.brand.name, "Example", "before any await")
     }
 
     /// The open messenger is a navigation stack with Home at the bottom: Messages and conversations go on top, back
@@ -534,16 +534,16 @@ final class MessengerCoordinatorTests: XCTestCase {
         await session.set(loggedIn: true)
         let messenger = coordinator()
         await messenger.start()
-        let old = Fixture.message("50-apar-end.json", ["id": "msg_old_end"])
+        let old = Fixture.message("50-example-end.json", ["id": "msg_old_end"])
         await session.push(.messages(conversationId: "conv_5521"), messages: [old])
         await messenger.settled()
         XCTAssertTrue(heard.flows.isEmpty)
-        let step = Fixture.message("12-apar-level4-handoff.json")
-        let end = Fixture.message("50-apar-end.json")
+        let step = Fixture.message("12-example-level4-handoff.json")
+        let end = Fixture.message("50-example-end.json")
         await session.push(.messages(conversationId: "conv_5521"), messages: [old, step, end])
         await session.push(.messages(conversationId: "conv_5521"), messages: [old, step, end])
         await messenger.settled()
-        XCTAssertEqual(heard.flows, ["flw_apar_az"])
+        XCTAssertEqual(heard.flows, ["flw_example_az"])
         await session.set(loggedIn: true, cached: Fixture.minimalConfig)
         await session.push(.config)
         await messenger.settled()
@@ -570,10 +570,10 @@ final class MessengerCoordinatorTests: XCTestCase {
     /// What APNs hands the app: the alert in `aps`, the Clomni keys next to it (brief 6.5).
     private func push(_ conversation: String = "conv_5521", unread: Int? = 2) -> PushPayload {
         var userInfo: [AnyHashable: Any] = [
-            "aps": ["alert": ["title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı."], "sound": "default",
+            "aps": ["alert": ["title": "Leyla · Example", "body": "Balansınıza 2 AZN qaytarıldı."], "sound": "default",
                     "badge": 2, "mutable-content": 1] as [String: Any],
             "clomni": "1", "type": "message", "conversation_id": conversation, "message_id": "msg_f02",
-            "title": "Leyla · Apar", "body": "Balansınıza 2 AZN qaytarıldı.", "avatar_url": "https://app.clomni.ai/a/l.png",
+            "title": "Leyla · Example", "body": "Balansınıza 2 AZN qaytarıldı.", "avatar_url": "https://app.clomni.ai/a/l.png",
         ]
         if let unread { userInfo["unread_total"] = unread }
         return ProtocolJSON.clomniPush(userInfo)!

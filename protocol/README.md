@@ -98,7 +98,7 @@ saying what the screen must show.
 |---|---|
 | `01`–`06` | text: bot, operator markdown, user with `client_id`, long, emoji only, unsafe link (`javascript:` is shown as plain text) |
 | `07`–`08` | three-language greeting with language buttons, before and after the choice |
-| `09`–`12`, `50` | Apar flow, four levels: A → S (chips + back) → U → N (handoff / end) → END |
+| `09`–`12`, `50` | Example flow, four levels: A → S (chips + back) → U → N (handoff / end) → END |
 | `13`–`15` | button title over 80 characters, ten buttons, buttons without text |
 | `16`–`18` | image with and without dimensions, PDF |
 | `19`–`21` | forms: contact, every field type, submitted (same `seq`, read-only) |

@@ -65,7 +65,7 @@
     "channels": [
       {
         "type": "instagram",
-        "url": "https://instagram.com/apar.az"
+        "url": "https://instagram.com/example"
       },
       {
         "type": "whatsapp",
@@ -73,11 +73,11 @@
       },
       {
         "type": "linkedin",
-        "url": "https://linkedin.com/company/apar"
+        "url": "https://linkedin.com/company/example"
       },
       {
         "type": "email",
-        "url": "mailto:support@apar.az"
+        "url": "mailto:support@example.com"
       }
     ],
     "title_scale": 120

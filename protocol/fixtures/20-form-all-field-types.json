@@ -13,7 +13,7 @@
   "seq": 19,
   "lang": "az",
   "flow": {
-    "flow_id": "flw_apar_az",
+    "flow_id": "flw_example_az",
     "node_id": "F2",
     "version": 7,
     "interactive": true

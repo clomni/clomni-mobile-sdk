@@ -40,29 +40,29 @@
     "note": "Eyni mesaj seçimdən sonra: interactive false, düymələr deaktiv və gizlənir"
   },
   {
-    "file": "09-apar-level1-A.json",
+    "file": "09-example-level1-A.json",
     "schema": "message.json",
-    "note": "Apar, 1-ci səviyyə (A): iki tam enli düymə, yazı qutusu kilidli"
+    "note": "Nümunə flow, 1-ci səviyyə (A): iki tam enli düymə, yazı qutusu kilidli"
   },
   {
-    "file": "10-apar-level2-S-chips.json",
+    "file": "10-example-level2-S-chips.json",
     "schema": "message.json",
-    "note": "Apar, 2-ci səviyyə (S): chips, yan-yana, sonda «← Geri» (allow_back)"
+    "note": "Nümunə flow, 2-ci səviyyə (S): chips, yan-yana, sonda «← Geri» (allow_back)"
   },
   {
-    "file": "11-apar-level3-U.json",
+    "file": "11-example-level3-U.json",
     "schema": "message.json",
-    "note": "Apar, 3-cü səviyyə (U): vertical + geri"
+    "note": "Nümunə flow, 3-cü səviyyə (U): vertical + geri"
   },
   {
-    "file": "12-apar-level4-handoff.json",
+    "file": "12-example-level4-handoff.json",
     "schema": "message.json",
-    "note": "Apar, 4-cü səviyyə (N): handoff və end payload-ları"
+    "note": "Nümunə flow, 4-cü səviyyə (N): handoff və end payload-ları"
   },
   {
-    "file": "50-apar-end.json",
+    "file": "50-example-end.json",
     "schema": "message.json",
-    "note": "Apar END: «Xeyr, problem həll olundu» seçiləndən sonra, flow bitir, interactive false"
+    "note": "Nümunə flow END: «Xeyr, problem həll olundu» seçiləndən sonra, flow bitir, interactive false"
   },
   {
     "file": "13-button-title-over-80.json",
@@ -210,9 +210,9 @@
     "note": "WS: bilinməyən hadisə, nəzərə alınmır"
   },
   {
-    "file": "42-config-apar.json",
+    "file": "42-config-example.json",
     "schema": "config.json",
-    "note": "Config v2: Apar, versiya 12, server törəmə rəngləri, launcher söndürülüb, 4 kanal"
+    "note": "Config v2: Example, versiya 12, server törəmə rəngləri, launcher söndürülüb, 4 kanal"
   },
   {
     "file": "43-config-minimal.json",
@@ -232,7 +232,7 @@
   {
     "file": "46-client-button-reply.json",
     "schema": "client-message.json",
-    "note": "Klient: düymə cavabı (Apar A → S)"
+    "note": "Klient: düymə cavabı (nümunə flow, A → S)"
   },
   {
     "file": "47-client-back.json",
@@ -247,7 +247,7 @@
   {
     "file": "51-client-button-end.json",
     "schema": "client-message.json",
-    "note": "Klient: Apar N → END (payload end)"
+    "note": "Klient: nümunə flow, N → END (payload end)"
   },
   {
     "file": "52-client-rating.json",
@@ -255,9 +255,9 @@
     "note": "Klient: qiymət 5 + şərh"
   },
   {
-    "file": "53-appearance-apar.json",
+    "file": "53-appearance-example.json",
     "schema": "appearance.json",
-    "note": "Görünüş sənədi (panel): Apar, mətn override-ları, 5 kanaldan 4-ü açıq"
+    "note": "Görünüş sənədi (panel): Example, mətn override-ları, 5 kanaldan 4-ü açıq"
   },
   {
     "file": "54-appearance-default.json",
@@ -280,9 +280,9 @@
     "note": "WS klient: istifadəçi yazır"
   },
   {
-    "file": "58-config-apar-en.json",
+    "file": "58-config-example-en.json",
     "schema": "config.json",
-    "note": "Config v2: Apar ingilis dilində (?lang=en), tam en strings"
+    "note": "Config v2: Example ingilis dilində (?lang=en), tam en strings"
   },
   {
     "file": "59-config-wordmark.json",

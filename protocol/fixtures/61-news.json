@@ -4,9 +4,9 @@
       "id": "news_12",
       "title": "Yeni zonalar açıldı",
       "summary": "Yasamal və Nərimanovda 40 yeni parklanma zonası var.",
-      "body_markdown": "Bu həftədən **40 yeni zona** işləyir.\n\n- Yasamal: 22 zona\n- Nərimanov: 18 zona\n\nXəritəyə [buradan](https://apar.az/zones) baxın.",
+      "body_markdown": "Bu həftədən **40 yeni zona** işləyir.\n\n- Yasamal: 22 zona\n- Nərimanov: 18 zona\n\nXəritəyə [buradan](https://example.com/zones) baxın.",
       "image_url": "https://app.clomni.ai/v1/images/img_8f2kQ7pZx1Lm3Nb4Vc5D",
-      "button": { "text": "Xəritəni aç", "url": "apar://map/zones" },
+      "button": { "text": "Xəritəni aç", "url": "myapp://map/zones" },
       "published_at": "2026-10-02T09:00:00.000Z"
     },
     {

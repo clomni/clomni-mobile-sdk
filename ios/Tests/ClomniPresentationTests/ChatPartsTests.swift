@@ -7,13 +7,13 @@ final class LimitedMarkdownTests: XCTestCase {
     func testOperatorMarkdown() {
         // Fixture 02.
         let runs = LimitedMarkdown.parse(
-            "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://apar.az/sertler)")
+            "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://example.com/sertler)")
         XCTAssertEqual(runs, [
             TextRun("Gedişinizi yoxladıq.", bold: true),
             TextRun(" Balansınıza "),
             TextRun("2 AZN", italic: true),
             TextRun(" qaytarıldı.\nƏtraflı: "),
-            TextRun("şərtlər", link: URL(string: "https://apar.az/sertler")),
+            TextRun("şərtlər", link: URL(string: "https://example.com/sertler")),
         ])
     }
 
@@ -22,7 +22,7 @@ final class LimitedMarkdownTests: XCTestCase {
         let runs = LimitedMarkdown.parse("Bu linkə basmayın: [oyun](javascript:alert(1)) və [zəng](tel:+994501234567)")
         XCTAssertEqual(runs, [TextRun("Bu linkə basmayın: oyun və "),
                               TextRun("zəng", link: URL(string: "tel:+994501234567"))])
-        XCTAssertNil(LimitedMarkdown.parse("[sayt](http://apar.az)").first?.link, "http is not allowed")
+        XCTAssertNil(LimitedMarkdown.parse("[sayt](http://example.com)").first?.link, "http is not allowed")
         XCTAssertNil(LimitedMarkdown.parse("[x](data:text/html,hi)").first?.link)
         XCTAssertEqual(LimitedMarkdown.parse("[poçt](mailto:a@b.az)").first?.link?.scheme, "mailto")
         XCTAssertEqual(LimitedMarkdown.plainText("[a](https://x) **b**"), "a b")
@@ -54,23 +54,23 @@ final class TextLinksTests: XCTestCase {
     }
 
     func testAddresses() {
-        XCTAssertEqual(links("Sayt: https://apar.az/sertler?x=1#y, ətraflı."),
-                       ["https://apar.az/sertler?x=1#y → https://apar.az/sertler?x=1#y"])
-        XCTAssertEqual(links("Köhnə http://apar.az və www.apar.az/qiymet."),
-                       ["http://apar.az → http://apar.az", "www.apar.az/qiymet → https://www.apar.az/qiymet"])
-        XCTAssertEqual(links("(bax: https://apar.az) və https://en.wikipedia.org/wiki/Baku_(city)!"),
-                       ["https://apar.az → https://apar.az",
+        XCTAssertEqual(links("Sayt: https://example.com/sertler?x=1#y, ətraflı."),
+                       ["https://example.com/sertler?x=1#y → https://example.com/sertler?x=1#y"])
+        XCTAssertEqual(links("Köhnə http://example.com və www.example.com/qiymet."),
+                       ["http://example.com → http://example.com", "www.example.com/qiymet → https://www.example.com/qiymet"])
+        XCTAssertEqual(links("(bax: https://example.com) və https://en.wikipedia.org/wiki/Baku_(city)!"),
+                       ["https://example.com → https://example.com",
                         "https://en.wikipedia.org/wiki/Baku_(city) → https://en.wikipedia.org/wiki/Baku_(city)"])
-        XCTAssertEqual(links("HTTPS://APAR.AZ"), ["HTTPS://APAR.AZ → HTTPS://APAR.AZ"])
-        XCTAssertEqual(links("https://apar.az/ödəniş"), ["https://apar.az/ödəniş → https://apar.az/%C3%B6d%C9%99ni%C5%9F"])
-        XCTAssertEqual(links("link:https://apar.az"), ["https://apar.az → https://apar.az"])
-        XCTAssertEqual(links("https:// www. www.apar https://localhost awww.apar.az apar.az"), [], "no host, or none at all")
+        XCTAssertEqual(links("HTTPS://EXAMPLE.COM"), ["HTTPS://EXAMPLE.COM → HTTPS://EXAMPLE.COM"])
+        XCTAssertEqual(links("https://example.com/ödəniş"), ["https://example.com/ödəniş → https://example.com/%C3%B6d%C9%99ni%C5%9F"])
+        XCTAssertEqual(links("link:https://example.com"), ["https://example.com → https://example.com"])
+        XCTAssertEqual(links("https:// www. www.example https://localhost awww.example.com example.com"), [], "no host, or none at all")
     }
 
     func testEmails() {
-        XCTAssertEqual(links("Yazın: info@apar.az."), ["info@apar.az → mailto:info@apar.az"])
-        XCTAssertEqual(links("<aysel.m+test@mail.apar.az>"), ["aysel.m+test@mail.apar.az → mailto:aysel.m+test@mail.apar.az"])
-        XCTAssertEqual(links("a@b @apar.az x@y.1 ödə@apar.az x@.az"), [])
+        XCTAssertEqual(links("Yazın: info@example.com."), ["info@example.com → mailto:info@example.com"])
+        XCTAssertEqual(links("<aysel.m+test@mail.example.com>"), ["aysel.m+test@mail.example.com → mailto:aysel.m+test@mail.example.com"])
+        XCTAssertEqual(links("a@b @example.com x@y.1 ödə@example.com x@.az"), [])
     }
 
     func testPhones() {
@@ -80,20 +80,20 @@ final class TextLinksTests: XCTestCase {
                        ["+994501234567 → tel:+994501234567", "0501234567 → tel:0501234567"])
         XCTAssertEqual(links("Sifariş 12345678, tarix 2026-10-01, saat 10:30, kod A123456789, 1234567890123456"), [],
                        "8 digits, a date, a time, glued to letters, over 15 digits")
-        XCTAssertEqual(links("https://apar.az/12345678901 info12345678901@apar.az"),
-                       ["https://apar.az/12345678901 → https://apar.az/12345678901",
-                        "info12345678901@apar.az → mailto:info12345678901@apar.az"], "never inside an address")
+        XCTAssertEqual(links("https://example.com/12345678901 info12345678901@example.com"),
+                       ["https://example.com/12345678901 → https://example.com/12345678901",
+                        "info12345678901@example.com → mailto:info12345678901@example.com"], "never inside an address")
     }
 
     func testLinkify() {
-        let runs = TextLinks.linkify([TextRun("Bax "), TextRun("www.apar.az və 0501234567", bold: true),
-                                      TextRun("şərtlər", link: URL(string: "https://apar.az/sertler"))])
+        let runs = TextLinks.linkify([TextRun("Bax "), TextRun("www.example.com və 0501234567", bold: true),
+                                      TextRun("şərtlər", link: URL(string: "https://example.com/sertler"))])
         XCTAssertEqual(runs, [
             TextRun("Bax "),
-            TextRun("www.apar.az", bold: true, link: URL(string: "https://www.apar.az")),
+            TextRun("www.example.com", bold: true, link: URL(string: "https://www.example.com")),
             TextRun(" və ", bold: true),
             TextRun("0501234567", bold: true, link: URL(string: "tel:0501234567")),
-            TextRun("şərtlər", link: URL(string: "https://apar.az/sertler")),
+            TextRun("şərtlər", link: URL(string: "https://example.com/sertler")),
         ])
         XCTAssertEqual(TextLinks.linkify([TextRun("Salam 👋")]), [TextRun("Salam 👋")])
         XCTAssertEqual(TextLinks.linkify([]), [])

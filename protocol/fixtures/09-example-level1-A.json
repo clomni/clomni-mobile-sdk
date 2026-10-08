@@ -13,13 +13,13 @@
   "seq": 8,
   "lang": "az",
   "flow": {
-    "flow_id": "flw_apar_az",
+    "flow_id": "flw_example_az",
     "node_id": "A",
     "version": 7,
     "interactive": true
   },
   "content": {
-    "text": "Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz. Bu canlı çat deyil, lakin müraciətiniz qısa müddət ərzində cavablandırılacaq. ❤️\n\nAşağıda qeyd olunan başlıqlardan sizə ən uyğun olanı seçin.",
+    "text": "Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz. Bu canlı çat deyil, lakin müraciətiniz qısa müddət ərzində cavablandırılacaq. ❤️\n\nAşağıda qeyd olunan başlıqlardan sizə ən uyğun olanı seçin.",
     "buttons": [
       {
         "id": "o_s",

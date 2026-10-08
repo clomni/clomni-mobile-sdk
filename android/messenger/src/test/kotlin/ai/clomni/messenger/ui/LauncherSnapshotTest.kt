@@ -37,7 +37,7 @@ class LauncherSnapshotTest {
                 FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP),
             )
             for ((launcher, dark) in launchers) {
-                addView(LauncherView(context).apply { bind(launcher, ClomniTheme.make(Fixture.aparConfig.brand, dark)) {} })
+                addView(LauncherView(context).apply { bind(launcher, ClomniTheme.make(Fixture.exampleConfig.brand, dark)) {} })
             }
         }
     }

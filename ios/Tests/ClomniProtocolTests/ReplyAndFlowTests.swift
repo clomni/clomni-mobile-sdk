@@ -42,9 +42,9 @@ final class ReplyAndFlowTests: ProtocolTestCase {
             guard case .conversationUpdated(let update) = try Fixtures.event(file).data else { return nil }
             return update.flow
         }
-        XCTAssertEqual(flows, [.init(active: true, awaiting: "menu", flowId: "flw_apar_az", nodeId: "S"),
-                               .init(active: true, awaiting: "text", flowId: "flw_apar_az", nodeId: "U"),
-                               .init(active: false), .init(active: true, awaiting: "buttons", flowId: "flw_apar_az", nodeId: "S")])
+        XCTAssertEqual(flows, [.init(active: true, awaiting: "menu", flowId: "flw_example_az", nodeId: "S"),
+                               .init(active: true, awaiting: "text", flowId: "flw_example_az", nodeId: "U"),
+                               .init(active: false), .init(active: true, awaiting: "buttons", flowId: "flw_example_az", nodeId: "S")])
         XCTAssertEqual(flows.map { $0?.holdsTheComposer }, [true, false, false, true],
                        "a menu holds the composer, text and an ended flow do not; an unknown value is not text")
     }

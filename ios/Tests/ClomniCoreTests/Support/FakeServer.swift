@@ -241,7 +241,7 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
         switch (request.method, Array(parts)) {
         case ("GET", ["mobile", "config"]):
             if request.headers["If-None-Match"] == configETag { return HTTPResponse(status: 304) }
-            let config: JSONValue = ["brand": ["name": "Apar", "primary_color": "#1F9D63"], "launcher": ["visible": false],
+            let config: JSONValue = ["brand": ["name": "Example", "primary_color": "#1F9D63"], "launcher": ["visible": false],
                                      "home": [:], "team": [:], "bot": ["name": "Clomni"], "composer": [:],
                                      "languages": ["az"], "strings": [:], "limits": ["text_chars": 50],
                                      "conversation": ["starts_with_flow": .bool(startsWithFlow)]]
