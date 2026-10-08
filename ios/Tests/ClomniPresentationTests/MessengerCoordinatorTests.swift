@@ -80,7 +80,18 @@ actor FakeSession: MessengerSession {
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation? {
         calls.append("flow \(event) \(openMessenger) \(openedFrom ?? "-")")
+        if holdingFlows { await withCheckedContinuation { heldFlows.append($0) } }
         return flowBound ? Fixture.conversation(status: "bot") : nil
+    }
+
+    /// Flow starts wait here until released, as a request still on its way does.
+    var holdingFlows = false
+    var heldFlows: [CheckedContinuation<Void, Never>] = []
+    func holdFlows() { holdingFlows = true }
+    func releaseFlows() {
+        holdingFlows = false
+        heldFlows.forEach { $0.resume() }
+        heldFlows = []
     }
 
     func messages(in conversationId: String) async -> [Message] { stored[conversationId] ?? [] }
@@ -446,6 +457,31 @@ final class MessengerCoordinatorTests: XCTestCase {
         await session.set(loggedIn: true, flowBound: false)
         let unbound = await messenger.startFlow("nothing_bound", data: [:], openMessenger: true)
         XCTAssertNil(unbound)
+    }
+
+    /// A second tap while the first start is still on its way joins it: one request, one conversation, one callback.
+    func testTheSameFlowStartedAgainWhileOutJoinsTheFirst() async {
+        await session.set(loggedIn: true)
+        await session.holdFlows()
+        let messenger = coordinator()
+        let ride: [String: JSONValue] = ["ride_id": "R-1042"]
+        async let first = messenger.startFlow("ride_problem", data: ride, openMessenger: true, source: "ride_detail")
+        async let second = messenger.startFlow("ride_problem", data: ride, openMessenger: true, source: "ride_detail")
+        for _ in 0..<200 where await session.heldFlows.isEmpty { await Task.yield() }
+        for _ in 0..<200 { await Task.yield() }
+        await session.releaseFlows()
+        let ids = await [first, second]
+
+        XCTAssertEqual(ids, ["conv_5521", "conv_5521"])
+        let made = await calls()
+        XCTAssertEqual(made.filter { $0.hasPrefix("flow") }, ["flow ride_problem true ride_detail"])
+        XCTAssertEqual(heard.started, ["conv_5521"])
+        XCTAssertEqual(messenger.route, .conversation("conv_5521"))
+
+        let later = await messenger.startFlow("ride_problem", data: ride, openMessenger: true, source: "ride_detail")
+        XCTAssertEqual(later, "conv_5521")
+        let again = await calls()
+        XCTAssertEqual(again.filter { $0.hasPrefix("flow") }.count, 2, "once the first is back, a new tap is a new start")
     }
 
     /// Brief 7.2 says no empty screen; with no network at a first launch it is not endless skeletons either.

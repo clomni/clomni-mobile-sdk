@@ -154,6 +154,14 @@ internal class MessengerCoordinator(
     /** END messages already seen, per conversation; a conversation's first look reports none (they are history). */
     private val finished = HashMap<String, Set<String>>()
 
+    /**
+     * `startFlow` calls still out, on [main], with who waits for each. The same call again joins its run: a second tap
+     * while the first is still on its way must not start a second conversation.
+     */
+    private val startingFlows = HashMap<FlowStart, MutableList<(String?) -> Unit>>()
+
+    private data class FlowStart(val event: String, val data: JsonObject?, val openMessenger: Boolean, val source: String?)
+
     private val strings: ClomniStrings
         get() = ClomniStrings(config.speaks(hostLanguage), config?.strings.orEmpty())
 
@@ -344,8 +352,14 @@ internal class MessengerCoordinator(
 
     /** `Clomni.startFlow`: the flow bound to an app event, in a new conversation, shown when [openMessenger]. */
     fun startFlow(event: String, data: JsonObject?, openMessenger: Boolean, source: String? = null, done: (String?) -> Unit = {}) {
+        val start = FlowStart(event, data, openMessenger, source)
+        startingFlows[start]?.let { waiting ->
+            waiting += done
+            return
+        }
+        startingFlows[start] = mutableListOf(done)
         prepare { ready ->
-            if (!ready) return@prepare done(null)
+            if (!ready) return@prepare flowStarted(start, null)
             worker.execute {
                 val conversation = runCatching { session.startFlow(event, data, openMessenger, source).get() }
                     .onFailure { log("startFlow($event): ${it.cause ?: it}") }
@@ -355,10 +369,14 @@ internal class MessengerCoordinator(
                         conversationStarted(conversation.id)
                         if (openMessenger) open(MessengerRoute.Conversation(conversation.id), source)
                     }
-                    done(conversation?.id)
+                    flowStarted(start, conversation?.id)
                 }
             }
         }
+    }
+
+    private fun flowStarted(start: FlowStart, conversationId: String?) {
+        startingFlows.remove(start)?.forEach { it(conversationId) }
     }
 
     /** Where back leads, the last first; empty: back closes the messenger. */
