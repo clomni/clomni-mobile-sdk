@@ -102,7 +102,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| React Native | $rn |"
-            echo "| Xcode | $(xcodebuild -version | head -1) |"
+            echo "| Xcode | $(xcodebuild -version | awk 'NR == 1') |"
             echo "| Node | $(node --version) |"
             echo "| iOS SDK source | $SDK_SOURCE |"
           } >> "$GITHUB_STEP_SUMMARY"

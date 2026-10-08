@@ -20,8 +20,12 @@ Pod::Spec.new do |s|
   # The iOS SDK is a Swift package (the repository's Package.swift, tags 1.0.0 …), not a CocoaPods trunk pod.
   # React Native 0.75+ adds it to the Pods project with spm_dependency. An app whose Podfile names the
   # ClomniMessenger pod itself (from git or a checkout, e.g. the Expo plugin's localSdk) gets that pod instead.
-  podfile = defined?(Pod::Config) ? Pod::Config.instance.podfile : nil
-  if podfile&.dependencies&.any? { |d| d.root_name == "ClomniMessenger" }
+  # The Podfile's text, not Pod::Config#podfile: use_native_modules! loads this podspec while the Podfile is still
+  # being evaluated, and asking CocoaPods for the Podfile then fails ("undefined method '[]' for nil", 37778737706).
+  podfile_path = defined?(Pod::Config) ? File.join(Pod::Config.instance.installation_root.to_s, "Podfile") : nil
+  sdk_pod = podfile_path && File.exist?(podfile_path) &&
+            File.read(podfile_path).match?(/^\s*pod\s+["']ClomniMessenger["']/)
+  if sdk_pod
     s.dependency "ClomniMessenger", "~> 1.0"
   elsif respond_to?(:spm_dependency, true)
     spm_dependency(s,
