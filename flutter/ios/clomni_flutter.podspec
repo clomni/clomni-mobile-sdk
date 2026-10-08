@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.version          = '1.0.0'
   s.summary          = 'Clomni Messenger for Flutter: the native iOS and Android SDKs behind one Dart API.'
   s.homepage         = 'https://clomni.ai'
-  s.license          = { :type => 'Commercial', :text => 'Copyright (c) Clomni. All rights reserved.' }
+  s.license          = { :type => 'Apache-2.0', :file => '../LICENSE' }
   s.author           = 'Clomni'
   s.source           = { :path => '.' }
   s.source_files     = 'clomni_flutter/Sources/clomni_flutter/**/*.swift'

@@ -53,3 +53,8 @@ packages' tags carry a prefix (`android-1.0.0`, `react-native-1.0.0`, `flutter-1
    writes the GitHub release from the changelog section.
 
 Run by hand, the workflow is a dry run: the same checks, nothing published.
+
+## Licence
+
+Apache License 2.0, see [LICENSE](LICENSE). The Clomni name, logos and mascot, and the message sound, are not
+covered by it; see [NOTICE](NOTICE).

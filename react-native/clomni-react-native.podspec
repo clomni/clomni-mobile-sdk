@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.version      = package["version"]
   s.summary      = package["description"]
   s.homepage     = package["homepage"]
-  s.license      = { :type => "Commercial", :text => "Copyright (c) Clomni. All rights reserved." }
+  s.license      = { :type => "Apache-2.0", :file => "LICENSE" }
   s.author       = "Clomni"
   s.platforms    = { :ios => "15.0" }
   s.source       = { :git => "https://github.com/clomni/clomni-mobile-sdk.git", :tag => "react-native-#{s.version}" }

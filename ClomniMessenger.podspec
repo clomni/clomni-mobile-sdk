@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
     your website chat run with native buttons, and operator replies arrive as push notifications.
   DESC
   s.homepage = 'https://clomni.ai'
-  s.license = { :type => 'Commercial', :text => 'Copyright (c) Clomni. All rights reserved.' }
+  s.license = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author = 'Clomni'
   s.source = { :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => s.version.to_s }
 
@@ -27,7 +27,7 @@ Pod::Spec.new do |s|
   s.pod_target_xcconfig = { 'OTHER_SWIFT_FLAGS' => '$(inherited) -package-name ClomniMessenger',
                             'SWIFT_OPTIMIZATION_LEVEL[config=Release]' => '-Osize' }
   # What the SDK collects and which required-reason APIs it calls (none), for the app's privacy report.
-  # The message sound (Universfield, Pixabay Content License; see LICENSE).
+  # The message sound (Universfield, Pixabay Content License; see NOTICE).
   s.resource_bundles = {
     'ClomniMessenger_Privacy' => ['ios/Sources/ClomniMessenger/PrivacyInfo.xcprivacy'],
     'ClomniMessenger_Sounds' => ['ios/Sources/ClomniMessenger/Sounds/*.mp3'],

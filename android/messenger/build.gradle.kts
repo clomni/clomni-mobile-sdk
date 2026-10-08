@@ -166,8 +166,8 @@ publishing {
                 url.set("https://clomni.ai")
                 licenses {
                     license {
-                        name.set("Commercial")
-                        url.set("https://clomni.ai/terms")
+                        name.set("The Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
                     }
                 }
                 developers {
