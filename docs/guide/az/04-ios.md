@@ -1,19 +1,19 @@
 # iOS
 
-## Requirements
+## Tələblər
 
-- iOS 15 or newer, Xcode 15 or newer.
-- The App ID and the iOS API key (`ios_…`) from the panel's Installation tab.
-- For push: an Apple Developer account and an APNs key ([Push keys](08-push-keys.md)).
+- iOS 15 və ya daha yeni, Xcode 15 və ya daha yeni.
+- Panelin Quraşdırma tabından App ID və iOS API açarı (`ios_…`).
+- Push üçün: Apple Developer hesabı və APNs açarı ([Push açarları](08-push-keys.md)).
 
-## Install
+## Quraşdırma
 
 ### Swift Package Manager
 
-In Xcode: **File → Add Package Dependencies**, enter `https://github.com/clomni/clomni-mobile-sdk.git`, choose the rule
-"Up to Next Major Version" from `1.0.0`, and add the product `ClomniMessenger` to your app target.
+Xcode-da: **File → Add Package Dependencies**, `https://github.com/clomni/clomni-mobile-sdk.git` ünvanını yazın,
+`1.0.0`-dan "Up to Next Major Version" qaydasını seçin və `ClomniMessenger` məhsulunu tətbiq hədəfinə əlavə edin.
 
-In a `Package.swift`:
+`Package.swift`-də:
 
 ```swift
 dependencies: [
@@ -28,27 +28,27 @@ targets: [
 
 ### CocoaPods
 
-The SDK is not on CocoaPods trunk. A CocoaPods project takes the pod from the repository's tag:
+SDK CocoaPods trunk-da yoxdur. CocoaPods layihəsi pod-u repozitoriyanın tag-indən götürür:
 
 ```ruby
-# Podfile, in the app's target
+# Podfile, tətbiqin target-ində
 pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
 ```
 
 ### Info.plist
 
-Users can send photos in a conversation. Add the two texts iOS shows when it asks for access:
+İstifadəçilər söhbətdə şəkil göndərə bilir. iOS-un icazə istəyəndə göstərdiyi iki mətni əlavə edin:
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
-<string>To send photos to support</string>
+<string>Dəstəyə şəkil göndərmək üçün</string>
 <key>NSCameraUsageDescription</key>
-<string>To take and send photos to support</string>
+<string>Şəkil çəkib dəstəyə göndərmək üçün</string>
 ```
 
-## Initialize
+## Başlatma
 
-Call `initialize` once, when the app starts.
+`initialize`-i tətbiq açılanda bir dəfə çağırın.
 
 UIKit:
 
@@ -69,7 +69,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-SwiftUI: give the app an `AppDelegate` with `@UIApplicationDelegateAdaptor`. Push needs one anyway.
+SwiftUI: tətbiqə `@UIApplicationDelegateAdaptor` ilə `AppDelegate` verin. Push üçün onsuz da lazımdır.
 
 ```swift
 import SwiftUI
@@ -84,28 +84,28 @@ struct ExampleApp: App {
 }
 ```
 
-Every method of `Clomni` may be called from any thread. Callbacks arrive on the main thread. A second `initialize` is
-ignored.
+`Clomni`-nin hər metodunu istənilən thread-dən çağırmaq olar. Callback-lər əsas thread-də gəlir. İkinci
+`initialize` nəzərə alınmır.
 
-## The user
+## İstifadəçi
 
 ```swift
 let user = ClomniUser(userId: "12345", email: "aysel@example.com", name: "Aysel Məmmədova")
-Clomni.loginUser(user, userHash: hashFromYourServer)   // the hash from your server
+Clomni.loginUser(user, userHash: hashFromYourServer)   // serverinizdən gələn hash
 
 Clomni.updateUser(language: "az", customAttributes: ["plan": "premium"])
 
-// With your app's own logout:
+// Tətbiqin öz çıxışı ilə birlikdə:
 Clomni.logout()
 ```
 
-See [Identifying users](02-identity.md) for the hash.
+Hash üçün bax: [İstifadəçinin tanıdılması](02-identity.md).
 
-## Open the Messenger
+## Messenger-i açmaq
 
 ```swift
 // SwiftUI
-Button("Support") { Clomni.present(source: "profile_support") }
+Button("Dəstək") { Clomni.present(source: "profile_support") }
 
 // UIKit
 @objc private func supportTapped() {
@@ -113,17 +113,17 @@ Button("Support") { Clomni.present(source: "profile_support") }
 }
 ```
 
-| Call | What it does |
+| Çağırış | Nə edir |
 |---|---|
-| `Clomni.present(source:)` | Opens Home |
-| `Clomni.presentNewConversation(source:)` | Opens a new conversation straight away |
-| `Clomni.presentConversation(_:)` | Opens a known conversation; the ID comes from `onConversationStarted` |
-| `Clomni.dismiss()` | Closes the Messenger from code |
+| `Clomni.present(source:)` | Ana səhifəni açır |
+| `Clomni.presentNewConversation(source:)` | Birbaşa yeni söhbət açır |
+| `Clomni.presentConversation(_:)` | Məlum söhbəti açır; ID `onConversationStarted`-dən gəlir |
+| `Clomni.dismiss()` | Messenger-i koddan bağlayır |
 
-The Messenger is presented over the app's top screen. Call `present` once a screen is visible, not in
-`didFinishLaunching`.
+Messenger tətbiqin ən üstdəki ekranının üzərində açılır. `present`-i ekran görünəndən sonra çağırın,
+`didFinishLaunching`-də yox.
 
-### Unread count
+### Oxunmamış mesajların sayı
 
 ```swift
 import ClomniMessenger
@@ -138,7 +138,7 @@ struct SupportRow: View {
             Clomni.present(source: "profile_support")
         } label: {
             HStack {
-                Text("Support")
+                Text("Dəstək")
                 Spacer()
                 if unread > 0 { Text("\(unread)").foregroundStyle(.red) }
             }
@@ -149,30 +149,30 @@ struct SupportRow: View {
 }
 ```
 
-The listener hears the current count at once and then every change.
+Dinləyici cari sayı dərhal, sonra hər dəyişikliyi eşidir.
 
-### Floating button (optional)
+### Üzən düymə (istəyə bağlı)
 
-Off by default. The panel can turn it on; a value set in code wins. `setBottomPadding` lifts it above a tab bar, in
-points.
+Standart olaraq sönülüdür. Panel onu yandıra bilər, kodda verilən dəyər isə paneldən üstündür. `setBottomPadding`
+düyməni tab bar-ın üstünə qaldırır, point ilə.
 
 ```swift
 Clomni.setLauncherVisible(true)
 Clomni.setBottomPadding(72)
 ```
 
-## Flows started by the app
+## Tətbiqin başlatdığı flow-lar
 
-Build a flow in the panel with the "App event" trigger and the event name, publish it, then:
+Paneldə "Tətbiq hadisəsi" trigger-i və hadisə adı ilə flow qurun, onu dərc edin, sonra:
 
 ```swift
 Clomni.startFlow("ride_problem", data: ["ride_id": "R-1923"], openMessenger: true, source: "ride_screen")
 ```
 
-The flow's texts can use the data as `{{data.ride_id}}`. Without a published flow bound to the event nothing
-happens. For an event the user did not tap, keep `openMessenger: false`.
+Flow-un mətnləri datanı `{{data.ride_id}}` kimi işlədə bilər. Hadisəyə bağlı dərc olunmuş flow yoxdursa, heç nə baş
+vermir. İstifadəçinin özünün basmadığı hadisə üçün `openMessenger: false` saxlayın.
 
-## Events
+## Hadisələr
 
 ```swift
 Clomni.onMessengerOpened = { source in print("opened from \(source ?? "-")") }
@@ -182,55 +182,55 @@ Clomni.onFlowCompleted = { flowId in print("flow \(flowId) completed") }
 Clomni.onUnreadCountChanged = { count in print("unread \(count)") }
 ```
 
-Each event has one listener; `nil` removes it.
+Hər hadisənin bir dinləyicisi olur, `nil` onu silir.
 
-## Links
+## Linklər
 
-A news item's button can carry a web address or your app's deep link. With `onLink` set, every link comes to your
-app and the app opens it. Without it, the system opens links.
+Xəbərin düyməsində veb ünvanı və ya tətbiqinizin deep link-i ola bilər. `onLink` təyin olunubsa, hər link tətbiqinizə
+gəlir və onu tətbiq açır. Təyin olunmayıbsa, linkləri sistem açır.
 
 ```swift
 Clomni.onLink = { url in
     if url.scheme == "example" {
-        // route inside your app
+        // tətbiqin içində yönləndirin
     } else {
         UIApplication.shared.open(url)
     }
 }
 ```
 
-## Language, sounds and look
+## Dil, səslər və görünüş
 
 ```swift
-Clomni.setLanguage("en")          // az, en or ru; nil follows the phone
+Clomni.setLanguage("en")          // az, en və ya ru; nil telefonun dilinə uyğunlaşır
 Clomni.setSoundsEnabled(false)
 Clomni.setTheme(primaryColor: "#0A66C2", typeface: "Montserrat", mode: .dark)
 ```
 
-- `setLanguage` picks one of the languages turned on in the panel. `nil`, or a language that is off, follows the
-  phone, then the panel's main language.
-- `setTheme`: the colour is `#RRGGBB`, the mode `.light`, `.dark` or `.system`. Each call replaces the previous one; a
-  value left out stays the panel's.
-- The font is a family name of a font in the app bundle, listed under `UIAppFonts` in `Info.plist`
-  (`Montserrat-Regular.ttf` → `"Montserrat"`). Text keeps following Dynamic Type. For the font alone:
+- `setLanguage` paneldə yandırılmış dillərdən birini seçir. `nil` və ya sönülü dil verilsə, telefonun dili, o da
+  yoxdursa panelin əsas dili işlənir.
+- `setTheme`: rəng `#RRGGBB`, rejim `.light`, `.dark` və ya `.system`. Hər çağırış əvvəlkini əvəz edir, verilməyən
+  dəyər panelinki qalır.
+- Şrift tətbiqin bundle-ındakı və `Info.plist`-də `UIAppFonts` altında yazılmış şriftin ailə adıdır
+  (`Montserrat-Regular.ttf` → `"Montserrat"`). Mətn Dynamic Type-a yenə tabedir. Yalnız şrift üçün:
   `Clomni.setTypeface("Montserrat")`.
 
-## Push notifications
+## Push bildirişləri
 
-Clomni sends iOS pushes straight to APNs with your `.p8` key. Firebase is not involved on iOS.
+Clomni iOS push-larını `.p8` açarınızla birbaşa APNs-ə göndərir. iOS-da Firebase iştirak etmir.
 
-You need:
+Lazım olanlar:
 
-1. An APNs key uploaded to the panel ([Push keys](08-push-keys.md)). The key must be made for
-   **Sandbox & Production**.
-2. The Push Notifications capability in the app.
-3. The code below.
+1. Panelə yüklənmiş APNs açarı ([Push açarları](08-push-keys.md)). Açar **Sandbox & Production** üçün
+   yaradılmalıdır.
+2. Tətbiqdə Push Notifications capability-si.
+3. Aşağıdakı kod.
 
 ### 1. Capability
 
-In Xcode: select the app target → **Signing & Capabilities** → **+ Capability** → **Push Notifications**.
+Xcode-da: tətbiq hədəfini seçin → **Signing & Capabilities** → **+ Capability** → **Push Notifications**.
 
-![Xcode: the Push Notifications capability](../images/xcode-push-capability.png)
+![Xcode: Push Notifications capability-si](../images/xcode-push-capability.png)
 
 ### 2. AppDelegate
 
@@ -257,7 +257,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
         Clomni.setDeviceToken(deviceToken)
     }
 
-    // A push while the app is open. Clomni's are not shown while the Messenger is open.
+    // Tətbiq açıq olanda gələn push. Messenger açıqdırsa, Clomni push-ları göstərilmir.
     @MainActor
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -266,52 +266,52 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
         Clomni.shouldShowForeground(notification.request.content.userInfo) ? [.banner, .list, .sound] : []
     }
 
-    // A tap on a notification: a Clomni push opens its conversation.
+    // Bildirişə toxunuş: Clomni push-u öz söhbətini açır.
     @MainActor
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse) async {
         if Clomni.handlePush(response.notification.request.content.userInfo) { return }
-        // the app's own push
+        // tətbiqin öz push-u
     }
 }
 ```
 
-- Keep both delegate methods `@MainActor`, not `nonisolated`. The system may call them from a background queue, and
-  Swift calls the system's completion handler where the method ends. Ended off the main thread, UIKit stops the app
-  with "Call must be made on main thread".
-- Ask for the notification permission at a moment that suits your users. The example asks at start for brevity.
-- `Clomni.isClomniPush(userInfo)` tells a Clomni push from your own without handling it.
+- Hər iki delegate metodunu `nonisolated` yox, `@MainActor` saxlayın. Sistem onları arxa planda olan queue-dan
+  çağıra bilər, Swift isə sistemin completion handler-ini metodun bitdiyi yerdə çağırır. Əsas thread-dən kənarda
+  bitəndə UIKit tətbiqi "Call must be made on main thread" xətası ilə dayandırır.
+- Bildiriş icazəsini istifadəçilərinizə uyğun anda istəyin. Nümunə qısalıq üçün açılışda istəyir.
+- `Clomni.isClomniPush(userInfo)` push-u emal etmədən onun Clomni-yə, yoxsa sizə aid olduğunu deyir.
 
-### 3. Sandbox and production
+### 3. Sandbox və production
 
-The SDK reports the APNs environment of each device by itself:
+SDK hər cihazın APNs mühitini özü bildirir:
 
-| How the app was installed | APNs environment |
+| Tətbiq necə quraşdırılıb | APNs mühiti |
 |---|---|
-| Run from Xcode (development profile) | sandbox |
+| Xcode-dan işə salınıb (development profili) | sandbox |
 | TestFlight, App Store, Ad Hoc | production |
 
-One `.p8` key serves both, as long as it was made for **Sandbox & Production**. A key limited to one environment
-fails on the other with `BadEnvironmentKeyInToken`. The Test push list in the panel shows the environment of each
-device.
+Bir `.p8` açarı hər ikisinə xidmət edir, bir şərtlə ki **Sandbox & Production** üçün yaradılsın. Bir mühitlə
+məhdudlaşan açar o biri mühitdə `BadEnvironmentKeyInToken` xətası verir. Paneldəki Test push siyahısı hər cihazın
+mühitini göstərir.
 
-### 4. The agent's photo (optional)
+### 4. Operatorun şəkli (istəyə bağlı)
 
-Without anything more, a Clomni notification shows the title ("Leyla · Example") and the text. A Notification Service
-Extension adds the agent's photo.
+Əlavə heç nə etmədən Clomni bildirişi başlığı ("Leyla · Example") və mətni göstərir. Notification Service Extension
+operatorun şəklini əlavə edir.
 
-1. In Xcode: **File → New → Target → Notification Service Extension**. Deployment target iOS 15 or newer.
+1. Xcode-da: **File → New → Target → Notification Service Extension**. Deployment target iOS 15 və ya daha yeni.
 
-   ![Xcode: adding a Notification Service Extension](../images/xcode-notification-service-extension.png)
+   ![Xcode: Notification Service Extension-un əlavə olunması](../images/xcode-notification-service-extension.png)
 
-2. Replace the generated `NotificationService.swift` with the file below. The extension does not need the Clomni SDK.
-3. If the app already has a Notification Service Extension, keep it and add the Clomni branch: pushes with
-   `"clomni": "1"` and an `avatar_url`.
+2. Yaranan `NotificationService.swift`-i aşağıdakı faylla əvəz edin. Extension-a Clomni SDK lazım deyil.
+3. Tətbiqdə artıq Notification Service Extension varsa, onu saxlayın və Clomni qolunu əlavə edin: `"clomni": "1"`
+   və `avatar_url` olan push-lar.
 
-Clomni sends every push with `mutable-content: 1`, so nothing else is needed.
+Clomni hər push-u `mutable-content: 1` ilə göndərir, başqa heç nə lazım deyil.
 
 ```swift
-// NotificationService.swift, in the extension target
+// NotificationService.swift, extension hədəfində
 import Foundation
 import UserNotifications
 
@@ -389,23 +389,23 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 }
 ```
 
-### Test it
+### Yoxlama
 
-1. Run the app on a real iPhone (the simulator cannot receive APNs pushes from Clomni), allow notifications and open
-   the Messenger once.
-2. In the panel: Push tab → **Test push** → choose the device → **Send**.
+1. Tətbiqi real iPhone-da işə salın (simulyator Clomni-dən APNs push-u qəbul edə bilmir), bildirişlərə icazə verin
+   və Messenger-i bir dəfə açın.
+2. Paneldə: Push tabı → **Test push** → cihazı seçin → **Göndər**.
 
-## Problems
+## Problemlər
 
-| Symptom | What to do |
+| Əlamət | Nə etməli |
 |---|---|
-| `api_key səhvdir və ya bu platforma üçün deyil` | Use the `ios_…` key, not the Android one |
-| The Messenger does not open, the log says `no window to present the messenger from yet` | Call `present` after a screen is shown |
-| `font family "…" is not in the app; the system font stays` | Add the font file to the target and to `UIAppFonts` |
-| Test push says `BadEnvironmentKeyInToken` | The APNs key is limited to one environment. Make a key for Sandbox & Production ([Push keys](08-push-keys.md)) |
-| Test push says `DeviceTokenNotForTopic` | The Bundle ID on the Push tab is not the app's Bundle ID |
-| No device in the Test push list | Notifications are not allowed on the phone, or `setDeviceToken` is never called |
-| The app crashes on a notification tap with "Call must be made on main thread" | Mark the delegate methods `@MainActor` as above |
+| `api_key səhvdir və ya bu platforma üçün deyil` | Android açarını yox, `ios_…` açarını işlədin |
+| Messenger açılmır, logda `no window to present the messenger from yet` | `present`-i ekran göstəriləndən sonra çağırın |
+| `font family "…" is not in the app; the system font stays` | Şrift faylını hədəfə və `UIAppFonts`-a əlavə edin |
+| Test push `BadEnvironmentKeyInToken` deyir | APNs açarı bir mühitlə məhdudlaşıb. Sandbox & Production açarı yaradın ([Push açarları](08-push-keys.md)) |
+| Test push `DeviceTokenNotForTopic` deyir | Push tabındakı Bundle ID tətbiqin Bundle ID-si deyil |
+| Test push siyahısında cihaz yoxdur | Telefonda bildirişlərə icazə verilməyib və ya `setDeviceToken` heç çağırılmır |
+| Bildirişə toxunanda tətbiq "Call must be made on main thread" ilə dayanır | Delegate metodlarını yuxarıdakı kimi `@MainActor` edin |
 
-Logs are in the Xcode console and in Console.app: subsystem `ai.clomni.messenger`, category `Clomni`. More in
-[Troubleshooting](09-troubleshooting.md).
+Loglar Xcode konsolunda və Console.app-dədir: subsystem `ai.clomni.messenger`, category `Clomni`. Daha çoxu:
+[Problemlərin həlli](09-troubleshooting.md).

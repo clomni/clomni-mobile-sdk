@@ -17,3 +17,6 @@ DerivedData/
 
 # A Firebase project of our own, for real pushes in the sample (android/sample/build.gradle.kts).
 android/sample/google-services.json
+
+# The guide's PDFs (docs/guide/build-pdf.mjs); they are built, not kept.
+docs/guide/dist/

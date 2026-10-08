@@ -212,14 +212,20 @@ import UserNotifications
 final class ClomniNotifications: NSObject, UNUserNotificationCenterDelegate {
     static let shared = ClomniNotifications()
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
-                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
         let show = Clomni.shouldShowForeground(notification.request.content.userInfo)
         completionHandler(show ? [.banner, .list, .sound] : [])
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
-                                withCompletionHandler completionHandler: @escaping () -> Void) {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
         _ = Clomni.handlePush(response.notification.request.content.userInfo)
         completionHandler()
     }
