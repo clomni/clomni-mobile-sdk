@@ -4,6 +4,10 @@ The integration guide for app developers, step by step and with screenshots.
 
 - English: [en/00-overview.md](en/00-overview.md)
 - Azərbaycanca: [az/00-overview.md](az/00-overview.md)
+- Türkçe: [tr/00-overview.md](tr/00-overview.md)
+- Русский: [ru/00-overview.md](ru/00-overview.md)
+
+The panel itself is in Azerbaijani and English, so the Turkish and Russian guides use the English panel screenshots.
 
 ## PDF
 
@@ -11,7 +15,7 @@ The integration guide for app developers, step by step and with screenshots.
 
 ```sh
 npm i --no-save markdown-it playwright && npx playwright install chromium
-node docs/guide/build-pdf.mjs                 # docs/guide/dist/Clomni-Mobile-SDK-Guide-{en,az}.pdf
+node docs/guide/build-pdf.mjs                 # docs/guide/dist/Clomni-Mobile-SDK-Guide-{en,az,tr,ru}.pdf
 node docs/guide/build-pdf.mjs --lang az --out /tmp/guide
 ```
 

@@ -59,8 +59,9 @@ bölməsində dərc edin, yoxsa Messenger onu işlətmir.
 
 ## Kanal səhifəsi
 
-Kanalı sonra **Parametrlər → İş sahəsi parametrləri → Gələn qutular** bölməsindən açın. Kanal səhifəsinin solunda
-menyu var. Bölmələr orada üç qrupa bölünüb. SDK üçün lazım olanlar:
+Kanalı sonra **Parametrlər → İş sahəsi parametrləri → Gələn qutular** bölməsindən açın. Kanalın ayarları panelin sol
+paneli yanında ayrıca sütundadır: yuxarıda **← Gələn qutular** və kanalın adı, altında üç qrupda bölmələr. SDK üçün
+lazım olanlar:
 
 | Qrup | Bölmə | Orada nə var |
 |---|---|---|
@@ -189,5 +190,6 @@ mətn, tam mətn və istəyə görə düymə ilə xəbər yaradır. Düymə veb 
 
 Bu təlimat paneldə də var.
 
-1. Təlimatın PDF-i, Azərbaycanca və ingiliscə.
-2. **Onlayn təlimat** platformanızın bölməsini açır. Kartda paketin quraşdırma əmri var, **Kopyala** ilə götürün.
+1. Təlimatın PDF-i dörd dildə: Azərbaycanca, ingiliscə, türkcə və rusca. Panelin dili birinci gəlir.
+2. **Onlayn təlimatın dili**: aşağıdakı linklər təlimatın bu dildəki bölmələrini açır.
+3. **Onlayn təlimat** platformanızın bölməsini açır. Kartda paketin quraşdırma əmri var, **Kopyala** ilə götürün.

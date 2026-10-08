@@ -2,7 +2,7 @@
 // Builds one PDF per language from docs/guide/<lang>/*.md: a cover, a table of contents with page numbers, then the
 // chapters in file order, each on a new page.
 //
-//   node docs/guide/build-pdf.mjs [--lang en|az] [--out <dir>]      (default: both languages, docs/guide/dist)
+//   node docs/guide/build-pdf.mjs [--lang en|az|tr|ru] [--out <dir>]      (default: every language, docs/guide/dist)
 //
 // Needs `markdown-it` and `playwright` (with its Chromium) where Node can require them, e.g. `npm i -D markdown-it
 // playwright` in a scratch folder and NODE_PATH pointing at its node_modules. The TOC's page numbers come from a
@@ -24,12 +24,14 @@ const option = (name, fallback) => {
   const at = args.indexOf(`--${name}`);
   return at >= 0 ? args[at + 1] : fallback;
 };
-const languages = option('lang', null) ? [option('lang')] : ['en', 'az'];
+const languages = option('lang', null) ? [option('lang')] : ['en', 'az', 'tr', 'ru'];
 const outDir = path.resolve(option('out', path.join(here, 'dist')));
 
 const TEXTS = {
   en: { title: 'Clomni Mobile SDK', subtitle: 'Integration guide', contents: 'Contents', version: 'SDK 1.0.0' },
   az: { title: 'Clomni Mobile SDK', subtitle: 'İnteqrasiya təlimatı', contents: 'Mündəricat', version: 'SDK 1.0.0' },
+  tr: { title: 'Clomni Mobile SDK', subtitle: 'Entegrasyon kılavuzu', contents: 'İçindekiler', version: 'SDK 1.0.0' },
+  ru: { title: 'Clomni Mobile SDK', subtitle: 'Руководство по интеграции', contents: 'Содержание', version: 'SDK 1.0.0' },
 };
 const GREEN = '#10A670';
 

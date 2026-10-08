@@ -58,8 +58,9 @@ Choose the flow that runs when a user starts a new conversation. It is copied to
 
 ## The inbox page
 
-Open the inbox later from **Settings → Workspace settings → Inboxes**. The inbox page has a side menu on the left,
-with its sections in three groups. The ones you need for the SDK:
+Open the inbox later from **Settings → Workspace settings → Inboxes**. The inbox's settings are in their own column
+next to the panel's sidebar: **← Inboxes** and the inbox name at the top, then the sections in three groups. The
+ones you need for the SDK:
 
 | Group | Section | What is there |
 |---|---|---|
@@ -189,5 +190,6 @@ deep link of your app (see `onLink` in your platform's chapter).
 
 This guide is also in the panel.
 
-1. The guide as a PDF, in Azerbaijani and in English.
-2. **Online guide** opens your platform's chapter. The card has the package's install command; take it with **Copy**.
+1. The guide as a PDF in four languages: Azerbaijani, English, Turkish and Russian. The panel's language comes first.
+2. **Online guide language**: the links below open the guide's chapters in this language.
+3. **Online guide** opens your platform's chapter. The card has the package's install command; take it with **Copy**.

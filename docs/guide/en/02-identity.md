@@ -260,5 +260,6 @@ the hash are left, then switch to Enforced.
 
 ## Replacing the secret
 
-**Security** in the side menu → **Make a new secret**. The new secret is shown once. The old one keeps working for 7 days: move your
-server to the new secret within that time. **Test a hash** tells you which secret a hash was made with.
+**Security** in the side menu → **Make a new secret**. The new secret is shown once. The old one keeps working for
+7 days: move your server to the new secret within that time. **Test a hash** tells you which secret a hash was made
+with.
