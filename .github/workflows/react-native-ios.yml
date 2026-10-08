@@ -91,8 +91,10 @@ jobs:
         if: steps.source.outputs.build == 'true'
         working-directory: ${{ runner.temp }}
         run: |
+          # The CLI takes a version number, not "latest" (37776687616).
+          rn_latest=$(npm view react-native version)
           npx --yes @react-native-community/cli@latest init ClomniSmoke \
-            --version latest --pm npm --skip-git-init --install-pods false
+            --version "$rn_latest" --pm npm --skip-git-init --install-pods false
           cd "$APP"
           rn=$(node -p "require('react-native/package.json').version")
           echo "React Native $rn"
