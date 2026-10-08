@@ -19,7 +19,9 @@ iOS. Both are uploaded on the inbox's **Push** tab (or in step 4 of the wizard).
 2. Click the gear next to "Project Overview" → **Project settings** → the **Service accounts** tab.
 3. Under "Firebase Admin SDK" press **Generate new private key**, then **Generate key**. A JSON file downloads.
 
-   ![Firebase: Project settings → Service accounts → Generate new private key](../images/firebase-service-account.png)
+   > **Path:** `Firebase console → ⚙ Project settings → Service accounts → Firebase Admin SDK → Generate new private key → Generate key`
+   >
+   > Docs: [firebase.google.com/docs/admin/setup](https://firebase.google.com/docs/admin/setup#initialize-sdk-non-google)
 
 4. In the Clomni panel: the inbox → **Push** → "Android · Firebase Cloud Messaging" → **Service account JSON file**
    (1), and choose the downloaded file. The card then shows the project's name and the upload date.
@@ -41,7 +43,11 @@ You need the Account Holder or Admin role in the Apple Developer Program.
 1. Open [developer.apple.com/account](https://developer.apple.com/account) → **Certificates, Identifiers &
    Profiles** → **Keys** → **+**.
 
-   ![Apple Developer: Keys, creating a new key](../images/apple-keys-create.png)
+   > **Path:** `developer.apple.com/account → Certificates, Identifiers & Profiles → Keys → +`
+   >
+   > The **+** button is next to the **Keys** heading.
+   >
+   > Docs: [developer.apple.com/help/account/keys/create-a-private-key](https://developer.apple.com/help/account/keys/create-a-private-key/)
 
 2. Give the key a name, tick **Apple Push Notifications service (APNs)** and press **Configure**.
 3. **Environment: Sandbox & Production.** This choice matters:
@@ -51,7 +57,11 @@ You need the Account Holder or Admin role in the Apple Developer Program.
 
    For key restriction, **Team Scoped (All Topics)** lets one key serve every app of your team.
 
-   ![Apple Developer: APNs key environment, Sandbox & Production](../images/apple-apns-environment.png)
+   > **Path:** `Keys → + → Key Name → Apple Push Notifications service (APNs) → Configure`
+   >
+   > Choose **Environment: Sandbox & Production** and **Key Restriction: Team Scoped (All Topics)**, then **Save**.
+   >
+   > Docs: [developer.apple.com/help/account/keys/create-a-private-key](https://developer.apple.com/help/account/keys/create-a-private-key/)
 
 4. **Save** → **Continue** → **Register**.
 
@@ -64,11 +74,17 @@ or a Sandbox & Production one, you can use it for Clomni too.
    lost, make a new key.
 2. Note the **Key ID** shown on the same page (10 characters).
 
-   ![Apple Developer: the key's page with Key ID and Download](../images/apple-key-download.png)
+   > **Path:** `Certificates, Identifiers & Profiles → Keys → your key → Download`
+   >
+   > The **Key ID** is shown below the key's name. **Download** is at the top right of the page.
+   >
+   > Docs: [developer.apple.com/help/account/keys/get-a-key-identifier](https://developer.apple.com/help/account/keys/get-a-key-identifier/), [developer.apple.com/help/account/keys/revoke-edit-and-download-keys](https://developer.apple.com/help/account/keys/revoke-edit-and-download-keys/)
 
 3. Find the **Team ID**: Apple Developer → **Membership details** (10 characters).
 
-   ![Apple Developer: Membership details with the Team ID](../images/apple-team-id.png)
+   > **Path:** `developer.apple.com/account → Membership details → Team ID`
+   >
+   > Docs: [developer.apple.com/help/account/basics/account-landing-page](https://developer.apple.com/help/account/basics/account-landing-page/)
 
 4. The **Bundle ID** is your app's Bundle Identifier (Xcode → target → Signing & Capabilities), for example
    `com.example.app`.

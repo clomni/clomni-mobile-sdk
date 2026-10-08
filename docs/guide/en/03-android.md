@@ -223,11 +223,19 @@ You need:
 In the [Firebase console](https://console.firebase.google.com), open your project (or create one) and add an
 Android app with your package name.
 
-![Firebase: adding an Android app](../images/firebase-add-android-app.png)
+> **Path:** `Firebase console → your project → Project Overview → + Add app → Android`
+>
+> Enter your app's package name in **Android package name** (for example `com.example.app`) and press **Register app**.
+>
+> Docs: [firebase.google.com/docs/android/setup](https://firebase.google.com/docs/android/setup#register-app)
 
 Download `google-services.json` and put it into the `app/` folder of your project.
 
-![Android Studio: google-services.json in the app folder](../images/android-studio-google-services.png)
+> **Path:** `Firebase: Download google-services.json → Android Studio: <project>/app/google-services.json`
+>
+> To see the file in Android Studio, choose the **Project** view from the menu at the top of the Project window.
+>
+> Docs: [firebase.google.com/docs/android/setup](https://firebase.google.com/docs/android/setup#add-config-file), [developer.android.com/studio/projects](https://developer.android.com/studio/projects#ProjectView)
 
 ```kotlin
 // settings.gradle.kts (or the root build.gradle.kts)

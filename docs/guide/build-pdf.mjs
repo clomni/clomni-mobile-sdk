@@ -64,6 +64,10 @@ function renderChapter(md, file, chapterId, headings, markers) {
         }
       }
     }
+    // A blockquote that opens with **Yol:** / **Path:** is a navigation path in a console we have no screenshot of.
+    if (token.type === 'blockquote_open' && /^\*\*(Yol|Path):\*\*/.test(tokens[i + 2]?.content || '')) {
+      token.attrSet('class', 'path');
+    }
     if (token.type === 'inline') {
       for (const child of token.children) {
         if (child.type === 'image') {
@@ -125,6 +129,11 @@ function buildHtml(lang, pages, markers) {
   tr { break-inside: avoid; }
   blockquote { margin: 0 0 9pt; padding: 6pt 10pt; background: #F5F7F9; border-left: 3px solid #98A2B3; }
   blockquote p:last-child { margin-bottom: 0; }
+  blockquote.path { background: #F2F4F7; border-left: 3px solid ${GREEN}; break-inside: avoid; }
+  blockquote.path p { margin-bottom: 3pt; }
+  blockquote.path code { background: none; padding: 0; }
+  blockquote.path p:first-child code { font-size: 8.8pt; overflow-wrap: anywhere; }
+  blockquote.path a { overflow-wrap: anywhere; }
   img { display: block; max-width: 100%; max-height: 150mm; margin: 4pt 0 10pt; border: 1px solid #E4E7EC;
         border-radius: 4px; break-inside: avoid; }
   p:has(> img:only-child) { break-inside: avoid; }

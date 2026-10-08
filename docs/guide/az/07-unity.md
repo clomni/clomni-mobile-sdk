@@ -21,7 +21,11 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
    https://github.com/clomni/clomni-mobile-sdk.git?path=unity#1.0.0
    ```
 
-   ![Unity: Add package from git URL](../images/unity-add-package-git.png)
+   > **Yol:** `Window → Package Manager → + → Add package from git URL → Add`
+   >
+   > Unity 6-da menyu bəndi **Install package from git URL**, düymə isə **Install** adlanır.
+   >
+   > Sənəd: [docs.unity3d.com/Manual/upm-ui-giturl.html](https://docs.unity3d.com/Manual/upm-ui-giturl.html) (Unity 6), [docs.unity3d.com/2022.3/Documentation/Manual/upm-ui-giturl.html](https://docs.unity3d.com/2022.3/Documentation/Manual/upm-ui-giturl.html) (2022.3)
 
 3. **Android**: Project Settings → Player → Android → Minimum API Level 23 və ya yuxarı. EDM4U-da Android Resolver →
    Settings: "Use Gradle" və "Patch mainTemplate.gradle" açıq olsun (EDM4U 1.2.183 və ya daha yeni).

@@ -230,7 +230,11 @@ Lazım olanlar:
 
 Xcode-da: tətbiq hədəfini seçin → **Signing & Capabilities** → **+ Capability** → **Push Notifications**.
 
-![Xcode: Push Notifications capability-si](../images/xcode-push-capability.png)
+> **Yol:** `Xcode → Project navigator → layihə → TARGETS → tətbiq → Signing & Capabilities → + Capability → Push Notifications`
+>
+> Konfiqurasiya: **All**. **Push Notifications**-u kitabxanada iki dəfə klikləyin, o, **Signing** bölməsinin altında görünür.
+>
+> Sənəd: [developer.apple.com/documentation/xcode/adding-capabilities-to-your-app](https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app#Add-a-capability)
 
 ### 2. AppDelegate
 
@@ -302,7 +306,9 @@ operatorun şəklini əlavə edir.
 
 1. Xcode-da: **File → New → Target → Notification Service Extension**. Deployment target iOS 15 və ya daha yeni.
 
-   ![Xcode: Notification Service Extension-un əlavə olunması](../images/xcode-notification-service-extension.png)
+   > **Yol:** `Xcode → File → New → Target… → iOS → Notification Service Extension → Next → Product Name → Finish`
+   >
+   > Sənəd: [developer.apple.com/documentation/usernotifications/modifying-content-in-newly-delivered-notifications](https://developer.apple.com/documentation/usernotifications/modifying-content-in-newly-delivered-notifications)
 
 2. Yaranan `NotificationService.swift`-i aşağıdakı faylla əvəz edin. Extension-a Clomni SDK lazım deyil.
 3. Tətbiqdə artıq Notification Service Extension varsa, onu saxlayın və Clomni qolunu əlavə edin: `"clomni": "1"`

@@ -21,7 +21,11 @@ and on other platforms every call does nothing, and the first call says so once 
    https://github.com/clomni/clomni-mobile-sdk.git?path=unity#1.0.0
    ```
 
-   ![Unity: Add package from git URL](../images/unity-add-package-git.png)
+   > **Path:** `Window → Package Manager → + → Add package from git URL → Add`
+   >
+   > In Unity 6 the menu item is **Install package from git URL** and the button is **Install**.
+   >
+   > Docs: [docs.unity3d.com/Manual/upm-ui-giturl.html](https://docs.unity3d.com/Manual/upm-ui-giturl.html) (Unity 6), [docs.unity3d.com/2022.3/Documentation/Manual/upm-ui-giturl.html](https://docs.unity3d.com/2022.3/Documentation/Manual/upm-ui-giturl.html) (2022.3)
 
 3. **Android**: Project Settings → Player → Android → Minimum API Level 23 or higher. In EDM4U, Android Resolver →
    Settings: turn on "Use Gradle" and "Patch mainTemplate.gradle" (EDM4U 1.2.183 or newer).

@@ -17,4 +17,5 @@ node docs/guide/build-pdf.mjs --lang az --out /tmp/guide
 
 The TOC's page numbers need `pdftotext` (poppler-utils). The PDFs are not kept in the repository.
 
-Screenshots that still have to come from Firebase, Apple, Xcode and Unity: [SCREENSHOTS-NEEDED.md](SCREENSHOTS-NEEDED.md).
+Where the screenshots come from, and how to add real ones for Firebase, Apple, Xcode, Android Studio and Unity
+(the guide gives a text path there): [SCREENSHOTS.md](SCREENSHOTS.md).

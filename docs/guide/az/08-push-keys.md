@@ -19,7 +19,9 @@ açarı. Hər ikisi kanalın **Push** tabında (və ya sehrbazın 4-cü addımı
 2. "Project Overview"-un yanındakı çarx → **Project settings** → **Service accounts** tabı.
 3. "Firebase Admin SDK" altında **Generate new private key**, sonra **Generate key** basın. JSON faylı yüklənir.
 
-   ![Firebase: Project settings → Service accounts → Generate new private key](../images/firebase-service-account.png)
+   > **Yol:** `Firebase console → ⚙ Project settings → Service accounts → Firebase Admin SDK → Generate new private key → Generate key`
+   >
+   > Sənəd: [firebase.google.com/docs/admin/setup](https://firebase.google.com/docs/admin/setup#initialize-sdk-non-google)
 
 4. Clomni panelində: kanal → **Push** → "Android · Firebase Cloud Messaging" → **Service account JSON faylı** (1) və
    yüklənən faylı seçin. Sonra kartda layihənin adı və yüklənmə tarixi görünür.
@@ -41,7 +43,11 @@ Apple Developer Program-da Account Holder və ya Admin rolu lazımdır.
 1. [developer.apple.com/account](https://developer.apple.com/account) → **Certificates, Identifiers & Profiles** →
    **Keys** → **+**.
 
-   ![Apple Developer: Keys, yeni açarın yaradılması](../images/apple-keys-create.png)
+   > **Yol:** `developer.apple.com/account → Certificates, Identifiers & Profiles → Keys → +`
+   >
+   > **+** düyməsi **Keys** başlığının yanındadır.
+   >
+   > Sənəd: [developer.apple.com/help/account/keys/create-a-private-key](https://developer.apple.com/help/account/keys/create-a-private-key/)
 
 2. Açara ad verin, **Apple Push Notifications service (APNs)** işarəsini qoyun və **Configure** basın.
 3. **Environment: Sandbox & Production.** Bu seçim vacibdir:
@@ -52,7 +58,11 @@ Apple Developer Program-da Account Holder və ya Admin rolu lazımdır.
    Key restriction üçün **Team Scoped (All Topics)** bir açarın komandanızın bütün tətbiqlərinə xidmət etməsinə
    imkan verir.
 
-   ![Apple Developer: APNs açarının mühiti, Sandbox & Production](../images/apple-apns-environment.png)
+   > **Yol:** `Keys → + → Key Name → Apple Push Notifications service (APNs) → Configure`
+   >
+   > Seçin: **Environment: Sandbox & Production**, **Key Restriction: Team Scoped (All Topics)**. Sonra **Save**.
+   >
+   > Sənəd: [developer.apple.com/help/account/keys/create-a-private-key](https://developer.apple.com/help/account/keys/create-a-private-key/)
 
 4. **Save** → **Continue** → **Register**.
 
@@ -65,11 +75,17 @@ Sandbox & Production açarı artıq varsa, onu Clomni üçün də işlədə bil�
    saxlayın, itsə yeni açar yaradın.
 2. Həmin səhifədəki **Key ID**-ni qeyd edin (10 simvol).
 
-   ![Apple Developer: Key ID və Download olan açar səhifəsi](../images/apple-key-download.png)
+   > **Yol:** `Certificates, Identifiers & Profiles → Keys → açarınız → Download`
+   >
+   > **Key ID** açarın adının altında görünür. **Download** düyməsi səhifənin yuxarı sağ küncündədir.
+   >
+   > Sənəd: [developer.apple.com/help/account/keys/get-a-key-identifier](https://developer.apple.com/help/account/keys/get-a-key-identifier/), [developer.apple.com/help/account/keys/revoke-edit-and-download-keys](https://developer.apple.com/help/account/keys/revoke-edit-and-download-keys/)
 
 3. **Team ID**-ni tapın: Apple Developer → **Membership details** (10 simvol).
 
-   ![Apple Developer: Membership details və Team ID](../images/apple-team-id.png)
+   > **Yol:** `developer.apple.com/account → Membership details → Team ID`
+   >
+   > Sənəd: [developer.apple.com/help/account/basics/account-landing-page](https://developer.apple.com/help/account/basics/account-landing-page/)
 
 4. **Bundle ID** tətbiqinizin Bundle Identifier-idir (Xcode → hədəf → Signing & Capabilities), məsələn
    `com.example.app`.

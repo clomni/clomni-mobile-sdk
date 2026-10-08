@@ -230,7 +230,11 @@ You need:
 
 In Xcode: select the app target → **Signing & Capabilities** → **+ Capability** → **Push Notifications**.
 
-![Xcode: the Push Notifications capability](../images/xcode-push-capability.png)
+> **Path:** `Xcode → Project navigator → project → TARGETS → app → Signing & Capabilities → + Capability → Push Notifications`
+>
+> Configuration: **All**. Double-click **Push Notifications** in the library; it appears below the **Signing** section.
+>
+> Docs: [developer.apple.com/documentation/xcode/adding-capabilities-to-your-app](https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app#Add-a-capability)
 
 ### 2. AppDelegate
 
@@ -302,7 +306,9 @@ Extension adds the agent's photo.
 
 1. In Xcode: **File → New → Target → Notification Service Extension**. Deployment target iOS 15 or newer.
 
-   ![Xcode: adding a Notification Service Extension](../images/xcode-notification-service-extension.png)
+   > **Path:** `Xcode → File → New → Target… → iOS → Notification Service Extension → Next → Product Name → Finish`
+   >
+   > Docs: [developer.apple.com/documentation/usernotifications/modifying-content-in-newly-delivered-notifications](https://developer.apple.com/documentation/usernotifications/modifying-content-in-newly-delivered-notifications)
 
 2. Replace the generated `NotificationService.swift` with the file below. The extension does not need the Clomni SDK.
 3. If the app already has a Notification Service Extension, keep it and add the Clomni branch: pushes with

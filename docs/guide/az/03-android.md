@@ -222,11 +222,19 @@ Lazım olanlar:
 [Firebase console](https://console.firebase.google.com)-da layihənizi açın (və ya yaradın) və paket adınızla
 Android tətbiqi əlavə edin.
 
-![Firebase: Android tətbiqinin əlavə olunması](../images/firebase-add-android-app.png)
+> **Yol:** `Firebase console → layihəniz → Project Overview → + Add app → Android`
+>
+> **Android package name** sahəsinə tətbiqin paket adını yazın (məsələn `com.example.app`) və **Register app** basın.
+>
+> Sənəd: [firebase.google.com/docs/android/setup](https://firebase.google.com/docs/android/setup#register-app)
 
 `google-services.json`-u yükləyin və layihənizin `app/` qovluğuna qoyun.
 
-![Android Studio: app qovluğunda google-services.json](../images/android-studio-google-services.png)
+> **Yol:** `Firebase: Download google-services.json → Android Studio: <layihə>/app/google-services.json`
+>
+> Faylı Android Studio-da görmək üçün Project pəncərəsinin yuxarısındakı menyudan **Project** görünüşünü seçin.
+>
+> Sənəd: [firebase.google.com/docs/android/setup](https://firebase.google.com/docs/android/setup#add-config-file), [developer.android.com/studio/projects](https://developer.android.com/studio/projects#ProjectView)
 
 ```kotlin
 // settings.gradle.kts (və ya kökdəki build.gradle.kts)
