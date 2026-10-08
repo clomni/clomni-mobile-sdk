@@ -21,7 +21,7 @@
     "android/gradle.properties",
     "android/src",
     "ios",
-    "clomni-react-native.podspec",
+    "ClomniReactNative.podspec",
     "LICENSE",
     "NOTICE",
     "README.md",
