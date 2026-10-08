@@ -98,7 +98,7 @@ class HomeControllerTest {
      */
     @Test
     fun theFirstFrameIsWhatTheEngineHolds() {
-        source.cached = Fixture.aparConfig
+        source.cached = Fixture.exampleConfig
         source.newsItems = listOf(NewsItem("news_1", "Yeni zonalar", "Qısa", null, null, null, null))
         val home = controller(worker = Queue())
         assertEquals("Bizdən nəsə soruşun", home.home.header.title)
@@ -120,13 +120,13 @@ class HomeControllerTest {
     @Test
     fun showsTheCacheThenTheServersAnswer() {
         source.cached = Fixture.minimalConfig
-        source.fresh = Fixture.aparConfig
+        source.fresh = Fixture.exampleConfig
         source.list += Fixture.conversation("conv_1", "02-text-operator-markdown.json")
         val home = controller()
         home.load()
         assertEquals("once from the cache, once after the refresh", 2, renders)
         assertEquals(HomeScreen.Phase.READY, home.home.phase)
-        assertEquals("Apar", home.home.header.brandName)
+        assertEquals("Example", home.home.header.brandName)
         assertEquals("#1F9D63", home.config?.brand?.primaryColor)
         assertEquals("Leyla · 2 dəq", home.home.recent?.row?.detail)
         assertEquals(1, home.messages.rows.size)
@@ -141,7 +141,7 @@ class HomeControllerTest {
         assertEquals("Yenidən cəhd et", home.home.failure?.retry)
         assertEquals(HomeScreen.Phase.FAILED, home.messages.phase)
 
-        source.fresh = Fixture.aparConfig
+        source.fresh = Fixture.exampleConfig
         source.conversationsFail = false
         home.retry()
         assertEquals(HomeScreen.Phase.READY, home.home.phase)
@@ -151,7 +151,7 @@ class HomeControllerTest {
 
     @Test
     fun engineChangesRedraw() {
-        source.fresh = Fixture.aparConfig
+        source.fresh = Fixture.exampleConfig
         val home = controller()
         home.load()
         assertFalse(home.home.messagesCard.unread)

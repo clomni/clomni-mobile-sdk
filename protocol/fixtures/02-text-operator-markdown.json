@@ -14,7 +14,7 @@
   "lang": "az",
   "flow": null,
   "content": {
-    "text": "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://apar.az/sertler)"
+    "text": "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://example.com/sertler)"
   },
   "fallback_text": "Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı.",
   "meta": {}

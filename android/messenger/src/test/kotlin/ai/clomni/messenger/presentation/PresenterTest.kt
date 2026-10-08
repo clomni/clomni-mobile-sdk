@@ -22,7 +22,7 @@ import java.util.TimeZone
 internal object Fixture {
     private val protocol = ProtocolJson()
 
-    val aparConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/42-config-apar.json"))!!
+    val exampleConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/42-config-example.json"))!!
     val minimalConfig: MessengerConfig get() = protocol.parseConfig(ProtocolFiles.read("fixtures/43-config-minimal.json"))!!
 
     /** A conversation whose last message is the fixture [message] (created at 2026-10-01T10:30Z, or [at]). */
@@ -49,11 +49,11 @@ class PresenterTest {
     private val now = 1_790_850_720_000L
     private val utc = TimeZone.getTimeZone("UTC")
 
-    private fun presenter(language: String = "az", config: MessengerConfig? = Fixture.aparConfig) =
+    private fun presenter(language: String = "az", config: MessengerConfig? = Fixture.exampleConfig) =
         HomePresenter(ClomniStrings(language, config?.strings.orEmpty()), utc, now)
 
     private fun snapshot(
-        config: MessengerConfig? = Fixture.aparConfig,
+        config: MessengerConfig? = Fixture.exampleConfig,
         conversations: List<Conversation> = emptyList(),
         user: String? = "Aysel Məmmədova",
     ) = MessengerSnapshot(
@@ -67,7 +67,7 @@ class PresenterTest {
     @Test
     fun header() {
         val header = presenter().home(snapshot()).header
-        assertEquals("Apar", header.brandName)
+        assertEquals("Example", header.brandName)
         assertEquals("A", header.brandInitial)
         assertEquals("https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN", header.logoUrl)
         assertEquals(3, header.teamAvatars.size)
@@ -93,16 +93,16 @@ class PresenterTest {
     @Test
     fun cardsFollowTheConfig() {
         val operatorReply = Fixture.conversation("conv_1", "02-text-operator-markdown.json", unread = 1)
-        val apar = presenter().home(snapshot(Fixture.aparConfig, listOf(operatorReply)))
-        assertEquals(HomeScreen.Phase.READY, apar.phase)
-        assertEquals("Bizə mesaj göndərin", apar.newConversation?.title)
-        assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", apar.newConversation?.subtitle)
-        assertEquals("Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk", apar.newConversation?.accessibilityLabel)
-        assertEquals("Ən son mesaj", apar.recent?.label)
-        assertEquals("Bizi izləyin", apar.channels?.label)
-        assertEquals(listOf("Instagram", "WhatsApp", "LinkedIn", "E-poçt"), apar.channels?.items?.map { it.accessibilityLabel })
-        assertNull(apar.offline)
-        assertNull(apar.failure)
+        val example = presenter().home(snapshot(Fixture.exampleConfig, listOf(operatorReply)))
+        assertEquals(HomeScreen.Phase.READY, example.phase)
+        assertEquals("Bizə mesaj göndərin", example.newConversation?.title)
+        assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", example.newConversation?.subtitle)
+        assertEquals("Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk", example.newConversation?.accessibilityLabel)
+        assertEquals("Ən son mesaj", example.recent?.label)
+        assertEquals("Bizi izləyin", example.channels?.label)
+        assertEquals(listOf("Instagram", "WhatsApp", "LinkedIn", "E-poçt"), example.channels?.items?.map { it.accessibilityLabel })
+        assertNull(example.offline)
+        assertNull(example.failure)
 
         // Minimal config (fixture 43): only "new conversation"; no channels, so no "Bizi izləyin"; the team hidden.
         val minimal = presenter(config = Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig, listOf(operatorReply)))
@@ -121,19 +121,19 @@ class PresenterTest {
     @Test
     fun appearanceFromThePanel() {
         val withMessage = listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json"))
-        val apar = presenter().home(snapshot(Fixture.aparConfig, withMessage))
-        assertEquals(listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.CHANNELS), apar.order)
-        assertEquals("Powered by", apar.poweredBy)
-        assertEquals(MessengerConfig.HeaderStyle.GRADIENT, apar.header.style)
+        val example = presenter().home(snapshot(Fixture.exampleConfig, withMessage))
+        assertEquals(listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.RECENT, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.CHANNELS), example.order)
+        assertEquals("Powered by", example.poweredBy)
+        assertEquals(MessengerConfig.HeaderStyle.GRADIENT, example.header.style)
 
         val config = ProtocolJson().parseConfig(
-            """{"brand":{"name":"Apar","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",
+            """{"brand":{"name":"Example","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",
                         "logo_dark_url":"https://app.clomni.ai/v1/images/logo-dark",
                         "header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/head","glow":true},
                "team":{"show":false,"avatars":["https://app.clomni.ai/a/leyla.png"],"reply_time":"Tez",
                        "reply_time_offline":"Səhər cavab veririk","office_hours":{"open_now":false}},
                "bot":{"name":"Clomni","avatar_url":null},
-               "home":{"cards":["channels","recent","send"],"channels":[{"type":"instagram","url":"https://instagram.com/apar.az"}]},
+               "home":{"cards":["channels","recent","send"],"channels":[{"type":"instagram","url":"https://instagram.com/example"}]},
                "strings":{"greeting_line1":"Xoş gəldin, {first_name}!","greeting_line2":"Sualınız var?","send_card_title":"Yazın"},
                "powered_by":false}""",
         )!!
@@ -168,9 +168,9 @@ class PresenterTest {
     @Test
     fun theBotsPictureIsThePanels() {
         val bot = listOf(Fixture.conversation("conv_1", "01-text-bot.json"))
-        val panel = Fixture.aparConfig.let { it.copy(bot = it.bot.copy(avatarUrl = "https://app.clomni.ai/v1/images/bot")) }
+        val panel = Fixture.exampleConfig.let { it.copy(bot = it.bot.copy(avatarUrl = "https://app.clomni.ai/v1/images/bot")) }
         assertEquals("https://app.clomni.ai/v1/images/bot", presenter(config = panel).home(snapshot(panel, bot)).recent?.row?.avatarUrl)
-        val none = ProtocolJson().parseConfig("""{"brand":{"name":"Apar","logo_url":"https://app.clomni.ai/v1/images/logo"}}""")!!
+        val none = ProtocolJson().parseConfig("""{"brand":{"name":"Example","logo_url":"https://app.clomni.ai/v1/images/logo"}}""")!!
         assertEquals("the message's own", "https://app.clomni.ai/a/bot.png", presenter(config = none).home(snapshot(none, bot)).recent?.row?.avatarUrl)
     }
 
@@ -179,30 +179,30 @@ class PresenterTest {
     fun news() {
         val items = ProtocolJson().parseNews(ProtocolFiles.read("fixtures/61-news.json"))!!
         assertEquals(listOf("news_12", "news_9"), items.map { it.id })
-        val home = presenter().home(snapshot(Fixture.aparConfig).copy(news = items + items + items))
+        val home = presenter().home(snapshot(Fixture.exampleConfig).copy(news = items + items + items))
         assertEquals(3, home.news.size)
         assertTrue(MessengerConfig.HomeCard.NEWS in home.order)
-        assertFalse("no news, no card", MessengerConfig.HomeCard.NEWS in presenter().home(snapshot(Fixture.aparConfig)).order)
-        val screen = presenter().news(snapshot(Fixture.aparConfig).copy(news = items), "news_12")!!
+        assertFalse("no news, no card", MessengerConfig.HomeCard.NEWS in presenter().home(snapshot(Fixture.exampleConfig)).order)
+        val screen = presenter().news(snapshot(Fixture.exampleConfig).copy(news = items), "news_12")!!
         assertEquals("Yeni zonalar açıldı", screen.title)
-        assertEquals(NewsItem.Button("Xəritəni aç", "apar://map/zones"), screen.button)
+        assertEquals(NewsItem.Button("Xəritəni aç", "myapp://map/zones"), screen.button)
         assertEquals(listOf(false, true, true, false), screen.blocks.map { it.bullet })
         assertEquals("40 yeni zona", screen.blocks.first().runs.single { it.bold }.text)
         assertEquals("2 oktyabr 09:00", screen.date)
-        assertNull("withdrawn", presenter().news(snapshot(Fixture.aparConfig), "news_12"))
+        assertNull("withdrawn", presenter().news(snapshot(Fixture.exampleConfig), "news_12"))
     }
 
     @Test
     fun recentMessageIsHiddenWithoutAConversation() {
-        assertNull(presenter().home(snapshot(Fixture.aparConfig, emptyList())).recent)
+        assertNull(presenter().home(snapshot(Fixture.exampleConfig, emptyList())).recent)
         val empty = Fixture.conversation("conv_new", null)
-        assertNull("nothing written in it yet", presenter().home(snapshot(Fixture.aparConfig, listOf(empty))).recent)
+        assertNull("nothing written in it yet", presenter().home(snapshot(Fixture.exampleConfig, listOf(empty))).recent)
     }
 
     @Test
     fun recentMessageRow() {
         val fromOperator = Fixture.conversation("conv_1", "02-text-operator-markdown.json", unread = 2)
-        val row = presenter().home(snapshot(Fixture.aparConfig, listOf(fromOperator))).recent!!.row
+        val row = presenter().home(snapshot(Fixture.exampleConfig, listOf(fromOperator))).recent!!.row
         assertEquals("conv_1", row.id)
         assertEquals("Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər", row.preview)
         assertEquals("Leyla · 2 dəq", row.detail)
@@ -216,7 +216,7 @@ class PresenterTest {
 
         // The user wrote last: "Siz", and the other side's face.
         val fromUser = Fixture.conversation("conv_2", "03-text-user.json", assignee = "Rauf", at = "2026-10-01T10:31:50Z")
-        val mine = presenter().row(fromUser, Fixture.aparConfig)!!
+        val mine = presenter().row(fromUser, Fixture.exampleConfig)!!
         assertEquals("Siz · indi", mine.detail)
         assertEquals("R", mine.initial)
         assertEquals("https://app.clomni.ai/a/rauf.png", mine.avatarUrl)
@@ -224,8 +224,8 @@ class PresenterTest {
         assertFalse(mine.accessibilityLabel.contains("Oxunmamış"))
 
         // A bot's quick replies: its fallback text on one line, the bot's name and avatar.
-        val fromBot = Fixture.conversation("conv_3", "10-apar-level2-S-chips.json")
-        val bot = presenter().row(fromBot, Fixture.aparConfig)!!
+        val fromBot = Fixture.conversation("conv_3", "10-example-level2-S-chips.json")
+        val bot = presenter().row(fromBot, Fixture.exampleConfig)!!
         assertEquals(
             "Probleminiz nə ilə bağlıdır? Parking zona / Velosiped dayandı / Texniki nasazlıq / Kilidləmə / Əşyamı itirdim",
             bot.preview,
@@ -241,7 +241,7 @@ class PresenterTest {
 
         // An operator without a name: the assignee's, then the brand's.
         val nameless = Fixture.conversation("conv_5", "31-operator-no-avatar.json", assignee = "Nigar")
-        assertEquals("Leyla · 2 dəq", presenter().row(nameless, Fixture.aparConfig)!!.detail)
+        assertEquals("Leyla · 2 dəq", presenter().row(nameless, Fixture.exampleConfig)!!.detail)
         assertEquals("C", presenter(config = null).row(Fixture.conversation("conv_6", "01-text-bot.json"), null)!!.initial)
     }
 
@@ -250,7 +250,7 @@ class PresenterTest {
         fun preview(text: String) = HomePresenter.plainText(
             Message("msg_1", null, "conv_1", "text", Sender(SenderType.BOT), now, 1, "az", null, MessageContent.Text(text), text),
         )
-        assertEquals("Salam! Xoş gəldiniz şərtlər 2*3", preview("**Salam!** *Xoş* gəldiniz\n\n[şərtlər](https://apar.az) 2*3"))
+        assertEquals("Salam! Xoş gəldiniz şərtlər 2*3", preview("**Salam!** *Xoş* gəldiniz\n\n[şərtlər](https://example.com) 2*3"))
         assertEquals("👍🙏", preview("👍🙏"))
         // A letter of the alphabet before "*" is a word character on every platform.
         assertEquals("ə*x*", preview("ə*x*"))
@@ -259,14 +259,14 @@ class PresenterTest {
     @Test
     fun messagesCardDot() {
         val list = listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json"))
-        val quiet = snapshot(Fixture.aparConfig, list)
+        val quiet = snapshot(Fixture.exampleConfig, list)
         assertFalse(presenter().home(quiet).messagesCard.unread)
         assertEquals("Mesajlar", presenter().home(quiet).messagesCard.accessibilityLabel)
         val card = presenter().home(quiet.copy(unreadTotal = 1)).messagesCard
         assertTrue(card.unread)
         assertEquals("Mesajlar", card.title)
         assertEquals("Mesajlar, Oxunmamış mesaj var", card.accessibilityLabel)
-        val unreadInList = snapshot(Fixture.aparConfig, listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json", unread = 1)))
+        val unreadInList = snapshot(Fixture.exampleConfig, listOf(Fixture.conversation("conv_1", "02-text-operator-markdown.json", unread = 1)))
         assertTrue("before the first unread.changed", presenter().home(unreadInList).messagesCard.unread)
     }
 
@@ -313,40 +313,40 @@ class PresenterTest {
             Fixture.conversation("conv_new", null),
             Fixture.conversation("conv_1", "02-text-operator-markdown.json"),
         )
-        val messages = presenter().messages(snapshot(Fixture.aparConfig, list))
+        val messages = presenter().messages(snapshot(Fixture.exampleConfig, list))
         assertEquals("Mesajlar", messages.title)
         assertEquals(HomeScreen.Phase.READY, messages.phase)
         assertEquals(listOf("conv_2", "conv_1"), messages.rows.map { it.id })
         assertNull(messages.empty)
         assertEquals("Bizə mesaj göndərin", messages.newConversation.title)
 
-        val empty = presenter().messages(snapshot(Fixture.aparConfig, emptyList()))
+        val empty = presenter().messages(snapshot(Fixture.exampleConfig, emptyList()))
         assertEquals("Hələ söhbət yoxdur", empty.empty)
         assertEquals(HomeScreen.Phase.READY, empty.phase)
         assertNull(empty.failure)
 
-        val stale = snapshot(Fixture.aparConfig, list).copy(conversationsLoad = MessengerSnapshot.Load.FAILED)
+        val stale = snapshot(Fixture.exampleConfig, list).copy(conversationsLoad = MessengerSnapshot.Load.FAILED)
         assertEquals("the cached list stays", HomeScreen.Phase.READY, presenter().messages(stale).phase)
         // The SDK's own Russian (fixture 42's texts are the Azerbaijani set the server sent).
-        assertEquals("Пока нет переписки", presenter("ru", config = null).messages(snapshot(Fixture.aparConfig, emptyList())).empty)
+        assertEquals("Пока нет переписки", presenter("ru", config = null).messages(snapshot(Fixture.exampleConfig, emptyList())).empty)
     }
 
     @Test
     fun channelStyles() {
         val strings = ClomniStrings("az")
         fun item(type: String, url: String) = ChannelItem.of(type, url, strings)
-        assertEquals(ChannelItem.Icon.INSTAGRAM, item("instagram", "https://instagram.com/apar").icon)
-        assertEquals("its name for TalkBack", "Instagram", item("instagram", "https://instagram.com/apar").accessibilityLabel)
+        assertEquals(ChannelItem.Icon.INSTAGRAM, item("instagram", "https://instagram.com/example").icon)
+        assertEquals("its name for TalkBack", "Instagram", item("instagram", "https://instagram.com/example").accessibilityLabel)
         assertEquals(ChannelItem.Icon.WHATSAPP, item("WhatsApp", "https://wa.me/1").icon)
         assertEquals(ChannelItem.Icon.LINKEDIN, item("linkedin", "https://linkedin.com/x").icon)
         assertEquals(ChannelItem.Icon.EMAIL, item("email", "mailto:a@b.az").icon)
         assertEquals("a mailto: link is email", "E-poçt", item("support", "mailto:a@b.az").accessibilityLabel)
         assertEquals("Telefon", item("call", "tel:+994501234567").accessibilityLabel)
         assertEquals(ChannelItem.Icon.PHONE, item("call", "tel:+994501234567").icon)
-        assertEquals(ChannelItem.Icon.X, item("twitter", "https://twitter.com/apar").icon)
-        val unknown = item("mastodon", "https://social.az/@apar")
+        assertEquals(ChannelItem.Icon.X, item("twitter", "https://twitter.com/example").icon)
+        val unknown = item("mastodon", "https://social.example/@example")
         assertEquals(ChannelItem.Icon.LINK, unknown.icon)
-        assertEquals("social.az", unknown.accessibilityLabel)
+        assertEquals("social.example", unknown.accessibilityLabel)
         assertEquals("not a URL: the text itself", "nə isə", item("site", "nə isə").accessibilityLabel)
         assertNotEquals(item("instagram", "https://a").id, item("instagram", "https://b").id)
         val all = listOf("telegram", "facebook", "messenger", "youtube", "tiktok").map { item(it, "https://$it.com").icon }

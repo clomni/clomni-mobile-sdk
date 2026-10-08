@@ -82,7 +82,7 @@ package enum TextLinks {
             if trailing.contains(last) {
                 to -= 1
             } else if last == ")", chars[from..<to].filter({ $0 == ")" }).count > chars[from..<to].filter({ $0 == "(" }).count {
-                // A closing parenthesis the address did not open: "(bax: https://apar.az)".
+                // A closing parenthesis the address did not open: "(bax: https://example.com)".
                 to -= 1
             } else {
                 break

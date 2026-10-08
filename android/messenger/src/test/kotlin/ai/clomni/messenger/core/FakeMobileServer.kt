@@ -368,7 +368,7 @@ internal class FakeMobileServer : Dispatcher() {
     private fun config(request: RecordedRequest): MockResponse {
         val etag = "W/\"cfg1\""
         if (request.getHeader("If-None-Match") == etag) return MockResponse().setResponseCode(304)
-        return json(buildJsonObject { put("brand", buildJsonObject { put("name", "Apar"); put("primary_color", "#1F9D63") }) })
+        return json(buildJsonObject { put("brand", buildJsonObject { put("name", "Example"); put("primary_color", "#1F9D63") }) })
             .setHeader("ETag", etag)
     }
 

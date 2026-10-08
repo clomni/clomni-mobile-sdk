@@ -54,7 +54,7 @@ class HomeSnapshotTest {
     }
 
     private fun loaded(
-        config: MessengerConfig? = Fixture.aparConfig,
+        config: MessengerConfig? = Fixture.exampleConfig,
         conversations: List<Conversation> = listOf(leyla),
         user: String? = "Aysel Məmmədova",
     ) = MessengerSnapshot(
@@ -104,10 +104,10 @@ class HomeSnapshotTest {
     @Test
     fun homeAllChannels() {
         val channels = listOf("instagram", "whatsapp", "telegram", "facebook", "messenger", "linkedin", "youtube", "tiktok", "x")
-            .map { MessengerConfig.Channel(it, "https://$it.com/apar") } +
-            listOf(MessengerConfig.Channel("email", "mailto:support@apar.az"), MessengerConfig.Channel("phone", "tel:+994125550000"),
-                MessengerConfig.Channel("site", "https://apar.az"))
-        val config = Fixture.aparConfig.let { it.copy(home = it.home.copy(channels = channels)) }
+            .map { MessengerConfig.Channel(it, "https://$it.com/example") } +
+            listOf(MessengerConfig.Channel("email", "mailto:support@example.com"), MessengerConfig.Channel("phone", "tel:+994125550000"),
+                MessengerConfig.Channel("site", "https://example.com"))
+        val config = Fixture.exampleConfig.let { it.copy(home = it.home.copy(channels = channels)) }
         snap("home_all_channels", loaded(config, emptyList()))
     }
 
@@ -129,7 +129,7 @@ class HomeSnapshotTest {
             conversations = listOf(
                 leyla,
                 Fixture.conversation("conv_2", "03-text-user.json", assignee = "Rauf", at = "2026-10-01T09:10:00Z"),
-                Fixture.conversation("conv_3", "10-apar-level2-S-chips.json", at = "2026-09-20T12:00:00Z"),
+                Fixture.conversation("conv_3", "10-example-level2-S-chips.json", at = "2026-09-20T12:00:00Z"),
             ),
         ),
         Shown.MESSAGES,
@@ -142,7 +142,7 @@ class HomeSnapshotTest {
     }
 
     /**
-     * The reference's Home (docs/ui-reference.html 4.1) at its own size, 282×602 dp at 1.5×, with its data: Apar,
+     * The reference's Home (docs/ui-reference.html 4.1) at its own size, 282×602 dp at 1.5×, with its data: Example,
      * Aysel, Leyla's "Balansınıza 2 AZN qaytarıldı." two minutes ago, unread.
      */
     @Test

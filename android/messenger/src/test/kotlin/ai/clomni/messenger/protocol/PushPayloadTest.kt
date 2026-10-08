@@ -15,7 +15,7 @@ class PushPayloadTest {
                 type = "message",
                 conversationId = "conv_5521",
                 messageId = "msg_f02",
-                title = "Leyla · Apar",
+                title = "Leyla · Example",
                 body = "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
                 avatarUrl = "https://app.clomni.ai/a/leyla.png",
                 unreadTotal = 1,
@@ -39,11 +39,11 @@ class PushPayloadTest {
             "type" to "message",
             "conversation_id" to "conv_1",
             "message_id" to "msg_1",
-            "title" to "Leyla · Apar",
+            "title" to "Leyla · Example",
             "body" to "Salam",
             "unread_total" to "3",
         )
-        assertEquals(PushPayload("message", "conv_1", "msg_1", "Leyla · Apar", "Salam", null, 3), protocol.json.parsePush(data))
+        assertEquals(PushPayload("message", "conv_1", "msg_1", "Leyla · Example", "Salam", null, 3), protocol.json.parsePush(data))
         assertNull(protocol.json.parsePush(data - "clomni"))
     }
 

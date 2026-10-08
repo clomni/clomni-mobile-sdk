@@ -14,7 +14,7 @@ class MobileApiModelsTest {
     private fun millis(time: String) = Instant.parse(time).toEpochMilli()
 
     private val conversationJson = """{"id":"conv_5521","status":"bot","assignee":null,"unread_count":1,"last_message":null,
-        "flow":{"active":true,"awaiting":"menu","flow_id":"flw_apar_az","node_id":"S"},"opened_from":"profile_support","created_at":"2026-10-01T10:30:00Z"}"""
+        "flow":{"active":true,"awaiting":"menu","flow_id":"flw_example_az","node_id":"S"},"opened_from":"profile_support","created_at":"2026-10-01T10:30:00Z"}"""
 
     @Test
     fun session() {
@@ -42,7 +42,7 @@ class MobileApiModelsTest {
             assignee = null,
             unreadCount = 1,
             lastMessage = null,
-            flow = Conversation.Flow(active = true, awaiting = "menu", flowId = "flw_apar_az", nodeId = "S"),
+            flow = Conversation.Flow(active = true, awaiting = "menu", flowId = "flw_example_az", nodeId = "S"),
             openedFrom = "profile_support",
             createdAt = millis("2026-10-01T10:30:00Z"),
         )
@@ -82,7 +82,7 @@ class MobileApiModelsTest {
 
     @Test
     fun conversationWithMessagesAndFlowTrigger() {
-        val body = """{"conversation":$conversationJson,"messages":[${ProtocolFiles.read("fixtures/09-apar-level1-A.json")}]}"""
+        val body = """{"conversation":$conversationJson,"messages":[${ProtocolFiles.read("fixtures/09-example-level1-A.json")}]}"""
         val created = protocol.json.parseConversationWithMessages(body)!!
         assertEquals("conv_5521", created.conversation.id)
         assertEquals(listOf("msg_f09"), created.messages.map { it.id })

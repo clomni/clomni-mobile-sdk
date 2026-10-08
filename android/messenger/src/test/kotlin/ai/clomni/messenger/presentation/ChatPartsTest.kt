@@ -15,7 +15,7 @@ class LimitedMarkdownTest {
     fun operatorMarkdown() {
         // Fixture 02.
         val runs = LimitedMarkdown.parse(
-            "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://apar.az/sertler)",
+            "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://example.com/sertler)",
         )
         assertEquals(
             listOf(
@@ -23,7 +23,7 @@ class LimitedMarkdownTest {
                 TextRun(" Balansınıza "),
                 TextRun("2 AZN", italic = true),
                 TextRun(" qaytarıldı.\nƏtraflı: "),
-                TextRun("şərtlər", link = "https://apar.az/sertler"),
+                TextRun("şərtlər", link = "https://example.com/sertler"),
             ),
             runs,
         )
@@ -34,34 +34,34 @@ class LimitedMarkdownTest {
         // Fixture 06: javascript: keeps its text only, tel: works.
         val runs = LimitedMarkdown.parse("Bu linkə basmayın: [oyun](javascript:alert(1)) və [zəng](tel:+994501234567)")
         assertEquals(listOf(TextRun("Bu linkə basmayın: oyun və "), TextRun("zəng", link = "tel:+994501234567")), runs)
-        assertNull("http is not allowed", LimitedMarkdown.parse("[sayt](http://apar.az)").first().link)
+        assertNull("http is not allowed", LimitedMarkdown.parse("[sayt](http://example.com)").first().link)
         assertNull(LimitedMarkdown.parse("[x](data:text/html,hi)").first().link)
         assertNull("not a URI at all", LimitedMarkdown.parse("[x](https://a b)").first().link)
         assertNull(LimitedMarkdown.parse("[x](yer)").first().link)
         assertEquals("mailto:a@b.az", LimitedMarkdown.parse("[poçt](mailto:a@b.az)").first().link)
-        assertEquals("HTTPS://APAR.AZ", LimitedMarkdown.parse("[a](HTTPS://APAR.AZ)").first().link)
+        assertEquals("HTTPS://EXAMPLE.COM", LimitedMarkdown.parse("[a](HTTPS://EXAMPLE.COM)").first().link)
         assertEquals("a b", LimitedMarkdown.plainText("[a](https://x) **b**"))
     }
 
     @Test
     fun addressesInTheTextAreLinks() {
         fun links(text: String) = LimitedMarkdown.parse(text).filter { it.link != null }.map { it.text to it.link }
-        assertEquals(listOf("https://apar.az/sertler" to "https://apar.az/sertler"), links("Şərtlər: https://apar.az/sertler."))
-        assertEquals(listOf("http://apar.az" to "http://apar.az"), links("Sayt (http://apar.az), baxın"))
-        assertEquals(listOf("WWW.apar.az/a" to "https://WWW.apar.az/a"), links("WWW.apar.az/a!"))
+        assertEquals(listOf("https://example.com/sertler" to "https://example.com/sertler"), links("Şərtlər: https://example.com/sertler."))
+        assertEquals(listOf("http://example.com" to "http://example.com"), links("Sayt (http://example.com), baxın"))
+        assertEquals(listOf("WWW.example.com/a" to "https://WWW.example.com/a"), links("WWW.example.com/a!"))
         assertEquals(
             "a bracket of the address itself stays",
             listOf("https://az.wikipedia.org/wiki/Bakı_(şəhər)" to "https://az.wikipedia.org/wiki/Bakı_(şəhər)"),
             links("Bax: https://az.wikipedia.org/wiki/Bakı_(şəhər)."),
         )
-        assertEquals(listOf("info@apar.az" to "mailto:info@apar.az"), links("Yazın: info@apar.az."))
+        assertEquals(listOf("info@example.com" to "mailto:info@example.com"), links("Yazın: info@example.com."))
         assertEquals(listOf("+994 50 123 45 67" to "tel:+994501234567"), links("Zəng edin: +994 50 123 45 67."))
         assertEquals(listOf("(050) 123-45-67" to "tel:0501234567"), links("Nömrə (050) 123-45-67"))
         assertEquals(listOf("0501234567" to "tel:0501234567", "994501234567" to "tel:994501234567"), links("0501234567, 994501234567"))
         assertEquals(
             "one address: the e-mail and the number in a web address are part of it",
-            listOf("https://apar.az/u?m=a@b.az&t=0501234567" to "https://apar.az/u?m=a@b.az&t=0501234567"),
-            links("https://apar.az/u?m=a@b.az&t=0501234567"),
+            listOf("https://example.com/u?m=a@b.az&t=0501234567" to "https://example.com/u?m=a@b.az&t=0501234567"),
+            links("https://example.com/u?m=a@b.az&t=0501234567"),
         )
         assertEquals(
             "not addresses",
@@ -69,8 +69,8 @@ class LimitedMarkdownTest {
             links("2026-10-07 11:00, 1 000 000 000 AZN, 12345678, https://x, AZ12345678901, 05.10.2026, a@b, x.az"),
         )
         assertEquals(
-            listOf(TextRun("Sayt: ", bold = true), TextRun("https://apar.az", bold = true, link = "https://apar.az"), TextRun(" bax")),
-            LimitedMarkdown.parse("**Sayt: https://apar.az** bax"),
+            listOf(TextRun("Sayt: ", bold = true), TextRun("https://example.com", bold = true, link = "https://example.com"), TextRun(" bax")),
+            LimitedMarkdown.parse("**Sayt: https://example.com** bax"),
         )
         assertEquals(
             "the user's own text: addresses, no markdown",

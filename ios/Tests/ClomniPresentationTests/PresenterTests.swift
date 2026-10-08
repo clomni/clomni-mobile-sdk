@@ -12,7 +12,7 @@ enum Fixture {
         (try? Data(contentsOf: directory.appendingPathComponent(name))) ?? Data()
     }
 
-    static var aparConfig: MessengerConfig { ProtocolJSON.parseConfig(data("42-config-apar.json"))! }
+    static var exampleConfig: MessengerConfig { ProtocolJSON.parseConfig(data("42-config-example.json"))! }
     static var minimalConfig: MessengerConfig { ProtocolJSON.parseConfig(data("43-config-minimal.json"))! }
 
     /// A conversation whose last message is the fixture `message` (created at 2026-10-01T10:30Z, or `at`), its JSON
@@ -35,11 +35,11 @@ final class PresenterTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_790_850_720)
     private let utc = TimeZone(identifier: "UTC")!
 
-    private func presenter(_ language: String = "az", config: MessengerConfig? = Fixture.aparConfig) -> HomePresenter {
+    private func presenter(_ language: String = "az", config: MessengerConfig? = Fixture.exampleConfig) -> HomePresenter {
         HomePresenter(strings: ClomniStrings(language: language, overrides: config?.strings ?? [:]), timeZone: utc, now: now)
     }
 
-    private func snapshot(_ config: MessengerConfig? = Fixture.aparConfig, _ conversations: [Conversation] = [],
+    private func snapshot(_ config: MessengerConfig? = Fixture.exampleConfig, _ conversations: [Conversation] = [],
                           user: String? = "Aysel Məmmədova") -> MessengerSnapshot {
         var snapshot = MessengerSnapshot(config: config, conversations: conversations, userName: user)
         snapshot.configLoad = .loaded
@@ -49,7 +49,7 @@ final class PresenterTests: XCTestCase {
 
     func testHeader() throws {
         let header = presenter().home(snapshot()).header
-        XCTAssertEqual(header.brandName, "Apar")
+        XCTAssertEqual(header.brandName, "Example")
         XCTAssertEqual(header.brandInitial, "A")
         XCTAssertEqual(header.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
         XCTAssertNil(header.logoDarkUrl, "dark mode keeps the logo")
@@ -90,17 +90,17 @@ final class PresenterTests: XCTestCase {
 
     func testCardsFollowTheConfig() {
         let operatorReply = Fixture.conversation("conv_1", message: "02-text-operator-markdown.json", unread: 1)
-        let apar = presenter().home(snapshot(Fixture.aparConfig, [operatorReply]))
-        XCTAssertEqual(apar.phase, .ready)
-        XCTAssertEqual(apar.newConversation?.title, "Bizə mesaj göndərin")
-        XCTAssertEqual(apar.newConversation?.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk")
-        XCTAssertEqual(apar.newConversation?.accessibilityLabel,
+        let example = presenter().home(snapshot(Fixture.exampleConfig, [operatorReply]))
+        XCTAssertEqual(example.phase, .ready)
+        XCTAssertEqual(example.newConversation?.title, "Bizə mesaj göndərin")
+        XCTAssertEqual(example.newConversation?.subtitle, "Adətən bir neçə dəqiqəyə cavab veririk")
+        XCTAssertEqual(example.newConversation?.accessibilityLabel,
                        "Bizə mesaj göndərin. Adətən bir neçə dəqiqəyə cavab veririk")
-        XCTAssertEqual(apar.recent?.label, "Ən son mesaj")
-        XCTAssertEqual(apar.channels?.label, "Bizi izləyin")
-        XCTAssertEqual(apar.channels?.items.map(\.accessibilityLabel), ["Instagram", "WhatsApp", "LinkedIn", "E-poçt"])
-        XCTAssertNil(apar.offline)
-        XCTAssertNil(apar.failure)
+        XCTAssertEqual(example.recent?.label, "Ən son mesaj")
+        XCTAssertEqual(example.channels?.label, "Bizi izləyin")
+        XCTAssertEqual(example.channels?.items.map(\.accessibilityLabel), ["Instagram", "WhatsApp", "LinkedIn", "E-poçt"])
+        XCTAssertNil(example.offline)
+        XCTAssertNil(example.failure)
 
         // Minimal config: only "new conversation"; no channels, so no "Bizi izləyin"; the team hidden.
         let minimal = presenter(config: Fixture.minimalConfig).home(snapshot(Fixture.minimalConfig, [operatorReply]))
@@ -109,7 +109,7 @@ final class PresenterTests: XCTestCase {
         XCTAssertNil(minimal.channels)
         XCTAssertTrue(minimal.header.teamAvatars.isEmpty)
         // No reply time at all: the card has no second line.
-        let silent = ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Apar"}}"#.utf8))
+        let silent = ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Example"}}"#.utf8))
         XCTAssertNil(presenter(config: silent).home(snapshot(silent)).newConversation?.subtitle)
     }
 
@@ -139,9 +139,9 @@ final class PresenterTests: XCTestCase {
     /// More channels than fit a row continue on the next one instead of running past the card.
     func testChannelRows() throws {
         let types = ["instagram", "whatsapp", "telegram", "facebook", "messenger", "linkedin", "youtube", "tiktok", "x"]
-        let channels = types.map { #"{"type":"\#($0)","url":"https://\#($0).com/apar"}"# }.joined(separator: ",")
+        let channels = types.map { #"{"type":"\#($0)","url":"https://\#($0).com/example"}"# }.joined(separator: ",")
         let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""
-            {"brand":{"name":"Apar","primary_color":"#1F9D63"},"home":{"channels":[\##(channels)]}}
+            {"brand":{"name":"Example","primary_color":"#1F9D63"},"home":{"channels":[\##(channels)]}}
             """##.utf8)))
         let card = try XCTUnwrap(presenter(config: config).home(snapshot(config)).channels)
         XCTAssertEqual(card.items.map(\.url.host), ["instagram.com", "whatsapp.com", "telegram.com", "facebook.com", "messenger.com"],
@@ -155,17 +155,17 @@ final class PresenterTests: XCTestCase {
 
     /// Config v2: what the panel publishes reaches Home (APPEARANCE-CONTRACT § 1, § 4).
     func testAppearanceFromThePanel() throws {
-        let apar = presenter().home(snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
-        XCTAssertEqual(apar.order, [.messages, .recent, .send, .channels])
-        XCTAssertEqual(apar.poweredBy, "Powered by", "the wordmark follows it")
+        let example = presenter().home(snapshot(Fixture.exampleConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]))
+        XCTAssertEqual(example.order, [.messages, .recent, .send, .channels])
+        XCTAssertEqual(example.poweredBy, "Powered by", "the wordmark follows it")
 
         let json = ##"""
-            {"brand":{"name":"Apar","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",
+            {"brand":{"name":"Example","primary_color":"#1F9D63","logo_url":"https://app.clomni.ai/v1/images/logo",
                       "header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/head","glow":true},
              "team":{"show":false,"avatars":["https://app.clomni.ai/a/leyla.png"],"reply_time":"Tez",
                      "reply_time_offline":"Səhər cavab veririk","office_hours":{"open_now":false}},
              "bot":{"name":"Clomni","avatar_url":null},
-             "home":{"cards":["channels","recent","send"],"channels":[{"type":"instagram","url":"https://instagram.com/apar.az"}]},
+             "home":{"cards":["channels","recent","send"],"channels":[{"type":"instagram","url":"https://instagram.com/example"}]},
              "strings":{"greeting_line1":"Xoş gəldin, {first_name}!","greeting_line2":"Sualınız var?",
                         "send_card_title":"Yazın"},
              "powered_by":false}
@@ -196,14 +196,14 @@ final class PresenterTests: XCTestCase {
     }
 
     func testRecentMessageIsHiddenWithoutAConversation() {
-        XCTAssertNil(presenter().home(snapshot(Fixture.aparConfig, [])).recent)
+        XCTAssertNil(presenter().home(snapshot(Fixture.exampleConfig, [])).recent)
         let empty = Fixture.conversation("conv_new", message: nil)
-        XCTAssertNil(presenter().home(snapshot(Fixture.aparConfig, [empty])).recent, "nothing written in it yet")
+        XCTAssertNil(presenter().home(snapshot(Fixture.exampleConfig, [empty])).recent, "nothing written in it yet")
     }
 
     func testRecentMessageRow() throws {
         let fromOperator = Fixture.conversation("conv_1", message: "02-text-operator-markdown.json", unread: 2)
-        let row = try XCTUnwrap(presenter().home(snapshot(Fixture.aparConfig, [fromOperator])).recent?.row)
+        let row = try XCTUnwrap(presenter().home(snapshot(Fixture.exampleConfig, [fromOperator])).recent?.row)
         XCTAssertEqual(row.id, "conv_1")
         XCTAssertEqual(row.preview, "Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər")
         XCTAssertEqual(row.detail, "Leyla · 2 dəq")
@@ -216,7 +216,7 @@ final class PresenterTests: XCTestCase {
         // The user wrote last: "Siz", and the other side's face.
         let fromUser = Fixture.conversation("conv_2", message: "03-text-user.json", assignee: "Rauf",
                                             at: "2026-10-01T10:31:50Z")
-        let mine = try XCTUnwrap(presenter().row(fromUser, config: Fixture.aparConfig))
+        let mine = try XCTUnwrap(presenter().row(fromUser, config: Fixture.exampleConfig))
         XCTAssertEqual(mine.detail, "Siz · indi")
         XCTAssertEqual(mine.initial, "R")
         XCTAssertEqual(mine.avatarUrl?.absoluteString, "https://app.clomni.ai/a/rauf.png")
@@ -224,8 +224,8 @@ final class PresenterTests: XCTestCase {
         XCTAssertFalse(mine.accessibilityLabel.contains("Oxunmamış"))
 
         // A bot's quick replies: its fallback text on one line, the bot's name and avatar.
-        let fromBot = Fixture.conversation("conv_3", message: "10-apar-level2-S-chips.json")
-        let bot = try XCTUnwrap(presenter().row(fromBot, config: Fixture.aparConfig))
+        let fromBot = Fixture.conversation("conv_3", message: "10-example-level2-S-chips.json")
+        let bot = try XCTUnwrap(presenter().row(fromBot, config: Fixture.exampleConfig))
         XCTAssertEqual(bot.preview,
                        "Probleminiz nə ilə bağlıdır? Parking zona / Velosiped dayandı / Texniki nasazlıq / Kilidləmə / Əşyamı itirdim")
         XCTAssertEqual(bot.detail, "Clomni · 2 dəq")
@@ -245,7 +245,7 @@ final class PresenterTests: XCTestCase {
             let picture = bot.map { #","avatar_url":"\#($0)""# } ?? ""
             let logoUrl = logo.map { #","logo_url":"\#($0)""# } ?? ""
             return try XCTUnwrap(ProtocolJSON.parseConfig(Data(
-                #"{"brand":{"name":"Apar"\#(logoUrl)},"bot":{"name":"Clomni"\#(picture)}}"#.utf8)))
+                #"{"brand":{"name":"Example"\#(logoUrl)},"bot":{"name":"Clomni"\#(picture)}}"#.utf8)))
         }
         func row(_ conversation: Conversation, _ config: MessengerConfig) throws -> ConversationRow {
             try XCTUnwrap(presenter(config: config).row(conversation, config: config))
@@ -278,14 +278,14 @@ final class PresenterTests: XCTestCase {
                                   createdAt: now, seq: 1, lang: "az", content: .text(text), fallbackText: text)
             return HomePresenter.plainText(message)
         }
-        XCTAssertEqual(preview("**Salam!** *Xoş* gəldiniz\n\n[şərtlər](https://apar.az) 2*3"), "Salam! Xoş gəldiniz şərtlər 2*3")
+        XCTAssertEqual(preview("**Salam!** *Xoş* gəldiniz\n\n[şərtlər](https://example.com) 2*3"), "Salam! Xoş gəldiniz şərtlər 2*3")
         XCTAssertEqual(preview("👍🙏"), "👍🙏")
     }
 
     /// The news card: the first three, in the panel's order; none, no card; off in the panel, no card.
     func testNewsCard() throws {
         let news = try XCTUnwrap(ProtocolJSON.parseNews(Fixture.data("61-news.json")))
-        var withNews = snapshot(Fixture.aparConfig)
+        var withNews = snapshot(Fixture.exampleConfig)
         withNews.news = news + news.map { item in
             ProtocolJSON.parseNews(Data(#"{"items":[{"id":"\#(item.id)_b","title":"\#(item.title)","published_at":"2026-10-01T00:00:00Z"}]}"#.utf8))![0]
         }
@@ -294,8 +294,8 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(home.news?.items.first?.accessibilityLabel,
                        "Yeni zonalar açıldı. Yasamal və Nərimanovda 40 yeni parklanma zonası var.")
         XCTAssertEqual(home.order, [.messages, .send, .news, .channels], "fixture 42's order, recent has no conversation")
-        XCTAssertNil(presenter().home(snapshot(Fixture.aparConfig)).news, "no news, no card")
-        XCTAssertFalse(presenter().home(snapshot(Fixture.aparConfig)).order.contains(.news))
+        XCTAssertNil(presenter().home(snapshot(Fixture.exampleConfig)).news, "no news, no card")
+        XCTAssertFalse(presenter().home(snapshot(Fixture.exampleConfig)).order.contains(.news))
         var off = withNews
         off.config = Fixture.minimalConfig
         XCTAssertNil(presenter().home(off).news, "the panel did not list it")
@@ -306,14 +306,14 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(article.blocks, [
             .paragraph([TextRun("Bu həftədən "), TextRun("40 yeni zona", bold: true), TextRun(" işləyir.")]),
             .listItem([TextRun("Yasamal: 22 zona")]), .listItem([TextRun("Nərimanov: 18 zona")]),
-            .paragraph([TextRun("Xəritəyə "), TextRun("buradan", link: URL(string: "https://apar.az/zones")), TextRun(" baxın.")]),
+            .paragraph([TextRun("Xəritəyə "), TextRun("buradan", link: URL(string: "https://example.com/zones")), TextRun(" baxın.")]),
         ])
-        XCTAssertEqual(article.button?.url.absoluteString, "apar://map/zones")
+        XCTAssertEqual(article.button?.url.absoluteString, "myapp://map/zones")
         XCTAssertFalse(article.date.isEmpty)
     }
 
     func testMessagesCardDot() {
-        var quiet = snapshot(Fixture.aparConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")])
+        var quiet = snapshot(Fixture.exampleConfig, [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")])
         XCTAssertFalse(presenter().home(quiet).messagesCard.unread)
         XCTAssertEqual(presenter().home(quiet).messagesCard.accessibilityLabel, "Mesajlar")
         quiet.unreadTotal = 1
@@ -321,7 +321,7 @@ final class PresenterTests: XCTestCase {
         XCTAssertTrue(card.unread)
         XCTAssertEqual(card.title, "Mesajlar")
         XCTAssertEqual(card.accessibilityLabel, "Mesajlar, Oxunmamış mesaj var")
-        let unreadInList = snapshot(Fixture.aparConfig,
+        let unreadInList = snapshot(Fixture.exampleConfig,
                                     [Fixture.conversation("conv_1", message: "02-text-operator-markdown.json", unread: 1)])
         XCTAssertTrue(presenter().home(unreadInList).messagesCard.unread, "before the first unread.changed")
     }
@@ -375,19 +375,19 @@ final class PresenterTests: XCTestCase {
         let list = [Fixture.conversation("conv_2", message: "03-text-user.json"),
                     Fixture.conversation("conv_new", message: nil),
                     Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")]
-        let messages = presenter().messages(snapshot(Fixture.aparConfig, list))
+        let messages = presenter().messages(snapshot(Fixture.exampleConfig, list))
         XCTAssertEqual(messages.title, "Mesajlar")
         XCTAssertEqual(messages.phase, .ready)
         XCTAssertEqual(messages.rows.map(\.id), ["conv_2", "conv_1"])
         XCTAssertNil(messages.empty)
         XCTAssertEqual(messages.newConversation.title, "Bizə mesaj göndərin")
 
-        let empty = presenter().messages(snapshot(Fixture.aparConfig, []))
+        let empty = presenter().messages(snapshot(Fixture.exampleConfig, []))
         XCTAssertEqual(empty.empty, "Hələ söhbət yoxdur")
         XCTAssertEqual(empty.phase, .ready)
         XCTAssertNil(empty.failure)
 
-        var stale = snapshot(Fixture.aparConfig, list)
+        var stale = snapshot(Fixture.exampleConfig, list)
         stale.conversationsLoad = .failed
         XCTAssertEqual(presenter().messages(stale).phase, .ready, "the cached list stays")
         XCTAssertEqual(presenter("ru", config: Fixture.minimalConfig).messages(snapshot(Fixture.minimalConfig, [])).empty,

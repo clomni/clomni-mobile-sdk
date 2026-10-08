@@ -12,37 +12,37 @@ import org.junit.Test
 import java.util.TimeZone
 
 class ThemeTest {
-    private val apar = RgbColor.parse("#1F9D63")!!
+    private val example = RgbColor.parse("#1F9D63")!!
 
     private fun brand(color: String, style: String = "gradient"): MessengerConfig.Brand =
-        ProtocolJson().parseConfig("""{"brand":{"name":"Apar","primary_color":"$color","header_style":"$style"}}""")!!.brand
+        ProtocolJson().parseConfig("""{"brand":{"name":"Example","primary_color":"$color","header_style":"$style"}}""")!!.brand
 
     @Test
     fun hexAndArithmetic() {
-        assertEquals("#1F9D63", apar.hex)
-        assertEquals("#1F9D63", apar.toString())
-        assertEquals(0xFF1F9D63.toInt(), apar.argb)
+        assertEquals("#1F9D63", example.hex)
+        assertEquals("#1F9D63", example.toString())
+        assertEquals(0xFF1F9D63.toInt(), example.argb)
         for (bad in listOf("1F9D63", "#1F9D6", "#1F9D6Z", "#1F9D6300", "#+1F9D6")) assertNull(bad, RgbColor.parse(bad))
         assertEquals("channels are clamped", "#FF0080", RgbColor(2.0, -1.0, 0.5).hex)
         assertEquals(21.0, RgbColor.WHITE.contrast(RgbColor.BLACK), 0.001)
-        assertEquals(1.0, apar.contrast(apar), 0.001)
-        assertEquals(3.46, apar.contrast(RgbColor.WHITE), 0.01)
+        assertEquals(1.0, example.contrast(example), 0.001)
+        assertEquals(3.46, example.contrast(RgbColor.WHITE), 0.01)
         assertEquals("#808080", RgbColor.BLACK.over(RgbColor.WHITE, 0.5).hex)
         for (hex in listOf("#1F9D63", "#E5484D", "#0A66C2", "#FFFFFF", "#000000", "#808080", "#FF00FF", "#FFFF00", "#00FFFF")) {
             val (hue, saturation, lightness) = RgbColor.parse(hex)!!.hsl
             assertEquals("HSL round trip", hex, RgbColor.fromHsl(hue, saturation, lightness).hex)
         }
         assertEquals("hue wraps", "#0000FF", RgbColor.fromHsl(-120.0, 1.0, 0.5).hex)
-        assertEquals("lightness stops at white", "#FFFFFF", apar.steps(20).hex)
-        assertEquals(apar, RgbColor.parse("#1f9d63"))
-        assertEquals(apar.hashCode(), RgbColor.parse("#1F9D63").hashCode())
-        assertFalse(apar.equals("#1F9D63"))
+        assertEquals("lightness stops at white", "#FFFFFF", example.steps(20).hex)
+        assertEquals(example, RgbColor.parse("#1f9d63"))
+        assertEquals(example.hashCode(), RgbColor.parse("#1F9D63").hashCode())
+        assertFalse(example.equals("#1F9D63"))
     }
 
     /** APPEARANCE-CONTRACT 1: the server's colours, light and dark, as sent. */
     @Test
     fun theServersColoursAreUsed() {
-        val brand = Fixture.aparConfig.brand
+        val brand = Fixture.exampleConfig.brand
         val light = ClomniTheme.make(brand, dark = false).colors
         assertEquals(
             listOf("#1F9D63", "#000000", "#E9F5EF", "#CEE9DD", "#1F9D63", "#177248", "#FFFFFF"),
@@ -61,7 +61,7 @@ class ThemeTest {
      */
     @Test
     fun headerText() {
-        // Apar's green keeps the brief's white text: 3.46:1 at the top, more below.
+        // Example's green keeps the brief's white text: 3.46:1 at the top, more below.
         val derived = ClomniTheme.make(brand("#1F9D63"), dark = false).colors
         assertEquals("#1F9D63", derived.headerFrom.hex)
         assertEquals("#FFFFFF", derived.headerText.hex)
@@ -78,7 +78,7 @@ class ThemeTest {
         val picture = ProtocolJson()
             .parseConfig("""{"brand":{"primary_color":"#FFD400","header_style":"image","header_image_url":"https://x/h.png"}}""")!!
         assertEquals("#FFFFFF", ClomniTheme.make(picture.brand, dark = false).colors.headerText.hex)
-        val noText = Fixture.aparConfig.brand.let { b ->
+        val noText = Fixture.exampleConfig.brand.let { b ->
             b.copy(colors = b.colors!!.copy(light = b.colors!!.light.copy(headerFrom = "#3FB37C", headerText = null)))
         }
         assertEquals("from the server's #3FB37C", "#1B1D21", ClomniTheme.make(noText, dark = false).colors.headerText.hex)
@@ -105,36 +105,36 @@ class ThemeTest {
      */
     @Test
     fun derivedColoursAreTheServers() {
-        val server = Fixture.aparConfig.brand
+        val server = Fixture.exampleConfig.brand
         for (dark in listOf(false, true)) {
             // Compared as #RRGGBB: the server sends 8-bit channels.
             assertEquals(ClomniTheme.make(server, dark).toString(), ClomniTheme.make(server.copy(colors = null), dark).toString())
         }
         val light = ClomniTheme.make(brand("#1F9D63"), dark = false).colors
-        assertEquals(apar, light.primary)
-        assertEquals(apar, light.headerFrom)
-        assertEquals(apar.steps(-1), light.headerTo)
+        assertEquals(example, light.primary)
+        assertEquals(example, light.headerFrom)
+        assertEquals(example.steps(-1), light.headerTo)
 
         val dark = ClomniTheme.make(brand("#1F9D63"), dark = true).colors
-        assertEquals(apar.steps(1), dark.primary)
-        assertEquals("the header's top is the brand colour itself in dark mode", apar.hex, dark.headerFrom.hex)
-        assertEquals(apar.steps(-2), dark.headerTo)
+        assertEquals(example.steps(1), dark.primary)
+        assertEquals("the header's top is the brand colour itself in dark mode", example.hex, dark.headerFrom.hex)
+        assertEquals(example.steps(-2), dark.headerTo)
         val night = RgbColor.parse("#121316")!!
         assertEquals(dark.primary.over(night, 0.10), dark.primarySoft)
         assertEquals(dark.primary.over(night, 0.22), dark.primaryLine)
 
         val solid = ClomniTheme.make(brand("#1F9D63", style = "solid"), dark = false).colors
-        assertEquals(listOf(apar, apar), listOf(solid.headerFrom, solid.headerTo))
+        assertEquals(listOf(example, example), listOf(solid.headerFrom, solid.headerTo))
     }
 
     /** Clomni.setTheme: the app's colour (derived here) and mode win over the panel's. */
     @Test
     fun theAppsThemeWins() {
         val override = ThemeOverride(RgbColor.parse("#0A66C2"), MessengerConfig.ThemeMode.DARK)
-        val theme = ClomniTheme.resolve(Fixture.aparConfig, systemIsDark = false, override)
+        val theme = ClomniTheme.resolve(Fixture.exampleConfig, systemIsDark = false, override)
         assertTrue(theme.isDark)
         assertEquals(RgbColor.parse("#0A66C2")!!.steps(1), theme.colors.primary)
-        val panel = ClomniTheme.resolve(Fixture.aparConfig.let { it.copy(theme = it.theme.copy(mode = MessengerConfig.ThemeMode.DARK)) }, false)
+        val panel = ClomniTheme.resolve(Fixture.exampleConfig.let { it.copy(theme = it.theme.copy(mode = MessengerConfig.ThemeMode.DARK)) }, false)
         assertTrue("the panel's mode", panel.isDark)
         assertEquals("#27C87E", panel.colors.primary.hex)
     }

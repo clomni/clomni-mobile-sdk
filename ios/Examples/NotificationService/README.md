@@ -1,6 +1,6 @@
 # Operator photo on Clomni notifications (optional)
 
-Without this extension a Clomni notification shows the title ("Leyla · Apar") and the text. With it, the operator's
+Without this extension a Clomni notification shows the title ("Leyla · Example") and the text. With it, the operator's
 photo appears next to them.
 
 1. In Xcode: File → New → Target → Notification Service Extension. Deployment target iOS 15 or later.

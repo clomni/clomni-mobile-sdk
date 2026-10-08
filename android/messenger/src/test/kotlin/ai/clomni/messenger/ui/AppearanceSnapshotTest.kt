@@ -47,14 +47,14 @@ class AppearanceSnapshotTest {
 
     private fun config(json: String): MessengerConfig = ProtocolJson().parseConfig(json)!!
 
-    /** Apar without the server's colours: the SDK derives them, so the brand and the style alone decide. */
-    private fun apar(brand: String = "", rest: String = ""): MessengerConfig = config(
-        """{"version":12,"brand":{"name":"Apar","primary_color":"#1F9D63","logo_url":"$LOGO"$brand},
+    /** Example without the server's colours: the SDK derives them, so the brand and the style alone decide. */
+    private fun example(brand: String = "", rest: String = ""): MessengerConfig = config(
+        """{"version":12,"brand":{"name":"Example","primary_color":"#1F9D63","logo_url":"$LOGO"$brand},
             "team":{"show":true,"avatars":["$LEYLA","$RAUF","$NIGAR"],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
             "bot":{"name":"Clomni","avatar_url":"$BOT"},
             "home":{"cards":["send","recent","channels"],
-                    "channels":[{"type":"instagram","url":"https://instagram.com/apar.az"},{"type":"whatsapp","url":"https://wa.me/994501234567"},
-                                {"type":"linkedin","url":"https://linkedin.com/company/apar"},{"type":"email","url":"mailto:support@apar.az"}]},
+                    "channels":[{"type":"instagram","url":"https://instagram.com/example"},{"type":"whatsapp","url":"https://wa.me/994501234567"},
+                                {"type":"linkedin","url":"https://linkedin.com/company/example"},{"type":"email","url":"mailto:support@example.com"}]},
             "languages":["az","en","ru"],"powered_by":true$rest}""",
     )
 
@@ -89,109 +89,109 @@ class AppearanceSnapshotTest {
 
     /** The panel's logo in the white square, the team's pictures, the server's colours. */
     @Test
-    fun logo() = snap("logo", Fixture.aparConfig)
+    fun logo() = snap("logo", Fixture.exampleConfig)
 
     /** No logo: the brand's initial. */
     @Test
-    fun noLogo() = snap("no_logo", apar().let { it.copy(brand = it.brand.copy(logoUrl = null)) })
+    fun noLogo() = snap("no_logo", example().let { it.copy(brand = it.brand.copy(logoUrl = null)) })
 
     /** The last message is the bot's: the panel's bot picture. */
     @Test
-    fun botPicture() = snap("bot_picture", apar(), conversations = listOf(fromBot))
+    fun botPicture() = snap("bot_picture", example(), conversations = listOf(fromBot))
 
     /** No bot picture in the panel: the brand's logo stands in for it. */
     @Test
-    fun botWithoutPicture() = snap("bot_logo_fallback", apar().let { it.copy(bot = it.bot.copy(avatarUrl = null)) }, conversations = listOf(fromBot.withoutAvatar()))
+    fun botWithoutPicture() = snap("bot_logo_fallback", example().let { it.copy(bot = it.bot.copy(avatarUrl = null)) }, conversations = listOf(fromBot.withoutAvatar()))
 
     @Test
-    fun teamHidden() = snap("team_hidden", apar().let { it.copy(team = it.team.copy(show = false)) })
+    fun teamHidden() = snap("team_hidden", example().let { it.copy(team = it.team.copy(show = false)) })
 
     // Texts
 
     @Test
-    fun textsAz() = snap("texts_az", apar())
+    fun textsAz() = snap("texts_az", example())
 
     @Test
     fun textsEn() = snap(
         "texts_en",
-        apar().let { it.copy(team = it.team.copy(replyTime = "We usually reply in a few minutes")) },
+        example().let { it.copy(team = it.team.copy(replyTime = "We usually reply in a few minutes")) },
         language = "en",
     )
 
     @Test
     fun textsRu() = snap(
         "texts_ru",
-        apar().let { it.copy(team = it.team.copy(replyTime = "Обычно отвечаем за несколько минут")) },
+        example().let { it.copy(team = it.team.copy(replyTime = "Обычно отвечаем за несколько минут")) },
         language = "ru",
     )
 
     /** Nobody logged in, or no name: greeting_line1_anonymous. */
     @Test
-    fun textsAnonymous() = snap("texts_anonymous", apar(), user = null)
+    fun textsAnonymous() = snap("texts_anonymous", example(), user = null)
 
     /** The panel's own texts, with {name}. */
     @Test
     fun textsFromThePanel() = snap(
         "texts_custom",
-        apar(rest = ""","strings":{"greeting_line1":"Xoş gəldiniz, {name}","greeting_line2":"Sualınız var? Yazın","send_card_title":"Operatora yazın"}"""),
+        example(rest = ""","strings":{"greeting_line1":"Xoş gəldiniz, {name}","greeting_line2":"Sualınız var? Yazın","send_card_title":"Operatora yazın"}"""),
     )
 
     // Cards
 
     @Test
-    fun cardOrder() = snap("card_order", apar().fixCards("channels", "recent", "send"))
+    fun cardOrder() = snap("card_order", example().fixCards("channels", "recent", "send"))
 
     /** The social channels turned off in the panel; "Powered by Clomni" off too (a plan that allows it). */
     @Test
-    fun channelsOff() = snap("channels_off", apar(rest = ""","powered_by":false""").fixCards("send", "recent"))
+    fun channelsOff() = snap("channels_off", example(rest = ""","powered_by":false""").fixCards("send", "recent"))
 
     // Header
 
     @Test
-    fun headerGradient() = snap("header_gradient", apar(brand = ""","header_style":"gradient""""))
+    fun headerGradient() = snap("header_gradient", example(brand = ""","header_style":"gradient""""))
 
     @Test
-    fun headerSolid() = snap("header_solid", apar(brand = ""","header_style":"solid""""))
+    fun headerSolid() = snap("header_solid", example(brand = ""","header_style":"solid""""))
 
     /** The panel's picture under the 35%–55% veil, white text. */
     @Test
-    fun headerImage() = snap("header_image", apar(brand = ""","header_style":"image","header_image_url":"$HEADER""""))
+    fun headerImage() = snap("header_image", example(brand = ""","header_style":"image","header_image_url":"$HEADER""""))
 
     @Test
-    fun glow() = snap("glow", apar(brand = ""","header_style":"solid","glow":true"""))
+    fun glow() = snap("glow", example(brand = ""","header_style":"solid","glow":true"""))
 
     @Test
-    fun glowDark() = snap("glow_dark", apar(brand = ""","header_style":"gradient","glow":true"""), dark = true)
+    fun glowDark() = snap("glow_dark", example(brand = ""","header_style":"gradient","glow":true"""), dark = true)
 
     /** A dark brand colour: white on the header; a light one: dark text, by header_text's 3:1 rule. */
     @Test
-    fun darkBrand() = snap("brand_blue", apar().colour("#0A66C2"))
+    fun darkBrand() = snap("brand_blue", example().colour("#0A66C2"))
 
     @Test
-    fun lightBrand() = snap("brand_yellow", apar(brand = ""","header_style":"solid"""").colour("#FFD400"))
+    fun lightBrand() = snap("brand_yellow", example(brand = ""","header_style":"solid"""").colour("#FFD400"))
 
     // Dark mode
 
     /** logo_dark_url in dark mode. */
     @Test
-    fun darkLogo() = snap("dark_logo", apar(brand = ""","logo_dark_url":"$LOGO_DARK""""), dark = true)
+    fun darkLogo() = snap("dark_logo", example(brand = ""","logo_dark_url":"$LOGO_DARK""""), dark = true)
 
     /** No logo_dark_url: the usual logo in dark mode too. */
     @Test
-    fun darkWithoutDarkLogo() = snap("dark_logo_fallback", apar(), dark = true)
+    fun darkWithoutDarkLogo() = snap("dark_logo_fallback", example(), dark = true)
 
     /** The written logo in place of the logo and the name (APPEARANCE-CONTRACT 4a), Home only. */
     @Test
-    fun wordmark() = snap("wordmark", apar(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK""""))
+    fun wordmark() = snap("wordmark", example(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK""""))
 
     /** Dark mode without a dark version: the same picture. */
     @Test
-    fun wordmarkDark() = snap("wordmark_dark", apar(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK""""), dark = true)
+    fun wordmarkDark() = snap("wordmark_dark", example(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK""""), dark = true)
 
     /** The conversation keeps the logo and the name. */
     @Test
     fun wordmarkInAConversation() {
-        val config = apar(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK"""")
+        val config = example(brand = ""","logo_style":"wordmark","wordmark_url":"$WORDMARK"""")
         val screen = ai.clomni.messenger.presentation.ChatPresenter(ClomniStrings("az", config.strings), TimeZone.getTimeZone("UTC"), now)
             .screen(ai.clomni.messenger.presentation.ChatSnapshot(config = config, load = MessengerSnapshot.Load.LOADED))
         paparazzi.snapshot("wordmark_conversation") {
@@ -203,7 +203,7 @@ class AppearanceSnapshotTest {
 
     /** Clomni.setTheme: the app's colour and mode over the panel's. */
     @Test
-    fun appsTheme() = snap("app_theme", apar(), override = ThemeOverride(primaryColor = BLUE, mode = MessengerConfig.ThemeMode.DARK))
+    fun appsTheme() = snap("app_theme", example(), override = ThemeOverride(primaryColor = BLUE, mode = MessengerConfig.ThemeMode.DARK))
 
     private fun MessengerConfig.fixCards(vararg cards: String) =
         copy(home = home.copy(cards = cards.map { MessengerConfig.HomeCard.valueOf(it.uppercase()) }))

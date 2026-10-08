@@ -71,7 +71,7 @@ class ChatPresenterTest {
     private fun screen(messages: List<Message>, build: (ChatSnapshot) -> ChatSnapshot = { it }): ChatScreen {
         val snapshot = build(
             ChatSnapshot(
-                config = Fixture.aparConfig,
+                config = Fixture.exampleConfig,
                 conversation = ChatFixture.conversation("bot"),
                 messages = messages,
                 load = MessengerSnapshot.Load.LOADED,
@@ -106,12 +106,12 @@ class ChatPresenterTest {
             list.map { it.position },
         )
         assertNull(list[0].avatar)
-        assertEquals("the author over the first of the run: the bot speaks as the brand", "Apar", list[0].author)
+        assertEquals("the author over the first of the run: the bot speaks as the brand", "Example", list[0].author)
         assertNull(list[1].author)
         assertEquals("each bubble has its own clock inside it, no line under the run (G7)", listOf("10:30", "10:31", "10:32"), list.map { it.time })
-        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.aparConfig.brand.logoUrl, "A", true), list[1].avatar)
+        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "A", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
-        assertEquals("Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
+        assertEquals("Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
     }
 
     @Test
@@ -134,7 +134,7 @@ class ChatPresenterTest {
         assertEquals("L", reply.avatar?.initial)
         val runs = (reply.body as Bubble.TextBody).runs
         assertEquals(TextRun("Gedişinizi yoxladıq.", bold = true), runs.first())
-        assertEquals("https://apar.az/sertler", runs.last().link)
+        assertEquals("https://example.com/sertler", runs.last().link)
         assertEquals("Leyla, 10:30: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı.\nƏtraflı: şərtlər", reply.accessibilityLabel)
     }
 
@@ -179,7 +179,7 @@ class ChatPresenterTest {
         val leylaTyping = screen(listOf(bot)) { it.copy(typing = Sender(SenderType.OPERATOR, name = "Leyla")) }
         assertNotNull("someone else typing: the bot keeps its own", bubbles(leylaTyping).single().avatar)
 
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         val waiting: (ChatSnapshot) -> ChatSnapshot = {
             it.copy(
                 conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")),
@@ -258,9 +258,9 @@ class ChatPresenterTest {
     @Test
     fun header() {
         val bot = screen(emptyList()).header
-        val logo = ChatHeader.Lead.Brand(ChatAvatar(Fixture.aparConfig.brand.logoUrl, "A", true))
+        val logo = ChatHeader.Lead.Brand(ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "A", true))
         assertEquals("no operator: the company's logo, never a person's face", logo, bot.lead)
-        assertEquals("Apar", bot.title)
+        assertEquals("Example", bot.title)
         assertEquals("Adətən bir neçə dəqiqəyə cavab veririk", bot.subtitle)
         assertEquals("Geri", bot.backLabel)
         assertEquals("Bağla", bot.closeLabel)
@@ -272,10 +272,10 @@ class ChatPresenterTest {
         val open = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", leyla)) }.header
         assertEquals(ChatHeader.Lead.Person(ChatAvatar("https://app.clomni.ai/a/leyla.png", "L", false), true), open.lead)
         assertEquals("Leyla", open.title)
-        assertEquals("only the company: online is the dot", "Apar", open.subtitle)
+        assertEquals("only the company: online is the dot", "Example", open.subtitle)
 
         val away = """{"name":"Leyla","online":false}"""
-        assertEquals("Apar", screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", away)) }.header.subtitle)
+        assertEquals("Example", screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("open", away)) }.header.subtitle)
         val queuedWithLeyla = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("queued", leyla)) }.header
         assertEquals("the assignee whatever the status", "Leyla", queuedWithLeyla.title)
 
@@ -287,14 +287,14 @@ class ChatPresenterTest {
         val unassigned = screen(wrote) { it.copy(conversation = ChatFixture.conversation("queued")) }.header
         assertEquals(ChatHeader.Lead.Person(ChatAvatar("https://app.clomni.ai/a/leyla.png", "L", false), false), unassigned.lead)
         assertEquals("Leyla", unassigned.title)
-        assertEquals("Apar", unassigned.subtitle)
+        assertEquals("Example", unassigned.subtitle)
         val rauf = """{"name":"Rauf","online":true}"""
         val assigned = screen(wrote) { it.copy(conversation = ChatFixture.conversation("open", rauf)) }.header
         assertEquals("the assignee before the last writer", "Rauf", assigned.title)
         assertEquals("only the bot wrote: the company", logo, screen(wrote.drop(1)).header.lead)
 
         val closedHours = ChatFixture.config(
-            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},"team":{"office_hours":{"open_now":false},"reply_time":"Tez"}}""",
+            """{"brand":{"name":"Example","primary_color":"#1F9D63"},"team":{"office_hours":{"open_now":false},"reply_time":"Tez"}}""",
         )
         val afterHours = screen(emptyList()) {
             it.copy(config = closedHours, conversation = ChatFixture.conversation("queued"))
@@ -303,7 +303,7 @@ class ChatPresenterTest {
         assertEquals(ChatHeader.Lead.Brand(ChatAvatar(null, "A", true)), afterHours.lead)
 
         val nextOpen = ChatFixture.config(
-            """{"brand":{"name":"Apar","primary_color":"#1F9D63"},
+            """{"brand":{"name":"Example","primary_color":"#1F9D63"},
                "team":{"office_hours":{"open_now":false,"next_open_at":"2026-10-02T05:00:00Z"}}}""",
         )
         assertEquals(
@@ -311,7 +311,7 @@ class ChatPresenterTest {
             "Növbəti iş saatı: sabah 05:00",
             screen(emptyList()) { it.copy(config = nextOpen) }.header.subtitle,
         )
-        val hidden = Fixture.aparConfig.let { it.copy(team = it.team.copy(show = false)) }
+        val hidden = Fixture.exampleConfig.let { it.copy(team = it.team.copy(show = false)) }
         assertEquals(logo, screen(emptyList()) { it.copy(config = hidden) }.header.lead)
     }
 
@@ -345,8 +345,8 @@ class ChatPresenterTest {
         assertEquals("no flow sent (an older server): open", ChatComposer.Mode.Open, mode("null"))
         assertEquals("the earlier form reads as none", ChatComposer.Mode.Open, mode("""{"flow_id":"flw_1","node_id":"S"}"""))
 
-        // Apar S: chips, the back button, no composer.
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        // Example S: chips, the back button, no composer.
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         val chips = screen(listOf(step)) { it.copy(answerable = setOf(step.id)) }
         val chipsBlock = (chips.items.last() as ChatItem.RepliesItem).block
         assertEquals(MessageContent.QuickRepliesLayout.CHIPS, chipsBlock.layout)
@@ -367,11 +367,11 @@ class ChatPresenterTest {
 
     @Test
     fun theFlowsOwnRestartButtonLeavesNoSecondBack() {
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         val withBack = (screen(listOf(step)) { it.copy(answerable = setOf(step.id)) }.items.last() as ChatItem.RepliesItem).block
         assertEquals("← Geri", withBack.back?.title)
         val restart = ChatFixture.message(
-            "10-apar-level2-S-chips.json",
+            "10-example-level2-S-chips.json",
             "content" to mapOf(
                 "text" to "Seçin",
                 "allow_back" to true,
@@ -405,7 +405,7 @@ class ChatPresenterTest {
         assertNull(card.sentLabel)
         assertEquals("Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.text?.first()?.text)
         // TalkBack: who asks and when, then each field once, "*" said as a word.
-        assertEquals("Apar bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
+        assertEquals("Example bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
         assertEquals(listOf("Ad, soyad, məcburi", "Telefon, məcburi", "Email"), card.fields.map { it.accessibilityLabel })
 
         val sent = bubbles(screen(listOf(ChatFixture.message("21-form-submitted.json")))).first().body as FormCard
@@ -416,7 +416,7 @@ class ChatPresenterTest {
         val stale = bubbles(screen(listOf(contact))).first().body as FormCard
         assertTrue("no longer the live step", stale.readOnly)
         assertEquals(
-            "Apar bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
+            "Example bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
             bubbles(screen(listOf(contact))).first().accessibilityLabel,
         )
     }
@@ -469,7 +469,7 @@ class ChatPresenterTest {
 
         // card and carousel are phase 2: a 1.0 SDK shows their fallback text, like an unknown type.
         for ((file, fallback) in listOf(
-            "26-card.json" to "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://apar.az",
+            "26-card.json" to "Velosiped icarəsi: 30 dəq, 1 AZN. Ətraflı: https://example.com",
             "27-carousel.json" to "Tarif 1 / Tarif 2 / Tarif 3",
             "29-unknown-type.json" to "Hansı saat uyğundur? 10:00 / 14:00",
         )) {
@@ -479,7 +479,7 @@ class ChatPresenterTest {
             assertTrue(file, bubble.accessibilityLabel.endsWith(fallback))
         }
         val card = bubbles(screen(listOf(ChatFixture.message("26-card.json")))).single().body as Bubble.TextBody
-        assertEquals("the address in a fallback text is a link", "https://apar.az", card.runs.last().link)
+        assertEquals("the address in a fallback text is a link", "https://example.com", card.runs.last().link)
     }
 
     @Test
@@ -516,14 +516,14 @@ class ChatPresenterTest {
         assertEquals("Leyla yazır", line.accessibilityLabel)
         assertEquals("L", line.avatar.initial)
         assertEquals(
-            Announcement("msg_f01", "Apar bot, 10:30: Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."),
+            Announcement("msg_f01", "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."),
             operatorTyping.announcement,
         )
         assertNull("the user's own message is not news", screen(listOf(ChatFixture.message("03-text-user.json"))).announcement)
         val botTyping = screen(emptyList()) { it.copy(typing = Sender(SenderType.BOT)) }
-        assertEquals("Apar yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
+        assertEquals("Example yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
         val someone = screen(emptyList()) { it.copy(typing = Sender(SenderType.UNKNOWN)) }
-        assertEquals("Apar yazır", (someone.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
+        assertEquals("Example yazır", (someone.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
 
         val presenter = ChatPresenter(ClomniStrings("az"), utc, now)
         assertEquals(HomeScreen.Phase.LOADING, presenter.screen(ChatSnapshot()).phase)
@@ -588,7 +588,7 @@ class ChatPresenterTest {
         assertNull(open.score)
         assertEquals(listOf("Çox pis", "Pis", "Orta", "Yaxşı", "Əla"), open.labels)
         assertEquals("Şərh (istəyə görə)", open.commentField.shownLabel)
-        assertEquals("Apar bot, 11:02: Xidmətimizi qiymətləndirin", open.textAccessibilityLabel)
+        assertEquals("Example bot, 11:02: Xidmətimizi qiymətləndirin", open.textAccessibilityLabel)
         assertFalse("no quoting a rating", bubbles(screen(listOf(rating))).single().replyable)
 
         val sending = pending(ClientMessage.RatingSubmit(rating.id, 4, "Tez"), null)

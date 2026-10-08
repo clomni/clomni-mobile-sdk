@@ -16,8 +16,8 @@ final class MessageFixtureTests: ProtocolTestCase {
         XCTAssertEqual(message.createdAt, tenThirty)
         XCTAssertEqual(message.seq, 1)
         XCTAssertEqual(message.lang, "az")
-        XCTAssertEqual(message.flow, FlowRef(flowId: "flw_apar_az", nodeId: "A0", version: 7, interactive: false))
-        XCTAssertEqual(message.content, .text("Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."))
+        XCTAssertEqual(message.flow, FlowRef(flowId: "flw_example_az", nodeId: "A0", version: 7, interactive: false))
+        XCTAssertEqual(message.content, .text("Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."))
         XCTAssertTrue(log.lines.isEmpty, "\(log.lines)")
     }
 
@@ -34,7 +34,7 @@ final class MessageFixtureTests: ProtocolTestCase {
         XCTAssertEqual(message.sender.type, .operator)
         XCTAssertNil(message.flow)
         // Rendering the limited markdown is the UI's job; the protocol keeps the text exactly.
-        XCTAssertEqual(message.content, .text("**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://apar.az/sertler)"))
+        XCTAssertEqual(message.content, .text("**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://example.com/sertler)"))
     }
 
     func testUserTextCarriesItsClientId() throws {
@@ -69,26 +69,26 @@ final class MessageFixtureTests: ProtocolTestCase {
         XCTAssertEqual(after.content, before.content)
     }
 
-    func testAparFlowLevels() throws {
-        let level1 = try XCTUnwrap(try Fixtures.message("09-apar-level1-A.json").content.quickReplies)
+    func testExampleFlowLevels() throws {
+        let level1 = try XCTUnwrap(try Fixtures.message("09-example-level1-A.json").content.quickReplies)
         XCTAssertTrue(level1.inputDisabled)
         XCTAssertFalse(level1.allowBack)
         XCTAssertEqual(level1.buttons.map(\.payload), ["node:S", "node:R"])
         XCTAssertNil(level1.buttons[0].icon)
 
-        let level2 = try XCTUnwrap(try Fixtures.message("10-apar-level2-S-chips.json").content.quickReplies)
+        let level2 = try XCTUnwrap(try Fixtures.message("10-example-level2-S-chips.json").content.quickReplies)
         XCTAssertEqual(level2.layout, .chips)
         XCTAssertTrue(level2.allowBack)
         XCTAssertEqual(level2.buttons.count, 5)
 
-        let level3 = try XCTUnwrap(try Fixtures.message("11-apar-level3-U.json").content.quickReplies)
+        let level3 = try XCTUnwrap(try Fixtures.message("11-example-level3-U.json").content.quickReplies)
         XCTAssertEqual(level3.layout, .vertical)
         XCTAssertTrue(level3.allowBack)
 
-        let level4 = try XCTUnwrap(try Fixtures.message("12-apar-level4-handoff.json").content.quickReplies)
+        let level4 = try XCTUnwrap(try Fixtures.message("12-example-level4-handoff.json").content.quickReplies)
         XCTAssertEqual(level4.buttons.map(\.payload), ["handoff", "end"])
 
-        let end = try Fixtures.message("50-apar-end.json")
+        let end = try Fixtures.message("50-example-end.json")
         XCTAssertEqual(end.flow?.nodeId, "END")
         XCTAssertEqual(end.flow?.interactive, false)
         XCTAssertEqual(end.content.kind, "text")
@@ -182,7 +182,7 @@ final class MessageFixtureTests: ProtocolTestCase {
         XCTAssertEqual(card[0].subtitle, "30 dəq, 1 AZN")
         XCTAssertEqual(card[0].imageUrl?.absoluteString, "https://app.clomni.ai/f/velo.jpg")
         XCTAssertEqual(card[0].buttons.map(\.payload), ["node:V1", nil])
-        XCTAssertEqual(card[0].buttons.map(\.url?.absoluteString), [nil, "https://apar.az"])
+        XCTAssertEqual(card[0].buttons.map(\.url?.absoluteString), [nil, "https://example.com"])
 
         let carousel = try XCTUnwrap(try Fixtures.message("27-carousel.json").content.cards)
         XCTAssertEqual(carousel.map(\.title), ["Tarif 1", "Tarif 2", "Tarif 3"])

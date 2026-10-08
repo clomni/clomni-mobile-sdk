@@ -65,7 +65,7 @@ final class ChatSnapshotTests: XCTestCase {
     func testEveryMessageFixture() throws {
         let index = try JSONDecoder().decode([[String: JSONValue]].self,
                                              from: Data(contentsOf: fixtures.appendingPathComponent("index.json")))
-        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-example.json"))))
         var rendered = 0
         for entry in index where entry["schema"]?.stringValue == "message.json" {
             let file = try XCTUnwrap(entry["file"]?.stringValue)
@@ -116,8 +116,8 @@ final class ChatSnapshotTests: XCTestCase {
             for (key, value) in changes { fields[key] = value }
             return try XCTUnwrap(ProtocolJSON.parseMessage(.object(fields)))
         }
-        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
-        let step = try message("10-apar-level2-S-chips.json")
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-example.json"))))
+        let step = try message("10-example-level2-S-chips.json")
         let answer = try message("03-text-user.json", ["seq": 10, "created_at": "2026-10-01T10:31:00Z",
                                                         "content": ["text": "Velosiped dayandı"]])
         func screen(_ build: (inout ChatSnapshot) -> Void) -> ChatScreen {
@@ -238,7 +238,7 @@ final class ChatSnapshotTests: XCTestCase {
     /// CM-087: a rating's card. Five faces to choose from; a face chosen, its comment field and "Göndər" open; five
     /// stars sent, with the comment and the thanks. Light and dark, the transcript ones at accessibility3 too.
     func testRating() throws {
-        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-example.json"))))
         let data = try Data(contentsOf: fixtures.appendingPathComponent("28-rating.json"))
         guard case .object(var fields)? = ProtocolJSON.decode(data) else { return XCTFail() }
         let faces = try XCTUnwrap(ProtocolJSON.parseMessage(.object(fields)))
@@ -283,7 +283,7 @@ final class ChatSnapshotTests: XCTestCase {
     func testOfflineCapsule() throws {
         var home = PreviewData.snapshot()
         home.isOffline = true
-        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-apar.json"))))
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(Data(contentsOf: fixtures.appendingPathComponent("42-config-example.json"))))
         let message = try XCTUnwrap(ProtocolJSON.parseMessage(Data(contentsOf: fixtures.appendingPathComponent("01-text-bot.json"))))
         var chat = ChatSnapshot(config: config, messages: [message])
         chat.load = .loaded

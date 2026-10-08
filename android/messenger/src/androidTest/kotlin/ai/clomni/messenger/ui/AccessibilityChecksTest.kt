@@ -40,10 +40,10 @@ class AccessibilityChecksTest {
     private val now = 1_790_850_720_000L
 
     private val config: MessengerConfig = protocol.parseConfig(
-        """{"version":1,"brand":{"name":"Apar","primary_color":"#1F9D63"},
+        """{"version":1,"brand":{"name":"Example","primary_color":"#1F9D63"},
             "team":{"show":true,"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
             "home":{"cards":["send","recent","channels"],
-                    "channels":[{"type":"instagram","url":"https://instagram.com/apar.az"},{"type":"email","url":"mailto:support@apar.az"}]},
+                    "channels":[{"type":"instagram","url":"https://instagram.com/example"},{"type":"email","url":"mailto:support@example.com"}]},
             "languages":["az","en","ru"],"powered_by":true}""",
     )!!
 

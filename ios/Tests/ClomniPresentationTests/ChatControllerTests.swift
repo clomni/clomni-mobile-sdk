@@ -6,7 +6,7 @@ import ClomniProtocol
 
 /// A conversation the test fills in, recording what the controller asked for.
 actor FakeChat: ChatDataSource {
-    var cachedConfig: MessengerConfig? = Fixture.aparConfig
+    var cachedConfig: MessengerConfig? = Fixture.exampleConfig
     var conversations: [String: Conversation] = [:]
     var stored: [String: [Message]] = [:]
     var outbox: [PendingMessage] = []
@@ -167,8 +167,8 @@ final class ChatControllerTests: XCTestCase {
         XCTAssertEqual(renders, 2)
         let made = await calls()
         XCTAssertEqual(made, ["refreshConversation conv_5521", "load conv_5521", "read conv_5521"])
-        XCTAssertEqual(chat.screen.header.title, "Apar")
-        XCTAssertEqual(chat.config?.brand.name, "Apar")
+        XCTAssertEqual(chat.screen.header.title, "Example")
+        XCTAssertEqual(chat.config?.brand.name, "Example")
         await chat.load()
         let observers = await source.observerCount
         XCTAssertEqual(observers, 1)
@@ -185,7 +185,7 @@ final class ChatControllerTests: XCTestCase {
     }
 
     func testButtonsBackAndASecondTap() async {
-        let step = Fixture.message("10-apar-level2-S-chips.json")
+        let step = Fixture.message("10-example-level2-S-chips.json")
         await source.set([step], answerable: [step.id])
         await source.setConversation(Fixture.onAMenu)
         let chat = controller()
@@ -421,7 +421,7 @@ final class ChatControllerTests: XCTestCase {
         XCTAssertFalse(shown, "off is off, whoever it names")
 
         // The flow's menu is the last word: a "typing" has nothing to show, nor a timer to keep.
-        let step = Fixture.message("10-apar-level2-S-chips.json", ["seq": 2])
+        let step = Fixture.message("10-example-level2-S-chips.json", ["seq": 2])
         await source.set([bot, step], answerable: [step.id])
         await source.put(Fixture.onAMenu)
         await source.push(.messages(conversationId: "conv_5521"))

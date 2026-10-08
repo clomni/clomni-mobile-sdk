@@ -8,16 +8,16 @@ import ClomniCore
 import ClomniPresentation
 #endif
 
-/// The Apar example of the brief, for Xcode previews.
+/// The brief's example company, for Xcode previews.
 enum PreviewData {
     static let config: MessengerConfig? = ProtocolJSON.parseConfig(Data(#"""
-    {"version":1,"brand":{"name":"Apar","primary_color":"#1F9D63","header_style":"gradient","glow":false},
+    {"version":1,"brand":{"name":"Example","primary_color":"#1F9D63","header_style":"gradient","glow":false},
      "theme":{"mode":"system","launcher":{"enabled":false}},
      "home":{"cards":["send","recent","channels"],
-             "channels":[{"type":"instagram","url":"https://instagram.com/apar.az"},
+             "channels":[{"type":"instagram","url":"https://instagram.com/example"},
                          {"type":"whatsapp","url":"https://wa.me/994501234567"},
-                         {"type":"linkedin","url":"https://linkedin.com/company/apar"},
-                         {"type":"email","url":"mailto:support@apar.az"}]},
+                         {"type":"linkedin","url":"https://linkedin.com/company/example"},
+                         {"type":"email","url":"mailto:support@example.com"}]},
      "team":{"show":true,"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
      "bot":{"name":"Clomni"},"composer":{},"languages":["az","en","ru"],"strings":{},"limits":{},"powered_by":true}
     """#.utf8))

@@ -16,7 +16,7 @@ final class ClientMessageTests: ProtocolTestCase {
     }
 
     func testButtonReplies() throws {
-        let level1 = try Fixtures.message("09-apar-level1-A.json")
+        let level1 = try Fixtures.message("09-example-level1-A.json")
         let button = try XCTUnwrap(level1.content.quickReplies?.buttons.first)
         try assertEncodes(ClientMessage(clientId: "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
                                         content: .buttonReply(replyTo: level1.id, buttonId: button.id,

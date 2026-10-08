@@ -46,7 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Apar')),
+      appBar: AppBar(title: const Text('Example')),
       body: ListView(
         children: [
           ListTile(

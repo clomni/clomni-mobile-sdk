@@ -12,16 +12,16 @@ class MessengerConfigTest {
 
     private fun config(json: String): MessengerConfig = protocol.json.parseConfig(json)!!
 
-    private val apar = ProtocolFiles.read("fixtures/42-config-apar.json")
+    private val example = ProtocolFiles.read("fixtures/42-config-example.json")
 
-    /** The server's config v2 for Apar (protocol fixture 42), its colours taken as sent. */
+    /** The server's config v2 for Example (protocol fixture 42), its colours taken as sent. */
     @Test
-    fun theServersAparConfig() {
-        val config = config(apar)
+    fun theServersExampleConfig() {
+        val config = config(example)
         assertEquals(12, config.version)
         assertEquals(
             MessengerConfig.Brand(
-                name = "Apar",
+                name = "Example",
                 logoUrl = "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
                 logoDarkUrl = null,
                 primaryColor = "#1F9D63",
@@ -107,11 +107,11 @@ class MessengerConfigTest {
         val missing = config("""{"brand":{"colors":{"light":{"primary":"#1F9D63"}}}}""")
         assertNull(missing.brand.colors)
         assertEquals("brand.colors incomplete; the SDK derives the colours", protocol.warnings.last())
-        val notHex = apar.replace("\"#0E482D\"", "\"dark green\"")
+        val notHex = example.replace("\"#0E482D\"", "\"dark green\"")
         assertNull(config(notHex).brand.colors)
         assertNull(config("""{"brand":{}}""").brand.colors)
         // header_text came later: a server without it still sends usable colours, and the SDK works the text out.
-        val withoutText = config(apar.replace(Regex(""",\s*"header_text": "#FFFFFF""""), ""))
+        val withoutText = config(example.replace(Regex(""",\s*"header_text": "#FFFFFF""""), ""))
         assertEquals("#1F9D63", withoutText.brand.colors?.light?.headerFrom)
         assertNull(withoutText.brand.colors?.light?.headerText)
     }
@@ -121,10 +121,10 @@ class MessengerConfigTest {
         val minimal = config(ProtocolFiles.read("fixtures/43-config-minimal.json"))
         assertEquals(MessengerConfig.Languages(listOf("az"), "az"), minimal.languages)
         assertEquals("one language on: always it", "az", minimal.languages.pick("en", "ru"))
-        val apar = config(ProtocolFiles.read("fixtures/42-config-apar.json")).languages
-        assertEquals("the host's first", "ru", apar.pick("ru", "en"))
-        assertEquals("then the phone's", "en", apar.pick("de", "en-GB"))
-        assertEquals("then the default", "az", apar.pick(null, "tr_TR"))
+        val example = config(ProtocolFiles.read("fixtures/42-config-example.json")).languages
+        assertEquals("the host's first", "ru", example.pick("ru", "en"))
+        assertEquals("then the phone's", "en", example.pick("de", "en-GB"))
+        assertEquals("then the default", "az", example.pick(null, "tr_TR"))
         val two = config("""{"languages":{"enabled":["en","ru"],"default":"ru"}}""").languages
         assertEquals("a language that is off is not spoken", "ru", two.pick("az", "az"))
         assertEquals("no config yet: the phone", "ru", (null as MessengerConfig?).speaks(null, "ru-RU"))
@@ -154,9 +154,9 @@ class MessengerConfigTest {
 
     @Test
     fun aNewConversationThatStartsWithItsFlowAndTheSounds() {
-        assertTrue(config(apar).startsWithFlow)
+        assertTrue(config(example).startsWithFlow)
         assertFalse(config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).startsWithFlow)
-        assertTrue(config(apar).sounds)
+        assertTrue(config(example).sounds)
         assertFalse(config("""{"sounds":false}""").sounds)
     }
 
@@ -166,7 +166,7 @@ class MessengerConfigTest {
         val wordmark = config(ProtocolFiles.read("fixtures/59-config-wordmark.json")).brand
         assertEquals("https://app.clomni.ai/v1/images/img_Wm7Qk2Lx9PzR4sTv8NcY", wordmark.wordmarkUrl)
         assertNull(wordmark.wordmarkDarkUrl)
-        assertNull(config(apar).brand.wordmarkUrl)
+        assertNull(config(example).brand.wordmarkUrl)
         val mark = config("""{"brand":{"logo_style":"mark","wordmark_url":"https://x/w.png"}}""").brand
         assertNull("the panel chose the mark", mark.wordmarkUrl)
         assertNull(config("""{"brand":{"logo_style":"wordmark"}}""").brand.wordmarkUrl)

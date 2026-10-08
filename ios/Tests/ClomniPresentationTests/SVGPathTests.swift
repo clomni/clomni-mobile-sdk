@@ -104,18 +104,18 @@ final class SVGPathTests: XCTestCase {
         func item(_ type: String, _ url: String) -> ChannelItem {
             ChannelItem(type: type, url: URL(string: url)!, strings: strings)
         }
-        let instagram = item("instagram", "https://instagram.com/apar.az")
+        let instagram = item("instagram", "https://instagram.com/example")
         guard case .brand(let path) = instagram.glyph else { return XCTFail("\(instagram.glyph)") }
         XCTAssertEqual(path, BrandMarks.mark(for: "instagram")?.path)
         XCTAssertEqual(instagram.accessibilityLabel, "Instagram")
-        XCTAssertEqual(item("LinkedIn", "https://linkedin.com/company/apar").accessibilityLabel, "LinkedIn")
-        XCTAssertEqual(item("email", "mailto:support@apar.az").glyph, .symbol("envelope"))
+        XCTAssertEqual(item("LinkedIn", "https://linkedin.com/company/example").accessibilityLabel, "LinkedIn")
+        XCTAssertEqual(item("email", "mailto:support@example.com").glyph, .symbol("envelope"))
         XCTAssertEqual(item("support", "mailto:a@b.az").accessibilityLabel, "E-poçt", "a mailto: link is email")
         XCTAssertEqual(item("call", "tel:+994501234567").glyph, .symbol("phone"))
         XCTAssertEqual(item("call", "tel:+994501234567").accessibilityLabel, "Telefon")
-        let unknown = item("mastodon", "https://social.az/@apar")
+        let unknown = item("mastodon", "https://social.example/@example")
         XCTAssertEqual(unknown.glyph, .symbol("globe"), "a website")
-        XCTAssertEqual(unknown.accessibilityLabel, "social.az")
+        XCTAssertEqual(unknown.accessibilityLabel, "social.example")
         XCTAssertNotEqual(item("instagram", "https://a").id, item("instagram", "https://b").id)
     }
 }

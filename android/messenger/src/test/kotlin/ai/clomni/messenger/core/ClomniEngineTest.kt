@@ -570,11 +570,11 @@ class ClomniEngineTest {
         val phone = Phone()
         phone.engine.loginUnidentifiedUser().await()
         phone.changes.clear()
-        assertEquals("Apar", phone.engine.refreshConfig().await()?.brand?.name)
-        assertEquals("Apar", phone.engine.refreshConfig("az").await()?.brand?.name)
+        assertEquals("Example", phone.engine.refreshConfig().await()?.brand?.name)
+        assertEquals("Example", phone.engine.refreshConfig("az").await()?.brand?.name)
         assertEquals(listOf("GET /v1/mobile/config", "GET /v1/mobile/config?lang=az"), fake.log.filter { it.startsWith("GET /v1/mobile/config") })
         assertEquals(1, phone.changes.count { it == ClomniChange.Config })
-        assertEquals("Apar", phone.engine.config?.brand?.name)
+        assertEquals("Example", phone.engine.config?.brand?.name)
     }
 
     /** config.changed refetches the config in the language it was asked in, not in the server's default. */

@@ -15,10 +15,10 @@ import ClomniPresentation
 final class AppearanceSnapshotTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_790_850_720)
 
-    /// The Apar config (protocol fixture 42) with `changes` merged into its sections (`[:]` empties one).
+    /// The Example config (protocol fixture 42) with `changes` merged into its sections (`[:]` empties one).
     private func config(_ changes: [String: JSONValue]) throws -> MessengerConfig {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("protocol/fixtures/42-config-apar.json")
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("protocol/fixtures/42-config-example.json")
         guard case .object(var json)? = ProtocolJSON.decode(try Data(contentsOf: url)) else { throw XCTSkip("fixture") }
         for (key, value) in changes {
             // An empty object replaces the section; any other object is merged into it.
@@ -88,7 +88,7 @@ final class AppearanceSnapshotTests: XCTestCase {
     }
 
     func testDarkMode() throws {
-        try render("dark", config(["brand": ["logo_dark_url": "https://app.clomni.ai/v1/images/apar-logo-dark"]]), dark: true)
+        try render("dark", config(["brand": ["logo_dark_url": "https://app.clomni.ai/v1/images/example-logo-dark"]]), dark: true)
         try render("glow-dark", config(["brand": ["glow": true]]), dark: true)
         try render("dark-without-dark-logo", config(["brand": ["logo_dark_url": nil]]), dark: true)
     }

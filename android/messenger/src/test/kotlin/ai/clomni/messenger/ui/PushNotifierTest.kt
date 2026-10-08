@@ -26,17 +26,17 @@ class PushNotifierTest {
 
     private val data = mapOf(
         "clomni" to "1", "type" to "message", "conversation_id" to "conv_5521", "message_id" to "msg_f02",
-        "title" to "Leyla · Apar", "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
+        "title" to "Leyla · Example", "body" to "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
         "avatar_url" to "https://app.clomni.ai/a/leyla.png", "unread_total" to "1",
     )
 
-    private fun notification() = PushNotification.of(ProtocolJson().parsePush(data), data, ClomniStrings("az"), "Apar")
+    private fun notification() = PushNotification.of(ProtocolJson().parsePush(data), data, ClomniStrings("az"), "Example")
 
     @Test
     fun theOperatorsReply() {
         val photo = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
         val built = PushNotifier.build(paparazzi.context, notification(), android.R.drawable.stat_notify_chat, 0xFF1F9D63.toInt(), photo, null)
-        assertEquals("Leyla · Apar", built.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+        assertEquals("Leyla · Example", built.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertEquals("Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.", built.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertEquals("Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.", built.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString())
         assertEquals(ClomniPush.CHANNEL_ID, built.channelId)
@@ -54,7 +54,7 @@ class PushNotifierTest {
         val built = PushNotifier.build(paparazzi.context, notification(), android.R.drawable.stat_notify_chat, null, null, null)
         assertNull(built.getLargeIcon())
         assertNull(built.contentIntent)
-        assertEquals("Leyla · Apar", built.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+        assertEquals("Leyla · Example", built.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
     }
 
     @Test

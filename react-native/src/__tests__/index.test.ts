@@ -180,7 +180,7 @@ describe('sounds, language and links', () => {
 });
 
 describe('push', () => {
-  const clomniPush = { clomni: '1', type: 'message', conversation_id: 'conv_5521', title: 'Leyla · Apar', body: 'Salam' };
+  const clomniPush = { clomni: '1', type: 'message', conversation_id: 'conv_5521', title: 'Leyla · Example', body: 'Salam' };
   const ownPush = { order_id: '7', aps: { alert: 'Sifarişiniz yoldadır' } };
 
   it('tells Clomni pushes from the app’s own', () => {

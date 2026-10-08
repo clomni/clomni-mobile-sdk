@@ -45,7 +45,7 @@ package struct ChatHeader: Sendable, Equatable {
     /// The brand, or the operator's name.
     package let title: String
     /// header_subtitle (the reply time unless the panel wrote its own), the reply time while queued, the company
-    /// under an operator ("Apar"), or that it is after hours.
+    /// under an operator ("Example"), or that it is after hours.
     package let subtitle: String
     package let backLabel: String
     package let closeLabel: String

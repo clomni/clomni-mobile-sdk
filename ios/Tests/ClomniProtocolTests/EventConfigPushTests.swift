@@ -80,10 +80,10 @@ final class RealtimeEventTests: ProtocolTestCase {
 }
 
 final class MessengerConfigTests: ProtocolTestCase {
-    func testAparConfig() throws {
-        let config = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("42-config-apar.json")))
+    func testExampleConfig() throws {
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("42-config-example.json")))
         XCTAssertEqual(config.version, 12)
-        XCTAssertEqual(config.brand.name, "Apar")
+        XCTAssertEqual(config.brand.name, "Example")
         XCTAssertEqual(config.brand.logoUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
         XCTAssertNil(config.brand.logoDarkUrl)
         XCTAssertEqual(config.brand.primaryColor, "#1F9D63")
@@ -146,15 +146,15 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertNil(fixture.brand.wordmarkDarkUrl)
         XCTAssertEqual([fixture.brand.logoScale, fixture.home.titleScale], [140, 120])
         XCTAssertEqual(fixture.home.cards, [.messages, .send, .channels])
-        for name in ["42-config-apar.json", "58-config-apar-en.json"] {
-            let apar = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data(name)))
-            XCTAssertEqual(apar.brand.logoStyle, .mark, name)
-            XCTAssertNil(apar.brand.wordmarkUrl, name)
-            XCTAssertEqual([apar.brand.logoScale, apar.home.titleScale], [100, 100], name)
-            XCTAssertEqual(apar.home.cards, [.messages, .recent, .send, .news, .channels], name)
+        for name in ["42-config-example.json", "58-config-example-en.json"] {
+            let example = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data(name)))
+            XCTAssertEqual(example.brand.logoStyle, .mark, name)
+            XCTAssertNil(example.brand.wordmarkUrl, name)
+            XCTAssertEqual([example.brand.logoScale, example.home.titleScale], [100, 100], name)
+            XCTAssertEqual(example.home.cards, [.messages, .recent, .send, .news, .channels], name)
         }
         // A server that does not send the fields at all: 100%, every card.
-        let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Apar"},"home":{}}"#.utf8)))
+        let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Example"},"home":{}}"#.utf8)))
         XCTAssertEqual(older.brand.logoStyle, .mark)
         XCTAssertEqual([older.brand.logoScale, older.home.titleScale], [100, 100])
         XCTAssertEqual(older.home.cards, [.messages, .recent, .send, .news, .channels])
@@ -188,10 +188,10 @@ final class MessengerConfigTests: ProtocolTestCase {
         func config(_ json: String) throws -> MessengerConfig { try XCTUnwrap(ProtocolJSON.parseConfig(Data(json.utf8))) }
         let minimal = try XCTUnwrap(ProtocolJSON.parseConfig(Fixtures.data("43-config-minimal.json"))).languages
         XCTAssertEqual(minimal.pick(host: "en", device: "ru"), "az", "one language on: always it")
-        let apar = try XCTUnwrap(ProtocolJSON.parseConfig(Fixtures.data("42-config-apar.json")))
-        XCTAssertEqual(apar.languages.pick(host: "ru", device: "en"), "ru", "the host's first")
-        XCTAssertEqual(apar.languages.pick(host: "de", device: "en-GB"), "en", "then the phone's")
-        XCTAssertEqual(apar.speaks(nil, device: "tr_TR"), "az", "then the default")
+        let example = try XCTUnwrap(ProtocolJSON.parseConfig(Fixtures.data("42-config-example.json")))
+        XCTAssertEqual(example.languages.pick(host: "ru", device: "en"), "ru", "the host's first")
+        XCTAssertEqual(example.languages.pick(host: "de", device: "en-GB"), "en", "then the phone's")
+        XCTAssertEqual(example.speaks(nil, device: "tr_TR"), "az", "then the default")
         let two = try config(#"{"languages":{"enabled":["en","ru"],"default":"ru"}}"#)
         XCTAssertEqual(two.speaks("az", device: "az"), "ru", "a language that is off is not spoken")
         XCTAssertEqual((nil as MessengerConfig?).speaks(nil, device: "ru-RU"), "ru", "no config yet: the phone")
@@ -266,7 +266,7 @@ final class MessengerConfigTests: ProtocolTestCase {
 
 final class PushPayloadTests: ProtocolTestCase {
     private let expected = PushPayload(type: "message", conversationId: "conv_5521", messageId: "msg_f02",
-                                       title: "Leyla · Apar", body: "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
+                                       title: "Leyla · Example", body: "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
                                        avatarUrl: URL(string: "https://app.clomni.ai/a/leyla.png"), unreadTotal: 1)
 
     func testPushFixture() throws {
@@ -275,9 +275,9 @@ final class PushPayloadTests: ProtocolTestCase {
 
     func testApnsUserInfo() {
         let userInfo: [AnyHashable: Any] = [
-            "aps": ["alert": ["title": "Leyla · Apar", "body": "…"], "sound": "default", "badge": 1] as [String: Any],
+            "aps": ["alert": ["title": "Leyla · Example", "body": "…"], "sound": "default", "badge": 1] as [String: Any],
             "clomni": "1", "type": "message", "conversation_id": "conv_5521", "message_id": "msg_f02",
-            "title": "Leyla · Apar", "body": "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
+            "title": "Leyla · Example", "body": "Gedişinizi yoxladıq, balansınıza 2 AZN qaytarıldı.",
             "avatar_url": "https://app.clomni.ai/a/leyla.png", "unread_total": 1, 42: "a key that is not a string",
         ]
         XCTAssertEqual(ProtocolJSON.parsePush(userInfo), expected)

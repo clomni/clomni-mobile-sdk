@@ -13,14 +13,14 @@
   "seq": 1,
   "lang": "az",
   "flow": {
-    "flow_id": "flw_apar_az",
+    "flow_id": "flw_example_az",
     "node_id": "A0",
     "version": 7,
     "interactive": false
   },
   "content": {
-    "text": "Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."
+    "text": "Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."
   },
-  "fallback_text": "Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.",
+  "fallback_text": "Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.",
   "meta": {}
 }

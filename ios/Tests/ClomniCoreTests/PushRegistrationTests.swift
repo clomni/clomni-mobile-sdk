@@ -21,7 +21,7 @@ final class PushRegistrationTests: EngineTestCase {
         <plist version="1.0">
         <dict>
         \t<key>AppIDName</key>
-        \t<string>Apar</string>
+        \t<string>Example</string>
         \t<key>ApplicationIdentifierPrefix</key>
         \t<array>
         \t<string>A1B2C3D4E5</string>
@@ -39,7 +39,7 @@ final class PushRegistrationTests: EngineTestCase {
         \t<key>Entitlements</key>
         \t<dict>
         \t\t<key>application-identifier</key>
-        \t\t<string>A1B2C3D4E5.az.apar.app</string>
+        \t\t<string>A1B2C3D4E5.com.example.app</string>
         \(entitlements)
         \t\t<key>com.apple.developer.team-identifier</key>
         \t\t<string>A1B2C3D4E5</string>
@@ -51,7 +51,7 @@ final class PushRegistrationTests: EngineTestCase {
         \t<key>ExpirationDate</key>
         \t<date>2027-09-01T09:41:00Z</date>
         \t<key>Name</key>
-        \t<string>Apar Development</string>
+        \t<string>Example Development</string>
         \t<key>TeamIdentifier</key>
         \t<array>
         \t\t<string>A1B2C3D4E5</string>

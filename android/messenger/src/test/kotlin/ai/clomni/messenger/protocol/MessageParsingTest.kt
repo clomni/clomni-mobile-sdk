@@ -58,9 +58,9 @@ class MessageParsingTest {
                 createdAt = Instant.parse("2026-10-01T10:30:00Z").toEpochMilli(),
                 seq = 1,
                 lang = "az",
-                flow = FlowRef("flw_apar_az", "A0", 7, interactive = false),
-                content = MessageContent.Text("Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."),
-                fallbackText = "Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz.",
+                flow = FlowRef("flw_example_az", "A0", 7, interactive = false),
+                content = MessageContent.Text("Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."),
+                fallbackText = "Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.",
             ),
             fixture("01-text-bot.json"),
         )
@@ -79,7 +79,7 @@ class MessageParsingTest {
     fun textIsKeptAsSentForTheRenderer() {
         // Markdown and link filtering are the renderer's job; the protocol passes the text through.
         assertEquals(
-            "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://apar.az/sertler)",
+            "**Gedişinizi yoxladıq.** Balansınıza *2 AZN* qaytarıldı.\nƏtraflı: [şərtlər](https://example.com/sertler)",
             content<MessageContent.Text>("02-text-operator-markdown.json").text,
         )
         assertEquals(
@@ -108,23 +108,23 @@ class MessageParsingTest {
     }
 
     @Test
-    fun aparFlowLevels() {
-        val level1 = content<MessageContent.QuickReplies>("09-apar-level1-A.json")
+    fun exampleFlowLevels() {
+        val level1 = content<MessageContent.QuickReplies>("09-example-level1-A.json")
         assertEquals(QuickRepliesLayout.VERTICAL, level1.layout)
         assertTrue(level1.inputDisabled)
         assertEquals(false, level1.allowBack)
         assertEquals(listOf("node:S", "node:R"), level1.buttons.map { it.payload })
 
-        val level2 = content<MessageContent.QuickReplies>("10-apar-level2-S-chips.json")
+        val level2 = content<MessageContent.QuickReplies>("10-example-level2-S-chips.json")
         assertEquals(QuickRepliesLayout.CHIPS, level2.layout)
         assertTrue(level2.allowBack)
         assertEquals(5, level2.buttons.size)
 
         assertEquals(
             listOf("handoff", "end"),
-            content<MessageContent.QuickReplies>("12-apar-level4-handoff.json").buttons.map { it.payload },
+            content<MessageContent.QuickReplies>("12-example-level4-handoff.json").buttons.map { it.payload },
         )
-        val end = fixture("50-apar-end.json")
+        val end = fixture("50-example-end.json")
         assertEquals("END", end.flow?.nodeId)
         assertEquals(false, end.flow?.interactive)
     }
@@ -260,7 +260,7 @@ class MessageParsingTest {
                         subtitle = "30 dəq, 1 AZN",
                         buttons = listOf(
                             CardButton("btn_1", "Ətraflı", "node:V1", null),
-                            CardButton("btn_2", "Sayt", null, "https://apar.az"),
+                            CardButton("btn_2", "Sayt", null, "https://example.com"),
                         ),
                     ),
                 ),
@@ -323,7 +323,7 @@ class MessageParsingTest {
         // Two targets on a card button: both are kept, as on iOS.
         val both = protocol.json.parseContent("card", ProtocolFiles.json("fixtures/98-invalid-card-button-both.json"))
         assertEquals(
-            CardButton("b", "Seç", "node:T", "https://apar.az"),
+            CardButton("b", "Seç", "node:T", "https://example.com"),
             (both as MessageContent.Card).cards.single().buttons.single(),
         )
     }

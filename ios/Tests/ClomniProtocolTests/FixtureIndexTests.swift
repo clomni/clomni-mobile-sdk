@@ -159,6 +159,6 @@ final class InvalidFixtureTests: ProtocolTestCase {
         let content = MessageContent(type: "card", json: try Fixtures.json("98-invalid-card-button-both.json"))
         let button = try XCTUnwrap(content.cards?.first?.buttons.first)
         XCTAssertEqual(button.payload, "node:T")
-        XCTAssertEqual(button.url?.absoluteString, "https://apar.az")
+        XCTAssertEqual(button.url?.absoluteString, "https://example.com")
     }
 }

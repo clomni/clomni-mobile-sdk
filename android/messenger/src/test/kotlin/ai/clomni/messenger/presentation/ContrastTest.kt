@@ -6,14 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Brief 8·7.6, contrast 4.5:1: every text colour on every background it is drawn on, light and dark, for Apar as the
+ * Brief 8·7.6, contrast 4.5:1: every text colour on every background it is drawn on, light and dark, for Example as the
  * server sends it and for brand colours the SDK derives (a dark blue, a light yellow, a red, a near-white). The
  * header's text is large (the greeting is 22 sp) and takes the contract's 3:1.
  */
 class ContrastTest {
     private fun brand(color: String) = ProtocolJson().parseConfig("""{"brand":{"name":"A","primary_color":"$color"}}""")!!.brand
 
-    private val brands = listOf(Fixture.aparConfig.brand, brand("#1F9D63"), brand("#0A66C2"), brand("#FFD400"), brand("#E5484D"), brand("#F4F4F4"))
+    private val brands = listOf(Fixture.exampleConfig.brand, brand("#1F9D63"), brand("#0A66C2"), brand("#FFD400"), brand("#E5484D"), brand("#F4F4F4"))
 
     /** Text colour, background, what it is, the ratio it needs. */
     private fun pairs(theme: ClomniTheme) = with(theme.colors) {
@@ -68,10 +68,10 @@ class ContrastTest {
     /** The adjusted colours stay as close to the brand as 4.5:1 allows. */
     @Test
     fun brandColoursMoveOnlyAsFarAsNeeded() {
-        val light = ClomniTheme.make(Fixture.aparConfig.brand, dark = false).colors
+        val light = ClomniTheme.make(Fixture.exampleConfig.brand, dark = false).colors
         assertEquals("#1F9D63 is 3.46:1 on white", "#187B4E", light.primaryText.hex)
         assertEquals(light.primaryText.hsl.hue, light.primary.hsl.hue, 1.0)
-        val dark = ClomniTheme.make(Fixture.aparConfig.brand, dark = true).colors
+        val dark = ClomniTheme.make(Fixture.exampleConfig.brand, dark = true).colors
         assertEquals("reads as it is", dark.primary, dark.primaryText)
         assertEquals(light.unread.hsl.hue, light.errorText.hsl.hue, 1.0)
         assertEquals("#D61E24", light.errorText.hex)

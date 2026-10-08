@@ -69,7 +69,7 @@ class ChatFixtureSnapshotTest {
     @Test
     fun everyMessageFixture() {
         val protocol = ProtocolJson()
-        val config = Fixture.aparConfig
+        val config = Fixture.exampleConfig
         var rendered = 0
         for (entry in ProtocolFiles.index("fixtures")) {
             if (entry.schema != "message.json") continue
@@ -147,7 +147,7 @@ class ChatSnapshotTest {
     }
 
     private fun loaded(vararg messages: Message, answerable: Set<String> = emptySet()) = ChatSnapshot(
-        config = Fixture.aparConfig,
+        config = Fixture.exampleConfig,
         conversation = ChatFixture.botConversation(messages.toList(), answerable),
         messages = messages.toList(),
         answerable = answerable,
@@ -172,7 +172,7 @@ class ChatSnapshotTest {
     @Test
     fun newMessageCapsule() {
         for (dark in listOf(false, true)) {
-            val theme = ClomniTheme.make(Fixture.aparConfig.brand, dark)
+            val theme = ClomniTheme.make(Fixture.exampleConfig.brand, dark)
             val name = "chat_new_message_${if (dark) "dark" else "light"}"
             paparazzi.snapshot(name) {
                 Box(Modifier.fillMaxWidth().height(96.dp).background(theme.colors.background.color)) {
@@ -184,12 +184,12 @@ class ChatSnapshotTest {
     }
 
     @Test
-    fun skeleton() = snap("chat_skeleton", ChatSnapshot(config = Fixture.aparConfig, conversation = ChatFixture.conversation("bot")))
+    fun skeleton() = snap("chat_skeleton", ChatSnapshot(config = Fixture.exampleConfig, conversation = ChatFixture.conversation("bot")))
 
     @Test
     fun loadFailedOffline() = snap(
         "chat_error_offline",
-        ChatSnapshot(config = Fixture.aparConfig, load = MessengerSnapshot.Load.FAILED, isOffline = true),
+        ChatSnapshot(config = Fixture.exampleConfig, load = MessengerSnapshot.Load.FAILED, isOffline = true),
     )
 
     @Test
@@ -242,7 +242,7 @@ class ChatSnapshotTest {
     /** input_disabled: the composer asks for a button, the step's chips with "← Geri". */
     @Test
     fun inputDisabled() {
-        val step = ChatFixture.message("10-apar-level2-S-chips.json")
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
         snap("chat_input_disabled", loaded(step, answerable = setOf(step.id)))
     }
 
@@ -281,7 +281,7 @@ class ChatSnapshotTest {
     }
 
     private fun snapCard(name: String, card: RatingCard, dark: Boolean, chosen: Int?) {
-        val theme = ClomniTheme.make(Fixture.aparConfig.brand, dark)
+        val theme = ClomniTheme.make(Fixture.exampleConfig.brand, dark)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true) {
                 Box(Modifier.fillMaxSize().background(theme.colors.background.color).padding(16.dp)) {
@@ -301,7 +301,7 @@ class ChatSnapshotTest {
 
     @Test
     fun afterHours() {
-        val config = Fixture.aparConfig.let {
+        val config = Fixture.exampleConfig.let {
             it.copy(team = it.team.copy(officeHours = it.team.officeHours?.copy(openNow = false, nextOpenAt = 1_790_917_200_000L)))
         }
         snap("chat_after_hours", loaded(ChatFixture.message("01-text-bot.json")).copy(config = config))
@@ -329,7 +329,7 @@ class ChatSnapshotTest {
     fun appsTypeface() {
         ai.clomni.messenger.Clomni.setTypeface(android.graphics.Typeface.SERIF)
         try {
-            val step = ChatFixture.message("10-apar-level2-S-chips.json")
+            val step = ChatFixture.message("10-example-level2-S-chips.json")
             snap("chat_typeface", loaded(ChatFixture.message("02-text-operator-markdown.json"), step, answerable = setOf(step.id)))
         } finally {
             ai.clomni.messenger.Clomni.setTypeface(null)
@@ -363,20 +363,20 @@ class ChatSnapshotTest {
             assertEquals("the transcript held: no message of the user's yet", 1, found.size)
         }
         frame("choice_2_sent", present(loaded(greeting, menu).copy(pending = listOf(chosen), typing = typing))) { found ->
-            assertEquals("bot, user, clock, typing: $found", listOf("Apar bot", "Siz", "Göndərilir", "Apar yazır"), found.map { it.label.substringBefore(",") })
+            assertEquals("bot, user, clock, typing: $found", listOf("Example bot", "Siz", "Göndərilir", "Example yazır"), found.map { it.label.substringBefore(",") })
         }
         val sent = message("m3", 3, "10:31:40Z", user, "text", """{"text":"Texniki problem"}""")
         val answered = present(loaded(greeting, menu, sent, answer).copy(typing = typing))
         val answerBubble = answered.items.filterIsInstance<ChatItem.BubbleItem>().last().bubble
         assertEquals("the typing row has the run's avatar", null, answerBubble.avatar)
         frame("choice_3_answered", answered) { found ->
-            assertEquals("bot, user, ✓, bot, typing: $found", listOf("Apar bot", "Siz", "Göndərildi", "Apar bot", "Apar yazır"), found.map { it.label.substringBefore(",") })
+            assertEquals("bot, user, ✓, bot, typing: $found", listOf("Example bot", "Siz", "Göndərildi", "Example bot", "Example yazır"), found.map { it.label.substringBefore(",") })
         }
     }
 
     /** [screen] in the lazy transcript; [check] gets its messages, status and typing row, top to bottom, none over another. */
     private fun frame(name: String, screen: ChatScreen, fold: ChoiceFold = ChoiceFold(), check: (List<SemanticsCapture.Element>) -> Unit) {
-        val theme = ClomniTheme.make(Fixture.aparConfig.brand, false)
+        val theme = ClomniTheme.make(Fixture.exampleConfig.brand, false)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true) { ChatScreenView(screen, theme, ChatActions(), fold = fold) }
         }
@@ -441,10 +441,10 @@ class ChatSnapshotTest {
     fun referenceFlowStep() {
         reference()
         val messages = listOf(
-            message("m1", 1, "10:28:00Z", bot, "text", """{"text":"**Salam!** Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."}"""),
+            message("m1", 1, "10:28:00Z", bot, "text", """{"text":"**Salam!** Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."}"""),
             message("m2", 2, "10:28:00Z", bot, "text", """{"text":"Aşağıdakı başlıqlardan sizə uyğun olanı seçin."}"""),
             message("m3", 3, "10:29:40Z", user, "text", """{"text":"Aktiv gediş ilə bağlı problem yaşayıram"}"""),
-            ChatFixture.message("10-apar-level2-S-chips.json", "seq" to 4, "created_at" to "2026-10-01T10:30:00Z"),
+            ChatFixture.message("10-example-level2-S-chips.json", "seq" to 4, "created_at" to "2026-10-01T10:30:00Z"),
         )
         snap("reference_4_3_flow", loaded(*messages.toTypedArray(), answerable = setOf("msg_f10")), now = 1_790_850_620_000L, safeAreas = true)
     }
@@ -455,7 +455,7 @@ class ChatSnapshotTest {
         reference()
         // The bot's greeting is above the screen, as in the reference (its feed is scrolled to the end).
         val messages = listOf(
-            message("m0", 1, "10:29:00Z", bot, "text", """{"text":"Salam! Siz Apar-ın dəstək bölməsi ilə əlaqəyə keçmisiniz."}"""),
+            message("m0", 1, "10:29:00Z", bot, "text", """{"text":"Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."}"""),
             message("m1", 1, "10:30:00Z", user, "text", """{"text":"Gedişim bitmədi, pul çıxılmağa davam edir"}"""),
             message("m2", 2, "10:30:10Z", """{"type":"system"}""", "system", """{"event":"waiting_in_queue","text":"Sizi komandaya yönləndiririk"}"""),
             message("m3", 3, "10:30:40Z", """{"type":"system"}""", "system", """{"event":"operator_joined","text":"Leyla söhbətə qoşuldu"}"""),

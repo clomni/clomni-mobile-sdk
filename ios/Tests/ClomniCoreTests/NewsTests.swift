@@ -16,7 +16,7 @@ final class NewsTests: EngineTestCase {
         XCTAssertEqual(news[0].title, "Yeni zonalar açıldı")
         XCTAssertEqual(news[0].summary, "Yasamal və Nərimanovda 40 yeni parklanma zonası var.")
         XCTAssertEqual(news[0].imageUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_8f2kQ7pZx1Lm3Nb4Vc5D")
-        XCTAssertEqual(news[0].button, NewsItem.Button(text: "Xəritəni aç", url: URL(string: "apar://map/zones")!))
+        XCTAssertEqual(news[0].button, NewsItem.Button(text: "Xəritəni aç", url: URL(string: "myapp://map/zones")!))
         XCTAssertEqual(news[0].publishedAt, Date(timeIntervalSince1970: 1_790_931_600))
         XCTAssertNil(news[1].summary)
         XCTAssertNil(news[1].bodyMarkdown)

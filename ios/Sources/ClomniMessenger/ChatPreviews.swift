@@ -33,7 +33,7 @@ enum ChatPreviewData {
     static let operatorReply = message(#"""
     {"id":"msg_3","conversation_id":"conv_1","type":"text","sender":{"type":"operator","name":"Leyla"},
      "created_at":"2026-10-01T10:31:30Z","seq":3,"lang":"az",
-     "content":{"text":"**Yoxladıq.** Balansınıza *2 AZN* qaytarıldı. [Şərtlər](https://apar.az)"},
+     "content":{"text":"**Yoxladıq.** Balansınıza *2 AZN* qaytarıldı. [Şərtlər](https://example.com)"},
      "fallback_text":"Yoxladıq."}
     """#)
 

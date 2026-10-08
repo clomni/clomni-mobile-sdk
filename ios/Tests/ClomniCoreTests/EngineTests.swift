@@ -29,7 +29,7 @@ final class EngineTests: EngineTestCase {
         let phone = await device()
         try await phone.engine.loginUnidentifiedUser()
         let config = await phone.engine.refreshConfig(language: "az")
-        XCTAssertEqual(config?.brand.name, "Apar")
+        XCTAssertEqual(config?.brand.name, "Example")
         XCTAssertEqual(config?.limits.textChars, 50)
         await phone.engine.refreshConfig()
         XCTAssertEqual(server.requests("GET", "/mobile/config").last?.headers["If-None-Match"], server.configETag)
