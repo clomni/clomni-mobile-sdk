@@ -374,6 +374,20 @@ class MessageStoreTest {
         assertTrue(memory.commit().contains(ClomniChange.Unread(0)))
     }
 
+    /** The language a config was asked in is kept with it: the next launch, offline, knows its texts' language. */
+    @Test
+    fun aConfigKeepsItsLanguage() {
+        val dir = folder.newFolder()
+        val store = MessageStore(dir, protocol)
+        val body = """{"languages":{"enabled":["az","en"],"default":"az"},"strings":{"send":"Send it"}}"""
+        store.setConfig(protocol.parseConfig(body)!!.answeredIn("en"), body, "e", "en")
+        store.commit()
+        val next = MessageStore(dir, protocol)
+        assertEquals("en", next.cachedConfig()?.stringsLanguage)
+        assertEquals(mapOf("send" to "Send it"), next.cachedConfig()?.strings("en"))
+        assertEquals(emptyMap<String, String>(), next.cachedConfig()?.strings("az"))
+    }
+
     @Test
     fun logoutLeavesNothing() {
         val dir = folder.newFolder()

@@ -9,7 +9,6 @@ import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
-import ai.clomni.messenger.protocol.speaks
 import ai.clomni.messenger.store.Drafts
 import ai.clomni.messenger.store.PendingMessage
 import java.io.File
@@ -113,7 +112,7 @@ internal class ChatController(
     }
 
     private val strings: ClomniStrings
-        get() = ClomniStrings(snapshot.config.speaks(language), snapshot.config?.strings.orEmpty())
+        get() = ClomniStrings.of(snapshot.config, language)
 
     /** The cache at once, then the server; marks the conversation read. */
     fun load() {

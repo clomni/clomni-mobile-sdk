@@ -1,5 +1,7 @@
 package ai.clomni.messenger.presentation
 
+import ai.clomni.messenger.protocol.MessengerConfig
+import ai.clomni.messenger.protocol.speaks
 import java.util.Locale
 
 /**
@@ -139,6 +141,15 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
     val months: List<String> get() = MONTHS.getValue(language)
 
     companion object {
+        /**
+         * The texts the messenger shows with [config]: the language it speaks ([speaks]: the host's, the phone's, the
+         * panel's default) and the panel's own texts when the config holds them in that language.
+         */
+        fun of(config: MessengerConfig?, host: String?): ClomniStrings {
+            val language = config.speaks(host)
+            return ClomniStrings(language, config?.strings(language).orEmpty())
+        }
+
         /** The suffix follows the vowel of the number's last word: 1-ci, 3-cü, 6-cı, 9-cu, 10-cu, 40-cı. */
         fun azerbaijaniOrdinalSuffix(number: Int): String {
             val ones = listOf("", "ci", "ci", "cü", "cü", "ci", "cı", "ci", "ci", "cu")

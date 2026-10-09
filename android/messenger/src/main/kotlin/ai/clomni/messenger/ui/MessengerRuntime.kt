@@ -16,7 +16,6 @@ import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.ThemeOverride
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.ProtocolJson
-import ai.clomni.messenger.protocol.speaks
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -152,7 +151,7 @@ internal object MessengerRuntime {
         val push = protocol.parsePush(data)
         if (coordinator?.received(push) == false) return
         val config = coordinator?.config
-        val strings = ClomniStrings(config.speaks(language), config?.strings.orEmpty())
+        val strings = ClomniStrings.of(config, language)
         val label = context.applicationInfo.loadLabel(context.packageManager).toString()
         val notification = PushNotification.of(push, data, strings, label)
         val color = (AppTheme.override.primaryColor ?: config?.brand?.primaryColor?.let(RgbColor::parse))?.argb

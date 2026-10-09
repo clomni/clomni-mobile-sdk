@@ -32,7 +32,23 @@ internal data class MessengerConfig(
     val startsWithFlow: Boolean = false,
     /** Short sounds for a sent and a received message; the app can still turn them off. */
     val sounds: Boolean = true,
+    /**
+     * The language [strings] are in: the one asked for when the panel has it on, else the panel's default. Null for a
+     * config kept by an older SDK, whose strings are taken as they are.
+     */
+    val stringsLanguage: String? = null,
 ) {
+    /**
+     * [strings] when they are in [language]; none otherwise, so a config kept in one language does not mix its texts
+     * into another (test report: English online, Azerbaijani offline). The SDK's own texts of [language] stand in.
+     */
+    fun strings(language: String): Map<String, String> =
+        if (stringsLanguage == null || stringsLanguage == language) strings else emptyMap()
+
+    /** The config's strings as answered for a request in [requested]. */
+    fun answeredIn(requested: String?): MessengerConfig =
+        copy(stringsLanguage = requested?.let(Languages::base)?.takeIf { it in languages.enabled } ?: languages.default)
+
     /**
      * `languages {enabled, default}`; absent, all three are on and az is the default. The Messenger speaks the host's
      * language when it is on, else the device's when it is on, else [default] ([pick]); with one on, always that one.

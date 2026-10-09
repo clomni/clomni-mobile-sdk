@@ -6,7 +6,6 @@ import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.HomePresenter
 import ai.clomni.messenger.presentation.MessengerRoute
 import ai.clomni.messenger.presentation.MessengerSnapshot
-import ai.clomni.messenger.protocol.speaks
 import android.app.Activity
 import android.os.Build
 import android.os.Bundle
@@ -228,7 +227,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
             } else {
                 MessengerSnapshot(isOffline = state.offline)
             }
-            val presenter = HomePresenter(ClomniStrings(state.config.speaks(runtime.language)), now = System.currentTimeMillis())
+            val presenter = HomePresenter(ClomniStrings.of(state.config, runtime.language), now = System.currentTimeMillis())
             val skeleton = presenter.home(snapshot)
             HomeView(skeleton, theme, MessengerActions(close = close, retry = { coordinator.prepare() }))
             if (state.config == null) {

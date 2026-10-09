@@ -91,7 +91,7 @@ internal class HomeController(
             news = source.news,
         )
         val config = snapshot.config
-        val presenter = HomePresenter(ClomniStrings(config.speaks(language), config?.strings.orEmpty()), timeZone, now())
+        val presenter = HomePresenter(ClomniStrings.of(config, language), timeZone, now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)
     }
@@ -125,7 +125,7 @@ internal class HomeController(
     /** A news item's screen as it is now; null when it is no longer published. */
     fun newsScreen(id: String): NewsScreen? {
         val config = snapshot.config
-        val strings = ClomniStrings(config.speaks(language), config?.strings.orEmpty())
+        val strings = ClomniStrings.of(config, language)
         return HomePresenter(strings, timeZone, now()).news(snapshot, id)
     }
 
@@ -179,7 +179,7 @@ internal class HomeController(
     private fun render() {
         snapshot = snapshot.copy(userName = userName, isOffline = isOffline)
         val config = snapshot.config
-        val strings = ClomniStrings(config.speaks(language), config?.strings.orEmpty())
+        val strings = ClomniStrings.of(config, language)
         val presenter = HomePresenter(strings, timeZone, now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)

@@ -163,7 +163,7 @@ internal class MessengerCoordinator(
     private data class FlowStart(val event: String, val data: JsonObject?, val openMessenger: Boolean, val source: String?)
 
     private val strings: ClomniStrings
-        get() = ClomniStrings(config.speaks(hostLanguage), config?.strings.orEmpty())
+        get() = ClomniStrings.of(config, hostLanguage)
 
     /** Whether the app should hold any Clomni view: only while the messenger is open or the launcher shows. */
     val wantsAnyView: Boolean get() = route != null || launcher != null

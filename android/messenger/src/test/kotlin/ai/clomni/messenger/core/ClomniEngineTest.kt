@@ -15,6 +15,7 @@ import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.protocol.speaks
 import ai.clomni.messenger.realtime.RealtimeClient
 import ai.clomni.messenger.store.MessageStore
 import ai.clomni.messenger.store.PendingMessage
@@ -572,7 +573,14 @@ class ClomniEngineTest {
         phone.changes.clear()
         assertEquals("Example", phone.engine.refreshConfig().await()?.brand?.name)
         assertEquals("Example", phone.engine.refreshConfig("az").await()?.brand?.name)
-        assertEquals(listOf("GET /v1/mobile/config", "GET /v1/mobile/config?lang=az"), fake.log.filter { it.startsWith("GET /v1/mobile/config") })
+        // Always in a language the SDK chose (the one it would speak with no config yet: the phone's), never left to the
+        // server's guess, so the texts kept are known to be that language's (test report: English online, Azerbaijani
+        // offline).
+        val phones = (null as ai.clomni.messenger.protocol.MessengerConfig?).speaks(null)
+        assertEquals(
+            listOf("GET /v1/mobile/config?lang=$phones", "GET /v1/mobile/config?lang=az"),
+            fake.log.filter { it.startsWith("GET /v1/mobile/config") },
+        )
         assertEquals(1, phone.changes.count { it == ClomniChange.Config })
         assertEquals("Example", phone.engine.config?.brand?.name)
     }

@@ -24,6 +24,7 @@ import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.RealtimeEvent
 import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.protocol.speaks
 import ai.clomni.messenger.protocol.UploadedFile
 import ai.clomni.messenger.realtime.RealtimeClient
 import ai.clomni.messenger.store.Drafts
@@ -593,7 +594,7 @@ internal class ClomniEngine(
     /** The published news, in the config's language; kept with its ETag. */
     override fun refreshNews(language: String?): Future<List<NewsItem>> = submit {
         try {
-            when (val response = authed { api.getNews(language ?: configLanguage, store.newsEtag) }) {
+            when (val response = authed { api.getNews(language ?: configLanguage ?: store.config.speaks(null), store.newsEtag) }) {
                 NewsResponse.NotModified -> Unit
                 is NewsResponse.Changed -> store.setNews(response.items, response.body, response.etag)
             }
@@ -613,13 +614,21 @@ internal class ClomniEngine(
         }
     }
 
+    /**
+     * Always in a language of the SDK's choosing (the one asked for last, else the one it would speak now), never the
+     * server's guess from the session: the texts kept are then known to be that language's
+     * ([MessengerConfig.stringsLanguage]).
+     */
     private fun loadConfig(requested: String?) {
-        val language = requested ?: configLanguage
+        val language = requested ?: configLanguage ?: store.config.speaks(null)
         configLanguage = language
         try {
             when (val response = authed { api.getConfig(language, store.configEtag) }) {
                 ConfigResponse.NotModified -> Unit
-                is ConfigResponse.Changed -> store.setConfig(response.config, response.body, response.etag)
+                is ConfigResponse.Changed -> {
+                    ClomniLog.debug { "config: version ${response.config.version}, language $language" }
+                    store.setConfig(response.config.answeredIn(language), response.body, response.etag, language)
+                }
             }
         } catch (e: ClomniError) {
             ClomniLog.info { "config not refreshed: ${e.message}" }
