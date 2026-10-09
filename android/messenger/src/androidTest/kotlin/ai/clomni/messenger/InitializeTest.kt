@@ -37,6 +37,8 @@ class InitializeTest {
                     .penaltyListener({ it.run() }) { violation -> violations += violation.stackTraceToString().lines().take(12).joinToString("\n") }
                     .build(),
             )
+            // Whatever a later test opens talks to nothing (the discard port), never to Clomni's server.
+            ai.clomni.messenger.ui.MessengerRuntime.baseUrlForTests = ai.clomni.messenger.ui.MessengerRestoreTest.NOWHERE
             val start = SystemClock.elapsedRealtimeNanos()
             Clomni.initialize(app, "app_strict", "android_sdk-strict")
             tookMs = (SystemClock.elapsedRealtimeNanos() - start) / 1e6

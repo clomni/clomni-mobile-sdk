@@ -9,6 +9,7 @@ import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.ui.ClomniFonts
 import ai.clomni.messenger.ui.MessageSounds
 import ai.clomni.messenger.ui.MessengerRuntime
+import android.app.Activity
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Handler
@@ -63,8 +64,9 @@ public object Clomni {
 
     /**
      * Prepares the connection and push; adds nothing to the app's screens. Call it once, from
-     * `Application.onCreate` (a notification can start the process, and the messenger it opens needs the SDK).
-     * [region] is "eu".
+     * `Application.onCreate` (a notification can start the process, and the messenger it opens needs the SDK). Called
+     * later, from an activity or from a cross-platform layer's code, it works the same: the SDK knows the app's screen in
+     * front from the process's start, and a launcher turned on shows at once. [region] is "eu".
      */
     @JvmStatic
     @JvmOverloads
@@ -74,7 +76,8 @@ public object Clomni {
             else -> ApiConfiguration.DEFAULT_BASE_URL.also { ClomniLog.warning { "unknown region \"$region\", using eu" } }
         }
         val app = context.applicationContext
-        onMain { MessengerRuntime.initialize(app, appId, apiKey, url) }
+        val activity = context as? Activity
+        onMain { MessengerRuntime.initialize(app, appId, apiKey, url, activity) }
     }
 
     /**
