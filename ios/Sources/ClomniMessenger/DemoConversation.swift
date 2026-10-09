@@ -28,6 +28,23 @@ extension Clomni {
                                       animated: false)
         top.present(navigation, animated: true)
     }
+
+    /// Debug builds, for UI tests: Home over the previews' example company, in the messenger's page sheet, with no
+    /// server. ✕ closes it; the whole screen is one container, "clomni.home", to measure from.
+    @_spi(ClomniUITesting) @MainActor
+    public static func presentDemoHome() {
+        guard let top = UIKitMessenger.topViewController() else {
+            return ClomniLog.error("no window to present the demo Home from")
+        }
+        let navigation = UIKitMessenger.sheet()
+        let home = HomeView(screen: PreviewData.presenter.home(PreviewData.snapshot()), theme: PreviewData.theme(dark: false),
+                            actions: MessengerActions(close: { [weak navigation] in navigation?.dismiss(animated: true) }))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("clomni.home")
+        navigation.setViewControllers([UIKitMessenger.host(ScreenRoot(model: MessengerRootModel(), content: home))],
+                                      animated: false)
+        top.present(navigation, animated: true)
+    }
 }
 
 /// The demo conversation, in memory: 43 messages back and forth, short and long, two pictures (the user's read up to
