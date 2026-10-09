@@ -2,7 +2,7 @@
 # 3.24 behind a flag) Flutter uses clomni_flutter/Package.swift instead, and this file is not read.
 Pod::Spec.new do |s|
   s.name             = 'clomni_flutter'
-  s.version          = '1.0.0'
+  s.version          = '1.0.1'
   s.summary          = 'Clomni Messenger for Flutter: the native iOS and Android SDKs behind one Dart API.'
   s.homepage         = 'https://clomni.ai'
   s.license          = { :type => 'Apache-2.0', :file => '../LICENSE' }
