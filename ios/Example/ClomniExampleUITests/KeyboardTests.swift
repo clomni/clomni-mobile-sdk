@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// The messenger's conversation on a simulator, in the page sheet the SDK presents, driven like a user
@@ -231,19 +232,53 @@ final class KeyboardTests: XCTestCase {
         onTheKeyboard(field, "\(presentation)-typing", file: file, line: line)
     }
 
-    /// The composer on the keyboard's top: the field its bottom padding over it, within a point and a half. (The
-    /// composer's own frame reaches under the home indicator when it is down, so the field is measured.)
+    /// The composer on the keyboard's top, read from the screen's pixels: under the field's grey only the composer's
+    /// own padding of white, then the keyboard; no band of the page between them, and no keyboard over the field.
+    /// (XCUITest's keyboard frame leaves out the suggestions over the letters, and the composer's frame reaches under
+    /// the home indicator while it is down.)
     private func onTheKeyboard(_ field: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
-        let keyboard = settledKeyboard(file: file, line: line)
+        _ = settledKeyboard(file: file, line: line)
         let frame = settled(field)
+        let screenshot = app.screenshot()
         keep(name)
-        XCTAssertEqual(keyboard.minY - frame.maxY, Self.composerBottomPadding, accuracy: 1.5,
-                       "\(name): the field \(frame) stands its padding over the keyboard \(keyboard), no band, no overlap",
+        let white = whiteUnder(frame, in: screenshot.image)
+        XCTAssertEqual(white, Self.composerBottomPadding, accuracy: 1.5,
+                       "\(name): \(white) pt of white between the field \(frame) and the keyboard, its padding alone",
                        file: file, line: line)
     }
 
+    /// How much white is under the field's grey background before something else (the keyboard) begins, in points:
+    /// read down the screenshot from just under the field's text. 0 when the field's grey runs into the keyboard.
+    private func whiteUnder(_ field: CGRect, in image: UIImage) -> CGFloat {
+        guard let picture = image.cgImage else { return -1 }
+        let width = picture.width, height = picture.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(picture, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return -1 }
+        let scale = CGFloat(width) / image.size.width
+        let x = Int(field.midX * scale)
+        func isWhite(_ y: Int) -> Bool {
+            let offset = (y * width + x) * 4
+            return bytes[offset] > 250 && bytes[offset + 1] > 250 && bytes[offset + 2] > 250
+        }
+        // The field's grey goes on at most 20 pt under its text; where it ends the white starts, or the keyboard.
+        var y = Int((field.maxY + 1) * scale)
+        let greyEnds = min(height, Int((field.maxY + 20) * scale))
+        while y < greyEnds, !isWhite(y) { y += 1 }
+        guard y < greyEnds else { return 0 }
+        let start = y
+        while y < height, isWhite(y) { y += 1 }
+        return CGFloat(y - start) / scale
+    }
+
     /// CM-087 (the RN test on Android): a picked file opens its strip over the composer; the end of the conversation
-    /// comes into sight over it, also when the user was reading further up. The demo picks a picture five seconds
+    /// comes into sight over it, also when the user was reading further up. The demo picks a picture ten seconds
     /// after "Şəkil göndərirəm", as the photo library would hand it over.
     func testAPickedFileBringsTheEndIntoSightOverItsStrip() {
         launch()
@@ -266,11 +301,9 @@ final class KeyboardTests: XCTestCase {
         let bubble = settled(sent)
         let strip = settled(picked)
         let field = settled(composer)
-        let keyboard = settledKeyboard()
         keep("file-picked")
         XCTAssertLessThanOrEqual(strip.maxY, field.minY, "the strip \(strip) is over the field \(field)")
-        XCTAssertEqual(keyboard.minY - field.maxY, Self.composerBottomPadding, accuracy: 1.5,
-                       "the field \(field) stays on the keyboard \(keyboard), the strip over it")
+        onTheKeyboard(composer, "file-picked-on-the-keyboard")
         XCTAssertLessThan(bubble.maxY, strip.minY, "the last message \(bubble) is over the strip \(strip)")
         XCTAssertGreaterThan(bubble.minY, 0)
         XCTAssertEqual(settled(element("clomni.composer")).minY - bubble.maxY, Self.listBottomPadding, accuracy: 2,
