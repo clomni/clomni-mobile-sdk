@@ -214,14 +214,18 @@ class PresenterTest {
             row.accessibilityLabel,
         )
 
-        // The user wrote last: "Siz", and the other side's face.
+        // The user wrote last: "Siz", and the user's own initial; the operator's face was beside it (test report).
         val fromUser = Fixture.conversation("conv_2", "03-text-user.json", assignee = "Rauf", at = "2026-10-01T10:31:50Z")
         val mine = presenter().row(fromUser, Fixture.exampleConfig)!!
         assertEquals("Siz · indi", mine.detail)
-        assertEquals("R", mine.initial)
-        assertEquals("https://app.clomni.ai/a/rauf.png", mine.avatarUrl)
+        assertEquals("S", mine.initial)
+        assertNull("not the operator's picture", mine.avatarUrl)
         assertFalse(mine.unread)
         assertFalse(mine.accessibilityLabel.contains("Oxunmamış"))
+        assertEquals("the logged-in user's initial", "A", presenter().row(fromUser, Fixture.exampleConfig, "Aysel Məmmədova")!!.initial)
+        val card = presenter().home(snapshot(Fixture.exampleConfig, listOf(fromUser)).copy(userName = "Aysel")).recent!!.row
+        assertNull("Home's card the same", card.avatarUrl)
+        assertEquals("A", card.initial)
 
         // A bot's quick replies: its fallback text on one line, the bot's name and avatar.
         val fromBot = Fixture.conversation("conv_3", "10-example-level2-S-chips.json")

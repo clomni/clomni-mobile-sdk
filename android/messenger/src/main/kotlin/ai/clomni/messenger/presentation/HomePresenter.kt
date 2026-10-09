@@ -163,7 +163,7 @@ internal class HomePresenter(
         val config = snapshot.config
         val cards = config?.home?.cards ?: MessengerConfig.HomeCard.entries
         val recent = if (MessengerConfig.HomeCard.RECENT in cards) {
-            snapshot.conversations.asSequence().mapNotNull { row(it, config) }.firstOrNull()
+            snapshot.conversations.asSequence().mapNotNull { row(it, config, snapshot.userName) }.firstOrNull()
         } else {
             null
         }
@@ -227,7 +227,7 @@ internal class HomePresenter(
     }
 
     fun messages(snapshot: MessengerSnapshot): MessagesScreen {
-        val rows = snapshot.conversations.mapNotNull { row(it, snapshot.config) }
+        val rows = snapshot.conversations.mapNotNull { row(it, snapshot.config, snapshot.userName) }
         val failed = rows.isEmpty() && snapshot.conversationsLoad == MessengerSnapshot.Load.FAILED
         val phase = when {
             rows.isNotEmpty() || snapshot.conversationsLoad == MessengerSnapshot.Load.LOADED -> HomeScreen.Phase.READY
@@ -248,8 +248,11 @@ internal class HomePresenter(
         )
     }
 
-    /** A conversation with a last message; one without has nothing to show yet. */
-    fun row(conversation: Conversation, config: MessengerConfig?): ConversationRow? {
+    /**
+     * A conversation with a last message; one without has nothing to show yet. The face is the one who wrote that
+     * message: the user's own initial ([userName]'s, else "Siz"'s) next to "Siz", never the operator's (test report).
+     */
+    fun row(conversation: Conversation, config: MessengerConfig?, userName: String? = null): ConversationRow? {
         val message = conversation.lastMessage ?: return null
         val brand = config?.brand?.name.orEmpty()
         val botName = config?.bot?.name?.takeIf { it.isNotEmpty() }
@@ -259,12 +262,18 @@ internal class HomePresenter(
             SenderType.OPERATOR -> message.sender.name ?: conversation.assignee?.name ?: brand
             SenderType.SYSTEM, SenderType.UNKNOWN -> brand
         }
-        // The avatar is the other side's: the operator's, or the bot's.
-        val fromUs = message.sender.type == SenderType.USER || message.sender.type == SenderType.SYSTEM
-        val otherName = if (fromUs) conversation.assignee?.name ?: botName ?: brand else name
         val botAvatar = botAvatar(config)
-        val otherAvatar = when {
-            fromUs -> conversation.assignee?.avatarUrl ?: botAvatar
+        val fromUser = message.sender.type == SenderType.USER
+        val system = message.sender.type == SenderType.SYSTEM
+        // A system line ("Leyla söhbətə qoşuldu") shows who answers: the assignee, else the bot.
+        val faceName = when {
+            fromUser -> userName?.trim()?.takeIf { it.isNotEmpty() } ?: name
+            system -> conversation.assignee?.name ?: botName ?: brand
+            else -> name
+        }
+        val face = when {
+            fromUser -> null
+            system -> conversation.assignee?.avatarUrl ?: botAvatar
             // The panel's bot picture, as in the conversation.
             message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar
             else -> message.sender.avatarUrl
@@ -274,8 +283,8 @@ internal class HomePresenter(
         val unread = conversation.unreadCount > 0
         return ConversationRow(
             id = conversation.id,
-            avatarUrl = otherAvatar,
-            initial = otherName.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
+            avatarUrl = face,
+            initial = faceName.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
             preview = preview,
             detail = "$name · $ago",
             name = name,
