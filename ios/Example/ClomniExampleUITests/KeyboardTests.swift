@@ -188,6 +188,58 @@ final class KeyboardTests: XCTestCase {
         XCTAssertFalse(capsule.exists, "the capsule is gone")
     }
 
+    /// The operator's iPhone (2026-10-09, dark mode, the emoji keyboard): a dark band of about 40 pt stood between the
+    /// composer and the keyboard. The composer stands right on the keyboard: with the letters, with the emoji keyboard
+    /// (its own height, its search field) and back, in the messenger's page sheet.
+    func testTheComposerStandsOnEveryKeyboard() {
+        launch()
+        standsOnEveryKeyboard("sheet")
+    }
+
+    /// The same in a full-screen presentation, where the screen reaches the home indicator.
+    func testTheComposerStandsOnEveryKeyboardFullScreen() {
+        launch(["-ClomniDemoFullScreen"])
+        standsOnEveryKeyboard("full-screen")
+    }
+
+    private func standsOnEveryKeyboard(_ presentation: String, file: StaticString = #filePath, line: UInt = #line) {
+        let field = element("clomni.composer.field")
+        XCTAssertTrue(field.waitForExistence(timeout: 15), file: file, line: line)
+        let composer = element("clomni.composer")
+        // Down: the composer over the home indicator, at the screen's safe bottom.
+        let down = settled(composer)
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(down.maxY, window.maxY - 60, "\(presentation): down, the composer \(down) is at the bottom",
+                             file: file, line: line)
+        XCTAssertLessThan(down.maxY, window.maxY, "and over the home indicator", file: file, line: line)
+
+        field.tap()
+        onTheKeyboard(composer, "\(presentation)-letters", file: file, line: line)
+        let switcher = app.keyboards.buttons.matching(NSPredicate(format: "label IN %@",
+                                                                  ["Emoji", "Next keyboard", "Next Keyboard"])).firstMatch
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5), "the keyboard's emoji key", file: file, line: line)
+        switcher.tap()
+        onTheKeyboard(composer, "\(presentation)-emoji", file: file, line: line)
+        let letters = app.keyboards.buttons.matching(NSPredicate(format: "label IN %@", ["ABC", "Next keyboard",
+                                                                                          "Next Keyboard"])).firstMatch
+        XCTAssertTrue(letters.waitForExistence(timeout: 5), "the emoji keyboard's way back", file: file, line: line)
+        letters.tap()
+        onTheKeyboard(composer, "\(presentation)-letters-again", file: file, line: line)
+        // Typed text changes the suggestions over the letters, not where the composer stands.
+        field.typeText("Salam")
+        onTheKeyboard(composer, "\(presentation)-typing", file: file, line: line)
+    }
+
+    /// The composer's bottom on the keyboard's top, within a point.
+    private func onTheKeyboard(_ composer: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        let keyboard = settledKeyboard(file: file, line: line)
+        let bar = settled(composer)
+        keep(name)
+        XCTAssertEqual(keyboard.minY - bar.maxY, 0, accuracy: 1,
+                       "\(name): the composer \(bar) stands on the keyboard \(keyboard), no gap and no overlap",
+                       file: file, line: line)
+    }
+
     /// CM-087 (the RN test on Android): a picked file opens its strip over the composer; the end of the conversation
     /// comes into sight over it, also when the user was reading further up. The demo picks a picture five seconds
     /// after "Şəkil göndərirəm", as the photo library would hand it over.

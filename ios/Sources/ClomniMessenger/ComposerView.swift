@@ -189,8 +189,7 @@ struct ComposerView: View {
     /// One emoji (operator, 2026-10-07, G3): it goes where the cursor was, and the sheet closes.
     @ViewBuilder
     private var emojiSheet: some View {
-        let sheet = EmojiPickerSheet(title: composer.emojiLabel, recentLabel: composer.emojiRecentLabel,
-                                     categoryLabels: composer.emojiCategoryLabels, theme: theme) { emoji in
+        let sheet = EmojiPickerSheet(title: composer.emojiLabel, theme: theme) { emoji in
             let at = emojiAt ?? text.utf16.count
             text = TextInsertion.insert(emoji, into: text, atUTF16: at)
             emojiAt = at + emoji.utf16.count

@@ -5,7 +5,7 @@ import SwiftUI
 import UIKit
 import XCTest
 import ClomniProtocol
-import ClomniPresentation
+@testable import ClomniPresentation
 @testable import ClomniMessenger
 
 /// What the React Native test on Android found (CM-087), checked on iOS where it is drawn.
@@ -51,13 +51,6 @@ final class ParityTests: XCTestCase {
         let person = AvatarView(url: missing, initial: "L", size: size, theme: theme)
             .environment(\.clomniLoadsRemoteImages, false)
         XCTAssertNotEqual(middle(person, size: size), white, "the grey disc while there is no picture")
-    }
-
-    /// The emoji sheet's tabs have a name each, in the messenger's language: one for every category it has.
-    func testEveryEmojiTabHasAName() {
-        XCTAssertEqual(EmojiCatalog.categories.count, ClomniStrings.emojiCategories.count)
-        XCTAssertEqual(EmojiCatalog.categories.map(\.name),
-                       ClomniStrings.emojiCategories.map { String($0.rawValue.dropFirst("emoji_".count)) })
     }
 }
 #endif
