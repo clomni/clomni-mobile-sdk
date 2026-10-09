@@ -39,16 +39,18 @@ internal object LimitedMarkdown {
     }
 
     /**
-     * Plain text with the addresses in it made links: https:// and http:// as written, www. over https, an e-mail
-     * (mailto:) and a phone number, +994… or nine digits and more (tel:). A full stop, comma or unpaired bracket after
-     * an address stays text.
+     * Plain text with the addresses in it made links: https:// and http:// as written, www. and a bare domain with a
+     * known ending (clomni.ai, kapitalbank.az/kart) over https, an e-mail (mailto:) and a phone number, +994… or nine
+     * digits and more (tel:). A full stop, comma or unpaired bracket after an address stays text; "1.5", "v1.0" and a
+     * file name (report.pdf) are not addresses.
      */
     fun linked(text: String, bold: Boolean = false, italic: Boolean = false): List<TextRun> {
         val runs = mutableListOf<TextRun>()
         var index = 0
         while (index < text.length) {
             // The earliest; at one place a web address before an e-mail before a phone number.
-            val found = listOfNotNull(web(text, index), email(text, index), phone(text, index)).minByOrNull { it.start } ?: break
+            val found = listOfNotNull(web(text, index), email(text, index), phone(text, index), domain(text, index))
+                .minByOrNull { it.start } ?: break
             if (found.start > index) runs += TextRun(text.substring(index, found.start), bold, italic)
             runs += TextRun(text.substring(found.start, found.end), bold, italic, found.target)
             index = found.end
@@ -60,6 +62,26 @@ internal object LimitedMarkdown {
     private class Address(val start: Int, val end: Int, val target: String)
 
     private val WEB = Regex("""(?<![\p{L}\p{N}@./_-])(?:https?://|www\.)[^\s<>"]+""", RegexOption.IGNORE_CASE)
+    /**
+     * Endings a bare domain may have: the common generic ones and the country codes of the region and of the usual
+     * neighbours. A word that ends otherwise ("1.5", "v1.0", "index.html", "Node.js") is not an address.
+     */
+    private val TLDS = setOf(
+        "com", "net", "org", "info", "biz", "edu", "gov", "io", "ai", "app", "dev", "co", "me", "tv", "online", "site",
+        "store", "shop", "tech", "pro", "xyz", "cloud", "page", "link", "news", "blog", "az", "ru", "tr", "ge", "kz", "uz",
+        "ua", "by", "am", "kg", "tj", "tm", "md", "uk", "de", "fr", "it", "es", "nl", "pl", "eu", "us", "ca", "au", "ae",
+        "sa", "qa", "il", "ir", "in", "cn", "jp", "kr", "br", "ch", "at", "be", "se", "no", "fi", "dk", "cz",
+    )
+
+    /**
+     * labels.ending, then a path; preceded by nothing that makes it part of a longer word, address or e-mail. An
+     * Azerbaijani ending after a hyphen ("clomni.ai-da") stays text after the link.
+     */
+    private val DOMAIN = Regex(
+        """(?<![\p{L}\p{N}@._/:-])((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+([a-z]{2,24}))(?::\d{1,5})?(?:/[^\s<>"]*)?(?![\p{L}\p{N}@_]|-[\p{N}])""",
+        RegexOption.IGNORE_CASE,
+    )
+
     private val EMAIL = Regex("""(?<![\p{L}\p{N}._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\p{L}\p{N}-])""")
 
     /**
@@ -97,6 +119,22 @@ internal object LimitedMarkdown {
         }
         val part = text.subSequence(start, end)
         return part.count { it == open } < part.count { it == last }
+    }
+
+    private fun domain(text: String, from: Int): Address? {
+        var match = DOMAIN.find(text, from)
+        while (match != null) {
+            val ending = match.groupValues[2].lowercase(Locale.ROOT)
+            // A name with a letter in it, of two characters at least: "12.az" and "x.az" are more often not addresses.
+            val name = match.groupValues[1].dropLast(ending.length + 1).substringAfterLast('.')
+            if (ending in TLDS && name.length >= 2 && name.any { it.isLetter() }) {
+                var end = match.range.last + 1
+                while (end > match.range.first && unpaired(text, match.range.first, end)) end--
+                return Address(match.range.first, end, "https://" + text.substring(match.range.first, end))
+            }
+            match = match.next()
+        }
+        return null
     }
 
     private fun email(text: String, from: Int): Address? =

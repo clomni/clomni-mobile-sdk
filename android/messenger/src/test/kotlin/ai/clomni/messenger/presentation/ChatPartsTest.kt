@@ -69,6 +69,26 @@ class LimitedMarkdownTest {
             links("2026-10-07 11:00, 1 000 000 000 AZN, 12345678, https://x, AZ12345678901, 05.10.2026, a@b, x.az"),
         )
         assertEquals(
+            "G-11: a bare domain with a known ending is a link, over https; an Azerbaijani ending after it stays text",
+            listOf(
+                "clomni.ai" to "https://clomni.ai",
+                "Kapitalbank.AZ/kartlar" to "https://Kapitalbank.AZ/kartlar",
+                "my.clomni.ai" to "https://my.clomni.ai",
+                "clomni.ai" to "https://clomni.ai",
+            ),
+            links("Sayt: clomni.ai. Kart: Kapitalbank.AZ/kartlar, panel my.clomni.ai və clomni.ai-da qeydiyyat"),
+        )
+        assertEquals(
+            "G-11: numbers, versions, file names and abbreviations are not domains",
+            emptyList<Pair<String, String?>>(),
+            links("1.5 manat, v1.0, 2.0.1, report.pdf, index.html, Node.js, e.g. i.e. 12.az, a.b, 3.14"),
+        )
+        assertEquals(
+            "an e-mail stays one mailto: link, not a domain inside it",
+            listOf("destek@clomni.ai" to "mailto:destek@clomni.ai"),
+            links("destek@clomni.ai"),
+        )
+        assertEquals(
             listOf(TextRun("Sayt: ", bold = true), TextRun("https://example.com", bold = true, link = "https://example.com"), TextRun(" bax")),
             LimitedMarkdown.parse("**Sayt: https://example.com** bax"),
         )
