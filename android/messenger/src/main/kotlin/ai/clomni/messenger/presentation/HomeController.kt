@@ -152,7 +152,7 @@ internal class HomeController(
 
     private fun changed(change: ClomniChange) {
         // Typing and read receipts are the conversation screen's business.
-        if (change is ClomniChange.Typing || change is ClomniChange.Arrived || change is ClomniChange.Read) return
+        if (change is ClomniChange.Typing || change is ClomniChange.Arrived || change is ClomniChange.Read || change is ClomniChange.Connection) return
         worker.execute { publish(state()) }
     }
 

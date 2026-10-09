@@ -1,5 +1,6 @@
 package ai.clomni.messenger.ui
 
+import ai.clomni.messenger.BuildConfig
 import ai.clomni.messenger.R
 import ai.clomni.messenger.UnreadCountListener
 import ai.clomni.messenger.api.UserIdentity
@@ -81,6 +82,10 @@ internal object MessengerRuntime {
     private var pendingToken: String? = null
     private val protocol = ProtocolJson(AndroidMessenger::protocolLog)
 
+    /** The device's network ([NetworkMonitor]) and the server's answers ([ai.clomni.messenger.core.ClomniChange.Connection]). */
+    private var networkOffline = false
+    private var reachable = true
+
     private var launcherVisible: Boolean? = null
     private var bottomPadding: Int? = null
     private val pendingListeners = LinkedHashSet<UnreadCountListener>()
@@ -102,8 +107,24 @@ internal object MessengerRuntime {
         pendingListeners.clear()
         val network = NetworkMonitor(app)
         root.offline = network.state.isOffline
-        network.state.addListener { offline -> main.post { root.offline = offline } }
-        app.registerActivityLifecycleCallbacks(Activities)
+        // The capsule says offline while the device has no network, or has one that does not reach the server; the
+        // network's return sends what waits in the outbox at once (G-17).
+        network.state.addListener { offline ->
+            main.post {
+                networkOffline = offline
+                root.offline = offline || !reachable
+            }
+            if (!offline) engine.networkAvailable()
+        }
+        engine.observe { change ->
+            if (change is ai.clomni.messenger.core.ClomniChange.Connection) {
+                main.post {
+                    reachable = change.reachable
+                    root.offline = networkOffline || !reachable
+                }
+            }
+        }
+        networkOffline = network.state.isOffline
         this.app = app
         this.engine = engine
         this.coordinator = coordinator

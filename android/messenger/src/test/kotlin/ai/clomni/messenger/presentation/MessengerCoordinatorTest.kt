@@ -449,6 +449,11 @@ class MessengerCoordinatorTest {
         session.flowBound = false
         messenger.startFlow("nothing_bound", null, openMessenger = true) { ids += it }
         assertNull(ids.last())
+        // Test report (RN): nothing in logcat for an event no flow is bound to; the app's developer is told why.
+        assertEquals(
+            listOf("startFlow(\"nothing_bound\"): no flow is bound to this event in Clomni; nothing started"),
+            log.filter { it.startsWith("startFlow") },
+        )
     }
 
     /** A second tap while the first start is still on its way joins it: one request, one conversation, one callback. */

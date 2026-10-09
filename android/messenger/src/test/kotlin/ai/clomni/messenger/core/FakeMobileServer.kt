@@ -55,6 +55,9 @@ internal class FakeMobileServer : Dispatcher() {
     /** "METHOD /path" → the status the next such request is refused with (once). */
     val refusals = ConcurrentHashMap<String, Int>()
 
+    /** "METHOD /path" → a status every such request is answered with until removed (a server that keeps failing). */
+    val outages = ConcurrentHashMap<String, Int>()
+
     /** While set, POST /devices waits for it before answering: a registration that is still out. */
     @Volatile var holdDevices: java.util.concurrent.CountDownLatch? = null
 
@@ -212,6 +215,7 @@ internal class FakeMobileServer : Dispatcher() {
             return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
         }
         refusals.remove(line)?.let { return error(it, "validation_failed") }
+        outages[line]?.let { return error(it, "internal") }
         if (line == "POST /v1/devices") holdDevices?.await(10, java.util.concurrent.TimeUnit.SECONDS)
         return synchronized(this) { route(request) }
     }

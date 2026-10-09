@@ -389,9 +389,14 @@ internal class MessengerCoordinator(
         prepare { ready ->
             if (!ready) return@prepare flowStarted(start, null)
             worker.execute {
-                val conversation = runCatching { session.startFlow(event, data, openMessenger, source).get() }
-                    .onFailure { log("startFlow($event): ${it.cause ?: it}") }
-                    .getOrNull()
+                val result = runCatching { session.startFlow(event, data, openMessenger, source).get() }
+                    .onFailure { log("startFlow(\"$event\"): ${it.cause ?: it}") }
+                val conversation = result.getOrNull()
+                when {
+                    result.isFailure -> Unit
+                    conversation == null -> log("startFlow(\"$event\"): no flow is bound to this event in Clomni; nothing started")
+                    else -> ClomniLog.info { "startFlow(\"$event\"): conversation ${conversation.id}" }
+                }
                 main.execute {
                     if (conversation != null) {
                         conversationStarted(conversation.id)
@@ -436,6 +441,7 @@ internal class MessengerCoordinator(
     /** `Clomni.dismiss()`, or the user closing it; the app returns to where it was. */
     fun dismiss() {
         if (route == null) return
+        ClomniLog.debug { "messenger: closed" }
         route = null
         backStack.clear()
         source = null
@@ -478,6 +484,7 @@ internal class MessengerCoordinator(
             backStack.addLast(from)
         }
         route = to
+        ClomniLog.debug { "messenger: $to" + if (wasClosed) " (opened, source ${source ?: "none"})" else "" }
         if (wasClosed) {
             this.source = source
             events.messengerOpened?.invoke(source)

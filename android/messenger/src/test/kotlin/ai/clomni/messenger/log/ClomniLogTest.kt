@@ -98,4 +98,33 @@ class ClomniLogTest {
             server.shutdown()
         }
     }
+
+    /**
+     * Test report (RN, setLogLevel("debug")): logcat had no Clomni line at all. At debug every call the SDK makes is
+     * written, with its answer or the lack of one, and the reachability the offline capsule follows is told.
+     */
+    @Test
+    fun debugWritesEveryCall() {
+        val server = MockWebServer()
+        try {
+            val reached = mutableListOf<Boolean>()
+            val api = ApiClient(
+                ApiConfiguration("app_8x2k", "android_sdk-key", server.url("/v1").toString(), "1.0.0"),
+                Credentials(MemorySecureStore(), ProtocolJson()),
+                ProtocolJson(),
+                { DeviceInfo("d_1", "14", "1.0", "1.0.0", "az-AZ", "Asia/Baku", "Pixel") },
+                lazyOf(ApiClient.defaultClient()),
+                sleep = {},
+            ).also { it.reachability = { answered -> reached += answered } }
+            Clomni.setLogLevel(ClomniLogLevel.DEBUG)
+            server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":{"code":"invalid_api_key","message":"x"}}"""))
+            server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST))
+            repeat(2) { runCatching { api.open(SessionIdentity.Anonymous) } }
+            assertEquals("debug: POST /v1/mobile/sessions: 401", lines[0])
+            assertTrue(lines.toString(), lines.any { it.startsWith("debug: POST /v1/mobile/sessions: no answer") })
+            assertEquals(listOf(true, false), reached)
+        } finally {
+            server.shutdown()
+        }
+    }
 }

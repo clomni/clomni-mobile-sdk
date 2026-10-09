@@ -1,6 +1,7 @@
 package ai.clomni.messenger.ui
 
 import ai.clomni.messenger.R
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.LauncherState
 import ai.clomni.messenger.presentation.ThemeOverride
@@ -92,6 +93,7 @@ internal class ActivityLauncherSurface : LauncherOverlay.Surface<Activity> {
         val view = decor.findViewWithTag<LauncherView>(TAG) ?: LauncherView(screen).also {
             it.tag = TAG
             decor.addView(it)
+            ClomniLog.debug { "launcher: on ${screen.javaClass.simpleName}" }
         }
         val dark = (screen.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         view.bind(state, ClomniTheme.resolve(config, dark, override), tap)
@@ -99,7 +101,10 @@ internal class ActivityLauncherSurface : LauncherOverlay.Surface<Activity> {
 
     override fun hide(screen: Activity) {
         val decor = screen.window?.decorView as? ViewGroup ?: return
-        decor.findViewWithTag<LauncherView>(TAG)?.let(decor::removeView)
+        decor.findViewWithTag<LauncherView>(TAG)?.let {
+            decor.removeView(it)
+            ClomniLog.debug { "launcher: off ${screen.javaClass.simpleName}" }
+        }
     }
 
     private companion object {

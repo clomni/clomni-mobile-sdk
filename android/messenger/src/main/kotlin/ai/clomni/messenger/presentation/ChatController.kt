@@ -419,6 +419,8 @@ internal class ChatController(
             ClomniChange.Conversations, ClomniChange.Config, ClomniChange.Session -> worker.execute { publish(read(id)) }
             ClomniChange.News -> Unit
             is ClomniChange.Unread -> Unit
+            // The offline capsule's business, which the runtime hands in (isOffline).
+            is ClomniChange.Connection -> Unit
             // This screen's draft is a conversation now: it follows it there.
             is ClomniChange.Started -> if (change.draftId == id) {
                 main.execute {
