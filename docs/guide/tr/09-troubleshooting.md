@@ -25,6 +25,7 @@ Sunucunun bazı mesajları Azerbaycancadır; aşağıdaki tabloda tam olarak gö
 | `call Clomni.initialize first` | Bir metot `initialize`'dan önce çağrıldı | `initialize`'ı açılışta çağırın; Android'de `Application.onCreate` içinde |
 | `initialize was called before; the first call stays` | `initialize` iki kez çağrıldı | Bir kez çağırın. Anahtarları değiştirmek için uygulamayı yeniden başlatın |
 | `api_key səhvdir və ya bu platforma üçün deyil` | API anahtarı yanlış, iptal edilmiş, yenisi oluşturulalı 7 günden fazla olmuş ya da diğer platformun anahtarı | Android'de `android_…`, iOS'ta `ios_…` anahtarı. Anahtarı **Installation** bölümünde kontrol edin |
+| Android 1.0.1+: `api_key səhvdir ... Tətbiqin paket adı: …` | Uygulamanın paket adı (`applicationIdSuffix` dahil) gelen kutusunun Android paket adıyla aynı değil | Logdaki paket adını paneldekiyle karşılaştırın, bkz. [Sürümler](10-versions.md) |
 | `this App SDK inbox is switched off in Clomni` | Gelen kutusu panelde kapatılmış | Açın. O zamana kadar `present()` hiçbir şey yapmaz |
 | Hiçbir şey açılmıyor, logda da bir şey yok | Log düzeyi çok düşük ya da çağrı Unity Editor'de yapılıyor | Debug düzeyini açın; bir cihazda test edin |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Renk biçimi | `#` ile altı hex rakam, örneğin `#0A66C2` |
@@ -54,7 +55,7 @@ Sunucunun bazı mesajları Azerbaycancadır; aşağıdaki tabloda tam olarak gö
 
 ## Push bildirimleri
 
-Soldaki menüde **Push** → **Test push** ile başlayın. Oradaki yanıt doğrudan FCM'in veya APNs'in yanıtıdır;
+Ayarlar sütununda **Push** → **Test push** ile başlayın. Oradaki yanıt doğrudan FCM'in veya APNs'in yanıtıdır;
 [Push anahtarları](08-push-keys.md#test-push) bölümündeki tablo her yanıtı açıklar.
 
 | Belirti | Neden | Ne yapmalı |

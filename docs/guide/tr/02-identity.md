@@ -251,7 +251,7 @@ Clomni.Logout();         // Unity
 
 ## Modlar
 
-Mod, panelin soldaki menüsünde **Security** bölümünde seçilir.
+Mod, gelen kutusunun ayarlar sütununda **Security** bölümünde seçilir.
 
 | Mod | Ne olur |
 |---|---|
@@ -264,5 +264,5 @@ kalmayana kadar takip edin, ardından Enforced'a geçin.
 
 ## Secret'ı değiştirme
 
-Soldaki menüde **Security** → **Make a new secret**. Yeni secret bir kez gösterilir. Eskisi 7 gün daha çalışır:
+Ayarlar sütununda **Security** → **Make a new secret**. Yeni secret bir kez gösterilir. Eskisi 7 gün daha çalışır:
 sunucunuzu bu süre içinde yeni secret'a geçirin. **Test a hash**, bir hash'in hangi secret ile üretildiğini söyler.

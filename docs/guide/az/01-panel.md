@@ -3,7 +3,7 @@
 Clomni-də hər tətbiq bir "Mobil tətbiq (App SDK)" kanalıdır. Bu bölmədə kanal yaradılır və sonra hər ayarın harada
 olduğu göstərilir. Clomni hesabında Administrator rolu lazımdır.
 
-> Bu təlimat paneldə də var: kanal səhifəsi → soldakı menyu → **Təlimat**. Bax: [Təlimat](#təlimat).
+> Bu təlimat paneldə də var: kanal səhifəsi → ayarlar sütunu → **Təlimat**. Bax: [Təlimat](#təlimat).
 
 ## Kanalı yaradın
 
@@ -60,8 +60,8 @@ bölməsində dərc edin, yoxsa Messenger onu işlətmir.
 ## Kanal səhifəsi
 
 Kanalı sonra **Parametrlər → İş sahəsi parametrləri → Gələn qutular** bölməsindən açın. Kanalın ayarları panelin sol
-paneli yanında ayrıca sütundadır: yuxarıda **← Gələn qutular** və kanalın adı, altında üç qrupda bölmələr. SDK üçün
-lazım olanlar:
+paneli yanında ayrıca sütundadır. Yuxarıda kanalın adı var, onun sağındakı **←** düyməsi gələn qutuların siyahısına
+qaytarır. Altında bölmələr üç qrupdadır. SDK üçün lazım olanlar:
 
 | Qrup | Bölmə | Orada nə var |
 |---|---|---|
@@ -75,8 +75,11 @@ lazım olanlar:
 | | Xəbərlər | Messenger-in ana səhifəsindəki xəbərlər |
 | INBOX | Analitika | Aktiv cihazlar, söhbətlər, push-lar, SDK versiyaları |
 
-INBOX qrupunda bütün kanallarda olan ayarlar da var: parametrlər, əməkdaşlar, iş saatları. Şəkillərdə menyunun açıq
-bölməsi qırmızı çərçivədədir. Dar ekranda menyu səhifənin yuxarısında açılan siyahı olur.
+INBOX qrupunda bütün kanallarda olan ayarlar da var: parametrlər, əməkdaşlar, iş saatları. Şəkillərdə sütunun açıq
+bölməsi qırmızı çərçivədədir. Dar ekranda sütun səhifənin yuxarısında açılan siyahı olur.
+
+Flow-lar və Xəbərlər bölmələrində **Tətbiqdə necə görünür?** linki var. O, SDK-nın əsl ekranlarını dialoqda açır:
+müştərinin nə gördüyünü orada görürsünüz.
 
 ### Ümumi baxış
 
@@ -128,11 +131,11 @@ Açarların altında:
 - **Son 7 gün**: göndərilən, uğursuz, silinmiş token (tətbiq cihazdan silinib) və ötürülən (bu platformanın açarı
   yoxdur) push-lar.
 - **Bildirişin başlığı**: bildirişin birinci sətrində nə yazılsın. Standart olaraq "Operator · Brend".
-- **Test push**: aşağıya baxın.
+- **Test bildirişi**: aşağıya baxın.
 
-#### Test push
+#### Test bildirişi
 
-![Test push](../images/panel-push-test-az.png)
+![Test bildirişi](../images/panel-push-test-az.png)
 
 1. **Cihaz**: push tokeni göndərmiş cihazlardan birini seçin. Siyahıda platforma, model, tətbiq versiyası və APNs
    mühiti (sandbox və ya production) yazılır.
@@ -176,13 +179,31 @@ Bu kanalın flow-ları nə ilə başladıqlarına görə qruplanıb:
 **Qurucuya keç** (2) Clomni-nin flow qurucusunu açır. Tətbiq hadisəsi flow-u üçün trigger olaraq "Tətbiq hadisəsi"
 seçin, hadisənin adını yazın və flow-u dərc edin.
 
+**Tətbiqdə necə görünür?** (3) seçim düymələrini və formanı SDK-da göründüyü kimi göstərir.
+
 ### Xəbərlər
 
-![Xəbərlər bölməsi](../images/panel-news-az.png)
+![Xəbərlər: siyahı](../images/panel-news-az.png)
 
-Xəbərlər Messenger-in ana səhifəsində görünür: dərc olunmuş ilk üç xəbər. **Yeni xəbər** (1) üz şəkli, başlıq, qısa
-mətn, tam mətn və istəyə görə düymə ilə xəbər yaradır. Düymə veb ünvanı və ya tətbiqinizin deep link-ini aça bilər
-(platformanızın bölməsində `onLink`-ə baxın).
+Xəbərlər Messenger-in ana səhifəsində görünür: dərc olunmuş ilk üç xəbər. Sıranı dəyişmək üçün sətri sürüşdürün.
+
+1. **Yeni xəbər** yeni xəbərin redaktorunu açır.
+2. **Tətbiqdə necə görünür?** xəbər kartlarını tətbiqin ana səhifəsində göstərir.
+
+Xəbəri dəyişmək üçün onun sətrinə klikləyin. Redaktor ayrıca səhifədə açılır. Başlığın üstündəki **← Xəbərlər**
+siyahıya qaytarır.
+
+![Xəbərlər: redaktor](../images/panel-news-editor-az.png)
+
+1. **Üz şəkli**: 16:9, ən çox 5 MB, eni ən az 720 px.
+2. **Başlıq** və **Qısa mətn** ana səhifədəki kartda görünür, **Tam mətn** xəbər açılanda. Tam mətndə `**qalın**`,
+   `*kursiv*`, link və siyahı işlətmək olar. Sahələrin üstündəki dil düymələri redaktə etdiyiniz dili dəyişir.
+   Azərbaycanca mətn məcburidir. İngiliscə və ya rusca boş qalsa, Azərbaycanca mətn göstərilir.
+3. **Düymə** (istəyə görə): mətni və veb ünvanı və ya tətbiqinizin deep link-i (platformanızın bölməsində
+   `onLink`-ə baxın).
+4. **Saxla** dəyişiklikləri saxlayır, yeni xəbər qaralama qalır. **Dərc et** xəbəri saxlayıb tətbiqlərə göndərir.
+   Dərc olunmuş xəbərdə bu düymə **Geri çək** olur.
+5. **Tətbiqdə**: ana səhifədəki kart və açılmış xəbər, müştərinin gördüyü kimi. Hər dəyişikliyə uyğun yenilənir.
 
 ### Təlimat
 

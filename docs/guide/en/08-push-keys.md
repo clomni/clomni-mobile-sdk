@@ -1,7 +1,7 @@
 # Push keys
 
 Clomni sends push notifications with your own keys: a Firebase service account for Android and an APNs key for
-iOS. Both are uploaded under **Push** in the inbox's side menu (or in step 4 of the wizard).
+iOS. Both are uploaded under **Push** in the inbox's settings column (or in step 4 of the wizard).
 
 | Platform | What the panel needs | Where it comes from |
 |---|---|---|

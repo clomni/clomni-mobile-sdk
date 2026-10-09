@@ -6,7 +6,7 @@ The package `@clomni/react-native` wraps the native Android and iOS SDKs. The sc
 
 - React Native 0.75 or newer (0.76 or newer for the New Architecture). Expo SDK 52 or newer in a development build.
 - iOS 15, Android 6.0 (API 23).
-- The App ID and both API keys (`android_…`, `ios_…`) from **Installation** in the panel's side menu.
+- The App ID and both API keys (`android_…`, `ios_…`) from **Installation** in the inbox's settings column.
 
 ## Install
 

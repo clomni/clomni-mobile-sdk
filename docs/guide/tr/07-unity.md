@@ -9,8 +9,8 @@ diğer platformlarda her çağrı hiçbir şey yapmaz; ilk çağrı bunu logda b
 - Android: Minimum API Level 23, compileSdk 35 veya daha yenisi.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 veya daha yenisi.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Yerel
-  SDK'ları getirir: Gradle üzerinden `ai.clomni:messenger:1.0.0` ve CocoaPods üzerinden `ClomniMessenger` pod'u.
-- Panelin soldaki menüsünde **Installation** bölümünden App ID ve her iki API anahtarı (`android_…`, `ios_…`).
+  SDK'ları getirir: Gradle üzerinden `ai.clomni:messenger:1.0.1` ve CocoaPods üzerinden `ClomniMessenger` pod'u.
+- Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve her iki API anahtarı (`android_…`, `ios_…`).
 
 ## Kurulum
 
@@ -18,7 +18,7 @@ diğer platformlarda her çağrı hiçbir şey yapmaz; ilk çağrı bunu logda b
 2. **Window → Package Manager → + → Add package from git URL** yolunu açın ve şunu girin:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#1.0.0
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1
    ```
 
    > **Yol:** `Window → Package Manager → + → Add package from git URL → Add`

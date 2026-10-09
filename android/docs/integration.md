@@ -14,7 +14,7 @@ iOS), and an **Identity Secret**, which stays on the app's server.
 ```kts
 // build.gradle.kts of the app
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
 }
 ```
 

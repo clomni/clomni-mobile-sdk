@@ -5,7 +5,7 @@
 - Android 6.0 (API 23) veya daha yenisi.
 - Güncel bir `compileSdk` (35 veya daha yenisi).
 - Kotlin 1.8 veya daha yenisi. Java da çalışır (bu bölümün sonuna bakın).
-- Panelin soldaki menüsünde **Installation** bölümünden App ID ve Android API anahtarı (`android_…`).
+- Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve Android API anahtarı (`android_…`).
 
 SDK, ağ erişimi dışında kendisi için hiçbir izin istemez ve ekranlarınıza hiçbir şey eklemez.
 
@@ -16,7 +16,7 @@ Paket Maven Central'dadır. Çoğu projede `settings.gradle.kts` içinde `mavenC
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
 }
 ```
 
@@ -254,7 +254,7 @@ plugins {
 }
 
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-messaging")
 }
@@ -353,7 +353,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 ### Test etme
 
 1. Uygulamayı bir telefonda çalıştırın, bildirimlere izin verin ve Messenger'ı bir kez açın.
-2. Panelde: soldaki menüde **Push** → **Test push** → cihazı seçin → **Send**.
+2. Panelde: ayarlar sütununda **Push** → **Test push** → cihazı seçin → **Send**.
 
 Sunucu olmadan bir Clomni bildirimini görmek için `ClomniPush.handle`'a kendiniz bir map verin:
 

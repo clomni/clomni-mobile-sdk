@@ -5,7 +5,7 @@
 - Android 6.0 (API 23) или новее.
 - Актуальный `compileSdk` (35 или новее).
 - Kotlin 1.8 или новее. Java тоже подходит (см. конец главы).
-- App ID и API-ключ Android (`android_…`) из раздела **Installation** в боковом меню панели.
+- App ID и API-ключ Android (`android_…`) из раздела **Installation** в колонке настроек канала.
 
 Кроме доступа к сети, SDK не запрашивает собственных разрешений и ничего не добавляет на ваши экраны.
 
@@ -16,7 +16,7 @@
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
 }
 ```
 
@@ -253,7 +253,7 @@ plugins {
 }
 
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-messaging")
 }
@@ -352,7 +352,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 ### Проверка
 
 1. Запустите приложение на телефоне, разрешите уведомления и один раз откройте Messenger.
-2. В панели: **Push** в боковом меню → **Test push** → выберите устройство → **Send**.
+2. В панели: **Push** в колонке настроек → **Test push** → выберите устройство → **Send**.
 
 Чтобы увидеть уведомление Clomni без сервера, передайте `ClomniPush.handle` словарь самостоятельно:
 

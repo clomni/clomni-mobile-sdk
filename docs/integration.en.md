@@ -37,14 +37,14 @@ Later, everything is on the channel page's tabs: Overview, Installation, Securit
 
 ## 2. Install
 
-> The packages are not published yet. The names below and version `1.0.0` will work once they are.
+> The packages are published: Android, React Native, Flutter and Unity at 1.0.1, iOS at 1.0.0.
 
 **Android** (Maven Central):
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
 }
 ```
 

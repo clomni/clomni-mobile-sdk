@@ -24,6 +24,7 @@ Some server messages are in Azerbaijani, exactly as the table below shows them.
 | `call Clomni.initialize first` | A method was called before `initialize` | Call `initialize` at start; on Android in `Application.onCreate` |
 | `initialize was called before; the first call stays` | `initialize` was called twice | Call it once. To switch keys, restart the app |
 | `api_key səhvdir və ya bu platforma üçün deyil` | The API key is wrong, revoked, older than 7 days after a new one was made, or of the other platform | The `android_…` key on Android, the `ios_…` key on iOS. Check the key under **Installation** |
+| Android 1.0.1+: `api_key səhvdir ... Tətbiqin paket adı: …` | The app's package name (with `applicationIdSuffix`) is not the inbox's Android package name | Compare the package name in the log with the panel's, see [Versions](10-versions.md) |
 | `this App SDK inbox is switched off in Clomni` | The inbox is switched off in the panel | Switch it on. Until then `present()` does nothing |
 | Nothing opens, nothing in the log | The log level is too low, or the call happens in the Unity Editor | Turn on the debug level; test on a device |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Colour format | Six hex digits with `#`, for example `#0A66C2` |
@@ -53,7 +54,7 @@ Some server messages are in Azerbaijani, exactly as the table below shows them.
 
 ## Push notifications
 
-Start with **Push** in the side menu → **Test push**. The answer there is what FCM or APNs replied, and the table in
+Start with **Push** in the settings column → **Test push**. The answer there is what FCM or APNs replied, and the table in
 [Push keys](08-push-keys.md#test-push) explains each answer.
 
 | Symptom | Cause | What to do |

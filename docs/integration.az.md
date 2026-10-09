@@ -38,14 +38,14 @@ Analitika.
 
 ## 2. Quraşdırma
 
-> Paketlər hələ dərc olunmayıb. Aşağıdakı adlar və `1.0.0` versiyası dərc olunandan sonra işləyəcək.
+> Paketlər dərc olunub: Android, React Native, Flutter və Unity 1.0.1, iOS 1.0.0.
 
 **Android** (Maven Central):
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
 }
 ```
 

@@ -3,7 +3,7 @@
 ## Gereksinimler
 
 - iOS 15 veya daha yenisi, Xcode 15 veya daha yenisi.
-- Panelin soldaki menüsünde **Installation** bölümünden App ID ve iOS API anahtarı (`ios_…`).
+- Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve iOS API anahtarı (`ios_…`).
 - Push için: bir Apple Developer hesabı ve bir APNs anahtarı ([Push anahtarları](08-push-keys.md)).
 
 ## Kurulum
@@ -401,7 +401,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
 1. Uygulamayı gerçek bir iPhone'da çalıştırın (simülatör Clomni'den APNs push'u alamaz), bildirimlere izin verin ve
    Messenger'ı bir kez açın.
-2. Panelde: soldaki menüde **Push** → **Test push** → cihazı seçin → **Send**.
+2. Panelde: ayarlar sütununda **Push** → **Test push** → cihazı seçin → **Send**.
 
 ## Sorunlar
 

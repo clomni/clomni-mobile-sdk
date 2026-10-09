@@ -26,6 +26,7 @@ logda göründüyü kimi yazılıb.
 | `call Clomni.initialize first` | Metod `initialize`-dən əvvəl çağırılıb | `initialize`-i açılışda çağırın; Android-də `Application.onCreate`-də |
 | `initialize was called before; the first call stays` | `initialize` iki dəfə çağırılıb | Bir dəfə çağırın. Açarı dəyişmək üçün tətbiqi yenidən başladın |
 | `api_key səhvdir və ya bu platforma üçün deyil` | API açarı səhvdir, ləğv olunub, yeni açar yaradılandan 7 gün keçib, ya da o biri platformanındır | Android-də `android_…`, iOS-da `ios_…` açarı. Açarı **Quraşdırma** bölməsində yoxlayın |
+| Android 1.0.1+: `api_key səhvdir ... Tətbiqin paket adı: …` | Tətbiqin paket adı (`applicationIdSuffix` daxil) kanalın Android paket adı ilə eyni deyil | Logdakı paket adını paneldəki ilə müqayisə edin, bax [Versiyalar](10-versions.md) |
 | `this App SDK inbox is switched off in Clomni` | Kanal paneldə söndürülüb | Onu yandırın. O vaxta qədər `present()` heç nə etmir |
 | Heç nə açılmır, logda heç nə yoxdur | Log səviyyəsi aşağıdır, ya da çağırış Unity Editor-dadır | Debug səviyyəsini yandırın; cihazda sınayın |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Rəngin formatı | `#` ilə altı hex rəqəm, məsələn `#0A66C2` |
@@ -55,12 +56,12 @@ logda göründüyü kimi yazılıb.
 
 ## Push bildirişləri
 
-Soldakı menyuda **Push** → **Test push**-dan başlayın. Oradakı cavab FCM və ya APNs-in öz cavabıdır, hər cavab
-[Push açarları](08-push-keys.md#test-push) bölməsindəki cədvəldə izah olunub.
+Ayarlar sütununda **Push** → **Test bildirişi** bölməsindən başlayın. Oradakı cavab FCM və ya APNs-in öz cavabıdır,
+hər cavab [Push açarları](08-push-keys.md#test-bildirişi) bölməsindəki cədvəldə izah olunub.
 
 | Əlamət | Səbəb | Nə etməli |
 |---|---|---|
-| Cihaz Test push siyahısında yoxdur | Clomni-yə token çatmayıb | Telefonda bildirişlərə icazə verin; `setDeviceToken` çağırışını yoxlayın; Messenger-i bir dəfə açın |
+| Cihaz Test bildirişi siyahısında yoxdur | Clomni-yə token çatmayıb | Telefonda bildirişlərə icazə verin; `setDeviceToken` çağırışını yoxlayın; Messenger-i bir dəfə açın |
 | Android: bildiriş yoxdur, `notification not shown (POST_NOTIFICATIONS?)` | Android 13+-da icazə yoxdur | `POST_NOTIFICATIONS` istəyin |
 | Android: `push token not registered: …` | Token serverə çatmayıb | Şəbəkəni və `setDeviceToken` çağırışını yoxlayın |
 | Android: bildirişlər yalnız tətbiq açıq olanda gəlir | Data mesajı yalnız UI-da emal olunur | Mesajı `FirebaseMessagingService`-də `ClomniPush.handle`-a verin (React Native: `setBackgroundMessageHandler`, Flutter: `onBackgroundMessage`) |
@@ -88,4 +89,4 @@ Clomni dəstəyinə yazın və bunları əlavə edin:
 - platforma və SDK versiyası (Kotlin və Swift-də `Clomni.version`);
 - App ID (heç vaxt Identity Secret və ya tam API açarı yox);
 - **Ümumi baxış** bölməsinin dedikləri və problem anında debug səviyyəsində SDK logu;
-- push üçün: Test push-un cavabı.
+- push üçün: Test bildirişinin cavabı.

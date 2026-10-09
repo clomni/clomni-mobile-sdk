@@ -250,7 +250,7 @@ Clomni.Logout();         // Unity
 
 ## Rejimlər
 
-Rejim paneldə, soldakı menyunun **Təhlükəsizlik** bölməsində seçilir.
+Rejim paneldə, ayarlar sütununun **Təhlükəsizlik** bölməsində seçilir.
 
 | Rejim | Nə baş verir |
 |---|---|
@@ -263,5 +263,5 @@ xəbərdarlıq qalmayana qədər izləyin, sonra Məcburi rejimə keçin.
 
 ## Secret-in dəyişdirilməsi
 
-Soldakı menyuda **Təhlükəsizlik** → **Yeni secret yarat**. Yeni secret bir dəfə göstərilir. Köhnəsi daha 7 gün
+Ayarlar sütununda **Təhlükəsizlik** → **Yeni secret yarat**. Yeni secret bir dəfə göstərilir. Köhnəsi daha 7 gün
 işləyir: bu müddətdə serverinizi yeni secret-ə keçirin. **Hash-i yoxla** hash-in hansı secret ilə hazırlandığını deyir.

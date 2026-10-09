@@ -23,11 +23,11 @@ SDK ekranlarınıza özü heç nə əlavə etmir. Messenger-i öz düymənizdən
 
 | Platforma | Paket | Minimum |
 |---|---|---|
-| Android | `ai.clomni:messenger:1.0.0` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
+| Android | `ai.clomni:messenger:1.0.1` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
 | iOS | Swift Package `https://github.com/clomni/clomni-mobile-sdk.git`, versiya 1.0.0, məhsul `ClomniMessenger` | iOS 15, Xcode 15 |
 | React Native | `@clomni/react-native` | React Native 0.75 |
 | Flutter | `clomni_flutter` | Flutter 3.16, iOS 15, Android API 24 |
-| Unity | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#1.0.0` | Unity 2021.3, iOS 15, Android API 23 |
+| Unity | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1` | Unity 2021.3, iOS 15, Android API 23 |
 
 React Native, Flutter və Unity altda native Android və iOS SDK-larını işlədir. Ona görə bu təlimatdakı hər şey bütün
 platformalarda eyni cür işləyir.
@@ -47,7 +47,7 @@ və ya MDM profiliniz yalnız siyahıdakı hostlara icazə verirsə, bu hostu ə
    [Unity](07-unity.md).
 4. **Push bildirişləri**: Firebase və APNs açarlarını panelə yükləyin ([Push açarları](08-push-keys.md)) və cihazın
    tokenini SDK-ya verin (platformanızın bölməsindəki push hissəsi).
-5. **Yoxlayın**: paneldə "Test push" və **Ümumi baxış** bölməsi ilə. Nə isə işləməsə,
+5. **Yoxlayın**: paneldə "Test bildirişi" və **Ümumi baxış** bölməsi ilə. Nə isə işləməsə,
    [Problemlərin həlli](09-troubleshooting.md) bölməsinə baxın.
 
 ## Açarlar
