@@ -16,9 +16,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
+import ai.clomni.messenger.log.ClomniLog
+import coil.EventListener
 import coil.ImageLoader
 import coil.annotation.ExperimentalCoilApi
 import coil.decode.DataSource
+import coil.request.ErrorResult
+import coil.request.ImageRequest
 import coil.request.ImageResult
 import coil.request.SuccessResult
 import coil.transition.CrossfadeTransition
@@ -54,6 +58,15 @@ internal object ClomniImages {
         .memoryCache { MemoryCache.Builder(app).maxSizePercent(0.10).build() }
         .diskCache { DiskCache.Builder().directory(directory).maxSizeBytes(50L * 1024 * 1024).build() }
         .respectCacheHeaders(false)
+        // A picture that does not come stays a grey square (test report: the logo and the bot's face): the address and
+        // the server's answer go to the log, which is how such a report can be followed up.
+        .eventListener(
+            object : EventListener {
+                override fun onError(request: ImageRequest, result: ErrorResult) {
+                    ClomniLog.warning { failure(request.data, result.throwable) }
+                }
+            },
+        )
         .transitionFactory(
             object : Transition.Factory {
                 override fun create(target: TransitionTarget, result: ImageResult): Transition =
@@ -61,6 +74,9 @@ internal object ClomniImages {
             },
         )
         .build()
+
+    /** "image <address>: HTTP 403: Forbidden", or the reason nothing came back. */
+    fun failure(data: Any, error: Throwable): String = "image $data: ${error.message ?: error.javaClass.simpleName}"
 
     /** Only what the network brought fades in. */
     fun fadesIn(result: ImageResult): Boolean = result is SuccessResult && result.dataSource == DataSource.NETWORK
