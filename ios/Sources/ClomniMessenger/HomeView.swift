@@ -1,5 +1,6 @@
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
+import UIKit
 #if canImport(ClomniCore)
 import ClomniProtocol
 import ClomniCore
@@ -56,6 +57,7 @@ struct HomeView: View {
                         .padding(.bottom, CGFloat(ClomniTheme.Space.xxl))
                 }
                 .padding(.top, proxy.safeAreaInsets.top)
+                .background(HomeScrollTop())
                 .background(alignment: .top) {
                     let full = proxy.safeAreaInsets.top + block + Self.fullPast
                     HomeBackground(style: screen.header.style, glow: screen.header.glow, theme: theme,
@@ -72,6 +74,56 @@ struct HomeView: View {
         }
         // The page: canvas grey in light mode (the white cards stand on it, the fade ends in it), background in dark.
         .background((theme.isDark ? theme.colors.background : theme.colors.canvas).color.ignoresSafeArea())
+    }
+}
+
+/// Behind Home's content: the page never moves down past its top (TestFlight 13, iOS 27: pulled down, the page went
+/// with the finger and showed the colour above it, ~130 pt of empty brand colour over the logo). The offset stops at
+/// the top, so the logo and the greeting stay where they are, and the scroll view is the screen's content scroll view
+/// for the top edge, the one the sheet follows: pulled down there, the sheet goes down and closes, as the system's
+/// sheets do.
+struct HomeScrollTop: UIViewRepresentable {
+    func makeUIView(context: Context) -> HomeScrollTopView {
+        HomeScrollTopView()
+    }
+
+    func updateUIView(_ view: HomeScrollTopView, context: Context) {}
+}
+
+final class HomeScrollTopView: UIView {
+    private weak var scrollView: UIScrollView?
+    private var observation: NSKeyValueObservation?
+
+    init() {
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil else { return }
+        var ancestor = superview
+        while let view = ancestor, !(view is UIScrollView) { ancestor = view.superview }
+        guard let found = ancestor as? UIScrollView else { return }
+        var responder: UIResponder? = found
+        while let next = responder, !(next is UIViewController) { responder = next.next }
+        (responder as? UIViewController)?.setContentScrollView(found, for: .top)
+        guard found !== scrollView else { return }
+        scrollView = found
+        observation = found.observe(\.contentOffset) { view, _ in
+            MainActor.assumeIsolated { Self.stopAtTop(view) }
+        }
+        Self.stopAtTop(found)
+    }
+
+    private static func stopAtTop(_ view: UIScrollView) {
+        let top = -view.adjustedContentInset.top
+        guard view.contentOffset.y < top else { return }
+        view.contentOffset = CGPoint(x: view.contentOffset.x, y: top)
     }
 }
 

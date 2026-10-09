@@ -49,6 +49,28 @@ final class KeyboardTests: XCTestCase {
         XCTAssertFalse(first.exists && first.isHittable, "the first message is out of sight")
     }
 
+    /// TestFlight 13 (iOS 27): after a flow's choice the conversation jumped to its first messages and stayed there, the
+    /// next choices out of sight. Here each choice is answered a second later by the next step, its text and three
+    /// choices; at every step, once the history has come, the choices stand at the end, on screen, and the first
+    /// message is far up, out of sight.
+    func testAFlowsNextChoicesStandAtTheEnd() {
+        launch(["-ClomniDemoFlow"])
+        let window = app.windows.firstMatch
+        for step in 1...4 {
+            let choice = labelled("Velosiped dayandı \(step)")
+            XCTAssertTrue(choice.waitForExistence(timeout: 15), "step \(step)'s choices came")
+            let last = labelled("Operatorla danış \(step)")
+            let frame = settled(last)
+            keep("flow-step-\(step)")
+            XCTAssertLessThanOrEqual(frame.maxY, window.frame.maxY, "step \(step): the last choice \(frame) is on screen")
+            XCTAssertGreaterThan(frame.minY, window.frame.height / 3, "and low on it, at the end")
+            XCTAssertTrue(last.isHittable, "step \(step): the last choice can be tapped")
+            let first = labelled("Salam, kartla ödəniş keçmir")
+            XCTAssertFalse(first.exists && first.isHittable, "step \(step): the first message is out of sight")
+            choice.tap()
+        }
+    }
+
     /// H1: a form field tapped near the bottom goes up with the keyboard and stays over it, the composer too.
     func testAFormFieldStaysOverTheKeyboard() {
         launch()
@@ -145,10 +167,15 @@ final class KeyboardTests: XCTestCase {
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 350)), withVelocity: .default,
                     thenHoldForDuration: 0.3)
         keep("reading-above")
+        // What the user reads: the form above the question. It does not move when the answer comes.
+        let reading = element("clomni.form.submit")
+        let before = settled(reading)
         let capsule = element("clomni.chat.newMessage")
         XCTAssertTrue(capsule.waitForExistence(timeout: 20), "\"Yeni mesaj\" shows")
         let answer = labelled("Bəli, yoxlayıb")
         XCTAssertFalse(answer.exists && answer.isHittable, "the list stayed where the user reads")
+        let after = settled(reading)
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "what the user reads \(before) stayed where it was: \(after)")
         keep("new-message-capsule")
         capsule.tap()
         XCTAssertTrue(answer.waitForExistence(timeout: 5))

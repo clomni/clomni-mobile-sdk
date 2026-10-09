@@ -28,6 +28,23 @@ extension Clomni {
                                       animated: false)
         top.present(navigation, animated: true)
     }
+
+    /// Debug builds, for UI tests: Home over the previews' example company, in the messenger's page sheet, with no
+    /// server. ✕ closes it; the whole screen is one container, "clomni.home", to measure from.
+    @_spi(ClomniUITesting) @MainActor
+    public static func presentDemoHome() {
+        guard let top = UIKitMessenger.topViewController() else {
+            return ClomniLog.error("no window to present the demo Home from")
+        }
+        let navigation = UIKitMessenger.sheet()
+        let home = HomeView(screen: PreviewData.presenter.home(PreviewData.snapshot()), theme: PreviewData.theme(dark: false),
+                            actions: MessengerActions(close: { [weak navigation] in navigation?.dismiss(animated: true) }))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("clomni.home")
+        navigation.setViewControllers([UIKitMessenger.host(ScreenRoot(model: MessengerRootModel(), content: home))],
+                                      animated: false)
+        top.present(navigation, animated: true)
+    }
 }
 
 /// The demo conversation, in memory: 43 messages back and forth, short and long, two pictures (the user's read up to
@@ -35,8 +52,12 @@ extension Clomni {
 /// once, the older history from "the server" in two pages above it, 0.8 s apart. What the user sends is there at
 /// once, with one ✓; a question (a text ending in "?") gets an answer ten seconds later, which is what brings up
 /// "Yeni mesaj ↓" when the user has scrolled up meanwhile.
+///
+/// With `-ClomniDemoFlow` it ends in a flow's choices instead of the form, and each choice is answered a second later
+/// by the next step: its text and three choices, numbered (TestFlight 13: after a choice the list went to its top).
 actor DemoChat: ChatDataSource {
     static let conversationId = "conv_demo"
+    private static let flow = ProcessInfo.processInfo.arguments.contains("-ClomniDemoFlow")
 
     private static let demoConfig = ProtocolJSON.parseConfig(Data(#"""
     {"version":1,"brand":{"name":"Clomni","primary_color":"#1A2EB8","header_style":"gradient","glow":false},
@@ -50,6 +71,7 @@ actor DemoChat: ChatDataSource {
     private var unloaded: [[Message]]
     private var answerable: Set<String> = []
     private var readUpTo = 0
+    private var step = 1
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
 
     init() {
@@ -132,10 +154,10 @@ actor DemoChat: ChatDataSource {
         var cached = messages(yesterday, minutesAgo: 1_500) + messages(today, minutesAgo: 30)
         // A flow's step: only an interactive one can be filled in (ChatController asks canAnswer for those).
         seq += 1
-        if let step = Self.message(seq, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
-                                   minutesAgo: 22, interactive: true) {
-            cached.append(step)
-        }
+        let last = Self.flow ? Self.choices(seq, step: 1, minutesAgo: 22)
+            : Self.message(seq, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
+                           minutesAgo: 22, interactive: true)
+        if let last { cached.append(last) }
         stored = cached
         unloaded = pages.reversed()
         answerable = ["msg_demo_\(seq)"]
@@ -164,6 +186,18 @@ actor DemoChat: ChatDataSource {
     /// Pictures that are there at once, offline: a few pixels of one colour, drawn at the message's size.
     private static let greyPicture = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEUlEQVR4nGOYtWwHHDHg5AAAy34Xof7627gAAAAASUVORK5CYII="
     private static let sandPicture = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEElEQVR4nGM4uakfjhhwcgDgEhh5OBSDDAAAAABJRU5ErkJggg=="
+
+    /// A flow's step with three choices, numbered by the step: "Velosiped dayandı 2".
+    private static func choices(_ seq: Int, step: Int, minutesAgo: Double) -> Message? {
+        let titles = ["Velosiped dayandı", "Gedişi bitirə bilmirəm", "Operatorla danış"].map { "\($0) \(step)" }
+        let buttons: [JSONValue] = titles.enumerated().map { index, title in
+            .object(["id": .string("o_\(step)_\(index)"), "title": .string(title), "payload": .string("node:\(index)")])
+        }
+        let text = "Nə baş verib? (\(step))"
+        return message(seq, from: "bot", type: "quick_replies",
+                       content: .object(["text": .string(text), "buttons": .array(buttons)]),
+                       fallback: text, minutesAgo: minutesAgo, interactive: true)
+    }
 
     private static func text(_ seq: Int, from sender: String, _ text: String, minutesAgo: Double) -> Message? {
         message(seq, from: sender, type: "text", content: .object(["text": .string(text)]), fallback: text,
@@ -247,7 +281,23 @@ actor DemoChat: ChatDataSource {
     }
 
     func reply(to message: Message, with button: MessageContent.Button) throws -> PendingMessage {
-        throw ClomniError.rejected("demo")
+        guard Self.flow else { throw ClomniError.rejected("demo") }
+        answerable.remove(message.id)
+        append(button.title, from: "user")
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            self.nextStep()
+        }
+        return PendingMessage(text: button.title, in: message.conversationId)
+    }
+
+    private func nextStep() {
+        step += 1
+        if let next = Self.choices((stored.last?.seq ?? 0) + 1, step: step, minutesAgo: 0) {
+            stored.append(next)
+            answerable.insert(next.id)
+        }
+        notify()
     }
 
     func goBack(from message: Message) throws -> PendingMessage {

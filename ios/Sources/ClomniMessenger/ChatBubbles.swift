@@ -75,32 +75,25 @@ struct MessageLinks: ViewModifier {
 }
 
 /// The messages, separators, buttons and typing, top to bottom (in a ScrollView on screen, bare in snapshots).
+///
+/// An eager VStack, not a LazyVStack: the list's height is then its real height, which is where ScrollPin holds the
+/// end. A lazy stack's is an estimate, and on iOS 27 it moves the scroll view's offset itself as it measures (CM-087,
+/// TestFlight 13). A conversation is a few pages of messages; older ones come only when the user scrolls up to them.
 struct ChatTranscript: View {
     let items: [ChatItem]
     let theme: ClomniTheme
     let actions: ChatActions
-    /// Called when the top of the list comes into view.
-    var reachedTop: () -> Void = {}
-    /// On screen: holds the list at its end (ChatView); its last row tells where the end is.
-    var pin: ScrollPin?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Under the last row.
     static let bottomPadding = CGFloat(ClomniTheme.Space.s)
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
-            Color.clear
-                .frame(height: 1)
-                .onAppear(perform: reachedTop)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.xxs)) {
             ForEach(items) { item in
                 // Fades in once, when it is new: an item is keyed by its client id from the moment it is written, so
                 // the server's copy changes only its status, and scrolling back is not an insertion.
                 ChatItemView(item: item, theme: theme, actions: actions)
-                    .background(alignment: .bottom) {
-                        if let pin, item.id == items.last?.id { ScrollPinLastRow(pin: pin) }
-                    }
                     .id(item.id)
                     .transition(Motion.arrival(item, still: reduceMotion))
             }
