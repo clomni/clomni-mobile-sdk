@@ -36,7 +36,7 @@ internal class FrontScreens<S : Any>(private val isOwn: (S) -> Boolean) {
     var listener: Listener<S>? = null
         set(value) {
             field = value
-            resumed?.let { value?.resumed(it) }
+            // resumed?.let { value?.resumed(it) }
         }
 
     fun resumed(screen: S) {

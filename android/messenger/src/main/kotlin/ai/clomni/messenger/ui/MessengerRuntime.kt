@@ -272,7 +272,8 @@ internal object MessengerRuntime {
         messenger = null
         if (!finishing || activity.replaced) return
         if (coordinator?.route != null) {
-            lost = true
+            coordinator?.dismiss()
+            return
             ClomniLog.debug { "messenger: its screen was taken away while open; it comes back" }
             render()
         }

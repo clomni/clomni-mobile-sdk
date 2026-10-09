@@ -643,7 +643,6 @@ private fun Announcer(id: String?, text: String?) {
         if (news) {
             spoken = text
             delay(ANNOUNCED_MS)
-            spoken = ""
         }
     }
     spoken?.let { words ->
