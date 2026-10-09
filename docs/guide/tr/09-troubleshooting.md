@@ -54,7 +54,7 @@ Sunucunun bazı mesajları Azerbaycancadır; aşağıdaki tabloda tam olarak gö
 
 ## Push bildirimleri
 
-Soldaki menüde **Push** → **Test push** ile başlayın. Oradaki yanıt doğrudan FCM'in veya APNs'in yanıtıdır;
+Ayarlar sütununda **Push** → **Test push** ile başlayın. Oradaki yanıt doğrudan FCM'in veya APNs'in yanıtıdır;
 [Push anahtarları](08-push-keys.md#test-push) bölümündeki tablo her yanıtı açıklar.
 
 | Belirti | Neden | Ne yapmalı |

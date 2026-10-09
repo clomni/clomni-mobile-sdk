@@ -53,7 +53,7 @@ Some server messages are in Azerbaijani, exactly as the table below shows them.
 
 ## Push notifications
 
-Start with **Push** in the side menu → **Test push**. The answer there is what FCM or APNs replied, and the table in
+Start with **Push** in the settings column → **Test push**. The answer there is what FCM or APNs replied, and the table in
 [Push keys](08-push-keys.md#test-push) explains each answer.
 
 | Symptom | Cause | What to do |

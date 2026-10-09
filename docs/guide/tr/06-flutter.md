@@ -6,7 +6,7 @@
 
 - Flutter 3.16 veya daha yenisi.
 - iOS 15, Android API 24.
-- Panelin soldaki menüsünde **Installation** bölümünden App ID ve her iki API anahtarı (`android_…`, `ios_…`).
+- Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve her iki API anahtarı (`android_…`, `ios_…`).
 
 ## Kurulum
 

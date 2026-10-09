@@ -3,7 +3,7 @@
 ## Требования
 
 - iOS 15 или новее, Xcode 15 или новее.
-- App ID и API-ключ iOS (`ios_…`) из раздела **Installation** в боковом меню панели.
+- App ID и API-ключ iOS (`ios_…`) из раздела **Installation** в колонке настроек канала.
 - Для push: аккаунт Apple Developer и ключ APNs ([Ключи для push](08-push-keys.md)).
 
 ## Установка
@@ -401,7 +401,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
 1. Запустите приложение на реальном iPhone (симулятор не получает APNs-push от Clomni), разрешите уведомления и один
    раз откройте Messenger.
-2. В панели: **Push** в боковом меню → **Test push** → выберите устройство → **Send**.
+2. В панели: **Push** в колонке настроек → **Test push** → выберите устройство → **Send**.
 
 ## Проблемы
 

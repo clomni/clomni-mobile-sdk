@@ -5,7 +5,7 @@
 - Android 6.0 (API 23) və ya daha yeni.
 - Təzə `compileSdk` (35 və ya daha yeni).
 - Kotlin 1.8 və ya daha yeni. Java da işləyir (bölmənin sonuna baxın).
-- Paneldə soldakı menyunun **Quraşdırma** bölməsindən App ID və Android API açarı (`android_…`).
+- Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və Android API açarı (`android_…`).
 
 SDK şəbəkə girişindən başqa heç bir icazə istəmir və ekranlarınıza heç nə əlavə etmir.
 
@@ -350,7 +350,7 @@ Clomni.setNotificationIcon(R.drawable.ic_notification)
 ### Yoxlama
 
 1. Tətbiqi telefonda işə salın, bildirişlərə icazə verin və Messenger-i bir dəfə açın.
-2. Paneldə: soldakı menyuda **Push** → **Test push** → cihazı seçin → **Göndər**.
+2. Paneldə: ayarlar sütununda **Push** → **Test bildirişi** → cihazı seçin → **Göndər**.
 
 Serversiz Clomni bildirişini görmək üçün `ClomniPush.handle`-a map-i özünüz verin:
 

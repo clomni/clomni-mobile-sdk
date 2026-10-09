@@ -1,7 +1,7 @@
 # Push anahtarları
 
 Clomni push bildirimlerini sizin anahtarlarınızla gönderir: Android için bir Firebase service account, iOS için bir
-APNs anahtarı. İkisi de gelen kutusunun soldaki menüsünde **Push** bölümüne (veya sihirbazın 4. adımında) yüklenir.
+APNs anahtarı. İkisi de gelen kutusunun ayarlar sütununda **Push** bölümüne (veya sihirbazın 4. adımında) yüklenir.
 
 | Platform | Panelin ihtiyacı | Nereden alınır |
 |---|---|---|
