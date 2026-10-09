@@ -324,11 +324,11 @@ actor DemoChat: ChatDataSource {
 
     func sendText(_ text: String, in conversationId: String, replyTo: String?) -> PendingMessage {
         append(text, from: "user")
-        // "Şəkil göndərirəm" picks a picture five seconds later, as if from the photo library: the UI tests read above
-        // meanwhile.
+        // "Şəkil göndərirəm" picks a picture ten seconds later, as if from the photo library: the UI tests read above
+        // meanwhile, their drag over by then.
         if text == "Şəkil göndərirəm" {
             Task {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
                 await MainActor.run { NotificationCenter.default.post(name: Self.stageFile, object: nil) }
             }
         }
