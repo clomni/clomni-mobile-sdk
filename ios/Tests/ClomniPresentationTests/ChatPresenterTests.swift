@@ -561,28 +561,6 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertFalse(ChatPresenter.canSend("12345678901", limit: 10))
     }
 
-    /// CM-087 (the RN test on Android): the SDK's own emoji sheet speaks the messenger's language, its tabs too, which
-    /// are emoji on screen and VoiceOver would read in the phone's language.
-    func testTheEmojiSheetSpeaksTheMessengersLanguage() {
-        func composer(_ language: String) -> ChatComposer {
-            var snapshot = ChatSnapshot(config: nil)
-            snapshot.load = .loaded
-            return ChatPresenter(strings: ClomniStrings(language: language), timeZone: utc, now: now).screen(snapshot).composer
-        }
-        XCTAssertEqual(composer("az").emojiRecentLabel, "Son istifadə olunanlar")
-        XCTAssertEqual(composer("az").emojiCategoryLabels,
-                       ["Smayliklər və emosiyalar", "İnsanlar", "Heyvanlar və təbiət", "Yemək və içki", "Fəaliyyət",
-                        "Səyahət və yerlər", "Əşyalar", "Simvollar"])
-        XCTAssertEqual(composer("en").emojiCategoryLabels.first, "Smileys and emotion")
-        XCTAssertEqual(composer("en").emojiLabel, "Emoji")
-        XCTAssertEqual(composer("ru").emojiRecentLabel, "Недавние")
-        XCTAssertEqual(composer("ru").emojiCategoryLabels.last, "Символы")
-        XCTAssertEqual(composer("ru").emojiLabel, "Эмодзи")
-        for language in ["az", "en", "ru"] {
-            XCTAssertEqual(Set(composer(language).emojiCategoryLabels).count, 8, "\(language): eight names, none twice")
-        }
-    }
-
     /// Operator, 2026-10-05: the composer goes by conversation.flow alone. While a flow waits for a button, a form or
     /// its next step there is none; for a question answered in words, at its end or on a handover it is back.
     func testTheFlowHoldsTheComposerUntilItWaitsForWords() {

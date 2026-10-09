@@ -101,9 +101,7 @@ package struct ChatPresenter: Sendable {
             mode: mode, placeholder: strings[.composerPlaceholder],
             showsAttach: config?.composer.attachments ?? true, showsEmoji: config?.composer.emoji ?? true,
             limit: config?.limits.textChars ?? 4_000, sendLabel: strings[.send], attachLabel: strings[.attach],
-            emojiLabel: strings[.emoji], emojiRecentLabel: strings[.emojiRecent],
-            emojiCategoryLabels: ClomniStrings.emojiCategories.map { strings[$0] },
-            mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
+            emojiLabel: strings[.emoji], mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
             fileLabel: strings[.pickFile], removeAttachmentLabel: strings[.removeAttachment],
             quote: mode == .open ? snapshot.replyingTo.flatMap { id in snapshot.messages.first { $0.id == id } }
                 .map { quote($0, snapshot) } : nil,

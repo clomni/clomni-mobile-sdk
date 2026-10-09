@@ -287,10 +287,6 @@ package struct ChatComposer: Sendable, Equatable {
     package let sendLabel: String
     package let attachLabel: String
     package let emojiLabel: String
-    /// The emoji sheet's tabs as VoiceOver names them, in the messenger's language (CM-087): the recently used ones,
-    /// then its eight categories in their order.
-    package let emojiRecentLabel: String
-    package let emojiCategoryLabels: [String]
     /// The attachment sheet's rows: the photo library, the camera, any file; and the x on a picked file.
     package let mediaLabel: String
     package let cameraLabel: String

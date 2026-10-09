@@ -19,6 +19,8 @@ extension Clomni {
             return ClomniLog.error("no window to present the demo conversation from")
         }
         let navigation = UIKitMessenger.sheet()
+        // `-ClomniDemoFullScreen`: as an app's own full-screen presentation shows it, rather than the page sheet.
+        if ProcessInfo.processInfo.arguments.contains("-ClomniDemoFullScreen") { navigation.modalPresentationStyle = .fullScreen }
         let model = ChatModel(controller: ChatController(source: DemoChat(), conversationId: DemoChat.conversationId,
                                                          language: "az"))
         let screen = ChatView(model: model,
