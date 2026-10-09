@@ -78,6 +78,8 @@ struct ChatView: View {
     @State private var pin = ScrollPin()
     /// A message came while the user read further up: "Yeni mesaj ↓" shows (H2).
     @State private var unseen = false
+    /// The page before comes once the list's top is this close to the top of what shows.
+    static let olderReach: CGFloat = 300
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
@@ -206,6 +208,9 @@ struct ChatView: View {
             }
             .padding(CGFloat(ClomniTheme.Space.xl))
         case .ready:
+            let items = model.screen.items
+            // Before the layout this body leads to: the pin knows what changed when the content's height does.
+            let _ = pin.list(first: items.first?.id, count: items.count, last: items.last?.id, loadingAbove: loadingOlder)
             ScrollViewReader { proxy in
                 ScrollView {
                     // Older messages on their way: a small spinner at the top of the list.
@@ -218,18 +223,18 @@ struct ChatView: View {
                                                value: proxy.frame(in: .named(ScrollTopOffset.space)).minY)
                     }
                     .frame(height: 0)
-                    ChatTranscript(items: model.screen.items, theme: theme, actions: actions(proxy), reachedTop: loadOlder,
-                                   pin: pin)
-                        .background(ScrollPinContent(pin: pin, items: model.screen.items,
-                                                     animates: !reduceMotion, settled: { atBottom = true }))
+                    ChatTranscript(items: items, theme: theme, actions: actions(proxy))
+                        .background(ScrollPinContent(pin: pin, animates: !reduceMotion, settled: shown))
                         // Shown once it stands at its end (ScrollPin): the first frame is the bottom, nothing slides.
                         // Should the scroll view not be found, it shows all the same.
-                        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { atBottom = true } }
+                        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { shown() } }
                 }
                 .coordinateSpace(name: ScrollTopOffset.space)
                 .onPreferenceChange(ScrollTopOffset.self) { top in
                     scrolled = top < -1
                     if unseen, !pin.away { unseen = false }
+                    pin.listTop = top
+                    if atBottom, top > -Self.olderReach { loadOlder() }
                 }
                 // The keyboard came up or the composer grew: the last message, or the form field being filled, stays in
                 // sight over it, moving with it (H1).
@@ -354,6 +359,13 @@ struct ChatView: View {
         Task { @MainActor in
             if await model.controller.send(text), draft == text { draft = "" }
         }
+    }
+
+    /// The list is shown, at its end; when its top is in reach (a short conversation), the page before it comes.
+    private func shown() {
+        guard !atBottom else { return }
+        atBottom = true
+        if pin.listTop > -Self.olderReach { loadOlder() }
     }
 
     /// Scrolling to the top fetches the page before it, until the beginning.
