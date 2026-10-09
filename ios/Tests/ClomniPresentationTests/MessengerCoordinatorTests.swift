@@ -293,6 +293,64 @@ final class MessengerCoordinatorTests: XCTestCase {
         XCTAssertNil(fromPanel.launcher)
     }
 
+    /// CM-087 (the RN test on Android): an app that turns the launcher on and logs nobody in, at its first launch. The
+    /// SDK was never ready (nobody logged in, so no session and no config), and the button never showed. The button
+    /// opens the messenger, which makes an anonymous visitor anyway: now that happens at once, and the button shows.
+    func testTheLauncherShowsAtAFirstLaunchWithNobodyLoggedIn() async {
+        let messenger = coordinator()
+        messenger.setLauncherVisible(true)
+        await messenger.start()
+        XCTAssertEqual(messenger.readiness, .ready)
+        XCTAssertNotNil(messenger.launcher)
+        var made = await calls()
+        XCTAssertEqual(made, ["login", "connect", "config"])
+
+        // Without the launcher, nothing is asked of the server until the messenger opens.
+        let quiet = FakeSession()
+        let without = MessengerCoordinator(session: quiet, language: "az")
+        await without.start()
+        XCTAssertEqual(without.readiness, .notReady)
+        let asked = await quiet.calls
+        XCTAssertEqual(asked, [])
+
+        // Turned on after the start (the order RN, Flutter and Unity call in), it shows as soon as it can.
+        without.setLauncherVisible(true)
+        for _ in 0..<500 where without.launcher == nil { await Task.yield() }
+        XCTAssertNotNil(without.launcher)
+        await without.preparationSettled()
+        let then = await quiet.calls
+        XCTAssertEqual(then, ["login", "connect", "config"], "one visitor, however the calls cross")
+
+        // No network at launch: no button, until the network is back.
+        let offline = FakeSession()
+        await offline.goOffline(true)
+        let late = MessengerCoordinator(session: offline, language: "az")
+        late.setLauncherVisible(true)
+        await late.start()
+        XCTAssertNil(late.launcher)
+        await offline.goOffline(false)
+        await late.networkAvailable()
+        XCTAssertNotNil(late.launcher)
+
+        // After a logout it waits for the next login; it makes no visitor of its own.
+        late.loggedOut()
+        await late.networkAvailable()
+        XCTAssertNil(late.launcher)
+        made = await offline.calls
+        XCTAssertEqual(made.filter { $0 == "login" }.count, 2, "the failed one and the one that worked, no more")
+    }
+
+    /// Two preparations at once (the launcher's and the opened messenger's) are one: one visitor, one config.
+    func testPreparationsAtOnceAreOne() async {
+        let messenger = coordinator()
+        async let first = messenger.prepare()
+        async let second = messenger.prepare()
+        let both = await [first, second]
+        XCTAssertEqual(both, [true, true])
+        let made = await calls()
+        XCTAssertEqual(made, ["login", "connect", "config"])
+    }
+
     func testPresentingAndDismissing() async {
         let messenger = coordinator()
         XCTAssertTrue(messenger.present(source: "profile_support"))

@@ -207,6 +207,27 @@ final class EngineTests: EngineTestCase {
         XCTAssertNil(name)
     }
 
+    /// CM-087 (the RN test on Android): the greeting's name is kept with the identity, on this device. The next launch
+    /// greets the user by it without `loginUser`; a login without a name, or with an empty one, keeps it; a name set
+    /// by `updateUser` is the one kept.
+    func testTheNameIsKeptWithTheIdentityAcrossLaunches() async throws {
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "5", name: "Aysel"), userHash: nil)
+
+        let relaunched = await device(cache: phone.cache, vault: phone.vault)
+        var name = await relaunched.engine.userName
+        XCTAssertEqual(name, "Aysel", "no loginUser at this launch")
+        try await relaunched.engine.loginUser(UserIdentity(userId: "5", name: "  "), userHash: nil)
+        name = await relaunched.engine.userName
+        XCTAssertEqual(name, "Aysel", "an empty name is no name")
+        _ = try await relaunched.engine.updateUser(["name": "Aysel Məmmədova"])
+
+        let again = await device(cache: phone.cache, vault: phone.vault)
+        name = await again.engine.userName
+        XCTAssertEqual(name, "Aysel Məmmədova")
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 1, "one session all along")
+    }
+
     func testAnotherPersonGetsANewSession() async throws {
         let phone = await device()
         try await phone.engine.loginUser(UserIdentity(userId: "1"), userHash: "hash_1")

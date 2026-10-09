@@ -97,6 +97,7 @@ final class RealtimeTests: XCTestCase {
         XCTAssertEqual(long, .waiting(8))
         await realtime.reconnectNow()
         await waitForConnection(5)
+        guard socket.connections.count == 5 else { return }
         socket.connections[4].close()
         let next = await backoff()
         XCTAssertEqual(next, 1, "the backoff starts over")

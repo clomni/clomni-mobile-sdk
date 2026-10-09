@@ -106,6 +106,10 @@ package final class MessengerCoordinator {
     package private(set) var language: String?
     private var launcherOverride: Bool?
     private var bottomPaddingOverride: Double?
+    /// `start` has run: the app's launcher may now ask for the session it needs (`readyForTheLauncher`).
+    private var started = false
+    /// A `prepare` on its way, which a second one joins (the launcher's and the opened messenger's).
+    private var preparing: Task<Bool, Never>?
     private var listeners: [UUID: (Int) -> Void] = [:]
     private var observation: UUID?
     private lazy var changes = ChangeQueue { [weak self] change in await self?.changed(change) }
@@ -166,7 +170,23 @@ package final class MessengerCoordinator {
             config = await session.refreshConfig(language: config.speaks(language)) ?? config
             readiness = await session.isAppDisabled ? .disabled : .ready
         }
+        started = true
         changed()
+        await readyForTheLauncher()
+    }
+
+    /// The app turned the launcher on and nobody is logged in (the first launch of an app that shows the button and
+    /// never calls loginUser, CM-087): the button opens the messenger, which starts an anonymous visitor anyway, so
+    /// that happens now and the button shows, rather than never.
+    private func readyForTheLauncher() async {
+        guard started, launcherOverride == true, readiness == .notReady else { return }
+        ClomniLog.debug("the launcher is on and the SDK is not ready: getting a session for it")
+        await prepare()
+    }
+
+    /// The phone's network is back: a launcher still waiting for its session (no network at launch) tries again.
+    package func networkAvailable() async {
+        await readyForTheLauncher()
     }
 
     /// A session (an anonymous visitor when the app has logged nobody in) and the config: what an open messenger
@@ -174,6 +194,15 @@ package final class MessengerCoordinator {
     /// be reached.
     @discardableResult
     package func prepare() async -> Bool {
+        if let running = preparing { return await running.value }
+        let run = Task { await self.prepareOnce() }
+        preparing = run
+        let ready = await run.value
+        preparing = nil
+        return ready
+    }
+
+    private func prepareOnce() async -> Bool {
         guard readiness != .disabled else { return false }
         if preparationFailed {
             // Skeletons again while it tries.
@@ -237,6 +266,8 @@ package final class MessengerCoordinator {
     package func loggedOut() {
         dismiss()
         if readiness == .ready { readiness = .notReady }
+        // The launcher waits for the next login; it does not start a visitor of its own after a logout.
+        started = false
         updateUnread(0)
         finished = [:]
         changed()
@@ -320,6 +351,7 @@ package final class MessengerCoordinator {
         guard route != nil else { return }
         stack = []
         source = nil
+        ClomniLog.debug("messenger closed")
         events.messengerClosed?()
         changed()
     }
@@ -342,6 +374,7 @@ package final class MessengerCoordinator {
         stack = route == .home ? [.home] : [.home, route]
         if wasClosed {
             self.source = source
+            ClomniLog.debug("messenger opened from \(source ?? "the app")")
             events.messengerOpened?(source)
         }
         changed()
@@ -391,6 +424,12 @@ package final class MessengerCoordinator {
     package func setLauncherVisible(_ visible: Bool) {
         launcherOverride = visible
         changed()
+        if visible { Task { await readyForTheLauncher() } }
+    }
+
+    /// The preparation on its way, if any, is over; the tests wait for it.
+    package func preparationSettled() async {
+        _ = await preparing?.value
     }
 
     /// Lifts the launcher above a bottom bar.

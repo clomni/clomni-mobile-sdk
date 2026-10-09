@@ -134,6 +134,7 @@ actor RealtimeClient {
             var opened: WebSocketConnection?
             do {
                 state = .connecting
+                ClomniLog.debug("socket connecting")
                 let url = try await address()
                 guard generation == self.generation else { return }
                 let connection = transport.connect(url)
@@ -150,6 +151,7 @@ actor RealtimeClient {
             let delay = Self.delay(afterFailures: failures)
             failures += 1
             state = .waiting(delay)
+            ClomniLog.debug("socket reconnects in \(Int(delay)) s")
             try? await time.sleep(seconds: delay)
         }
     }
@@ -196,6 +198,7 @@ actor RealtimeClient {
             heartbeat = Double(max(1, heartbeatSec))
             failures = 0
             state = .connected
+            ClomniLog.debug("socket connected")
         }
         await handler?(event)
     }

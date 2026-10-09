@@ -143,6 +143,10 @@ package actor ClomniEngine {
     /// `userHash` = hex(HMAC-SHA256(identity_secret, user_id)), computed on the customer's server. An anonymous user's
     /// conversations move to this user.
     package func loginUser(_ user: UserIdentity, userHash: String?) async throws {
+        // An empty name is none (a wrapper's "" for a missing one): the name kept with the identity stays, and the
+        // server is not told to clear it.
+        var user = user
+        if user.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true { user.name = nil }
         try await login(.user(user, hash: userHash))
     }
 
@@ -327,6 +331,7 @@ package actor ClomniEngine {
         configLanguage = language
         do {
             if case .changed(let config, let body, let etag) = try await api.config(language: language, etag: configETag) {
+                ClomniLog.debug("config \(config.version) in \(language ?? "the server's language")")
                 self.config = config
                 configETag = etag
                 cache.write(body, Files.config)
@@ -599,6 +604,7 @@ package actor ClomniEngine {
                                    preview: preview, createdAt: time.now())
         entry.openedFrom = drafts[conversationId] ?? nil
         outbox.add(entry)
+        ClomniLog.debug("queued \(entry.id) for \(conversationId)")
         changed(conversationId)
         deliverNow()
         return entry
@@ -848,6 +854,7 @@ package actor ClomniEngine {
             }
             registration.registeredFor = user
             vault.setValue(registration, for: Files.push)
+            ClomniLog.debug("push token registered (\(registration.sandbox ? "sandbox" : "production"))")
         } while registerPushAgain
     }
 
