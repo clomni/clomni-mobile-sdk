@@ -149,6 +149,11 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         let host = UIHostingController(rootView: root)
         // The screens draw their own bars, ✕ and back.
         host.navigationItem.largeTitleDisplayMode = .never
+        // The keyboard is the conversation's own business (KeyboardProbe): SwiftUI's keyboard avoidance on top of it
+        // lifted the screen twice whenever the keyboard or the composer changed while it was up (a ~40 pt band over
+        // the emoji keyboard on the operator's iPhone, the composer under the keyboard with a picked file, CM-087).
+        // The screen's safe area is the device's alone; iOS 15 and 16.3 ignore the keyboard's in ChatView.
+        if #available(iOS 16.4, *) { host.safeAreaRegions = .container }
         return host
     }
 
