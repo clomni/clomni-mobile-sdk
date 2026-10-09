@@ -45,6 +45,57 @@ extension Clomni {
                                       animated: false)
         top.present(navigation, animated: true)
     }
+
+    /// Debug builds, for UI tests: the launcher as `initialize` and `setLauncherVisible(true)` bring it up, the
+    /// messenger's own coordinator and renderer over a session that is logged in with a kept look (no server). Called
+    /// as early as an app calls `initialize`, before the app's scene and window are up (CM-087), it shows once they
+    /// are. A tap opens Home.
+    @_spi(ClomniUITesting) @MainActor
+    public static func startDemoLauncher() {
+        let coordinator = MessengerCoordinator(session: DemoSession(), language: "az")
+        let messenger = UIKitMessenger(engine: ClomniEngine(appId: "app_demo", apiKey: "ios_demo"), coordinator: coordinator)
+        coordinator.onChange = { [weak messenger] in messenger?.render() }
+        coordinator.setLauncherVisible(true)
+        DemoSession.kept = (coordinator, messenger)
+        Task { await coordinator.start() }
+    }
+}
+
+/// The demo launcher's SDK: logged in, its look kept from last time, nothing on the network.
+actor DemoSession: MessengerSession {
+    /// The demo launcher's coordinator and renderer, alive for the app's life (the renderer holds the coordinator
+    /// weakly, as the runtime keeps both).
+    @MainActor static var kept: (MessengerCoordinator, UIKitMessenger)?
+
+    var isLoggedIn: Bool { true }
+    var isAppDisabled: Bool { false }
+    var unreadTotal: Int { 2 }
+    var config: MessengerConfig? { DemoChat.demoConfig }
+    nonisolated func cachedConfigFromDisk() -> MessengerConfig? { DemoChat.demoConfig }
+    func loginUnidentifiedUser() async throws {}
+    func refreshConfig(language: String?) async -> MessengerConfig? { DemoChat.demoConfig }
+    func connect() async {}
+    func draftConversation(openedFrom: String?) async -> String { DemoChat.conversationId }
+    func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
+                   openedFrom: String?) async throws -> Conversation? { nil }
+    func messages(in conversationId: String) async -> [Message] { [] }
+    func conversationExists(_ id: String) async -> Bool? { true }
+    func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID { UUID() }
+}
+
+extension DemoChat {
+    /// Picks the demo's picture in the open conversation (`stagedPicture`).
+    static let stageFile = Notification.Name("ClomniDemoStageFile")
+
+    /// A picture, as the photo library would hand it over: a few pixels of sand colour.
+    @MainActor
+    static func stagedPicture() -> StagedFile? {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 90)).image { context in
+            UIColor(red: 0.85, green: 0.78, blue: 0.62, alpha: 1).setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 120, height: 90))
+        }
+        return ImagePreparation.staged(image)
+    }
 }
 
 /// The demo conversation, in memory: 43 messages back and forth, short and long, two pictures (the user's read up to
@@ -59,7 +110,7 @@ actor DemoChat: ChatDataSource {
     static let conversationId = "conv_demo"
     private static let flow = ProcessInfo.processInfo.arguments.contains("-ClomniDemoFlow")
 
-    private static let demoConfig = ProtocolJSON.parseConfig(Data(#"""
+    static let demoConfig = ProtocolJSON.parseConfig(Data(#"""
     {"version":1,"brand":{"name":"Clomni","primary_color":"#1A2EB8","header_style":"gradient","glow":false},
      "theme":{"mode":"system","launcher":{"enabled":false}},"home":{"cards":["send","recent"]},
      "team":{"show":true,"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
@@ -271,6 +322,14 @@ actor DemoChat: ChatDataSource {
 
     func sendText(_ text: String, in conversationId: String, replyTo: String?) -> PendingMessage {
         append(text, from: "user")
+        // "Şəkil göndərirəm" picks a picture five seconds later, as if from the photo library: the UI tests read above
+        // meanwhile.
+        if text == "Şəkil göndərirəm" {
+            Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                await MainActor.run { NotificationCenter.default.post(name: Self.stageFile, object: nil) }
+            }
+        }
         if text.hasSuffix("?") {
             Task {
                 try? await Task.sleep(nanoseconds: 10_000_000_000)

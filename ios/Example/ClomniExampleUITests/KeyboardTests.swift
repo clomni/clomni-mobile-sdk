@@ -188,6 +188,55 @@ final class KeyboardTests: XCTestCase {
         XCTAssertFalse(capsule.exists, "the capsule is gone")
     }
 
+    /// CM-087 (the RN test on Android): a picked file opens its strip over the composer; the end of the conversation
+    /// comes into sight over it, also when the user was reading further up. The demo picks a picture five seconds
+    /// after "Şəkil göndərirəm", as the photo library would hand it over.
+    func testAPickedFileBringsTheEndIntoSightOverItsStrip() {
+        launch()
+        let composer = element("clomni.composer.field")
+        XCTAssertTrue(composer.waitForExistence(timeout: 15))
+        composer.tap()
+        _ = settledKeyboard()
+        composer.typeText("Şəkil göndərirəm")
+        element("clomni.composer.send").tap()
+        let sent = labelled("Şəkil göndərirəm")
+        XCTAssertTrue(sent.waitForExistence(timeout: 3))
+        // Back into the history, well past what still counts as the end, the drag over and held.
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 350)), withVelocity: .default,
+                    thenHoldForDuration: 0.3)
+        keep("reading-above-before-the-file")
+
+        let picked = labelled("image.jpg")
+        XCTAssertTrue(picked.waitForExistence(timeout: 15), "the picture's strip over the composer")
+        let bubble = settled(sent)
+        let bar = settled(element("clomni.composer"))
+        keep("file-picked")
+        XCTAssertGreaterThanOrEqual(settled(picked).minY, bar.minY, "the strip is part of the composer")
+        XCTAssertLessThanOrEqual(bubble.maxY, bar.minY, "the last message \(bubble) is over the strip \(bar)")
+        XCTAssertGreaterThan(bubble.minY, 0)
+        XCTAssertEqual(bar.minY - bubble.maxY, Self.listBottomPadding, accuracy: 2, "at the list's very end")
+    }
+
+    /// CM-087 (the RN test on Android, where TalkBack read the last bot message twice): a message is one element for
+    /// VoiceOver, the last of the bot's and of the operator's too, and a step that comes after a choice.
+    func testTheLastMessagesAreOneElementEach() {
+        launch(["-ClomniDemoFlow"])
+        XCTAssertTrue(labelled("Nə baş verib? (1)").waitForExistence(timeout: 15))
+        keep("one-element-each")
+        XCTAssertEqual(count("Nə baş verib? (1)"), 1, "the bot's last message")
+        XCTAssertEqual(count("Başqa sualınız olsa, yazın"), 1, "the operator's last message")
+        labelled("Velosiped dayandı 1").tap()
+        XCTAssertTrue(labelled("Nə baş verib? (2)").waitForExistence(timeout: 10))
+        XCTAssertEqual(count("Nə baş verib? (2)"), 1, "the next step")
+        XCTAssertEqual(count("Velosiped dayandı 1"), 1, "the choice, now the user's message")
+    }
+
+    /// How many elements VoiceOver has whose words contain `text`.
+    private func count(_ text: String) -> Int {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).count
+    }
+
     // MARK: - Helpers
 
     private func element(_ identifier: String) -> XCUIElement {

@@ -111,6 +111,7 @@ struct LauncherButton: View {
         .buttonStyle(LauncherPressStyle())
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(Text(state.accessibilityLabel))
+        .accessibilityIdentifier("clomni.launcher")
         .environment(\.clomniTypeface, typeface)
         .environment(\.clomniThemeOverride, themeOverride)
     }

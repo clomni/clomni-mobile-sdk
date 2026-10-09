@@ -158,6 +158,17 @@ struct ChatView: View {
         .task { await model.controller.load() }
         .onDisappear { Task { await model.controller.stop() } }
         .onChange(of: draft) { text in Task { await model.controller.textChanged(text) } }
+        // A picked file opens its strip over the composer: the end of the conversation comes into sight over it, from
+        // wherever the user was reading (CM-087: the last message stayed under the strip).
+        .onChange(of: staged != nil) { picked in
+            guard picked else { return }
+            unseen = false
+            pin.follow()
+        }
+        #if DEBUG
+        // The UI tests' file, picked without the system's picker (DemoChat).
+        .onReceive(NotificationCenter.default.publisher(for: DemoChat.stageFile)) { _ in staged = DemoChat.stagedPicture() }
+        #endif
         .onChange(of: model.screen.announcement) { announcement in announce(announcement) }
         .sheet(isPresented: $choosingAttachment) {
             attachmentSheet
