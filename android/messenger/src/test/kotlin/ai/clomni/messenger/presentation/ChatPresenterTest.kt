@@ -507,6 +507,56 @@ class ChatPresenterTest {
         assertTrue("emoji count once", ChatPresenter.canSend("👍👍👍", 3))
     }
 
+    /**
+     * G-07 (test report): the server writes "Kanan söhbətə qoşuldu" when the conversation is assigned, which came after
+     * eight of Kanan's messages. The line stands before Kanan's first message since the last system line; another
+     * operator's messages, the bot's and the user's stay where they are, and a line naming nobody here stays put.
+     */
+    @Test
+    fun anOperatorJoinsBeforeTheirFirstMessage() {
+        fun operator(seq: Int, name: String, text: String) = ChatFixture.message(
+            "02-text-operator-markdown.json", "id" to "msg_$seq", "seq" to seq, "content" to mapOf("text" to text),
+            "sender" to mapOf("type" to "operator", "id" to "op_$name", "name" to name),
+            "created_at" to "2026-10-01T10:%02d:00Z".format(seq),
+        )
+        fun joined(seq: Int, name: String) = ChatFixture.message(
+            "23-system-operator-joined.json", "id" to "msg_sys_$seq", "seq" to seq,
+            "content" to mapOf("event" to "operator_joined", "text" to "$name Rzayev söhbətə qoşuldu"),
+            "created_at" to "2026-10-01T10:%02d:00Z".format(seq),
+        )
+        val waiting = ChatFixture.message("22-system-waiting-in-queue.json", "id" to "msg_sys_1", "seq" to 1)
+        val user = ChatFixture.message("03-text-user.json", "id" to "msg_3", "seq" to 3, "client_id" to "c_3")
+        val messages = listOf(waiting, operator(2, "Kanan", "Salam"), user, operator(4, "Kanan", "Baxıram"), joined(5, "Kanan"))
+        fun order(list: List<Message>) = screen(list).items.mapNotNull {
+            when (it) {
+                is ChatItem.SystemItem -> it.line.text
+                is ChatItem.BubbleItem -> text(it.bubble)
+                else -> null
+            }
+        }
+        val userText = text(bubbles(screen(listOf(user))).single())
+        assertEquals(
+            listOf("Sizi operatora yönləndiririk", "Kanan Rzayev söhbətə qoşuldu", "Salam", userText, "Baxıram"),
+            order(messages),
+        )
+        assertEquals(
+            "a line in its place, or one for someone who has not written, stays",
+            listOf("Sizi operatora yönləndiririk", "Salam", "Leyla Rzayev söhbətə qoşuldu"),
+            order(listOf(waiting, operator(2, "Kanan", "Salam"), joined(3, "Leyla"))),
+        )
+        assertEquals(
+            "not before a system line: Kanan's messages before the last one were another stretch",
+            listOf("Salam", "Sizi operatora yönləndiririk", "Kanan Rzayev söhbətə qoşuldu", "Yenə"),
+            order(
+                listOf(
+                    operator(1, "Kanan", "Salam"),
+                    ChatFixture.message("22-system-waiting-in-queue.json", "id" to "msg_sys_2", "seq" to 2),
+                    operator(3, "Kanan", "Yenə"), joined(4, "Kanan"),
+                ),
+            ),
+        )
+    }
+
     @Test
     fun typingStatesAndAnnouncement() {
         val operatorTyping = screen(listOf(ChatFixture.message("01-text-bot.json"))) {

@@ -167,8 +167,8 @@ internal class ChatPresenter(
             previous = date
         }
 
-        for (message in snapshot.messages) {
-            separate(key(message), message.createdAt)
+        for ((message, date) in joinedFirst(snapshot.messages)) {
+            separate(key(message), date)
             val content = message.content
             if (content is MessageContent.System) {
                 entries += Entry.System(SystemLine(message.id, content.text, systemAvatars(content.event, snapshot)))
@@ -214,6 +214,39 @@ internal class ChatPresenter(
         }
         markStatuses(entries, snapshot)
         return runs(entries)
+    }
+
+    /**
+     * The transcript in `seq` order, but an operator's "X söhbətə qoşuldu" before X's first message since the last
+     * system line (G-07): the server writes it when the conversation is assigned, which may be after X has already
+     * written ("qoşuldu" under 8 of X's messages). Each message with the date its time separator goes by: a moved line
+     * takes the date of the message it now stands before.
+     */
+    private fun joinedFirst(messages: List<Message>): List<Pair<Message, Long>> {
+        val order = messages.toMutableList()
+        var index = 0
+        while (index < order.size) {
+            val joined = order[index]
+            val content = joined.content as? MessageContent.System
+            if (content?.event == MessageContent.SystemEvent.OperatorJoined) {
+                val since = order.subList(0, index).indexOfLast { it.content is MessageContent.System } + 1
+                val first = (since until index).firstOrNull { at ->
+                    val sender = order[at].sender
+                    val name = sender.name?.trim().orEmpty()
+                    sender.type == SenderType.OPERATOR && name.isNotEmpty() && content.text.contains(name)
+                }
+                if (first != null) {
+                    order.removeAt(index)
+                    order.add(first, joined)
+                }
+            }
+            index++
+        }
+        return order.mapIndexed { at, message ->
+            val moved = message.content.let { it is MessageContent.System && it.event == MessageContent.SystemEvent.OperatorJoined } &&
+                at + 1 < order.size && order[at + 1].seq < message.seq
+            message to if (moved) order[at + 1].createdAt else message.createdAt
+        }
     }
 
     /**
