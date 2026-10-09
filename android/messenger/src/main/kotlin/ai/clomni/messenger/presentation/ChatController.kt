@@ -48,6 +48,8 @@ internal class ChatController(
     private val playSound: (ChatSound) -> Unit = {},
     /** The timer of the stand-in for the socket ([POLL_MS]); tests keep it apart from the others. */
     private val poll: Scheduler = scheduler,
+    /** The timer of the wait for a flow's next step ([STEP_WAIT_MS]); tests keep it apart too. */
+    private val step: Scheduler = scheduler,
 ) {
     /** A message newer than this arrived while the screen was open: it gets the incoming sound. */
     private val openedAt = now()
@@ -104,6 +106,23 @@ internal class ChatController(
     /** Cancels the wait for a new conversation's flow ([FLOW_WAIT_MS]). */
     private var flowWait: (() -> Unit)? = null
 
+    /** Cancels the end of the wait for the flow's next step ([STEP_WAIT_MS]). */
+    private var stepWait: (() -> Unit)? = null
+
+    /**
+     * On [main]: the flow may have more to say (the screen opened, the user answered, the flow wrote). After
+     * [STEP_WAIT_MS] of silence, a flow holding the composer with nothing to answer gives it back (G-03).
+     */
+    private fun expectStep() {
+        stepWait?.invoke()
+        if (!snapshot.stepExpected) snapshot = snapshot.copy(stepExpected = true)
+        stepWait = step.after(STEP_WAIT_MS) {
+            stepWait = null
+            snapshot = snapshot.copy(stepExpected = false)
+            render()
+        }
+    }
+
     init {
         // The first frame is the cache's (DESIGN-PASS-3 C5): the store is in memory, so the screen opens as it was left,
         // without a composer that the flow's buttons then take away.
@@ -118,6 +137,7 @@ internal class ChatController(
     fun load() {
         val id = conversationId
         if (polling == null) schedulePoll()
+        expectStep()
         worker.execute {
             publish(read(id))
             if (observation == null) observation = source.observe(::changed)
@@ -170,6 +190,8 @@ internal class ChatController(
             hideTyping = null
             flowWait?.invoke()
             flowWait = null
+            stepWait?.invoke()
+            stepWait = null
             polling?.invoke()
             polling = null
         }
@@ -234,6 +256,7 @@ internal class ChatController(
         val replies = message.content as? MessageContent.QuickReplies ?: return
         val id = conversationId
         sound(ChatSound.SENT)
+        expectStep()
         worker.execute {
             runCatching {
                 if (buttonId == BACK) {
@@ -254,6 +277,7 @@ internal class ChatController(
         if (errors.isNotEmpty()) return errors
         val id = conversationId
         sound(ChatSound.SENT)
+        expectStep()
         worker.execute {
             runCatching { source.submitForm(message, FormInput.payload(form, values)).get() }
             publish(read(id))
@@ -341,6 +365,7 @@ internal class ChatController(
         conversationId = draft
         val load = if (awaitsFlow(draft)) MessengerSnapshot.Load.LOADING else MessengerSnapshot.Load.LOADED
         snapshot = ChatSnapshot(config = snapshot.config, known = snapshot.known, load = load)
+        expectStep()
         if (load == MessengerSnapshot.Load.LOADING) waitForFlow(draft)
         render()
     }
@@ -362,6 +387,8 @@ internal class ChatController(
                             hideTyping = null
                             snapshot = snapshot.copy(typing = null)
                         }
+                        // The flow (or anyone) wrote: its next step may follow.
+                        if (state.messages.any { it.id !in seen && it.sender.type != SenderType.USER }) expectStep()
                         // Something new from the other side while the conversation is on screen.
                         if (state.messages.any {
                                 it.id !in seen && it.createdAt >= openedAt && it.sender.type != SenderType.USER && it.type != "system"
@@ -487,5 +514,11 @@ internal class ChatController(
 
         /** How long a new conversation waits for its flow's first step before it shows empty. */
         const val FLOW_WAIT_MS = 8_000L
+
+        /**
+         * Silence after which a flow that offers nothing to answer gives the composer back. Longer than a step's
+         * rhythm (a few messages, 0.6-1.2 s each) and the network's usual delay.
+         */
+        const val STEP_WAIT_MS = 10_000L
     }
 }

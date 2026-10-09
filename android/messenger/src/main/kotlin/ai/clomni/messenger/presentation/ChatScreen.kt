@@ -1,5 +1,6 @@
 package ai.clomni.messenger.presentation
 
+import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
@@ -306,4 +307,20 @@ internal data class ChatSnapshot(
     val replyingTo: String? = null,
     /** Ratings given on this screen (score, comment) by message id: shown at once, until the server's copy has them. */
     val rated: Map<String, Pair<Int, String?>> = emptyMap(),
+    /**
+     * The flow's next step may still be on its way: just after the screen opened, the user answered, or the flow
+     * wrote. ChatController turns it off after a pause of silence; then a flow that holds the composer but offers
+     * nothing to tap or fill in is at a dead end and gives it back (G-03).
+     */
+    val stepExpected: Boolean = true,
 )
+
+/**
+ * The flow still has the floor: buttons or a form to answer, an answer on its way, or its next step expected. Without
+ * any of these a flow that says it waits (a choice whose option leads nowhere: the server sends nothing more, test
+ * report G-03) would leave the user with no buttons and no composer.
+ */
+internal val ChatSnapshot.flowHasTheFloor: Boolean
+    get() = answerable.isNotEmpty() || stepExpected || pending.any {
+        it.state == PendingMessage.State.SENDING && (it.message is ClientMessage.ButtonReply || it.message is ClientMessage.FormSubmit)
+    }

@@ -344,6 +344,22 @@ class ChatPresenterTest {
         assertEquals("ended, stopped or handed over", ChatComposer.Mode.Open, mode("""{"active":false,"awaiting":null}"""))
         assertEquals("no flow sent (an older server): open", ChatComposer.Mode.Open, mode("null"))
         assertEquals("the earlier form reads as none", ChatComposer.Mode.Open, mode("""{"flow_id":"flw_1","node_id":"S"}"""))
+        // G-03: a menu whose chosen option leads nowhere. The server still says "menu" and sends nothing more: once
+        // the next step is no longer expected, nothing to answer gives the composer back; an answer on its way does not.
+        fun deadEnd(build: (ChatSnapshot) -> ChatSnapshot) = screen(listOf(languages)) {
+            build(it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), answerable = emptySet()))
+        }.composer.mode
+        assertEquals("the next step may still come", ChatComposer.Mode.Hidden, deadEnd { it })
+        assertEquals("silence: the composer is back", ChatComposer.Mode.Open, deadEnd { it.copy(stepExpected = false) })
+        val answer = PendingMessage("conv_5521", ClientMessage.ButtonReply(languages.id, "az", "lang:az"), "Azərbaycan dili", now)
+        assertEquals("the answer is still going", ChatComposer.Mode.Hidden, deadEnd { it.copy(stepExpected = false, pending = listOf(answer)) })
+        assertEquals(
+            "buttons to tap keep it away however long",
+            ChatComposer.Mode.Hidden,
+            screen(listOf(languages)) {
+                it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), answerable = setOf(languages.id), stepExpected = false)
+            }.composer.mode,
+        )
 
         // Example S: chips, the back button, no composer.
         val step = ChatFixture.message("10-example-level2-S-chips.json")

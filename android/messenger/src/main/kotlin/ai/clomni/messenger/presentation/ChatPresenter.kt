@@ -105,7 +105,7 @@ internal class ChatPresenter(
                 ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
             // The server says whether a flow drives the conversation (conversation.flow): while it waits for a button,
             // a form or its next step there is no field; it waits for typed text, or it is over, and the field is back.
-            snapshot.conversation?.flow?.holdsComposer == true -> ChatComposer.Mode.Hidden
+            snapshot.conversation?.flow?.holdsComposer == true && snapshot.flowHasTheFloor -> ChatComposer.Mode.Hidden
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(

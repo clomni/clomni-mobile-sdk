@@ -193,12 +193,14 @@ class ChatControllerTest {
     private val timers = Timers()
     private val menu = ChatFixture.flow("menu")
     private val polls = Timers()
+    private val steps = Timers()
     private val direct = Executor { it.run() }
     private var renders = 0
 
     private fun controller(worker: Executor = direct, main: Executor = direct, id: String = "conv_5521") = ChatController(
         source, id, "az", worker, main, timers,
         known = mapOf("name" to "Aysel"), timeZone = TimeZone.getTimeZone("UTC"), now = { 1_790_850_720_000L }, poll = polls,
+        step = steps,
     ).also { it.onChange = { renders++ } }
 
     private fun bubbleTexts(chat: ChatController) = chat.screen.items.filterIsInstance<ChatItem.BubbleItem>()
@@ -254,6 +256,33 @@ class ChatControllerTest {
         chat.load()
         chat.tap("x", text.id)
         assertTrue("not quick replies: nothing", source.calls.none { it.startsWith("reply msg_f01") })
+    }
+
+    /**
+     * G-03 (test report): "Region" → "Tərtər" had no next step. The server answered the choice with nothing (still
+     * "menu"), and the user had no buttons and no composer. After a pause of silence the composer is back.
+     */
+    @Test
+    fun aChoiceThatLeadsNowhereGivesTheComposerBack() {
+        val step = ChatFixture.message("10-example-level2-S-chips.json")
+        source.set(listOf(step), answerable = setOf(step.id), flow = menu)
+        val chat = controller()
+        chat.load()
+        steps.fire()
+        assertEquals("buttons to tap: no composer, however long", ChatComposer.Mode.Hidden, chat.screen.composer.mode)
+        chat.tap("o_t", step.id)
+        source.outbox.clear()
+        source.push(ClomniChange.Messages("conv_5521"))
+        assertEquals("just answered: the next step may come", ChatComposer.Mode.Hidden, chat.screen.composer.mode)
+        assertEquals(10_000L, steps.delays.last())
+        steps.fire()
+        assertEquals("nothing came: the composer is back", ChatComposer.Mode.Open, chat.screen.composer.mode)
+
+        // The flow writes again (its next step): the composer waits for it once more.
+        val next = ChatFixture.message("10-example-level2-S-chips.json", "id" to "msg_next", "seq" to 9)
+        source.set(listOf(step, next), answerable = setOf("msg_next"), flow = menu)
+        source.push(ClomniChange.Messages("conv_5521"))
+        assertEquals(ChatComposer.Mode.Hidden, chat.screen.composer.mode)
     }
 
     @Test
