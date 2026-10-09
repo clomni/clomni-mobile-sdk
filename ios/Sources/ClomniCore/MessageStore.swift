@@ -120,7 +120,8 @@ struct MessageStore: Codable, Equatable {
 package struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
     package enum State: String, Sendable, Codable {
         case sending
-        /// Three attempts failed, or the server refused it: "Göndərilmədi · Yenidən cəhd et".
+        /// The server refused it, or answered with an error three times: "Göndərilmədi · Yenidən cəhd et". Without
+        /// a connection a message stays `sending` (its clock) until the network is back.
         case failed
     }
 
@@ -134,6 +135,7 @@ package struct PendingMessage: Sendable, Equatable, Identifiable, Codable {
     package let preview: String?
     package let createdAt: Date
     package internal(set) var state = State.sending
+    /// Tries the server answered with an error; tries that got no answer at all (offline) do not count.
     package internal(set) var attempts = 0
     /// The server's reason when it refused the message, e.g. `validation_failed` with `fields`.
     package internal(set) var errorCode: String?

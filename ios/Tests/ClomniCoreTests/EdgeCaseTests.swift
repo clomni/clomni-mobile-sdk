@@ -124,21 +124,56 @@ final class EdgeCaseTests: EngineTestCase {
         XCTAssertTrue(userMessages(id).isEmpty)
     }
 
-    /// "Göndərərkən internet kəsildi": the outbox repeats the message with its client id; after three failures it
-    /// is marked failed, and a retry sends it.
-    func testOfflineMessageIsRetriedThenFailedThenRetriedByHand() async throws {
+    /// "Göndərərkən internet kəsildi" (CM-087, the RN test on Android): without a connection the message keeps its clock
+    /// however long it takes, repeated with its client id 1, 2, 4, 8, 16 s apart, and never turns into
+    /// "Göndərilmədi"; when the network is back it goes at once, not at the end of the wait.
+    func testAnOfflineMessageKeepsItsClockAndGoesWhenTheNetworkIsBack() async throws {
         let phone = await device()
         let (id, _) = try await conversation(on: phone)
-        for _ in 0..<3 { server.inject(.offline, "POST", "/messages") }
+        for _ in 0..<5 { server.inject(.offline, "POST", "/messages") }
+        let pending = try await phone.engine.sendText("Salam", in: id)
+        let tried = await drive(time) { self.server.requests("POST", "/messages").count == 5 }
+        XCTAssertTrue(tried, "five tries without an answer")
+        await expect { self.time.sleeping == 1 }
+        XCTAssertEqual(Array(time.waits.suffix(5)), [1, 2, 4, 8, 16])
+        let waiting = await phone.pending(id).first
+        XCTAssertEqual(waiting?.state, .sending, "the clock, not a failure")
+        XCTAssertEqual(waiting?.attempts, 0, "no answer is not the message's fault")
+
+        let before = time.now()
+        await phone.engine.networkAvailable()
+        await expect { await phone.pending(id).isEmpty }
+        XCTAssertEqual(time.now(), before, "it went at once, not after the 16 s wait")
+        XCTAssertEqual(userMessages(id).count, 1)
+        let posts = server.requests("POST", "/messages")
+        XCTAssertEqual(posts.count, 6)
+        XCTAssertEqual(Set(posts.compactMap { self.body($0)?["client_id"]?.stringValue }), [pending.id])
+    }
+
+    /// The socket's `ready` (it reconnected) is the network coming back too: what waits goes then.
+    func testAWaitingMessageGoesWhenTheSocketIsBack() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        server.inject(.offline, "POST", "/messages")
+        try await phone.engine.sendText("Salam", in: id)
+        await expect { self.server.requests("POST", "/messages").count == 1 && self.time.sleeping == 1 }
+        await phone.engine.catchUp()
+        await expect { await phone.pending(id).isEmpty }
+        XCTAssertEqual(userMessages(id).count, 1)
+    }
+
+    /// "Göndərilmədi" is for what the server answered: three server errors in a row (each tried 4 times by the API
+    /// client) fail the message, and a retry by hand sends it with its client id.
+    func testServerErrorsFailTheMessageThenARetrySendsIt() async throws {
+        let phone = await device()
+        let (id, _) = try await conversation(on: phone)
+        for _ in 0..<12 { server.inject(.status(503), "POST", "/messages") }
         let pending = try await phone.engine.sendText("Salam", in: id)
         let failed = await drive(time) { await phone.pending(id).first?.state == .failed }
         XCTAssertTrue(failed)
-        let posts = server.requests("POST", "/messages")
-        XCTAssertEqual(posts.count, 3)
-        XCTAssertEqual(Set(posts.compactMap { self.body($0)?["client_id"]?.stringValue }), [pending.id])
+        XCTAssertEqual(server.requests("POST", "/messages").count, 12)
         let attempts = await phone.pending(id).first?.attempts
         XCTAssertEqual(attempts, 3)
-        XCTAssertTrue(time.waits.contains(1) && time.waits.contains(2), "\(time.waits)")
 
         try await phone.engine.retry(pending.id)
         await expect { await phone.pending(id).isEmpty }
@@ -179,7 +214,7 @@ final class EdgeCaseTests: EngineTestCase {
         let (id, _) = try await conversation(on: before)
         server.inject(.offline, "POST", "/messages")
         let pending = try await before.engine.sendText("Yazdım və çıxdım", in: id)
-        await expect { await before.pending(id).first?.attempts == 1 }
+        await expect { self.server.requests("POST", "/messages").count == 1 && frozen.sleeping == 1 }
 
         let after = await device(cache: before.cache, vault: before.vault)
         let fromDisk = await after.pending(id).map(\.id)

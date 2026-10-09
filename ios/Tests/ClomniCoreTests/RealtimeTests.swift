@@ -83,6 +83,31 @@ final class RealtimeTests: XCTestCase {
         XCTAssertEqual(socket.urls.count, 9)
     }
 
+    /// CM-087: the network is back while the socket waits out a long backoff: it connects now, and the next wait
+    /// starts again from 1 s.
+    func testTheNetworkComingBackReconnectsAtOnce() async throws {
+        await realtime.start()
+        for attempt in 1...4 {
+            await waitForConnection(attempt)
+            socket.connections[attempt - 1].close()
+            _ = await backoff()
+            if attempt < 4 { time.advance(by: 30) }
+        }
+        let long = await realtime.state
+        XCTAssertEqual(long, .waiting(8))
+        await realtime.reconnectNow()
+        await waitForConnection(5)
+        socket.connections[4].close()
+        let next = await backoff()
+        XCTAssertEqual(next, 1, "the backoff starts over")
+        // Connected or connecting, there is nothing to hurry.
+        time.advance(by: 1)
+        await waitForConnection(6)
+        await realtime.reconnectNow()
+        try await Task.sleep(nanoseconds: 20_000_000)
+        XCTAssertEqual(socket.connections.count, 6)
+    }
+
     func testReadyResetsTheBackoff() async throws {
         await realtime.start()
         await waitForConnection(1)

@@ -282,7 +282,7 @@ final class EngineTests: EngineTestCase {
         server.inject(.offline, "POST", "/messages")
         let pending = try await before.engine.sendFile(Data("pdf".utf8), fileName: "qaime.pdf", mime: "application/pdf",
                                                        caption: nil, in: id)
-        await expect { await before.pending(id).first?.attempts == 1 }
+        await expect { self.server.requests("POST", "/messages").count == 1 && frozen.sleeping == 1 }
         let uploaded = await before.pending(id).first?.upload?.uploadId
         XCTAssertEqual(uploaded, "upl_1")
 
@@ -464,6 +464,8 @@ final class EngineTests: EngineTestCase {
         } catch {
             XCTAssertEqual(error as? ClomniError, .rejected("rating not open"))
         }
+        // The answer is still out (held): a second one is refused. Once it has failed, a new one may take its place.
+        server.hold("POST", "/messages")
         try await phone.engine.submitRating(rating, score: 5, comment: "Tez cavab verdiniz")
         do {
             try await phone.engine.submitRating(rating, score: 4, comment: nil)
@@ -471,6 +473,7 @@ final class EngineTests: EngineTestCase {
         } catch {
             XCTAssertEqual(error as? ClomniError, .rejected("rating not open"))
         }
+        server.release()
         await expect { await phone.pending("conv_5521").count == 2 && phone.changes.all.count > 0 }
         await expect { self.server.requests("POST", "/messages").count == 3 }
         XCTAssertEqual(body(server.requests("POST", "/messages").last)?["content"],

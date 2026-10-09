@@ -116,6 +116,14 @@ actor RealtimeClient {
         state = .stopped
     }
 
+    /// The network is back: a socket waiting out its backoff (up to 30 s) connects now.
+    func reconnectNow() {
+        guard case .waiting = state else { return }
+        stop()
+        failures = 0
+        start()
+    }
+
     /// 1, 2, 4, 8, 16, 30, 30 … seconds.
     static func delay(afterFailures failures: Int) -> Double {
         min(30, pow(2, Double(min(failures, 5))))

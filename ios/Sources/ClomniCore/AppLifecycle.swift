@@ -17,3 +17,31 @@ extension ClomniEngine {
     }
 }
 #endif
+
+#if canImport(Network)
+import Network
+#if canImport(ClomniProtocol)
+import ClomniProtocol
+#endif
+
+extension ClomniEngine {
+    /// The phone's way to the network: when it comes back, what waits in the outbox goes at once (CM-087), not at the
+    /// next try of its backoff, and the socket reconnects.
+    func observeNetwork() {
+        guard networkObserver == nil else { return }
+        let monitor = NWPathMonitor()
+        let seen = Locked<NWPath.Status?>(nil)
+        monitor.pathUpdateHandler = { [weak self] path in
+            let before = seen.write { seen -> NWPath.Status? in
+                defer { seen = path.status }
+                return seen
+            }
+            // Only a way back: the first report, and every one while it lasts, is not news.
+            guard path.status == .satisfied, let before, before != .satisfied else { return }
+            Task { await self?.networkAvailable() }
+        }
+        monitor.start(queue: DispatchQueue(label: "ai.clomni.engine.network"))
+        networkObserver = monitor
+    }
+}
+#endif
