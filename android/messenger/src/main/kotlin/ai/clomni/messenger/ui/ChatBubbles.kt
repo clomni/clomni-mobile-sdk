@@ -111,8 +111,10 @@ internal class ChatActions(
     val close: () -> Unit = {},
     val send: () -> Unit = {},
     val pickImage: () -> Unit = {},
-    /** Null when the app may not use the camera: the sheet has no camera row then. */
+    /** Null on a device without a camera: the sheet has no camera rows then. */
     val pickCamera: (() -> Unit)? = null,
+    /** A video from the camera; null as [pickCamera]. */
+    val pickVideo: (() -> Unit)? = null,
     val pickFile: () -> Unit = {},
     /** The × on a picked file, before it is sent. */
     val removePicked: () -> Unit = {},

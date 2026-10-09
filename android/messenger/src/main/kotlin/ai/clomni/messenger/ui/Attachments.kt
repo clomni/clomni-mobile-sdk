@@ -62,10 +62,14 @@ internal object Attachments {
         }
     }.getOrNull() ?: uri.lastPathSegment ?: "file"
 
-    /** Where the camera writes the next photo: a new file in the app's cache, shared with the camera app by Uri. */
-    fun cameraTarget(context: android.content.Context): Uri? = runCatching {
+    /**
+     * Where the camera writes the next photo ([video] false, .jpg) or video (.mp4): a new file in the app's cache, shared
+     * with the camera app by Uri. What earlier shots left there is removed first.
+     */
+    fun cameraTarget(context: android.content.Context, video: Boolean = false): Uri? = runCatching {
         val dir = java.io.File(context.cacheDir, "clomni_camera").apply { mkdirs() }
-        val file = java.io.File(dir, "photo-${System.currentTimeMillis()}.jpg")
+        dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 3_600_000 }?.forEach { it.delete() }
+        val file = java.io.File(dir, if (video) "video-${System.currentTimeMillis()}.mp4" else "photo-${System.currentTimeMillis()}.jpg")
         androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.clomni.camera", file)
     }.getOrNull()
 
@@ -111,4 +115,46 @@ internal object Attachments {
             else -> 0
         }
     }
+}
+
+/**
+ * Whether the conversation may offer the camera (test report G-10: only "Şəkil və ya video" and "Fayl"): not on a device
+ * without one; with no permission asked when the app declares none (the camera app takes the picture, as
+ * ACTION_IMAGE_CAPTURE allows); asked for first when the app declares CAMERA, which Android then requires.
+ */
+internal enum class CameraAccess {
+    NONE,
+    FREE,
+    ASK;
+
+    companion object {
+        fun of(hasCamera: Boolean, declaresCamera: Boolean): CameraAccess = when {
+            !hasCamera -> NONE
+            declaresCamera -> ASK
+            else -> FREE
+        }
+
+        fun of(context: android.content.Context): CameraAccess {
+            val packages = context.packageManager
+            val declared = runCatching {
+                val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    packages.getPackageInfo(
+                        context.packageName,
+                        android.content.pm.PackageManager.PackageInfoFlags.of(android.content.pm.PackageManager.GET_PERMISSIONS.toLong()),
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    packages.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
+                }
+                info.requestedPermissions?.contains(android.Manifest.permission.CAMERA) == true
+            }.getOrDefault(false)
+            return of(packages.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY), declared)
+        }
+    }
+}
+
+/** The camera app's video into the Uri given, asked to stop at [maxBytes] (the config's file limit). */
+internal class CaptureVideoUpTo(private val maxBytes: Long) : androidx.activity.result.contract.ActivityResultContracts.CaptureVideo() {
+    override fun createIntent(context: android.content.Context, input: Uri): android.content.Intent =
+        super.createIntent(context, input).putExtra(android.provider.MediaStore.EXTRA_SIZE_LIMIT, maxBytes)
 }

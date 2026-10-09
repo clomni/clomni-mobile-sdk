@@ -141,15 +141,39 @@ internal fun ClomniChat(
     val refused: (String?) -> Unit = { text -> if (text != null) Toast.makeText(context, text, Toast.LENGTH_LONG).show() }
     val resolver = context.contentResolver
     // A picked file waits over the field, with its preview and ×, and goes with the next send (its text the caption).
-    var picked by remember { mutableStateOf<Uri?>(null) }
+    var picked by rememberSaveable { mutableStateOf<Uri?>(null) }
     val photo = rememberResultLauncher(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) picked = uri }
     val document = rememberResultLauncher(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) picked = uri }
-    var shot by remember { mutableStateOf<Uri?>(null) }
-    val camera = rememberResultLauncher(ActivityResultContracts.TakePicture()) { taken -> if (taken) picked = shot }
-    val mayUseCamera = remember(context) {
-        context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
+    // The camera (G-10): a photo, or a video up to the file limit, written to a file of the messenger's own and then
+    // picked like any other. Kept across the activity being recreated while the camera app is in front.
+    var shot by rememberSaveable { mutableStateOf<Uri?>(null) }
     val limit = (config?.limits?.fileMb ?: 25).coerceAtLeast(config?.limits?.imageMb ?: 10) * 1_048_576L
+    val camera = rememberResultLauncher(ActivityResultContracts.TakePicture()) { taken -> if (taken) picked = shot }
+    val video = rememberResultLauncher(CaptureVideoUpTo((config?.limits?.fileMb ?: 25) * 1_048_576L)) { taken -> if (taken) picked = shot }
+    val cameraAccess = remember(context) { CameraAccess.of(context) }
+    var afterGrant by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val permission = rememberResultLauncher(ActivityResultContracts.RequestPermission()) { granted ->
+        val next = afterGrant
+        afterGrant = null
+        if (granted) next?.invoke() else refused(screen.composer.cameraDenied)
+    }
+    val shoot: (Boolean) -> Unit = { asVideo ->
+        val launch = {
+            Attachments.cameraTarget(context, asVideo)?.let { target ->
+                shot = target
+                runCatching { if (asVideo) video?.launch(target) else camera?.launch(target) }
+                    .onFailure { refused(screen.composer.cameraDenied) }
+            }
+            Unit
+        }
+        val granted = context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (cameraAccess == CameraAccess.ASK && !granted && permission != null) {
+            afterGrant = launch
+            permission.launch(android.Manifest.permission.CAMERA)
+        } else {
+            launch()
+        }
+    }
     val preview = picked?.let { uri ->
         remember(uri) {
             val image = resolver.getType(uri)?.startsWith("image/") == true
@@ -175,13 +199,13 @@ internal fun ClomniChat(
         pickImage = {
             photo?.launch(PickVisualMediaRequest.Builder().setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo).build())
         },
-        pickCamera = if (mayUseCamera && camera != null) {
-            {
-                Attachments.cameraTarget(context)?.let { target ->
-                    shot = target
-                    camera.launch(target)
-                }
-            }
+        pickCamera = if (cameraAccess != CameraAccess.NONE && camera != null) {
+            { shoot(false) }
+        } else {
+            null
+        },
+        pickVideo = if (cameraAccess != CameraAccess.NONE && video != null) {
+            { shoot(true) }
         } else {
             null
         },

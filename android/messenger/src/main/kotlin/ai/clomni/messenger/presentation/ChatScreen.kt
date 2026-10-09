@@ -256,6 +256,10 @@ internal data class ChatComposer(
     /** The message being answered, over the field with its ✕ ([cancelQuoteLabel]). */
     val quote: Bubble.Quote? = null,
     val cancelQuoteLabel: String = "",
+    /** The camera's video row. */
+    val videoLabel: String = "",
+    /** Said when the app's camera permission is refused. */
+    val cameraDenied: String = "",
 ) {
     sealed interface Mode {
         data object Open : Mode

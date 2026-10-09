@@ -54,14 +54,15 @@ private val Decelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 /**
  * The attachment sheet (DESIGN-PASS-2 12), a bottom sheet in the way of Material 3's (the SDK does not depend on its
  * library): a handle on top; rows 56 high, a 24 icon and 16 text: "Şəkil və ya video" (the system's photo picker),
- * "Kamera" (only when the app may use the camera), "Fayl" (the system's file picker). No cancel row: a tap on the scrim,
- * back, or dragging it down closes it.
+ * "Kamera" and "Video çək" (the camera app, on a device that has a camera; test report G-10), "Fayl" (the system's file
+ * picker). No cancel row: a tap on the scrim, back, or dragging it down closes it.
  */
 @Composable
 internal fun AttachmentSheet(composer: ChatComposer, theme: ClomniTheme, actions: ChatActions, dismiss: () -> Unit) {
     BottomSheet(theme, dismiss) { close ->
         SheetRow(R.drawable.clomni_ic_file_image, composer.mediaLabel, theme) { close(actions.pickImage) }
         actions.pickCamera?.let { camera -> SheetRow(R.drawable.clomni_ic_camera, composer.cameraLabel, theme) { close(camera) } }
+        actions.pickVideo?.let { video -> SheetRow(R.drawable.clomni_ic_file_video, composer.videoLabel, theme) { close(video) } }
         SheetRow(R.drawable.clomni_ic_file, composer.fileLabel, theme) { close(actions.pickFile) }
     }
 }

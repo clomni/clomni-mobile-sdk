@@ -125,6 +125,8 @@ internal class ChatPresenter(
                 ?.let { id -> snapshot.messages.firstOrNull { it.id == id } }
                 ?.let { quote(it, snapshot) },
             cancelQuoteLabel = strings[Key.CLOSE],
+            videoLabel = strings[Key.PICK_VIDEO],
+            cameraDenied = strings[Key.CAMERA_DENIED],
         )
     }
 

@@ -3,7 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The "İnternet yoxdur" strip of the open messenger. No other permission: the launcher lives in the app's own
-         windows (no SYSTEM_ALERT_WINDOW), photos come from the Photo Picker. -->
+         windows (no SYSTEM_ALERT_WINDOW), photos come from the Photo Picker, and the camera app takes a photo or a
+         video for the messenger (an app that declares CAMERA itself is asked for it first). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>

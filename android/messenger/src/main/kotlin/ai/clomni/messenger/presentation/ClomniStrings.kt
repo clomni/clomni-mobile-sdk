@@ -27,7 +27,11 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         /** The attachment sheet's rows and the × on a picked file. */
         PICK_MEDIA("pick_media"),
         PICK_CAMERA("pick_camera"),
+        PICK_VIDEO("pick_video"),
         PICK_FILE("pick_file"),
+
+        /** The camera's permission was refused. */
+        CAMERA_DENIED("camera_denied"),
         REMOVE_ATTACHMENT("remove_attachment"),
         EMPTY_LIST("empty_list"),
         ERROR("error"),
@@ -183,7 +187,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.TODAY to "Bu gün", Key.YESTERDAY to "Dünən", Key.TOMORROW to "sabah", Key.SEND to "Göndər",
                 Key.SEND_CARD_TITLE to "Bizə mesaj göndərin", Key.GREETING_LINE1 to "Salam, {first_name}", Key.GREETING_LINE1_ANONYMOUS to "Salam",
                 Key.GREETING_LINE2 to "Necə kömək edə bilərik?", Key.RECENT_MESSAGE to "Ən son mesaj",
-                Key.FOLLOW_US to "Bizi izləyin", Key.MESSAGES_TITLE to "Mesajlar", Key.NEWS_TITLE to "Xəbərlər", Key.PICK_MEDIA to "Şəkil və ya video", Key.PICK_CAMERA to "Kamera", Key.PICK_FILE to "Fayl", Key.REMOVE_ATTACHMENT to "Sil",
+                Key.FOLLOW_US to "Bizi izləyin", Key.MESSAGES_TITLE to "Mesajlar", Key.NEWS_TITLE to "Xəbərlər", Key.PICK_MEDIA to "Şəkil və ya video", Key.PICK_CAMERA to "Kamera", Key.PICK_VIDEO to "Video çək", Key.PICK_FILE to "Fayl", Key.CAMERA_DENIED to "Kameraya icazə yoxdur", Key.REMOVE_ATTACHMENT to "Sil",
                 Key.EMPTY_LIST to "Hələ söhbət yoxdur", Key.ERROR to "Nəsə səhv getdi", Key.LOADING to "Yüklənir",
                 Key.RETRY to "Yenidən cəhd et", Key.OFFLINE to "İnternet yoxdur", Key.CONNECTED to "Qoşuldu",
                 Key.NOW to "indi", Key.YOU to "Siz", Key.CLOSE to "Bağla", Key.UNREAD to "Oxunmamış",
@@ -211,7 +215,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
                 Key.SEND_CARD_TITLE to "Send us a message", Key.GREETING_LINE1 to "Hi, {first_name}", Key.GREETING_LINE1_ANONYMOUS to "Hi",
                 Key.GREETING_LINE2 to "How can we help?", Key.RECENT_MESSAGE to "Recent message",
-                Key.FOLLOW_US to "Follow us", Key.MESSAGES_TITLE to "Messages", Key.NEWS_TITLE to "News", Key.PICK_MEDIA to "Photo or video", Key.PICK_CAMERA to "Camera", Key.PICK_FILE to "File", Key.REMOVE_ATTACHMENT to "Remove",
+                Key.FOLLOW_US to "Follow us", Key.MESSAGES_TITLE to "Messages", Key.NEWS_TITLE to "News", Key.PICK_MEDIA to "Photo or video", Key.PICK_CAMERA to "Camera", Key.PICK_VIDEO to "Record video", Key.PICK_FILE to "File", Key.CAMERA_DENIED to "No access to the camera", Key.REMOVE_ATTACHMENT to "Remove",
                 Key.EMPTY_LIST to "No conversations yet", Key.ERROR to "Something went wrong", Key.LOADING to "Loading",
                 Key.RETRY to "Try again",
                 Key.OFFLINE to "No internet connection",
@@ -242,7 +246,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
                 Key.SEND_CARD_TITLE to "Напишите нам", Key.GREETING_LINE1 to "Здравствуйте, {first_name}", Key.GREETING_LINE1_ANONYMOUS to "Здравствуйте",
                 Key.GREETING_LINE2 to "Чем можем помочь?", Key.RECENT_MESSAGE to "Последнее сообщение",
-                Key.FOLLOW_US to "Мы в соцсетях", Key.MESSAGES_TITLE to "Сообщения", Key.NEWS_TITLE to "Новости", Key.PICK_MEDIA to "Фото или видео", Key.PICK_CAMERA to "Камера", Key.PICK_FILE to "Файл", Key.REMOVE_ATTACHMENT to "Удалить",
+                Key.FOLLOW_US to "Мы в соцсетях", Key.MESSAGES_TITLE to "Сообщения", Key.NEWS_TITLE to "Новости", Key.PICK_MEDIA to "Фото или видео", Key.PICK_CAMERA to "Камера", Key.PICK_VIDEO to "Снять видео", Key.PICK_FILE to "Файл", Key.CAMERA_DENIED to "Нет доступа к камере", Key.REMOVE_ATTACHMENT to "Удалить",
                 Key.EMPTY_LIST to "Пока нет переписки", Key.ERROR to "Что-то пошло не так", Key.LOADING to "Загрузка",
                 Key.RETRY to "Повторить", Key.OFFLINE to "Нет подключения к интернету", Key.CONNECTED to "Подключено",
                 Key.NOW to "сейчас", Key.YOU to "Вы", Key.CLOSE to "Закрыть", Key.UNREAD to "Не прочитано",
