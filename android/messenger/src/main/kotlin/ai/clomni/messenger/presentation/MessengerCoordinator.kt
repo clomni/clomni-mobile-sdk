@@ -1,6 +1,8 @@
 package ai.clomni.messenger.presentation
 
+import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.core.ClomniChange
+import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessengerConfig
@@ -22,6 +24,9 @@ internal interface MessengerSession {
     fun cachedConfig(): MessengerConfig?
 
     fun loginUnidentifiedUser(): Future<Unit>
+
+    /** The user the last `loginUser` named, kept with the session across launches; null for a visitor or after logout. */
+    fun keptUser(): Future<UserIdentity?>
 
     fun refreshConfig(language: String?): Future<MessengerConfig?>
 
@@ -203,10 +208,22 @@ internal class MessengerCoordinator(
         changed()
     }
 
-    /** After initialize and login: listens to the SDK, takes the cached config and unread count, opens the socket. */
+    /**
+     * After initialize and login: listens to the SDK, takes the cached config and unread count, opens the socket. The
+     * user kept from an earlier launch is greeted by name although the app has not called `loginUser` again yet (test
+     * report: "Salam, Aysel" became "Salam" on the next launch).
+     */
     fun start(done: () -> Unit = {}) {
         worker.execute {
             listen()
+            val kept = runCatching { session.keptUser().get() }.getOrNull()
+            main.execute {
+                if (!named && kept != null) {
+                    keptUser = kept
+                    userName = kept.name
+                    changed()
+                }
+            }
             val cached = session.config
             val unread = session.unreadTotal
             if (session.isLoggedIn) openOnCache(cached, unread)
@@ -311,18 +328,29 @@ internal class MessengerCoordinator(
         changed()
     }
 
-    /** Who Home greets: `Clomni.loginUser`'s name, until `logout` (G6). */
+    /** Who Home greets: `Clomni.loginUser`'s name, until `logout` (G6); the kept user's on a later launch. */
     var userName: String? = null
         private set
 
+    /** The user an earlier launch logged in ([MessengerSession.keptUser]): their details fill forms too. */
+    var keptUser: UserIdentity? = null
+        private set
+
+    /** The app said who it is in this run (a login or a logout): what was kept from before no longer counts. */
+    private var named = false
+
     /** `Clomni.loginUser`: Home greets the user by name at once, also when it is already open (G6). */
     fun loggedIn(name: String?) {
+        named = true
+        keptUser = null
         userName = name
         changed()
     }
 
     /** After `logout`: the messenger closes, the count goes to 0, and nothing shows until the next login. */
     fun loggedOut() {
+        named = true
+        keptUser = null
         userName = null
         dismiss()
         if (readiness == Readiness.READY) readiness = Readiness.NOT_READY

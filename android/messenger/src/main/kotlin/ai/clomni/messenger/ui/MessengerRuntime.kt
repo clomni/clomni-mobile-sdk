@@ -200,13 +200,16 @@ internal object MessengerRuntime {
         tokens.remove(listener)?.let { coordinator?.removeUnreadCountListener(it) }
     }
 
-    /** The known details for forms: name, email, phone. */
+    /** The known details for forms: name, email, phone; the user kept from an earlier launch until the app logs in. */
     val known: Map<String, String>
-        get() = listOfNotNull(
-            identity?.name?.let { "name" to it },
-            identity?.email?.let { "email" to it },
-            identity?.phone?.let { "phone" to it },
-        ).toMap()
+        get() {
+            val user = identity ?: coordinator?.keptUser
+            return listOfNotNull(
+                user?.name?.let { "name" to it },
+                user?.email?.let { "email" to it },
+                user?.phone?.let { "phone" to it },
+            ).toMap()
+        }
 
     // The messenger's activity
 

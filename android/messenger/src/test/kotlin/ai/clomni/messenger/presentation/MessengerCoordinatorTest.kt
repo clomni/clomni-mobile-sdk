@@ -49,6 +49,11 @@ private class FakeSession : MessengerSession {
 
     private fun <T> failed(error: Throwable): Future<T> = CompletableFuture<T>().apply { completeExceptionally(error) }
 
+    /** The user an earlier launch logged in, as the engine keeps it. */
+    var kept: ai.clomni.messenger.api.UserIdentity? = null
+
+    override fun keptUser(): Future<ai.clomni.messenger.api.UserIdentity?> = done(kept)
+
     override fun loginUnidentifiedUser(): Future<Unit> {
         calls += "login"
         if (disableOnLogin) {
@@ -128,6 +133,34 @@ class MessengerCoordinatorTest {
         assertNull(messenger.route)
         assertFalse("no overlay, no activity, nothing", messenger.wantsAnyView)
         assertEquals(listOf("connect", "config"), session.calls)
+    }
+
+    /**
+     * Test report: with the identity kept, the next launch kept the conversations but greeted "Salam" instead of
+     * "Salam, Aysel" until loginUser came again. The kept name greets at once; the app's own login or logout wins.
+     */
+    @Test
+    fun theKeptUserIsGreetedByNameOnTheNextLaunch() {
+        session.loggedIn = true
+        session.kept = ai.clomni.messenger.api.UserIdentity("12345", "aysel@example.com", null, "Aysel")
+        val messenger = coordinator()
+        messenger.start()
+        assertEquals("Aysel", messenger.userName)
+        assertEquals("aysel@example.com", messenger.keptUser?.email)
+
+        val queued = ArrayDeque<Runnable>()
+        val later = coordinator(main = Executor { queued += it })
+        later.start()
+        later.loggedIn("Rauf")
+        while (queued.isNotEmpty()) queued.removeFirst().run()
+        assertEquals("a login in this run is not undone by what was kept", "Rauf", later.userName)
+        assertNull(later.keptUser)
+
+        val visitor = coordinator(main = Executor { queued += it })
+        visitor.start()
+        visitor.loggedOut()
+        while (queued.isNotEmpty()) queued.removeFirst().run()
+        assertNull(visitor.userName)
     }
 
     @Test

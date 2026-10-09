@@ -404,6 +404,19 @@ class ClomniEngineTest {
         assertEquals(listOf(1L, 2L, 3L), phone.engine.messages(conversation).map { it.seq })
     }
 
+    /** The user loginUser named stays with the session: the next launch knows their name before the app logs in. */
+    @Test
+    fun theUserIsKeptForTheNextLaunch() {
+        val vault = MemorySecureStore()
+        val first = Phone(vault)
+        first.engine.loginUser(aysel.copy(name = "Aysel"), "hash").await()
+        first.engine.shutdown()
+        val next = Phone(vault)
+        assertEquals("Aysel", next.engine.keptUser().await()?.name)
+        next.engine.logout().await()
+        assertNull("not after logout", next.engine.keptUser().await())
+    }
+
     @Test
     fun aGapOnTheSocketIsFilledOverRest() {
         val (phone, conversation) = ready()

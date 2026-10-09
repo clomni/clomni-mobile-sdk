@@ -125,6 +125,9 @@ internal class ClomniEngine(
      */
     fun loginUser(user: UserIdentity, userHash: String?): Future<Unit> = login(SessionIdentity.User(user, userHash))
 
+    /** The identified user kept with the session (name, email, phone), read from the secure store on the worker. */
+    override fun keptUser(): Future<UserIdentity?> = submit { (credentials.identity as? SessionIdentity.User)?.user }
+
     /**
      * The stored session is reused for the same person: an expired one is refreshed on its first call, and a refused
      * refresh opens a new one then. Only another identity (or none stored) opens a new session here.
