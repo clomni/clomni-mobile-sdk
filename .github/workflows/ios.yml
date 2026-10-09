@@ -88,24 +88,16 @@ jobs:
   # DESIGN-PASS-3 H1, H2, H4 on a simulator: the Example app's UI tests (ios/Example/ClomniExampleUITests) open the
   # messenger's conversation in its page sheet with a fixed conversation, bring up the software keyboard and measure
   # what it covers. The screenshots, keyboard up, are the "ui-test-screenshots" artifact. Xcode 26 and its iOS 26
-  # simulator: what the TestFlight builds are made with. A run started by hand also runs them on iOS 27 (the xcode-27
-  # runner, "ui-test-screenshots-ios27"): the operator's iPhone runs iOS 27, where the conversation jumped to its top
-  # (TestFlight 13) while every test passed on iOS 26.
+  # simulator: what the TestFlight builds are made with.
   ui-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(github.event_name == 'workflow_dispatch'
-          && '[{"runner":"macos-26","xcode":"26","suffix":""},{"runner":"xcode-27","xcode":"27","suffix":"-ios27"}]'
-          || '[{"runner":"macos-26","xcode":"26","suffix":""}]') }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ matrix.xcode }}
+          xcode-version: '26'
 
       - name: Generate the Example project
         run: |
@@ -155,7 +147,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-test-screenshots${{ matrix.suffix }}
+          name: ui-test-screenshots
           path: ui-screenshots/*.png
           if-no-files-found: warn
 
@@ -163,6 +155,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-tests-xcresult${{ matrix.suffix }}
+          name: ui-tests-xcresult
           path: ui-tests.xcresult
           if-no-files-found: ignore
