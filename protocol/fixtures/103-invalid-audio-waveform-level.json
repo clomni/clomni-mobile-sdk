@@ -1,0 +1,31 @@
+{
+  "id": "msg_f103",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "audio",
+  "sender": {
+    "type": "operator",
+    "id": "op_42",
+    "name": "Leyla"
+  },
+  "created_at": "2026-10-01T10:31:40Z",
+  "seq": 20,
+  "lang": "az",
+  "flow": null,
+  "content": {
+    "url": "https://app.clomni.ai/f/cavab.m4a",
+    "mime": "audio/mp4",
+    "size": 52011,
+    "duration_ms": 8000,
+    "waveform": [
+      10,
+      40,
+      140,
+      -5,
+      60
+    ],
+    "caption": null
+  },
+  "fallback_text": "Səsli mesaj (0:08)",
+  "meta": {}
+}

@@ -439,8 +439,9 @@ internal class ChatPresenter(
         is MessageContent.Form -> card(message, content, snapshot)
         is MessageContent.Rating -> rating(message, content, snapshot)
         is MessageContent.System -> null
-        // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
-        is MessageContent.Card, is MessageContent.Unknown -> Bubble.TextBody(LimitedMarkdown.linked(message.fallbackText))
+        // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text. A voice message too, until
+        // the conversation draws VoiceMessageBubble (CM-130).
+        is MessageContent.Card, is MessageContent.Audio, is MessageContent.Unknown -> Bubble.TextBody(LimitedMarkdown.linked(message.fallbackText))
     }
 
     /**

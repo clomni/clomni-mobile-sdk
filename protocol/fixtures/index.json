@@ -469,5 +469,31 @@
     "schema": "event.json",
     "note": "Səhv: awaiting menu, text, form və ya null olmalıdır",
     "valid": false
+  },
+  {
+    "file": "100-audio-voice-user.json",
+    "schema": "message.json",
+    "note": "İstifadəçinin səsli mesajı, sağ tərəf: oynat düyməsi, 64 zolaqlı dalğa forması, 0:14, sürət 1×, vaxt və ✓"
+  },
+  {
+    "file": "101-audio-operator-no-waveform.json",
+    "schema": "message.json",
+    "note": "Operatorun paneldən səsi (MP3): dalğa forması yoxdur, sadə zolaqlar; müddət fayl yüklənəndən sonra"
+  },
+  {
+    "file": "102-client-attachment-voice.json",
+    "schema": "client-message.json",
+    "note": "Klient: səsli mesaj (POST /v1/uploads m4a, sonra müddət və dalğa forması ilə)"
+  },
+  {
+    "file": "103-invalid-audio-waveform-level.json",
+    "schema": "message.json",
+    "valid": false,
+    "note": "Dalğa formasında 0–100-dən kənar dəyər: crash yox, səs sadə zolaqlarla oynayır"
+  },
+  {
+    "file": "104-reply-operator-to-voice.json",
+    "schema": "message.json",
+    "note": "Operatorun cavabı istifadəçinin səsli mesajına: sitatda \"Siz\" və \"Səsli mesaj (0:14)\", kind audio"
   }
 ]

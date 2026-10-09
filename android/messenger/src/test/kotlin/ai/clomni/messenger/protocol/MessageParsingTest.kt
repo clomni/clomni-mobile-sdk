@@ -178,6 +178,36 @@ class MessageParsingTest {
     }
 
     @Test
+    fun voiceMessages() {
+        assertEquals(
+            MessageContent.Audio("https://app.clomni.ai/f/voice-7d1c.m4a", "audio/mp4", 96_412, 14_260, ClientMessageFixtures.VOICE_WAVEFORM, null),
+            content<MessageContent.Audio>("100-audio-voice-user.json"),
+        )
+        assertEquals(
+            MessageContent.Audio("https://app.clomni.ai/f/cavab.mp3", "audio/mpeg", 381_220, null, null, null),
+            content<MessageContent.Audio>("101-audio-operator-no-waveform.json"),
+        )
+        assertEquals("audio", fixture("104-reply-operator-to-voice.json").replyTo?.kind)
+        assertEquals(emptyList<String>(), protocol.warnings)
+
+        // A waveform that breaks the rule goes, the recording stays: plain bars.
+        val broken = content<MessageContent.Audio>("103-invalid-audio-waveform-level.json")
+        assertEquals(null to 8_000L, broken.waveform to broken.durationMs)
+        assertLogged("audio.waveform")
+        fun waveform(levels: String) = (contentOf("audio", """{"url":"https://a.b/v.m4a","mime":"audio/mp4","size":1,"waveform":$levels}""") as MessageContent.Audio).waveform
+        assertEquals(listOf(0, 100, 7), waveform("[0, 100, 7.0]"))
+        assertNull(waveform("[1.5]"))
+        assertNull(waveform("[]"))
+        assertNull(waveform("[\"5\"]"))
+        assertNull(waveform(List(129) { "5" }.joinToString(",", "[", "]")))
+        assertEquals(128, waveform(List(128) { "5" }.joinToString(",", "[", "]"))?.size)
+        // Without its address or size it cannot play: the fallback text.
+        assertUnknown("audio", """{"mime":"audio/mp4","size":1}""")
+        assertUnknown("audio", """{"url":"https://a.b/v.m4a","mime":"audio/mp4"}""")
+        assertNull((contentOf("audio", """{"url":"https://a.b/v.m4a","mime":"audio/mp4","size":1,"duration_ms":-1}""") as MessageContent.Audio).durationMs)
+    }
+
+    @Test
     fun contactForm() {
         val form = content<MessageContent.Form>("19-form-contact.json")
         assertEquals("frm_contact", form.formId)
