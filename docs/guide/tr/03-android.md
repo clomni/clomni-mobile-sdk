@@ -16,7 +16,7 @@ Paket Maven Central'dadır. Çoğu projede `settings.gradle.kts` içinde `mavenC
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
 }
 ```
 
@@ -254,7 +254,7 @@ plugins {
 }
 
 dependencies {
-    implementation("ai.clomni:messenger:1.0.0")
+    implementation("ai.clomni:messenger:1.0.1")
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-messaging")
 }

@@ -26,6 +26,7 @@ logda göründüyü kimi yazılıb.
 | `call Clomni.initialize first` | Metod `initialize`-dən əvvəl çağırılıb | `initialize`-i açılışda çağırın; Android-də `Application.onCreate`-də |
 | `initialize was called before; the first call stays` | `initialize` iki dəfə çağırılıb | Bir dəfə çağırın. Açarı dəyişmək üçün tətbiqi yenidən başladın |
 | `api_key səhvdir və ya bu platforma üçün deyil` | API açarı səhvdir, ləğv olunub, yeni açar yaradılandan 7 gün keçib, ya da o biri platformanındır | Android-də `android_…`, iOS-da `ios_…` açarı. Açarı **Quraşdırma** bölməsində yoxlayın |
+| Android 1.0.1+: `api_key səhvdir ... Tətbiqin paket adı: …` | Tətbiqin paket adı (`applicationIdSuffix` daxil) kanalın Android paket adı ilə eyni deyil | Logdakı paket adını paneldəki ilə müqayisə edin, bax [Versiyalar](10-versions.md) |
 | `this App SDK inbox is switched off in Clomni` | Kanal paneldə söndürülüb | Onu yandırın. O vaxta qədər `present()` heç nə etmir |
 | Heç nə açılmır, logda heç nə yoxdur | Log səviyyəsi aşağıdır, ya da çağırış Unity Editor-dadır | Debug səviyyəsini yandırın; cihazda sınayın |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Rəngin formatı | `#` ilə altı hex rəqəm, məsələn `#0A66C2` |
