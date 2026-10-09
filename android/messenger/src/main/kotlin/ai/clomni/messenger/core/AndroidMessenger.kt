@@ -131,6 +131,7 @@ internal object AndroidMessenger {
         locale = Locale.getDefault().toLanguageTag(),
         timezone = TimeZone.getDefault().id,
         model = Build.MODEL,
+        appIdentifier = context.packageName,
     )
 }
 

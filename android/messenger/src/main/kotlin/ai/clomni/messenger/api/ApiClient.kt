@@ -53,6 +53,8 @@ internal data class DeviceInfo(
     val locale: String?,
     val timezone: String?,
     val model: String?,
+    /** The app's package name. Clomni checks it against the inbox's Android package. */
+    val appIdentifier: String? = null,
 )
 
 /** GET /mobile/config: [Changed] carries the body to keep on disk with its ETag. */
@@ -376,7 +378,11 @@ internal class ApiClient(
     /** The integration's own mistakes, as brief 8·6.6 words them for the developer. */
     private fun report(error: ServerError?) {
         when (error?.code) {
-            "invalid_api_key" -> ClomniLog.error { "api_key səhvdir və ya bu platforma üçün deyil" }
+            "invalid_api_key" -> ClomniLog.error {
+                // The server refuses a key used from another app the same way; the package name tells the two apart.
+                "api_key səhvdir və ya bu platforma üçün deyil. Tətbiqin paket adı: ${device().appIdentifier}; " +
+                    "paneldəki Android paket adı ilə eyni olmalıdır (applicationIdSuffix da sayılır)"
+            }
             "identity_verification_failed" -> ClomniLog.error { "user_hash səhvdir. identity_secret və user_id-ni yoxlayın" }
             "app_disabled" -> ClomniLog.warning { "this App SDK inbox is switched off in Clomni: the messenger does not open" }
         }
@@ -395,6 +401,7 @@ internal class ApiClient(
         locale?.let { put("locale", it) }
         timezone?.let { put("timezone", it) }
         model?.let { put("model", it) }
+        appIdentifier?.let { put("app_identifier", it) }
     }
 
     internal companion object {

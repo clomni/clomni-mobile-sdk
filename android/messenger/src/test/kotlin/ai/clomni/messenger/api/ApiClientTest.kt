@@ -62,6 +62,7 @@ class ApiClientTest {
     @Test
     fun sessionIsOpenedWithTheAppKeys() {
         server.enqueue(json(session(1), 201))
+        device = device.copy(appIdentifier = "com.example.app")
         credentials.anonymousId = "usr_anon"
         val identity = SessionIdentity.User(UserIdentity("12345", "aysel@example.com"), "9b1c")
         val opened = api.open(identity)
@@ -83,7 +84,7 @@ class ApiClientTest {
                 """{"user":{"user_id":"12345","email":"aysel@example.com","phone":null,"name":null,"user_hash":"9b1c"},
                    "anonymous_id":"usr_anon",
                    "device":{"device_id":"d_7f3e","platform":"android","os_version":"14","app_version":"3.2.1","sdk_version":"1.0.0",
-                             "locale":"az-AZ","timezone":"Asia/Baku","model":"SM-A546"}}""",
+                             "locale":"az-AZ","timezone":"Asia/Baku","model":"SM-A546","app_identifier":"com.example.app"}}""",
             ),
             request.json(),
         )
