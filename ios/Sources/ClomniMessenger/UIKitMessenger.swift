@@ -74,7 +74,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
                 coordinator?.present(source: "launcher")
             }
             // An initialize that came before the app's scene and window (CM-087): placed again once they are up.
-            if !placed { waitForWindow() }
+            _ = placed
         } else {
             launcher.hide()
         }

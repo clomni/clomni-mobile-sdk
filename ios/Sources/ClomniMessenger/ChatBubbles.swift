@@ -715,7 +715,7 @@ struct ChatAvatarView: View {
         if avatar.isBot {
             Group {
                 if let url = avatar.url {
-                    RemoteImage(url: url, kind: .icon, points: size, theme: theme, fallback: brandDisc)
+                    AvatarView(url: url, initial: avatar.initial, size: size, theme: theme)
                 } else {
                     brandDisc
                 }

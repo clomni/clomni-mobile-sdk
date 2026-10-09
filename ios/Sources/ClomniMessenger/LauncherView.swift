@@ -24,8 +24,7 @@ final class LauncherController {
     func show(_ state: LauncherState, config: MessengerConfig?, typeface: Typeface?, themeOverride: ThemeOverride,
               tap: @escaping () -> Void) -> Bool {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive })
-            ?? scenes.first(where: { $0.activationState == .foregroundInactive }) else {
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) else {
             ClomniLog.debug("launcher: no scene in the foreground yet")
             return false
         }

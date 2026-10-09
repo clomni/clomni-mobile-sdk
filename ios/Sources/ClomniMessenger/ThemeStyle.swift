@@ -173,11 +173,10 @@ struct AvatarView: View {
     let theme: ClomniTheme
 
     var body: some View {
-        Group {
+        ZStack {
+            disc
             if let url {
-                RemoteImage(url: url, kind: .icon, points: size, theme: theme, fallback: disc)
-            } else {
-                disc
+                RemoteImage(url: url, kind: .icon, points: size, theme: theme, placeholder: .clear)
             }
         }
         .frame(width: CGFloat(size), height: CGFloat(size))
