@@ -133,6 +133,9 @@ struct ChatView: View {
                 ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
                              staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew,
                              cancelQuote: { model.controller.reply(to: nil) })
+                    // Always as tall as it needs, the transcript giving way: a picked file's strip must not leave it
+                    // overflowing its earlier height, half of it under the keyboard (CM-087).
+                    .fixedSize(horizontal: false, vertical: true)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

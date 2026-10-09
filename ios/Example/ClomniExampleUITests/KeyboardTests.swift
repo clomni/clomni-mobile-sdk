@@ -9,6 +9,8 @@ final class KeyboardTests: XCTestCase {
     private var app: XCUIApplication!
     /// Under the last message when the list is at its end: ChatTranscript's bottom padding (Space.s).
     private static let listBottomPadding: CGFloat = 8
+    /// Under the composer's field: ComposerView's vertical padding (Space.s).
+    private static let composerBottomPadding: CGFloat = 8
 
     private func launch(_ arguments: [String] = []) {
         continueAfterFailure = false
@@ -205,38 +207,38 @@ final class KeyboardTests: XCTestCase {
     private func standsOnEveryKeyboard(_ presentation: String, file: StaticString = #filePath, line: UInt = #line) {
         let field = element("clomni.composer.field")
         XCTAssertTrue(field.waitForExistence(timeout: 15), file: file, line: line)
-        let composer = element("clomni.composer")
-        // Down: the composer over the home indicator, at the screen's safe bottom.
-        let down = settled(composer)
+        // Down: the field at the bottom, over the home indicator (the composer's background reaches under it).
+        let down = settled(field)
         let window = app.windows.firstMatch.frame
-        XCTAssertGreaterThan(down.maxY, window.maxY - 60, "\(presentation): down, the composer \(down) is at the bottom",
+        XCTAssertGreaterThan(down.maxY, window.maxY - 80, "\(presentation): down, the field \(down) is at the bottom",
                              file: file, line: line)
-        XCTAssertLessThan(down.maxY, window.maxY, "and over the home indicator", file: file, line: line)
+        XCTAssertLessThan(down.maxY, window.maxY - 20, "and over the home indicator", file: file, line: line)
 
         field.tap()
-        onTheKeyboard(composer, "\(presentation)-letters", file: file, line: line)
+        onTheKeyboard(field, "\(presentation)-letters", file: file, line: line)
         let switcher = app.keyboards.buttons.matching(NSPredicate(format: "label IN %@",
                                                                   ["Emoji", "Next keyboard", "Next Keyboard"])).firstMatch
         XCTAssertTrue(switcher.waitForExistence(timeout: 5), "the keyboard's emoji key", file: file, line: line)
         switcher.tap()
-        onTheKeyboard(composer, "\(presentation)-emoji", file: file, line: line)
+        onTheKeyboard(field, "\(presentation)-emoji", file: file, line: line)
         let letters = app.keyboards.buttons.matching(NSPredicate(format: "label IN %@", ["ABC", "Next keyboard",
                                                                                           "Next Keyboard"])).firstMatch
         XCTAssertTrue(letters.waitForExistence(timeout: 5), "the emoji keyboard's way back", file: file, line: line)
         letters.tap()
-        onTheKeyboard(composer, "\(presentation)-letters-again", file: file, line: line)
+        onTheKeyboard(field, "\(presentation)-letters-again", file: file, line: line)
         // Typed text changes the suggestions over the letters, not where the composer stands.
         field.typeText("Salam")
-        onTheKeyboard(composer, "\(presentation)-typing", file: file, line: line)
+        onTheKeyboard(field, "\(presentation)-typing", file: file, line: line)
     }
 
-    /// The composer's bottom on the keyboard's top, within a point.
-    private func onTheKeyboard(_ composer: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
+    /// The composer on the keyboard's top: the field its bottom padding over it, within a point and a half. (The
+    /// composer's own frame reaches under the home indicator when it is down, so the field is measured.)
+    private func onTheKeyboard(_ field: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
         let keyboard = settledKeyboard(file: file, line: line)
-        let bar = settled(composer)
+        let frame = settled(field)
         keep(name)
-        XCTAssertEqual(keyboard.minY - bar.maxY, 0, accuracy: 1,
-                       "\(name): the composer \(bar) stands on the keyboard \(keyboard), no gap and no overlap",
+        XCTAssertEqual(keyboard.minY - frame.maxY, Self.composerBottomPadding, accuracy: 1.5,
+                       "\(name): the field \(frame) stands its padding over the keyboard \(keyboard), no band, no overlap",
                        file: file, line: line)
     }
 
@@ -262,12 +264,17 @@ final class KeyboardTests: XCTestCase {
         let picked = labelled("image.jpg")
         XCTAssertTrue(picked.waitForExistence(timeout: 15), "the picture's strip over the composer")
         let bubble = settled(sent)
-        let bar = settled(element("clomni.composer"))
+        let strip = settled(picked)
+        let field = settled(composer)
+        let keyboard = settledKeyboard()
         keep("file-picked")
-        XCTAssertGreaterThanOrEqual(settled(picked).minY, bar.minY, "the strip is part of the composer")
-        XCTAssertLessThanOrEqual(bubble.maxY, bar.minY, "the last message \(bubble) is over the strip \(bar)")
+        XCTAssertLessThanOrEqual(strip.maxY, field.minY, "the strip \(strip) is over the field \(field)")
+        XCTAssertEqual(keyboard.minY - field.maxY, Self.composerBottomPadding, accuracy: 1.5,
+                       "the field \(field) stays on the keyboard \(keyboard), the strip over it")
+        XCTAssertLessThan(bubble.maxY, strip.minY, "the last message \(bubble) is over the strip \(strip)")
         XCTAssertGreaterThan(bubble.minY, 0)
-        XCTAssertEqual(bar.minY - bubble.maxY, Self.listBottomPadding, accuracy: 2, "at the list's very end")
+        XCTAssertEqual(settled(element("clomni.composer")).minY - bubble.maxY, Self.listBottomPadding, accuracy: 2,
+                       "at the list's very end")
     }
 
     /// CM-087 (the RN test on Android, where TalkBack read the last bot message twice): a message is one element for
