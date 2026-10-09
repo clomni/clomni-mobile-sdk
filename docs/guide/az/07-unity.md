@@ -44,6 +44,9 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
 Tez sınamaq üçün: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Boş GameObject-ə
 `ClomniBasicSample` əlavə edin, Inspector-da App ID və açarları yazın və cihaza build edin.
 
+iOS-da tətbiqin `Info.plist`-inə şəkil, kamera və mikrofon üçün icazə mətnlərini əlavə edin: [iOS →
+Info.plist](04-ios.md#infoplist).
+
 ## Başlatma
 
 Mümkün qədər tez, bir dəfə:
@@ -79,6 +82,9 @@ Clomni.Logout();
 
 Hash oyununuzun serverindən gəlir ([İstifadəçinin tanıdılması](02-identity.md)). Identity Secret-i heç vaxt oyuna
 qoymayın: nə C# koduna, nə asset-lərə, nə də PlayerPrefs-ə.
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `Clomni.LoginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi.
+Eyni istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -140,6 +146,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null telefonun dilinə
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**Hadisənin adı flow-un adı deyil.** `Clomni.StartFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow
+`Clomni.StartFlow` ilə başlamır.
 
 ## Push bildirişləri
 

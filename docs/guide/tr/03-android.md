@@ -3,11 +3,13 @@
 ## Gereksinimler
 
 - Android 6.0 (API 23) veya daha yenisi.
-- Güncel bir `compileSdk` (35 veya daha yenisi).
+- `compileSdk` 35 veya daha yenisi.
 - Kotlin 1.8 veya daha yenisi. Java da çalışır (bu bölümün sonuna bakın).
 - Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve Android API anahtarı (`android_…`).
 
-SDK, ağ erişimi dışında kendisi için hiçbir izin istemez ve ekranlarınıza hiçbir şey eklemez.
+SDK 1.0.1, ağ erişimi dışında kendisi için hiçbir izin istemez ve ekranlarınıza hiçbir şey eklemez. 1.0.2'den itibaren
+konuşmada kamerayla fotoğraf çekmek ve sesli mesaj göndermek mümkündür: `CAMERA` ve `RECORD_AUDIO` izinleri ve kamera
+için FileProvider SDK'nın manifestindedir, uygulamaya bir şey eklemeniz gerekmez.
 
 ## Kurulum
 
@@ -67,6 +69,9 @@ Clomni.updateUser(language = "az", customAttributes = mapOf("plan" to "premium")
 // Uygulamanın kendi oturum kapatma işlemiyle birlikte:
 Clomni.logout()
 ```
+
+Kullanıcı oturum açmışsa, uygulama her açıldığında `loginUser`'ı yeni giriş yapmış gibi yeniden çağırın. Aynı kullanıcı
+için SDK kayıtlı oturumunu kullanır.
 
 ## Messenger'ı açma
 
@@ -150,6 +155,10 @@ Clomni.startFlow(
 - Olaya bağlı yayınlanmış bir akış yoksa hiçbir şey olmaz.
 - Kullanıcının dokunmadığı bir olay için (örneğin başarısız bir ödeme) `openMessenger = false` bırakın. Kullanıcı
   konuşmadan bir push'la ya da okunmamış sayısından haberdar olur.
+
+**Olay adı akışın adı değildir.** `startFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki adı
+verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış `startFlow`
+ile başlamaz.
 
 ## Olaylar
 

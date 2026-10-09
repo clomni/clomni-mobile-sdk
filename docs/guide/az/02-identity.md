@@ -254,9 +254,11 @@ Rejim paneldə, ayarlar sütununun **Təhlükəsizlik** bölməsində seçilir.
 
 | Rejim | Nə baş verir |
 |---|---|
-| Söndürülüb | Hash yoxlanmır, istifadəçi təsdiqlənmir. Yalnız sınaq üçün. |
+| Söndürülüb | Hash yoxlanmır: istənilən hash qəbul olunur və istifadəçi təsdiqlənmir. Tətbiqə başqasının `user_id`-sini verən onun söhbətlərini aça bilər. Yalnız sınaq üçün. |
 | Tövsiyə olunan (standart) | Göndərilən hash düzgün olmalıdır, səhv hash girişi rədd edir. Hash olmadan istifadəçi qəbul olunur, amma təsdiqlənmir. İstifadəçi bir dəfə təsdiqlənmiş hash ilə daxil olandan sonra, ondan hər dəfə hash tələb olunur. |
 | Məcburi | Düzgün hash olmadan giriş yoxdur: server `403 identity_verification_failed` qaytarır. Tətbiqdən ilk təsdiqlənmiş girişdən sonra yandırmaq olar. Hash göndərməyən tətbiq versiyaları artıq qoşula bilmir. |
+
+> **Söndürülüb rejimini istehsalda heç vaxt işlətməyin.** Bu rejimdə istənilən hash qəbul olunur.
 
 Yaxşı ardıcıllıq: tətbiqi `user_hash` ilə Tövsiyə olunan rejimdə buraxın, **Ümumi baxış** bölməsində hash ilə bağlı
 xəbərdarlıq qalmayana qədər izləyin, sonra Məcburi rejimə keçin.

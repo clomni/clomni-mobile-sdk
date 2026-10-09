@@ -5,8 +5,9 @@
 1. **Panelin Overview bölümü.** Her platformun bağlanıp bağlanmadığını, push'un etkin olup olmadığını ve "yanlış
    hash yüzünden reddedilen oturum açmalar" veya "push kurulmamış" gibi uyarıları gösterir; her uyarının bir **Fix**
    düğmesi vardır.
-2. **SDK'nın logu.** Geliştirme sırasında debug düzeyini açın. Varsayılan düzey `warning`'dir; entegrasyon hataları
-   `error` olarak loglanır.
+2. **SDK'nın logu.** Varsayılan düzey `warning`'dir: uyarılar ve hatalar her zaman yazılır, entegrasyon hataları
+   (anahtar, hash, push) `error` olarak yazılır. Geliştirme sırasında `debug` düzeyini açın: bu düzey ayrıca SDK'nın
+   adımlarını da yazar.
 
 | Platform | Nasıl açılır | Log nerede |
 |---|---|---|
@@ -51,6 +52,8 @@ Sunucunun bazı mesajları Azerbaycancadır; aşağıdaki tabloda tam olarak gö
 | Paneldeki bir değişiklik uygulamada görünmüyor | Appearance taslağı yayınlanmamış | Appearance → **Publish** |
 | Messenger beklenenden farklı bir dilde konuşuyor | `setLanguage` kapalı bir dil seçmiş ya da hiç dil seçilmemiş | Dili Appearance → Languages altında açın ya da `setLanguage` çağırın |
 | Yüzen düğme görünmüyor | Hem panelde hem kodda kapalı | `setLauncherVisible(true)` ya da Appearance → Theme altında açın |
+| React Native: yüzen düğme soğuk açılışta görünmüyor | SDK 1.0.1'deki bir hata | SDK 1.0.2'de düzeliyor. O zamana kadar Messenger'ı kendi düğmenizden açın |
+| React Native, Android: uygulama simgesinden yeniden açılınca açık Messenger kayboluyor | `MainActivity` `singleTask` | SDK 1.0.2'de düzeliyor |
 | Flutter, Android: yüzen düğme görünmüyor | `MainActivity`, `FlutterActivity`'den türüyor | `FlutterFragmentActivity`'den türetin |
 
 ## Push bildirimleri

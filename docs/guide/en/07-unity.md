@@ -44,6 +44,9 @@ and on other platforms every call does nothing, and the first call says so once 
 To try it quickly: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Add `ClomniBasicSample` to an
 empty GameObject, fill in the App ID and keys in the Inspector and build to a device.
 
+On iOS, add the permission texts for photos, the camera and the microphone to the app's `Info.plist`: [iOS →
+Info.plist](04-ios.md#infoplist).
+
 ## Initialize
 
 As early as possible, once:
@@ -79,6 +82,9 @@ Clomni.Logout();
 
 The hash comes from your game's server ([Identifying users](02-identity.md)). Never put the Identity Secret into the
 game: not in C# code, not in assets, not in PlayerPrefs.
+
+Call `Clomni.LoginUser` on every app start while the user is signed in, as if they had just signed in. For the same user
+the SDK reuses its stored session.
 
 ## Open the Messenger
 
@@ -140,6 +146,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null follows the phone
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**The event name is not the flow's name.** Pass `Clomni.StartFlow` the name on the flow's "Event: …" line in the panel's
+Flows section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not
+start with `Clomni.StartFlow`.
 
 ## Push notifications
 

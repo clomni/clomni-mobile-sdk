@@ -56,6 +56,9 @@ köçürülür.
 Adi (bare) React Native tətbiqində iOS-un iki mətnini `Info.plist`-ə özünüz əlavə edin
 ([iOS bölməsinə](04-ios.md#infoplist) baxın).
 
+iOS-da tətbiqin `Info.plist`-inə şəkil, kamera və mikrofon üçün icazə mətnlərini əlavə edin: [iOS →
+Info.plist](04-ios.md#infoplist).
+
 ## Başlatma
 
 Bir dəfə, tətbiq açılanda, heç bir komponentin içində olmadan. `index.js` yaxşı yerdir, çünki push tətbiqi ekransız
@@ -74,6 +77,9 @@ if (__DEV__) Clomni.setLogLevel('debug');
 AppRegistry.registerComponent(appName, () => App);
 ```
 
+`initialize`-in üçüncü parametri `region`-dur, standart dəyəri `'eu'`-dur. Hazırda yalnız `'eu'` var, onu yazmaq lazım
+deyil: başqa dəyər verilsə, SDK bunu loga yazır və `'eu'` işlədir.
+
 ## İstifadəçi
 
 ```ts
@@ -85,6 +91,13 @@ Clomni.logout();
 ```
 
 Hash üçün bax: [İstifadəçinin tanıdılması](02-identity.md).
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `loginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi. Eyni
+istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
+
+Daxil olmamış istifadəçi üçün heç nə çağırmaq lazım deyil: Messenger açılanda anonim ziyarətçini özü yaradır.
+`Clomni.loginUnidentifiedUser()` bunu əvvəlcədən edir. Ziyarətçi `logout`-a qədər bu cihazda eyni qalır, `loginUser`
+çağırılanda onun söhbətləri istifadəçiyə keçir.
 
 ## Messenger-i açmaq
 
@@ -135,6 +148,10 @@ const subscriptions = [
 Flow üçün paneldə eyni adla "Tətbiq hadisəsi" trigger-i lazımdır və flow dərc olunmalıdır. Data JSON olmalıdır.
 
 Native SDK-nın hadisə callback-lərini modul özü tutur. Onları tətbiqin native kodunda ayrıca təyin etməyin.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
 
 ## Linklər, dil, səslər və görünüş
 
@@ -282,6 +299,9 @@ repozitoriyada saxlayın.
 | iOS-da `ClomniMessenger` simvolları üzrə link xətaları | Podfile-a `pod 'ClomniMessenger'` sətrini əlavə edin və `pod install` işlədin |
 | Android-də tətbiq bağlı olanda bildirişlər gəlmir | `setBackgroundMessageHandler` `index.js`-də, komponentlərdən kənarda qeydə alınmalıdır |
 | iOS-da Clomni bildirişinə toxunanda yalnız tətbiq açılır | Native delegate (3-cü və 4-cü addımlar) yoxdur və ya açılışdan sonra təyin olunur |
+| Üzən düymə tətbiqin soyuq açılışında görünmür | SDK 1.0.2-də düzəlir. O vaxta qədər Messenger-i öz düymənizdən açın |
+| Android: tətbiq ikonla yenidən açılanda açıq Messenger itir (`MainActivity` `singleTask`-dır) | SDK 1.0.2-də düzəlir |
 
-Native loglar: Android-də logcat, `Clomni` tag-i; iOS-da Xcode konsolu. Daha çoxu:
+Loglar native tərəfdədir: Android-də logcat, `Clomni` tag-i; iOS-da Xcode konsolu. Standart səviyyə `warning`-dir,
+inteqrasiya səhvləri `error` kimi yazılır; `setLogLevel('debug')` bundan əlavə SDK-nın addımlarını göstərir. Daha çoxu:
 [Problemlərin həlli](09-troubleshooting.md).

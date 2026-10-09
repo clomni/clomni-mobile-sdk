@@ -55,6 +55,9 @@ Android'de ise `POST_NOTIFICATIONS` iznini ekler. Simge `clomni_notification_ico
 Expo kullanmayan (bare) bir React Native uygulamasında iki iOS metnini `Info.plist`'e kendiniz ekleyin
 ([iOS bölümüne](04-ios.md#infoplist) bakın).
 
+iOS'ta uygulamanın `Info.plist` dosyasına fotoğraf, kamera ve mikrofon için izin metinlerini ekleyin: [iOS →
+Info.plist](04-ios.md#infoplist).
+
 ## Başlatma
 
 Bir kez, uygulamanın açılışında, herhangi bir bileşenin dışında. `index.js` iyi bir yerdir, çünkü bir push
@@ -73,6 +76,9 @@ if (__DEV__) Clomni.setLogLevel('debug');
 AppRegistry.registerComponent(appName, () => App);
 ```
 
+`initialize`'ın üçüncü parametresi `region`'dır, varsayılanı `'eu'`. Şu an yalnızca `'eu'` var, yazmanıza gerek yok:
+başka bir değer verilirse SDK bunu loga yazar ve `'eu'` kullanır.
+
 ## Kullanıcı
 
 ```ts
@@ -84,6 +90,13 @@ Clomni.logout();
 ```
 
 Hash için bkz. [Kullanıcıların tanınması](02-identity.md).
+
+Kullanıcı oturum açmışsa, uygulama her açıldığında `loginUser`'ı yeni giriş yapmış gibi yeniden çağırın. Aynı kullanıcı
+için SDK kayıtlı oturumunu kullanır.
+
+Oturum açmamış bir kullanıcı için bir şey çağırmanız gerekmez: Messenger açıldığında anonim ziyaretçiyi kendisi
+oluşturur. `Clomni.loginUnidentifiedUser()` bunu önceden yapar. Ziyaretçi `logout`'a kadar bu cihazda aynı kalır;
+`loginUser` çağrıldığında konuşmaları kullanıcıya geçer.
 
 ## Messenger'ı açma
 
@@ -135,6 +148,10 @@ Akışın panelde aynı adla "App event" tetikleyicisine sahip olması ve yayın
 olmalıdır.
 
 Yerel SDK'nın olay callback'leri modüle aittir. Bunları ayrıca uygulamanın yerel kodunda atamayın.
+
+**Olay adı akışın adı değildir.** `startFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki adı
+verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış `startFlow`
+ile başlamaz.
 
 ## Bağlantılar, dil, sesler ve görünüm
 
@@ -284,6 +301,9 @@ tutun (`expo/config-plugins`'ten `withAppDelegate` ve `withXcodeProject`) ya da 
 | iOS'ta `ClomniMessenger` sembollerinde linkleme hataları | Podfile'a `pod 'ClomniMessenger'` satırını ekleyin ve `pod install` çalıştırın |
 | Uygulama kapalıyken Android bildirimleri görünmüyor | `setBackgroundMessageHandler`, bileşenlerin dışında, `index.js` içinde kaydedilmelidir |
 | iOS'ta bir Clomni bildirimine dokunmak yalnızca uygulamayı açıyor | Yerel delegate (3. ve 4. adımlar) eksik ya da açılıştan sonra atanmış |
+| Yüzen düğme uygulamanın soğuk açılışında görünmüyor | SDK 1.0.2'de düzeliyor. O zamana kadar Messenger'ı kendi düğmenizden açın |
+| Android: uygulama simgesinden yeniden açılınca açık Messenger kayboluyor (`MainActivity` `singleTask`) | SDK 1.0.2'de düzeliyor |
 
-Yerel loglar: Android'de logcat etiketi `Clomni`, iOS'ta Xcode konsolu. Daha fazlası:
+Loglar yerel taraftadır: Android'de logcat etiketi `Clomni`, iOS'ta Xcode konsolu. Varsayılan düzey `warning`'dir,
+entegrasyon hataları `error` olarak yazılır; `setLogLevel('debug')` ayrıca SDK'nın adımlarını gösterir. Daha fazlası:
 [Sorun giderme](09-troubleshooting.md).

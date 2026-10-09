@@ -64,7 +64,8 @@ hansı platformada işləyirlərsə, onun açarını verirlər.
 
 ## Təlimatdakı sözlər
 
-- **Kanal (inbox)**: Clomni-də bir tətbiq. Onun mesajları, açarları və ayarları bir yerdədir.
+- **Kanal** (paneldə **Gələn qutular** siyahısında, ingiliscə inbox): Clomni-də bir tətbiq. Onun mesajları, açarları və
+  ayarları bir yerdədir.
 - **Mənbə (source)**: Messenger-i açanda verdiyiniz qısa ad, məsələn `profile_support`. Oradan başlanan söhbətlə
   birlikdə saxlanır və paneldəki statistikada görünür.
 - **Flow**: Clomni-nin flow qurucusunda qurulan avtomatik söhbət: düymələr, suallar, operatora ötürmə.

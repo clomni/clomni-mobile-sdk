@@ -5,8 +5,9 @@
 1. **Panelin Ümumi baxış bölməsi.** Orada hər platformanın qoşulub-qoşulmadığı, push-un aktiv olub-olmadığı və "səhv
    hash səbəbindən rədd olunan girişlər", "push qurulmayıb" kimi xəbərdarlıqlar görünür, hər birinin yanında
    **Düzəlt** düyməsi var.
-2. **SDK-nın logu.** Tərtibat zamanı debug səviyyəsini yandırın. Standart səviyyə `warning`-dir, inteqrasiya
-   səhvləri isə `error` kimi yazılır.
+2. **SDK-nın logu.** Standart səviyyə `warning`-dir: xəbərdarlıqlar və xətalar həmişə yazılır, inteqrasiya səhvləri
+   (açar, hash, push) `error` kimi yazılır. Tərtibat zamanı `debug` səviyyəsini yandırın: o, bundan əlavə SDK-nın
+   addımlarını da yazır.
 
 | Platforma | Yandırmaq | Log harada |
 |---|---|---|
@@ -52,6 +53,8 @@ logda göründüyü kimi yazılıb.
 | Paneldəki dəyişiklik tətbiqdə görünmür | Görünüş qaralaması dərc olunmayıb | Görünüş → **Dərc et** |
 | Messenger gözlənilən dildə danışmır | `setLanguage` sönülü dili seçib, ya da heç dil seçilməyib | Dili Görünüş → Dillər bölməsində yandırın və ya `setLanguage` çağırın |
 | Üzən düymə görünmür | Həm paneldə, həm kodda sönülüdür | `setLauncherVisible(true)` və ya Görünüş → Tema bölməsində yandırın |
+| React Native: üzən düymə tətbiqin soyuq açılışında görünmür | SDK 1.0.1-in xətası | SDK 1.0.2-də düzəlir. O vaxta qədər Messenger-i öz düymənizdən açın |
+| React Native, Android: tətbiq ikonla yenidən açılanda açıq Messenger itir | `MainActivity` `singleTask`-dır | SDK 1.0.2-də düzəlir |
 | Flutter, Android: üzən düymə görünmür | `MainActivity` `FlutterActivity`-dən törəyir | `FlutterFragmentActivity`-dən törədin |
 
 ## Push bildirişləri

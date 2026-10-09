@@ -37,14 +37,19 @@ pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git'
 
 ### Info.plist
 
-İstifadəçilər söhbətdə şəkil göndərə bilir. iOS-un icazə istəyəndə göstərdiyi iki mətni əlavə edin:
+İstifadəçilər söhbətdə şəkil göndərə bilir. iOS-un icazə istəyəndə göstərdiyi mətnləri əlavə edin:
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Dəstəyə şəkil göndərmək üçün</string>
 <key>NSCameraUsageDescription</key>
 <string>Şəkil çəkib dəstəyə göndərmək üçün</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>Dəstəyə səsli mesaj göndərmək üçün</string>
 ```
+
+- `NSCameraUsageDescription` yoxdursa, Messenger kamera seçimini göstərmir.
+- `NSMicrophoneUsageDescription` səsli mesaj üçündür, SDK 1.0.2-dən lazımdır.
 
 ## Başlatma
 
@@ -100,6 +105,9 @@ Clomni.logout()
 ```
 
 Hash üçün bax: [İstifadəçinin tanıdılması](02-identity.md).
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `loginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi. Eyni
+istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -171,6 +179,10 @@ Clomni.startFlow("ride_problem", data: ["ride_id": "R-1923"], openMessenger: tru
 
 Flow-un mətnləri datanı `{{data.ride_id}}` kimi işlədə bilər. Hadisəyə bağlı dərc olunmuş flow yoxdursa, heç nə baş
 vermir. İstifadəçinin özünün basmadığı hadisə üçün `openMessenger: false` saxlayın.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
 
 ## Hadisələr
 

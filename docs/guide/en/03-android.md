@@ -3,11 +3,13 @@
 ## Requirements
 
 - Android 6.0 (API 23) or newer.
-- A recent `compileSdk` (35 or newer).
+- `compileSdk` 35 or newer.
 - Kotlin 1.8 or newer. Java works too (see the end of this chapter).
 - The App ID and the Android API key (`android_…`) from **Installation** in the inbox's settings column.
 
-The SDK asks for no permission of its own except network access, and adds nothing to your screens.
+SDK 1.0.1 asks for no permission of its own except network access, and adds nothing to your screens. From 1.0.2 a
+conversation can take a photo with the camera and send a voice message: the `CAMERA` and `RECORD_AUDIO` permissions and
+the FileProvider for the camera are in the SDK's manifest, so the app adds nothing.
 
 ## Install
 
@@ -65,6 +67,9 @@ Clomni.updateUser(language = "az", customAttributes = mapOf("plan" to "premium")
 // With your app's own logout:
 Clomni.logout()
 ```
+
+Call `loginUser` on every app start while the user is signed in, as if they had just signed in. For the same user the
+SDK reuses its stored session.
 
 ## Open the Messenger
 
@@ -148,6 +153,10 @@ Clomni.startFlow(
 - Without a published flow bound to the event, nothing happens.
 - For an event the user did not tap (a failed payment, for example), keep `openMessenger = false`. The user learns of
   the conversation from a push or the unread count.
+
+**The event name is not the flow's name.** Pass `startFlow` the name on the flow's "Event: …" line in the panel's Flows
+section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not start
+with `startFlow`.
 
 ## Events
 

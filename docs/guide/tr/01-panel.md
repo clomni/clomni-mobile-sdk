@@ -65,7 +65,7 @@ kutuları listesine döner. Altında üç gruba ayrılmış bölümler bulunur. 
 
 | Grup | Bölüm | İçinde ne var |
 |---|---|---|
-| APP | Overview | Kanalın durumu, uyarılar, son görülen cihazlar |
+| APP | Overview | Gelen kutusunun durumu, uyarılar, son görülen cihazlar |
 | | Installation | App ID, API anahtarları, her platform için kod, son cihazlar |
 | | Security | Identity verification modu, Identity Secret, hash test aracı |
 | | Push | Firebase ve APNs anahtarları, bildirim başlığı, test push |
@@ -73,6 +73,8 @@ kutuları listesine döner. Altında üç gruba ayrılmış bölümler bulunur. 
 | MESSENGER | Appearance | Renkler, logo, metinler, diller, ana sayfa kartları, tema |
 | | Flows | Bu gelen kutusunun akışları, neyle başladıklarına göre |
 | | News | Messenger'ın ana sayfasındaki haberler |
+| | CSAT | Konuşma çözüldüğünde müşteriden puan istemek: anket, gösterim türü, mesaj |
+| | Bot Configuration | Uygulamadan gelen konuşmalara temsilciden önce yanıt veren bot (hesapta botlar açıksa) |
 | INBOX | Analytics | Aktif cihazlar, konuşmalar, push'lar, SDK sürümleri |
 
 INBOX grubunda her gelen kutusunda bulunan ayarlar da yer alır: genel ayarlar, ekip üyeleri, çalışma saatleri.
@@ -181,6 +183,13 @@ Bu gelen kutusunun akışları, neyle başladıklarına göre gruplanmıştır:
 olarak "App event" seçin, olayın adını yazın ve akışı yayınlayın.
 
 **How does it look in the app?** (3) seçim düğmelerini ve formu SDK'da göründükleri gibi gösterir.
+
+**Olay adı akışın adı değildir.** `startFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki adı
+verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış `startFlow`
+ile başlamaz.
+
+Akıştaki her seçenek bir adıma bağlanmalıdır. Devamı olmayan bir seçenekte müşteri takılıp kalabilir. SDK 1.0.2'den
+itibaren böyle bir seçenekte akış biter ve müşteriye yazma alanı açılır.
 
 ### News
 

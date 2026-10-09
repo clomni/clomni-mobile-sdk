@@ -3,11 +3,14 @@
 ## Tələblər
 
 - Android 6.0 (API 23) və ya daha yeni.
-- Təzə `compileSdk` (35 və ya daha yeni).
+- `compileSdk` 35 və ya daha yeni.
 - Kotlin 1.8 və ya daha yeni. Java da işləyir (bölmənin sonuna baxın).
 - Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və Android API açarı (`android_…`).
 
-SDK şəbəkə girişindən başqa heç bir icazə istəmir və ekranlarınıza heç nə əlavə etmir.
+SDK 1.0.1 şəbəkə girişindən başqa heç bir icazə istəmir və ekranlarınıza heç nə əlavə etmir. 1.0.2-dən söhbətdə kamera
+ilə şəkil
+çəkmək və səsli mesaj göndərmək olar: `CAMERA` və `RECORD_AUDIO` icazələri və kamera üçün FileProvider SDK-nın
+manifestindədir, tətbiqə heç nə əlavə etmək lazım deyil.
 
 ## Quraşdırma
 
@@ -67,6 +70,9 @@ Clomni.updateUser(language = "az", customAttributes = mapOf("plan" to "premium")
 // Tətbiqin öz çıxışı ilə birlikdə:
 Clomni.logout()
 ```
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `loginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi. Eyni
+istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -149,6 +155,10 @@ Clomni.startFlow(
 - Hadisəyə bağlı dərc olunmuş flow yoxdursa, heç nə baş vermir.
 - İstifadəçinin özünün basmadığı hadisə üçün (məsələn, uğursuz ödəniş) `openMessenger = false` saxlayın. İstifadəçi
   söhbətdən push və ya oxunmamış mesajların sayı ilə xəbər tutur.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
 
 ## Hadisələr
 

@@ -37,14 +37,19 @@ pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git'
 
 ### Info.plist
 
-Users can send photos in a conversation. Add the two texts iOS shows when it asks for access:
+Users can send photos in a conversation. Add the texts iOS shows when it asks for access:
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>To send photos to support</string>
 <key>NSCameraUsageDescription</key>
 <string>To take and send photos to support</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>To send voice messages to support</string>
 ```
+
+- Without `NSCameraUsageDescription` the Messenger does not offer the camera.
+- `NSMicrophoneUsageDescription` is for voice messages, needed from SDK 1.0.2.
 
 ## Initialize
 
@@ -100,6 +105,9 @@ Clomni.logout()
 ```
 
 See [Identifying users](02-identity.md) for the hash.
+
+Call `loginUser` on every app start while the user is signed in, as if they had just signed in. For the same user the
+SDK reuses its stored session.
 
 ## Open the Messenger
 
@@ -171,6 +179,10 @@ Clomni.startFlow("ride_problem", data: ["ride_id": "R-1923"], openMessenger: tru
 
 The flow's texts can use the data as `{{data.ride_id}}`. Without a published flow bound to the event nothing
 happens. For an event the user did not tap, keep `openMessenger: false`.
+
+**The event name is not the flow's name.** Pass `startFlow` the name on the flow's "Event: …" line in the panel's Flows
+section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not start
+with `startFlow`.
 
 ## Events
 
