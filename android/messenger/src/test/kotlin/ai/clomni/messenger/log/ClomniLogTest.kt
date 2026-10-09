@@ -74,7 +74,7 @@ class ClomniLogTest {
                 ApiConfiguration("app_8x2k", "android_sdk-wrong", server.url("/v1").toString(), "1.0.0"),
                 Credentials(MemorySecureStore(), ProtocolJson()),
                 ProtocolJson(),
-                { DeviceInfo("d_1", "14", "1.0", "1.0.0", "az-AZ", "Asia/Baku", "Pixel") },
+                { DeviceInfo("d_1", "14", "1.0", "1.0.0", "az-AZ", "Asia/Baku", "Pixel", appIdentifier = "com.example.app.debug") },
                 lazyOf(ApiClient.defaultClient()),
                 sleep = {},
             )
@@ -88,7 +88,8 @@ class ClomniLogTest {
             }
             assertEquals(
                 listOf(
-                    "error: api_key səhvdir və ya bu platforma üçün deyil",
+                    "error: api_key səhvdir və ya bu platforma üçün deyil. Tətbiqin paket adı: com.example.app.debug; " +
+                        "paneldəki Android paket adı ilə eyni olmalıdır (applicationIdSuffix da sayılır)",
                     "error: user_hash səhvdir. identity_secret və user_id-ni yoxlayın",
                 ),
                 lines,
