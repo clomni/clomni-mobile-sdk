@@ -82,9 +82,10 @@ struct ConversationScreen: View {
     let back: () -> Void
     let close: () -> Void
 
-    init(engine: ClomniEngine, conversationId: String, language: String?, back: @escaping () -> Void,
-         close: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: ChatModel(engine: engine, conversationId: conversationId, language: language))
+    init(engine: ClomniEngine, conversationId: String, language: String?, config: MessengerConfig?,
+         back: @escaping () -> Void, close: @escaping () -> Void) {
+        _model = StateObject(wrappedValue: ChatModel(engine: engine, conversationId: conversationId, language: language,
+                                                     config: config))
         self.back = back
         self.close = close
     }

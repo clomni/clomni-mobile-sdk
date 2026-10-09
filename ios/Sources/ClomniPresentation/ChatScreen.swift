@@ -287,6 +287,10 @@ package struct ChatComposer: Sendable, Equatable {
     package let sendLabel: String
     package let attachLabel: String
     package let emojiLabel: String
+    /// The emoji sheet's tabs as VoiceOver names them, in the messenger's language (CM-087): the recently used ones,
+    /// then its eight categories in their order.
+    package let emojiRecentLabel: String
+    package let emojiCategoryLabels: [String]
     /// The attachment sheet's rows: the photo library, the camera, any file; and the x on a picked file.
     package let mediaLabel: String
     package let cameraLabel: String
@@ -305,6 +309,19 @@ extension ChatSnapshot {
               let last = messages.last(where: { if case .system = $0.content { return false }; return true }),
               case .quickReplies = last.content else { return false }
         return answerable.contains(last.id)
+    }
+}
+
+extension ChatSnapshot {
+    /// The flow holds the composer for a choice or a form, yet nothing on screen answers it: its choices were taken
+    /// and no step came after (a choice that leads nowhere, "next": null, CM-087), and nothing is on its way.
+    package var waitsForNothingShown: Bool {
+        guard let flow = conversation?.flow, flow.holdsTheComposer, flow.awaiting == "menu" || flow.awaiting == "form",
+              pending.isEmpty, ChatPresenter.liveChoices(self) == nil else { return false }
+        return !messages.contains { message in
+            if case .form(let form) = message.content { return form.submitted == nil && answerable.contains(message.id) }
+            return false
+        }
     }
 }
 
@@ -336,6 +353,9 @@ package struct ChatSnapshot: Sendable, Equatable {
     package var known: [String: String] = [:]
     /// The message the user is answering (swipe or "Cavabla"), until it is sent or dismissed.
     package var replyingTo: String?
+    /// The flow says it waits for a choice or a form that is not there to answer (`waitsForNothingShown`), and has
+    /// for a while: the composer is back, so the user is not stuck.
+    package var flowStalled = false
 
     package init(config: MessengerConfig? = nil, conversation: Conversation? = nil, messages: [Message] = []) {
         self.config = config

@@ -64,7 +64,25 @@ final class TextLinksTests: XCTestCase {
         XCTAssertEqual(links("HTTPS://EXAMPLE.COM"), ["HTTPS://EXAMPLE.COM → HTTPS://EXAMPLE.COM"])
         XCTAssertEqual(links("https://example.com/ödəniş"), ["https://example.com/ödəniş → https://example.com/%C3%B6d%C9%99ni%C5%9F"])
         XCTAssertEqual(links("link:https://example.com"), ["https://example.com → https://example.com"])
-        XCTAssertEqual(links("https:// www. www.example https://localhost awww.example.com example.com"), [], "no host, or none at all")
+        XCTAssertEqual(links("https:// www. www.example https://localhost"), [], "no host, or none at all")
+    }
+
+    /// A bare domain is a link as an email and a phone number are (the RN test on Android, CM-087), when it ends in a
+    /// known top-level domain: numbers, versions, file names and abbreviations are not.
+    func testBareDomains() {
+        XCTAssertEqual(links("Bizim sayt clomni.ai, ətraflı orada."), ["clomni.ai → https://clomni.ai"])
+        XCTAssertEqual(links("(example.com.az/qiymet?x=1) və shop-1.example.co/ödəniş."),
+                       ["example.com.az/qiymet?x=1 → https://example.com.az/qiymet?x=1",
+                        "shop-1.example.co/ödəniş → https://shop-1.example.co/%C3%B6d%C9%99ni%C5%9F"])
+        XCTAssertEqual(links("Qeydiyyat clomni.ai-da, sonra «Clomni.ai»."),
+                       ["clomni.ai → https://clomni.ai", "Clomni.ai → https://Clomni.ai"])
+        XCTAssertEqual(links("awww.example.com"), ["awww.example.com → https://awww.example.com"])
+        XCTAssertEqual(links("Versiya 1.5, v1.0, 3.14.az, fayl.txt, index.html, e.g. və s. Salam.Az qaldı. Ad.Soyad"), [],
+                       "numbers, versions, files, abbreviations, a sentence with no space after its dot")
+        XCTAssertEqual(links("aysel@clomni.ai https://clomni.ai www.clomni.ai"),
+                       ["aysel@clomni.ai → mailto:aysel@clomni.ai", "https://clomni.ai → https://clomni.ai",
+                        "www.clomni.ai → https://www.clomni.ai"], "an email or an address stays what it is")
+        XCTAssertEqual(links("-clomni.ai clomni-.ai clomni..ai .ai"), [])
     }
 
     func testEmails() {
@@ -207,5 +225,27 @@ final class MediaTests: XCTestCase {
                        "English, 2 of 3")
         XCTAssertEqual(ClomniStrings(language: "ru").buttonPosition(title: "Русский", index: 3, count: 3),
                        "Русский, 3 из 3")
+    }
+}
+
+/// CM-087 (the RN test on Android): the attachment sheet has the camera when the app may use it; without the app's
+/// NSCameraUsageDescription iOS would stop the app as it opens, so the row is not there and the log says why, once.
+final class CameraOptionTests: XCTestCase {
+    override func tearDown() {
+        ClomniLog.reset()
+        super.tearDown()
+    }
+
+    func testTheCameraIsOfferedOnlyWithItsUsageDescription() {
+        let lines = Locked<[String]>([])
+        ClomniLog.handler = { level, line in lines.write { $0.append(ClomniLog.format(level, line)) } }
+        XCTAssertTrue(CameraOption.offered(deviceHasCamera: true, usageDescription: "Söhbətə şəkil çəkib göndərmək üçün."))
+        XCTAssertFalse(CameraOption.offered(deviceHasCamera: false, usageDescription: "Şəkil"), "no camera (a simulator)")
+        XCTAssertEqual(lines.read { $0 }, [])
+        XCTAssertFalse(CameraOption.offered(deviceHasCamera: true, usageDescription: nil))
+        XCTAssertFalse(CameraOption.offered(deviceHasCamera: true, usageDescription: "  "), "an empty text is none")
+        XCTAssertEqual(lines.read { $0 },
+                       ["[Clomni] warning: the camera is not offered: the app's Info.plist has no NSCameraUsageDescription"],
+                       "said once")
     }
 }

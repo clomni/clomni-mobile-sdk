@@ -27,9 +27,9 @@ final class ChatModel: ObservableObject {
         NetworkMonitor.shared.follow(controller) { $0.isOffline = $1 }
     }
 
-    convenience init(engine: ClomniEngine, conversationId: String, language: String?, known: [String: String] = [:]) {
+    convenience init(engine: ClomniEngine, conversationId: String, language: String?, config: MessengerConfig? = nil) {
         self.init(controller: ChatController(source: engine, conversationId: conversationId, language: language,
-                                             known: known))
+                                             config: config))
     }
 
     private func sync() {

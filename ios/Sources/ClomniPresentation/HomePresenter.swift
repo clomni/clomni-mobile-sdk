@@ -274,24 +274,27 @@ package struct HomePresenter: Sendable {
     package func row(_ conversation: Conversation, config: MessengerConfig?) -> ConversationRow? {
         guard let message = conversation.lastMessage else { return nil }
         let botName = config?.bot.name.isEmpty == false ? config?.bot.name : nil
+        let brand = config?.brand.name.isEmpty == false ? config?.brand.name : nil
+        // The company: its logo, else the panel's bot picture, else its initial.
+        let company = (name: brand ?? botName ?? "", avatar: config?.brand.logoUrl ?? config?.bot.avatarUrl)
         let name: String
-        switch message.sender.type {
-        case .user: name = strings[.you]
-        case .bot: name = message.sender.name ?? botName ?? config?.brand.name ?? ""
-        case .operator: name = message.sender.name ?? conversation.assignee?.name ?? config?.brand.name ?? ""
-        case .system, .unknown: name = config?.brand.name ?? ""
-        }
-        // The avatar is the other side's: the operator's own picture, or the bot's as in the conversation (the
-        // panel's bot picture first, then the brand's logo, then the initial).
         let other: (name: String, avatar: URL?)
         switch message.sender.type {
-        case .user, .system:
-            other = (conversation.assignee?.name ?? botName ?? config?.brand.name ?? "",
-                     conversation.assignee?.avatarUrl ?? config?.botAvatarUrl)
+        case .user:
+            // The user's own message has no face of the other side's next to it (CM-087: the operator's picture
+            // there read as if the operator had written it): the company's.
+            name = strings[.you]
+            other = company
         case .bot:
-            other = (name, config?.bot.avatarUrl ?? message.sender.avatarUrl ?? config?.brand.logoUrl)
-        case .operator, .unknown:
+            // The bot speaks as the brand, with the brand's logo first, as in the conversation (DESIGN-PASS-3 A2, B2).
+            name = brand ?? message.sender.name ?? botName ?? ""
+            other = (name, config?.brand.logoUrl ?? config?.bot.avatarUrl ?? message.sender.avatarUrl)
+        case .operator:
+            name = message.sender.name ?? conversation.assignee?.name ?? brand ?? ""
             other = (name, message.sender.avatarUrl)
+        case .system, .unknown:
+            name = brand ?? ""
+            other = company
         }
         let preview = Self.plainText(message)
         let ago = time.ago(message.createdAt, now: now)
@@ -371,13 +374,6 @@ package struct HomePresenter: Sendable {
     private static func oneLine(_ text: String) -> String {
         text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }.joined(separator: " ")
-    }
-}
-
-extension MessengerConfig {
-    /// The bot's picture: its own, else the brand's logo; nil leaves its initial.
-    package var botAvatarUrl: URL? {
-        bot.avatarUrl ?? brand.logoUrl
     }
 }
 

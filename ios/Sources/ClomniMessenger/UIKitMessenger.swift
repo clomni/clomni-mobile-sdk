@@ -33,6 +33,12 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     init(engine: ClomniEngine, coordinator: MessengerCoordinator) {
         self.engine = engine
         self.coordinator = coordinator
+        super.init()
+        // A launcher with no session yet (no network at launch) tries again when the network is back.
+        NetworkMonitor.shared.follow(self) { messenger, offline in
+            guard !offline, let coordinator = messenger.coordinator else { return }
+            Task { await coordinator.networkAvailable() }
+        }
     }
 
     func setThemeOverride(_ override: ThemeOverride) {
@@ -63,10 +69,12 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
             navigation.dismiss(animated: true)
         }
         if let state = coordinator.launcher {
-            launcher.show(state, config: coordinator.config, typeface: typeface, themeOverride: themeOverride) {
+            let placed = launcher.show(state, config: coordinator.config, typeface: typeface, themeOverride: themeOverride) {
                 [weak coordinator] in
                 coordinator?.present(source: "launcher")
             }
+            // An initialize that came before the app's scene and window (CM-087): placed again once they are up.
+            if !placed { waitForWindow() }
         } else {
             launcher.hide()
         }
@@ -96,7 +104,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
 
     private func waitForWindow() {
         guard windowObservers.isEmpty else { return }
-        ClomniLog.debug("no window to present the messenger from yet")
+        ClomniLog.debug("no window to show the messenger or its launcher in yet")
         for name in [UIWindow.didBecomeKeyNotification, UIScene.didActivateNotification] {
             windowObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) {
                 [weak self] _ in
@@ -159,6 +167,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
                                coordinator: coordinator)
             case .conversation(let id):
                 ConversationScreen(engine: engine, conversationId: id, language: coordinator.language,
+                                   config: coordinator.config,
                                    back: { [weak coordinator] in coordinator?.back() },
                                    close: { [weak coordinator] in coordinator?.dismiss() })
             }

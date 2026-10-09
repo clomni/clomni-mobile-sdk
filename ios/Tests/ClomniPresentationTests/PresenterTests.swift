@@ -181,8 +181,6 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(home.header.title, "Sualınız var?")
         XCTAssertEqual(home.newConversation?.title, "Yazın")
         XCTAssertEqual(home.newConversation?.subtitle, "Səhər cavab veririk", "the office is closed")
-        XCTAssertEqual(config.botAvatarUrl?.absoluteString, "https://app.clomni.ai/v1/images/logo",
-                       "no bot picture: the brand's logo")
 
         // Without a recent conversation or channels, those cards are not in the order at all.
         let bare = presenter(config: config).home(snapshot(config))
@@ -213,23 +211,27 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(row.accessibilityLabel,
                        "Leyla, 2 dəq: Gedişinizi yoxladıq. Balansınıza 2 AZN qaytarıldı. Ətraflı: şərtlər. Oxunmamış")
 
-        // The user wrote last: "Siz", and the other side's face.
+        // The user wrote last: "Siz", next to the company's logo, never the operator's face (CM-087: it read as if
+        // Rauf had written it).
         let fromUser = Fixture.conversation("conv_2", message: "03-text-user.json", assignee: "Rauf",
                                             at: "2026-10-01T10:31:50Z")
         let mine = try XCTUnwrap(presenter().row(fromUser, config: Fixture.exampleConfig))
         XCTAssertEqual(mine.detail, "Siz · indi")
-        XCTAssertEqual(mine.initial, "R")
-        XCTAssertEqual(mine.avatarUrl?.absoluteString, "https://app.clomni.ai/a/rauf.png")
+        XCTAssertEqual(mine.initial, "E")
+        XCTAssertEqual(mine.avatarUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
         XCTAssertFalse(mine.unread)
         XCTAssertFalse(mine.accessibilityLabel.contains("Oxunmamış"))
+        let noLogo = try XCTUnwrap(presenter(config: Fixture.minimalConfig).row(fromUser, config: Fixture.minimalConfig))
+        XCTAssertNil(noLogo.avatarUrl, "no logo: the company's initial, still not Rauf's picture")
+        XCTAssertEqual(noLogo.initial, "C")
 
-        // A bot's quick replies: its fallback text on one line, the bot's name and avatar.
+        // A bot's quick replies: its fallback text on one line; the bot speaks as the brand, with its logo.
         let fromBot = Fixture.conversation("conv_3", message: "10-example-level2-S-chips.json")
         let bot = try XCTUnwrap(presenter().row(fromBot, config: Fixture.exampleConfig))
         XCTAssertEqual(bot.preview,
                        "Probleminiz nə ilə bağlıdır? Parking zona / Velosiped dayandı / Texniki nasazlıq / Kilidləmə / Əşyamı itirdim")
-        XCTAssertEqual(bot.detail, "Clomni · 2 dəq")
-        XCTAssertEqual(bot.avatarUrl?.absoluteString, "https://app.clomni.ai/a/bot.png")
+        XCTAssertEqual(bot.detail, "Example · 2 dəq")
+        XCTAssertEqual(bot.avatarUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
 
         // A system message: the brand speaks.
         let system = try XCTUnwrap(presenter(config: Fixture.minimalConfig)
@@ -238,8 +240,9 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(system.preview, "Leyla söhbətə qoşuldu")
     }
 
-    /// A bot's last message shows the bot as the conversation does: the panel's bot picture, else the brand's logo,
-    /// else the initial. An operator's keeps the operator's own picture, whatever the bot's.
+    /// A bot's last message shows the bot as the conversation does (DESIGN-PASS-3 A2): the brand's logo, else the
+    /// panel's bot picture, else the picture it came with, else the initial. An operator's keeps the operator's own
+    /// picture, whatever the bot's.
     func testRecentRowAvatarOfTheBot() throws {
         func config(bot: String?, logo: String?) throws -> MessengerConfig {
             let picture = bot.map { #","avatar_url":"\#($0)""# } ?? ""
@@ -257,15 +260,16 @@ final class PresenterTests: XCTestCase {
         }
         XCTAssertNil(faceless.lastMessage?.sender.avatarUrl)
 
-        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString, panelBot,
-                       "the panel's bot picture before the sender's own")
-        XCTAssertEqual(try row(faceless, config(bot: nil, logo: logo)).avatarUrl?.absoluteString, logo,
-                       "no bot picture: the brand's logo")
+        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString, logo,
+                       "the brand's logo first, as in the conversation")
+        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: nil)).avatarUrl?.absoluteString, panelBot,
+                       "no logo: the panel's bot picture before the sender's own")
+        XCTAssertEqual(try row(fromBot, config(bot: nil, logo: nil)).avatarUrl?.absoluteString,
+                       "https://app.clomni.ai/a/bot.png", "nor that: the picture the bot came with")
         let neither = try row(faceless, config(bot: nil, logo: nil))
         XCTAssertNil(neither.avatarUrl)
-        XCTAssertEqual(neither.initial, "C", "nor a logo: the bot's initial")
-        XCTAssertEqual(try row(fromBot, config(bot: nil, logo: logo)).avatarUrl?.absoluteString,
-                       "https://app.clomni.ai/a/bot.png", "as in the conversation: a picture the bot came with, then the logo")
+        XCTAssertEqual(neither.initial, "E", "nothing: the brand's initial")
+        XCTAssertEqual(neither.detail, "Example · 2 dəq", "the bot's name in the panel is not shown (DESIGN-PASS-3 B2)")
 
         let fromOperator = Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")
         XCTAssertEqual(try row(fromOperator, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString,

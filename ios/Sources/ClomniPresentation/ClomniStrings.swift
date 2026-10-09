@@ -64,7 +64,21 @@ package struct ClomniStrings: Sendable, Equatable {
         case ratingComment = "rating_comment"
         case ratingThanks = "rating_thanks"
         case ratingYours = "rating_yours"
+        // The emoji sheet's tabs, for VoiceOver (CM-087).
+        case emojiRecent = "emoji_recent"
+        case emojiSmileys = "emoji_smileys"
+        case emojiPeople = "emoji_people"
+        case emojiNature = "emoji_nature"
+        case emojiFood = "emoji_food"
+        case emojiActivity = "emoji_activity"
+        case emojiTravel = "emoji_travel"
+        case emojiObjects = "emoji_objects"
+        case emojiSymbols = "emoji_symbols"
     }
+
+    /// The emoji sheet's categories, in its order.
+    package static let emojiCategories: [Key] = [.emojiSmileys, .emojiPeople, .emojiNature, .emojiFood, .emojiActivity,
+                                                 .emojiTravel, .emojiObjects, .emojiSymbols]
 
     /// az, en or ru; anything else reads as az.
     package let language: String
@@ -151,6 +165,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .rating1: "Çox pis", .rating2: "Pis", .rating3: "Normal", .rating4: "Yaxşı", .rating5: "Əla",
             .ratingStars: "5 ulduzdan %d", .ratingComment: "Rəyiniz", .ratingThanks: "Rəyiniz üçün təşəkkür edirik",
             .ratingYours: "Qiymətiniz: %@",
+            .emojiRecent: "Son istifadə olunanlar", .emojiSmileys: "Smayliklər və emosiyalar", .emojiPeople: "İnsanlar",
+            .emojiNature: "Heyvanlar və təbiət", .emojiFood: "Yemək və içki", .emojiActivity: "Fəaliyyət",
+            .emojiTravel: "Səyahət və yerlər", .emojiObjects: "Əşyalar", .emojiSymbols: "Simvollar",
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
@@ -177,6 +194,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .rating1: "Very bad", .rating2: "Bad", .rating3: "Okay", .rating4: "Good", .rating5: "Great",
             .ratingStars: "%d of 5 stars", .ratingComment: "Your feedback", .ratingThanks: "Thank you for your feedback",
             .ratingYours: "Your rating: %@",
+            .emojiRecent: "Recently used", .emojiSmileys: "Smileys and emotion", .emojiPeople: "People",
+            .emojiNature: "Animals and nature", .emojiFood: "Food and drink", .emojiActivity: "Activity",
+            .emojiTravel: "Travel and places", .emojiObjects: "Objects", .emojiSymbols: "Symbols",
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
@@ -203,6 +223,9 @@ package struct ClomniStrings: Sendable, Equatable {
             .rating1: "Очень плохо", .rating2: "Плохо", .rating3: "Нормально", .rating4: "Хорошо", .rating5: "Отлично",
             .ratingStars: "%d из 5 звёзд", .ratingComment: "Ваш отзыв", .ratingThanks: "Спасибо за ваш отзыв",
             .ratingYours: "Ваша оценка: %@",
+            .emojiRecent: "Недавние", .emojiSmileys: "Смайлики и эмоции", .emojiPeople: "Люди",
+            .emojiNature: "Животные и природа", .emojiFood: "Еда и напитки", .emojiActivity: "Активность",
+            .emojiTravel: "Путешествия и места", .emojiObjects: "Предметы", .emojiSymbols: "Символы",
         ],
     ]
 }

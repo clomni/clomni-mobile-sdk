@@ -10,13 +10,19 @@ import ClomniPresentation
 /// small; the keyboard's own emoji are always there for the rest. A tap picks one; whoever shows the sheet closes it.
 struct EmojiPickerSheet: View {
     let title: String
+    /// The tabs' names for VoiceOver, in the messenger's language (`ChatComposer.emojiRecentLabel`,
+    /// `emojiCategoryLabels`): an emoji alone reads as its name in the phone's language.
+    let recentLabel: String
+    let categoryLabels: [String]
     let theme: ClomniTheme
     let pick: (String) -> Void
     @State private var recent: [String] = []
     @State private var section = 0
 
-    private var sections: [(icon: String, emoji: [String])] {
-        (recent.isEmpty ? [] : [("🕘", recent)]) + EmojiCatalog.categories.map { ($0.emoji.first ?? "", $0.emoji) }
+    private var sections: [(icon: String, label: String, emoji: [String])] {
+        (recent.isEmpty ? [] : [("🕘", recentLabel, recent)]) + EmojiCatalog.categories.enumerated().map { index, category in
+            (category.emoji.first ?? "", categoryLabels.indices.contains(index) ? categoryLabels[index] : "", category.emoji)
+        }
     }
 
     var body: some View {
@@ -59,6 +65,7 @@ struct EmojiPickerSheet: View {
                             .background(Capsule().fill(index == section ? theme.colors.surface.color : .clear))
                     }
                     .buttonStyle(PressShapeStyle(shape: Capsule()))
+                    .accessibilityLabel(Text(sections[index].label))
                     .accessibilityAddTraits(index == section ? .isSelected : [])
                 }
             }

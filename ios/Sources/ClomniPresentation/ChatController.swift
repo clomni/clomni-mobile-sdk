@@ -78,16 +78,22 @@ package final class ChatController {
     package private(set) var flowWait: Task<Void, Never>?
     /// Asks for new messages while the socket is down (`pollInterval`).
     private var polling: Task<Void, Never>?
+    /// A flow's wait for a choice that is not on screen (`ChatSnapshot.waitsForNothingShown`): after `flowWaitTime`
+    /// the composer is back.
+    package private(set) var stallWait: Task<Void, Never>?
 
     /// How often the messages are asked for while the socket is not connected.
     package static let pollInterval: TimeInterval = 5
-    /// How long a new conversation waits for its flow's first step before it shows empty.
+    /// How long a new conversation waits for its flow's first step before it shows empty, and a flow that waits for a
+    /// choice no longer on screen keeps the composer away.
     package static let flowWaitTime: TimeInterval = 8
 
-    /// `known`: the user's name, email and phone, filled into forms. The typing indicator hides itself after
+    /// `known`: the user's name, email and phone, filled into forms. `config`: the one the messenger already has, so
+    /// the first frame speaks the language the rest will (CM-087). The typing indicator hides itself after
     /// `typingTimeout` (6 s) without a new "typing" from the same sender, measured by `sleep`, as is the wait for a
     /// new conversation's flow; `poll` measures the checks for messages while the socket is down.
     package init(source: ChatDataSource, conversationId: String, language: String?, known: [String: String] = [:],
+                config: MessengerConfig? = nil,
                 timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() },
                 typingTimeout: TimeInterval = 6,
                 sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
@@ -105,10 +111,11 @@ package final class ChatController {
         self.now = now
         self.typingTimeout = typingTimeout
         openedAt = now()
-        snapshot = ChatSnapshot()
+        snapshot = ChatSnapshot(config: config)
         snapshot.known = known
-        screen = ChatPresenter(strings: ClomniStrings(language: language), timeZone: timeZone, now: now())
-            .screen(snapshot)
+        // The language every other frame speaks: the host's, else the phone's, as the panel allows (not az by default).
+        screen = ChatPresenter(strings: ClomniStrings(language: config.speaks(language), overrides: config?.strings ?? [:]),
+                               timeZone: timeZone, now: now()).screen(snapshot)
     }
 
     private var strings: ClomniStrings {
@@ -193,6 +200,7 @@ package final class ChatController {
     package func stop() async {
         typingHide?.cancel()
         flowWait?.cancel()
+        stallWait?.cancel()
         polling?.cancel()
         polling = nil
         if let observation {
@@ -418,7 +426,35 @@ package final class ChatController {
         snapshot.isOffline = isOffline
         // A flow waiting for a choice: nobody is writing, and a later step must not bring back an old "typing".
         if snapshot.typing != nil, snapshot.awaitsChoice { hideTyping() }
+        watchForADeadEnd()
         screen = ChatPresenter(strings: strings, timeZone: timeZone, now: now()).screen(snapshot)
         onChange?()
+    }
+
+    /// A flow that says it waits for a choice, with none on screen, gets `flowWaitTime` for its next step; then the
+    /// composer is back (CM-087: a choice whose "next" is null left the user with neither choices nor a field). A step
+    /// that comes, or the flow's state changing, ends it.
+    private func watchForADeadEnd() {
+        guard snapshot.waitsForNothingShown else {
+            stallWait?.cancel()
+            stallWait = nil
+            snapshot.flowStalled = false
+            return
+        }
+        guard stallWait == nil, !snapshot.flowStalled else { return }
+        let wait = Self.flowWaitTime
+        stallWait = Task { [weak self, sleep] in
+            do {
+                try await sleep(wait)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self else { return }
+            self.stallWait = nil
+            guard self.snapshot.waitsForNothingShown else { return }
+            ClomniLog.info("the flow waits for a choice that is not there; the composer is back")
+            self.snapshot.flowStalled = true
+            self.render()
+        }
     }
 }

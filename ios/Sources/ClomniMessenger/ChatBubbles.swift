@@ -703,24 +703,37 @@ private struct TypingDots: View {
     }
 }
 
-/// A person's or the bot's face; the bot without a picture is a brand-coloured circle with its initial.
+/// A person's or the bot's face. The bot is the company: its logo alone once it is there, on nothing (a logo with
+/// transparent parts showed a grey disc and the initial through them, CM-087); without one, and until it comes, a
+/// brand-coloured circle with its initial.
 struct ChatAvatarView: View {
     let avatar: ChatAvatar
     let size: Double
     let theme: ClomniTheme
 
     var body: some View {
-        if avatar.isBot && avatar.url == nil {
-            Circle()
-                .fill(theme.colors.primary.color)
-                .overlay(Text(avatar.initial)
-                    .clomniFixedFont(size * 0.45, .bold)
-                    .foregroundStyle(theme.colors.onPrimary.color))
-                .frame(width: CGFloat(size), height: CGFloat(size))
-                .accessibilityHidden(true)
+        if avatar.isBot {
+            Group {
+                if let url = avatar.url {
+                    RemoteImage(url: url, kind: .icon, points: size, theme: theme, fallback: brandDisc)
+                } else {
+                    brandDisc
+                }
+            }
+            .frame(width: CGFloat(size), height: CGFloat(size))
+            .clipShape(Circle())
+            .accessibilityHidden(true)
         } else {
             AvatarView(url: avatar.url, initial: avatar.initial, size: size, theme: theme)
         }
+    }
+
+    private var brandDisc: some View {
+        Circle()
+            .fill(theme.colors.primary.color)
+            .overlay(Text(avatar.initial)
+                .clomniFixedFont(size * 0.45, .bold)
+                .foregroundStyle(theme.colors.onPrimary.color))
     }
 }
 #endif

@@ -23,7 +23,8 @@ private struct TypefaceKey: EnvironmentKey {
 
 /// The loading indicator's VoiceOver label in the screen's language, for views that do not get the screen.
 private struct LoadingLabelKey: EnvironmentKey {
-    static let defaultValue = ClomniStrings(language: nil)[.loading]
+    /// Before any screen sets it: the phone's language, as the screens speak it without a config.
+    static let defaultValue = ClomniStrings(language: MessengerConfig?.none.speaks(nil))[.loading]
 }
 
 /// The screen's width, for widths given as a share of it (a bubble's 78%).
@@ -163,7 +164,8 @@ struct CardStyle: ViewModifier {
 }
 
 /// A round avatar: the picture when it loads; until then (or without one) the initial on grey, or primary_soft
-/// where there is no initial (the team's avatars).
+/// where there is no initial (the team's avatars). The picture alone once it is there: a transparent one shows what
+/// is behind it, not the grey disc and the initial under it (CM-087).
 struct AvatarView: View {
     let url: URL?
     let initial: String
@@ -171,18 +173,25 @@ struct AvatarView: View {
     let theme: ClomniTheme
 
     var body: some View {
-        ZStack {
-            Circle().fill(initial.isEmpty ? theme.colors.primarySoft.color : theme.colors.textSecondary.color)
-            Text(initial)
-                .clomniFixedFont(size * 0.41, .semibold)
-                .foregroundStyle(Color.white)
-            if let url = url {
-                RemoteImage(url: url, kind: .icon, points: size, theme: theme, placeholder: .clear)
+        Group {
+            if let url {
+                RemoteImage(url: url, kind: .icon, points: size, theme: theme, fallback: disc)
+            } else {
+                disc
             }
         }
         .frame(width: CGFloat(size), height: CGFloat(size))
         .clipShape(Circle())
         .accessibilityHidden(true)
+    }
+
+    private var disc: some View {
+        ZStack {
+            Circle().fill(initial.isEmpty ? theme.colors.primarySoft.color : theme.colors.textSecondary.color)
+            Text(initial)
+                .clomniFixedFont(size * 0.41, .semibold)
+                .foregroundStyle(Color.white)
+        }
     }
 }
 
