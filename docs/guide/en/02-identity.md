@@ -247,7 +247,7 @@ After `logout` the Messenger works again for a new anonymous visitor.
 
 ## Modes
 
-The mode is chosen under **Security** in the panel's side menu.
+The mode is chosen under **Security** in the inbox's settings column.
 
 | Mode | What happens |
 |---|---|
@@ -260,6 +260,6 @@ the hash are left, then switch to Enforced.
 
 ## Replacing the secret
 
-**Security** in the side menu → **Make a new secret**. The new secret is shown once. The old one keeps working for
+**Security** in the settings column → **Make a new secret**. The new secret is shown once. The old one keeps working for
 7 days: move your server to the new secret within that time. **Test a hash** tells you which secret a hash was made
 with.

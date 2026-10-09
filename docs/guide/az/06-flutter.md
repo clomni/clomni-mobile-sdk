@@ -6,7 +6,7 @@
 
 - Flutter 3.16 və ya daha yeni.
 - iOS 15, Android API 24.
-- Paneldə soldakı menyunun **Quraşdırma** bölməsindən App ID və hər iki API açarı (`android_…`, `ios_…`).
+- Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və hər iki API açarı (`android_…`, `ios_…`).
 
 ## Quraşdırma
 

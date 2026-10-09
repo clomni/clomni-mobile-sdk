@@ -6,7 +6,7 @@
 
 - React Native 0.75 или новее (0.76 или новее для New Architecture). Expo SDK 52 или новее в development build.
 - iOS 15, Android 6.0 (API 23).
-- App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в боковом меню панели.
+- App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в колонке настроек канала.
 
 ## Установка
 

@@ -6,7 +6,7 @@
 
 - Flutter 3.16 или новее.
 - iOS 15, Android API 24.
-- App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в боковом меню панели.
+- App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в колонке настроек канала.
 
 ## Установка
 

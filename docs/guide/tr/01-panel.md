@@ -3,7 +3,7 @@
 Clomni'de her uygulama bir "Mobile app (App SDK)" gelen kutusudur. Bu bölümde gelen kutusu oluşturulur, ardından her
 ayarın nerede olduğu gösterilir. Clomni hesabında Administrator rolüne sahip olmanız gerekir.
 
-> Bu kılavuz panelde de var: gelen kutusu sayfası → soldaki menü → **Guide**. Bkz. [Guide](#guide).
+> Bu kılavuz panelde de var: gelen kutusu sayfası → ayarlar sütunu → **Guide**. Bkz. [Guide](#guide).
 
 ## Gelen kutusunu oluşturun
 
@@ -60,8 +60,8 @@ Kullanıcı yeni bir konuşma başlattığında çalışacak akışı seçin. Ak
 ## Gelen kutusu sayfası
 
 Gelen kutusunu daha sonra **Settings → Workspace settings → Inboxes** yolundan açın. Gelen kutusunun ayarları, panelin
-kenar çubuğunun yanında ayrı bir sütundadır: üstte **← Inboxes** ve gelen kutusunun adı, altında üç gruba ayrılmış
-bölümler. SDK için gerekenler:
+kenar çubuğunun yanında ayrı bir sütundadır. Üstte gelen kutusunun adı yer alır; sağındaki **←** düğmesi gelen
+kutuları listesine döner. Altında üç gruba ayrılmış bölümler bulunur. SDK için gerekenler:
 
 | Grup | Bölüm | İçinde ne var |
 |---|---|---|
@@ -76,8 +76,11 @@ bölümler. SDK için gerekenler:
 | INBOX | Analytics | Aktif cihazlar, konuşmalar, push'lar, SDK sürümleri |
 
 INBOX grubunda her gelen kutusunda bulunan ayarlar da yer alır: genel ayarlar, ekip üyeleri, çalışma saatleri.
-Görüntülerde menünün açık bölümü kırmızı bir çerçeveyle gösterilir. Dar ekranda menü, sayfanın üstünde açılır bir
+Görüntülerde sütunun açık bölümü kırmızı bir çerçeveyle gösterilir. Dar ekranda sütun, sayfanın üstünde açılır bir
 listeye dönüşür.
+
+Flows ve News bölümlerinde **How does it look in the app?** bağlantısı vardır. SDK'nın gerçek ekranlarını bir
+pencerede açar; müşterinin ne gördüğünü orada görürsünüz.
 
 ### Overview
 
@@ -177,13 +180,31 @@ Bu gelen kutusunun akışları, neyle başladıklarına göre gruplanmıştır:
 **Open the builder** (2) Clomni'nin akış oluşturucusunu açar. Uygulama olayıyla başlayan bir akış için tetikleyici
 olarak "App event" seçin, olayın adını yazın ve akışı yayınlayın.
 
+**How does it look in the app?** (3) seçim düğmelerini ve formu SDK'da göründükleri gibi gösterir.
+
 ### News
 
-![News](../images/panel-news-en.png)
+![News: liste](../images/panel-news-en.png)
 
-Haberler Messenger'ın ana sayfasında görünür: yayınlanmış ilk üç haber. **New item** (1) kapak görseli, başlık,
-kısa metin, tam metin ve isteğe bağlı bir düğmeyle yeni bir haber oluşturur. Düğme bir web adresini veya
-uygulamanızın bir deep link'ini açabilir (platform bölümünüzde `onLink` kısmına bakın).
+Haberler Messenger'ın ana sayfasında görünür: yayınlanmış ilk üç haber. Sırayı değiştirmek için satırı sürükleyin.
+
+1. **New item** yeni bir haberin düzenleyicisini açar.
+2. **How does it look in the app?** haber kartlarını uygulamanın ana sayfasında gösterir.
+
+Bir haberi değiştirmek için satırına tıklayın. Düzenleyici ayrı bir sayfada açılır. Başlığın üstündeki **← News**
+listeye döner.
+
+![News: düzenleyici](../images/panel-news-editor-en.png)
+
+1. **Cover image**: 16:9, en fazla 5 MB, en az 720 px genişlik.
+2. **Title** ve **Short text** ana sayfadaki kartta, **Full text** ise haber açıldığında görünür. Tam metinde
+   `**bold**`, `*italic*`, bağlantı ve liste kullanılabilir. Alanların üstündeki dil düğmeleri düzenlediğiniz dili
+   değiştirir. Azerbaycanca metin zorunludur; İngilizce veya Rusça boş kalırsa Azerbaycanca metin gösterilir.
+3. **Button** (isteğe bağlı): metni ve bir web adresi ya da uygulamanızın bir deep link'i (platform bölümünüzde
+   `onLink` kısmına bakın).
+4. **Save** değişiklikleri kaydeder; yeni haber taslak olarak kalır. **Publish** haberi kaydedip uygulamalara
+   gönderir. Yayınlanmış bir haberde bu düğme **Unpublish** olur.
+5. **In the app**: ana sayfadaki kart ve açılmış haber, müşterinin gördüğü gibi. Her değişiklikle güncellenir.
 
 ### Guide
 

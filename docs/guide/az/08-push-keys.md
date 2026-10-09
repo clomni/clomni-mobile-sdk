@@ -1,7 +1,7 @@
 # Push açarları
 
 Clomni push bildirişlərini sizin öz açarlarınızla göndərir: Android üçün Firebase service account, iOS üçün APNs
-açarı. Hər ikisi kanal səhifəsində, soldakı menyunun **Push** bölməsində (və ya sehrbazın 4-cü addımında) yüklənir.
+açarı. Hər ikisi kanal səhifəsində, ayarlar sütununun **Push** bölməsində (və ya sehrbazın 4-cü addımında) yüklənir.
 
 | Platforma | Panelə nə lazımdır | Haradan gəlir |
 |---|---|---|
@@ -31,7 +31,7 @@ açarı. Hər ikisi kanal səhifəsində, soldakı menyunun **Push** bölməsind
 Faylı parol kimi saxlayın: repozitoriyaya commit etməyin, e-poçtla göndərməyin. Sızsa, açarı Google Cloud Console-da
 silin (IAM → Service accounts → Keys) və yenisini yükləyin.
 
-Firebase Cloud Messaging API (V1) yeni Firebase layihələrində standart olaraq açıqdır. Söndürülübsə, Test push
+Firebase Cloud Messaging API (V1) yeni Firebase layihələrində standart olaraq açıqdır. Söndürülübsə, Test bildirişi
 FCM-dən xəta qaytarır. API-ni Google Cloud Console → APIs & Services bölməsində yandırın.
 
 ## iOS: APNs açarı
@@ -103,12 +103,12 @@ Kanal → **Push** → "iOS · Apple Push Notification service":
 5. **Yüklə**.
 
 Panel formatları yoxlayır (Key ID və Team ID 10 hərf və ya rəqəmdir). Apple-ın açarı qəbul edib-etmədiyi ilk push-da
-bilinir: Test push işlədin.
+bilinir: Test bildirişi göndərin.
 
-## Test push
+## Test bildirişi
 
-Tətbiq bildirişlərə icazə verilmiş telefonda işləyib tokenini verəndən sonra cihaz **Push** bölməsindəki **Test push**
-siyahısında görünür. Onu seçin və **Göndər** basın. Cavab FCM və ya APNs-in öz cavabıdır.
+Tətbiq bildirişlərə icazə verilmiş telefonda işləyib tokenini verəndən sonra cihaz **Push** bölməsindəki
+**Test bildirişi** siyahısında görünür. Onu seçin və **Göndər** basın. Cavab FCM və ya APNs-in öz cavabıdır.
 
 | Cavab | Mənası | Nə etməli |
 |---|---|---|

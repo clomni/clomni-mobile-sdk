@@ -55,12 +55,12 @@ logda göründüyü kimi yazılıb.
 
 ## Push bildirişləri
 
-Soldakı menyuda **Push** → **Test push**-dan başlayın. Oradakı cavab FCM və ya APNs-in öz cavabıdır, hər cavab
-[Push açarları](08-push-keys.md#test-push) bölməsindəki cədvəldə izah olunub.
+Ayarlar sütununda **Push** → **Test bildirişi** bölməsindən başlayın. Oradakı cavab FCM və ya APNs-in öz cavabıdır,
+hər cavab [Push açarları](08-push-keys.md#test-bildirişi) bölməsindəki cədvəldə izah olunub.
 
 | Əlamət | Səbəb | Nə etməli |
 |---|---|---|
-| Cihaz Test push siyahısında yoxdur | Clomni-yə token çatmayıb | Telefonda bildirişlərə icazə verin; `setDeviceToken` çağırışını yoxlayın; Messenger-i bir dəfə açın |
+| Cihaz Test bildirişi siyahısında yoxdur | Clomni-yə token çatmayıb | Telefonda bildirişlərə icazə verin; `setDeviceToken` çağırışını yoxlayın; Messenger-i bir dəfə açın |
 | Android: bildiriş yoxdur, `notification not shown (POST_NOTIFICATIONS?)` | Android 13+-da icazə yoxdur | `POST_NOTIFICATIONS` istəyin |
 | Android: `push token not registered: …` | Token serverə çatmayıb | Şəbəkəni və `setDeviceToken` çağırışını yoxlayın |
 | Android: bildirişlər yalnız tətbiq açıq olanda gəlir | Data mesajı yalnız UI-da emal olunur | Mesajı `FirebaseMessagingService`-də `ClomniPush.handle`-a verin (React Native: `setBackgroundMessageHandler`, Flutter: `onBackgroundMessage`) |
@@ -88,4 +88,4 @@ Clomni dəstəyinə yazın və bunları əlavə edin:
 - platforma və SDK versiyası (Kotlin və Swift-də `Clomni.version`);
 - App ID (heç vaxt Identity Secret və ya tam API açarı yox);
 - **Ümumi baxış** bölməsinin dedikləri və problem anında debug səviyyəsində SDK logu;
-- push üçün: Test push-un cavabı.
+- push üçün: Test bildirişinin cavabı.

@@ -3,7 +3,7 @@
 Every app is one "Mobile app (App SDK)" inbox in Clomni. This chapter creates the inbox and shows where each setting
 lives afterwards. You need the Administrator role in the Clomni account.
 
-> This guide is also in the panel: the inbox page → side menu → **Guide**. See [Guide](#guide).
+> This guide is also in the panel: the inbox page → settings column → **Guide**. See [Guide](#guide).
 
 ## Create the inbox
 
@@ -59,8 +59,8 @@ Choose the flow that runs when a user starts a new conversation. It is copied to
 ## The inbox page
 
 Open the inbox later from **Settings → Workspace settings → Inboxes**. The inbox's settings are in their own column
-next to the panel's sidebar: **← Inboxes** and the inbox name at the top, then the sections in three groups. The
-ones you need for the SDK:
+next to the panel's sidebar. The inbox name is at the top; the **←** button on its right goes back to the list of
+inboxes. Below it are the sections, in three groups. The ones you need for the SDK:
 
 | Group | Section | What is there |
 |---|---|---|
@@ -75,7 +75,10 @@ ones you need for the SDK:
 | INBOX | Analytics | Active devices, conversations, pushes, SDK versions |
 
 The INBOX group also has the settings every inbox has: settings, collaborators, business hours. In the screenshots
-the open section of the menu has a red frame. On a narrow screen the menu becomes a dropdown above the page.
+the open section of the column has a red frame. On a narrow screen the column becomes a dropdown above the page.
+
+Flows and News have a **How does it look in the app?** link. It opens the SDK's real screens in a dialog, so you see
+what the customer sees.
 
 ### Overview
 
@@ -176,13 +179,31 @@ The flows of this inbox, grouped by what starts them:
 **Open the builder** (2) opens Clomni's flow builder. To make an app event flow, choose "App event" as the trigger,
 enter the event name and publish the flow.
 
+**How does it look in the app?** (3) shows a choice and a form as the SDK draws them.
+
 ### News
 
-![News](../images/panel-news-en.png)
+![News: the list](../images/panel-news-en.png)
 
-News items appear on the Messenger's Home screen: the first three published items. **New item** (1) creates one with
-a cover image, a title, a short text, a full text and an optional button. The button can open a web address or a
-deep link of your app (see `onLink` in your platform's chapter).
+News items appear on the Messenger's Home screen: the first three published items. Drag a row to change the order.
+
+1. **New item** opens the editor for a new item.
+2. **How does it look in the app?** shows the news cards on the app's Home screen.
+
+Click a row to edit that item. The editor opens as a page of its own; **← News** above its title goes back to the
+list.
+
+![News: the editor](../images/panel-news-editor-en.png)
+
+1. **Cover image**: 16:9, up to 5 MB, at least 720 px wide.
+2. **Title** and **Short text** are on the Home card, **Full text** shows when the item is opened. The full text
+   takes `**bold**`, `*italic*`, links and lists. The language buttons above the fields switch the language you
+   edit. Azerbaijani is required; where English or Russian is empty, the Azerbaijani text is shown.
+3. **Button** (optional): its text and a web address or a deep link of your app (see `onLink` in your platform's
+   chapter).
+4. **Save** keeps your changes; a new item stays a draft. **Publish** saves and sends the item to the apps. On a
+   published item the button reads **Unpublish**.
+5. **In the app**: the card on Home and the opened item, as the customer sees them. It follows each change.
 
 ### Guide
 

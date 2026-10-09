@@ -3,7 +3,7 @@
 ## Requirements
 
 - iOS 15 or newer, Xcode 15 or newer.
-- The App ID and the iOS API key (`ios_…`) from **Installation** in the panel's side menu.
+- The App ID and the iOS API key (`ios_…`) from **Installation** in the inbox's settings column.
 - For push: an Apple Developer account and an APNs key ([Push keys](08-push-keys.md)).
 
 ## Install
@@ -399,7 +399,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
 1. Run the app on a real iPhone (the simulator cannot receive APNs pushes from Clomni), allow notifications and open
    the Messenger once.
-2. In the panel: **Push** in the side menu → **Test push** → choose the device → **Send**.
+2. In the panel: **Push** in the settings column → **Test push** → choose the device → **Send**.
 
 ## Problems
 

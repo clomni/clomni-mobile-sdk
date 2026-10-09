@@ -3,7 +3,7 @@
 ## Tələblər
 
 - iOS 15 və ya daha yeni, Xcode 15 və ya daha yeni.
-- Paneldə soldakı menyunun **Quraşdırma** bölməsindən App ID və iOS API açarı (`ios_…`).
+- Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və iOS API açarı (`ios_…`).
 - Push üçün: Apple Developer hesabı və APNs açarı ([Push açarları](08-push-keys.md)).
 
 ## Quraşdırma
@@ -296,7 +296,7 @@ SDK hər cihazın APNs mühitini özü bildirir:
 | TestFlight, App Store, Ad Hoc | production |
 
 Bir `.p8` açarı hər ikisinə xidmət edir, bir şərtlə ki **Sandbox & Production** üçün yaradılsın. Bir mühitlə
-məhdudlaşan açar o biri mühitdə `BadEnvironmentKeyInToken` xətası verir. Paneldəki Test push siyahısı hər cihazın
+məhdudlaşan açar o biri mühitdə `BadEnvironmentKeyInToken` xətası verir. Paneldəki Test bildirişi siyahısı hər cihazın
 mühitini göstərir.
 
 ### 4. Operatorun şəkli (istəyə bağlı)
@@ -399,7 +399,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 
 1. Tətbiqi real iPhone-da işə salın (simulyator Clomni-dən APNs push-u qəbul edə bilmir), bildirişlərə icazə verin
    və Messenger-i bir dəfə açın.
-2. Paneldə: soldakı menyuda **Push** → **Test push** → cihazı seçin → **Göndər**.
+2. Paneldə: ayarlar sütununda **Push** → **Test bildirişi** → cihazı seçin → **Göndər**.
 
 ## Problemlər
 
@@ -408,9 +408,9 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
 | `api_key səhvdir və ya bu platforma üçün deyil` | Android açarını yox, `ios_…` açarını işlədin |
 | Messenger açılmır, logda `no window to present the messenger from yet` | `present`-i ekran göstəriləndən sonra çağırın |
 | `font family "…" is not in the app; the system font stays` | Şrift faylını hədəfə və `UIAppFonts`-a əlavə edin |
-| Test push `BadEnvironmentKeyInToken` deyir | APNs açarı bir mühitlə məhdudlaşıb. Sandbox & Production açarı yaradın ([Push açarları](08-push-keys.md)) |
-| Test push `DeviceTokenNotForTopic` deyir | **Push** bölməsindəki Bundle ID tətbiqin Bundle ID-si deyil |
-| Test push siyahısında cihaz yoxdur | Telefonda bildirişlərə icazə verilməyib və ya `setDeviceToken` heç çağırılmır |
+| Test bildirişi `BadEnvironmentKeyInToken` deyir | APNs açarı bir mühitlə məhdudlaşıb. Sandbox & Production açarı yaradın ([Push açarları](08-push-keys.md)) |
+| Test bildirişi `DeviceTokenNotForTopic` deyir | **Push** bölməsindəki Bundle ID tətbiqin Bundle ID-si deyil |
+| Test bildirişi siyahısında cihaz yoxdur | Telefonda bildirişlərə icazə verilməyib və ya `setDeviceToken` heç çağırılmır |
 | Bildirişə toxunanda tətbiq "Call must be made on main thread" ilə dayanır | Delegate metodlarını yuxarıdakı kimi `@MainActor` edin |
 
 Loglar Xcode konsolunda və Console.app-dədir: subsystem `ai.clomni.messenger`, category `Clomni`. Daha çoxu:
