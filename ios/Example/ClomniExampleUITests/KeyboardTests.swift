@@ -236,7 +236,8 @@ final class KeyboardTests: XCTestCase {
     private func keyboardKey(_ names: [String], under field: XCUIElement, _ what: String, file: StaticString = #filePath,
                              line: UInt = #line) -> XCUIElement? {
         let below = field.frame.maxY + 20
-        let named = NSPredicate(format: "label IN[c] %@", names)
+        // XCUITest's queries take no case-insensitive IN: one comparison per name.
+        let named = NSCompoundPredicate(orPredicateWithSubpredicates: names.map { NSPredicate(format: "label ==[c] %@", $0) })
         for _ in 0..<20 {
             let found = app.descendants(matching: .any).matching(named).allElementsBoundByIndex
                 .first { $0.exists && $0.frame.minY > below }
