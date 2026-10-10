@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- delete: the bin with its lid, on the recorder's Delete button (clomni_ic_trash and clomni_ic_trash_lid in one) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M6.25,8.5 h11.5 l-0.95,10.9 a1.75,1.75 0 0,1 -1.75,1.6 h-6.1 a1.75,1.75 0 0,1 -1.75,-1.6 z M10,11.75 v5.75 M14,11.75 v5.75 M4.5,6.25 h15 M9.5,6.25 v-1.25 a1.25,1.25 0 0,1 1.25,-1.25 h2.5 a1.25,1.25 0 0,1 1.25,1.25 v1.25"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

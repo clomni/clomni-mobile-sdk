@@ -90,7 +90,7 @@ class ChatFixtureSnapshotTest {
                 val theme = ClomniTheme.make(config.brand, dark)
                 paparazzi.snapshot("$name-${if (dark) "dark" else "light"}") {
                     CompositionLocalProvider(LocalInspectionMode provides true) {
-                        ChatScreenView(screen, theme, ChatActions(), lazy = false)
+                        WithVoice { ChatScreenView(screen, theme, ChatActions(), lazy = false) }
                     }
                 }
                 semantics.assertTouchTargets(name)
@@ -126,7 +126,7 @@ class ChatSnapshotTest {
         val theme = ClomniTheme.make(snapshot.config?.brand, dark)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true) {
-                Scene(theme, safeAreas) { ChatScreenView(screen, theme, ChatActions(), draft = draft) }
+                Scene(theme, safeAreas) { WithVoice { ChatScreenView(screen, theme, ChatActions(), draft = draft) } }
             }
         }
         semantics.assertTouchTargets(name)
@@ -378,7 +378,7 @@ class ChatSnapshotTest {
     private fun frame(name: String, screen: ChatScreen, fold: ChoiceFold = ChoiceFold(), check: (List<SemanticsCapture.Element>) -> Unit) {
         val theme = ClomniTheme.make(Fixture.exampleConfig.brand, false)
         paparazzi.snapshot(name) {
-            CompositionLocalProvider(LocalInspectionMode provides true) { ChatScreenView(screen, theme, ChatActions(), fold = fold) }
+            CompositionLocalProvider(LocalInspectionMode provides true) { WithVoice { ChatScreenView(screen, theme, ChatActions(), fold = fold) } }
         }
         val labels = screen.items.flatMap { item ->
             when (item) {

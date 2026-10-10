@@ -405,11 +405,14 @@ internal class ClomniEngine(
         caption: String?,
         conversationId: String,
         replyTo: String?,
+        durationMs: Long?,
+        waveform: List<Int>?,
     ): Future<PendingMessage> = submit {
         val limits = store.config?.limits
         val megabytes = if (mime.startsWith("image/")) limits?.imageMb ?: 10 else limits?.fileMb ?: 25
         if (data.size > megabytes * 1_048_576L) throw ClomniError.Rejected("file over $megabytes MB")
-        val message = ClientMessage.Attachment(uploadId = "", caption = caption, replyTo = replyTo)
+        // A voice message keeps its length and waveform through the outbox (they ride on the attachment).
+        val message = ClientMessage.Attachment(uploadId = "", caption = caption, replyTo = replyTo, durationMs = durationMs, waveform = waveform)
         val stored = store.outbox.stage(message.clientId, data) ?: throw ClomniError.Rejected("file not stored")
         val upload = PendingUpload(fileName, mime, data.size.toLong(), stored)
         val entry = PendingMessage(target(conversationId), message, caption, clock(), upload = upload, openedFrom = draftSources[conversationId])

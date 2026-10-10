@@ -89,6 +89,8 @@ package struct Bubble: Sendable, Equatable, Identifiable {
         case text([TextRun])
         case image(ImageBody)
         case file(FileBody)
+        /// A voice message (CM-130): drawn by VoiceMessageBubble, in the strings' words.
+        case voice(VoiceNote, ClomniStrings)
         case form(FormCard)
         case rating(RatingCard)
     }
@@ -281,12 +283,10 @@ package struct ChatComposer: Sendable, Equatable {
     package let mode: Mode
     package let placeholder: String
     package let showsAttach: Bool
-    package let showsEmoji: Bool
     /// Characters a message may have.
     package let limit: Int
     package let sendLabel: String
     package let attachLabel: String
-    package let emojiLabel: String
     /// The attachment sheet's rows: the photo library, the camera, any file; and the x on a picked file.
     package let mediaLabel: String
     package let cameraLabel: String
@@ -295,6 +295,10 @@ package struct ChatComposer: Sendable, Equatable {
     /// The message being answered, over the field with its ✕ (`cancelQuoteLabel`).
     package let quote: Bubble.Quote?
     package let cancelQuoteLabel: String
+    /// The longest voice message (config limits.voice_seconds): the recorder stops there.
+    package var voiceSeconds = MessengerConfig.Limits.defaultVoiceSeconds
+    /// The recorder's and the round button's texts (CM-130).
+    package var texts = ClomniStrings(language: nil)
 }
 
 extension ChatSnapshot {

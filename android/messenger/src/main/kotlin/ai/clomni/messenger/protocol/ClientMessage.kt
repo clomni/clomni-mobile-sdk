@@ -51,6 +51,10 @@ internal sealed interface ClientMessage {
         override val clientId: String = newClientId(),
         /** As for [Text.replyTo]. */
         val replyTo: String? = null,
+        /** A voice message: its length as recorded. */
+        val durationMs: Long? = null,
+        /** A voice message: its loudness over time, 0–100 each ([ai.clomni.messenger.presentation.Waveform]). */
+        val waveform: List<Int>? = null,
     ) : ClientMessage {
         override val type: String get() = "attachment"
     }

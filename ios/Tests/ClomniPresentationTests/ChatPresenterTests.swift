@@ -154,6 +154,45 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(withFailure[1].status?.text, "Göndərilir")
     }
 
+    /// CM-130: a voice message in its bubble, mine on the right and theirs on the left; quoted and read out by name.
+    func testVoiceMessages() {
+        let mine = Fixture.message("100-audio-voice-user.json")
+        let theirs = Fixture.message("101-audio-operator-no-waveform.json")
+        let list = bubbles(screen([mine, theirs]))
+        guard case .voice(let voice, _) = list[0].body, case .audio(let audio) = mine.content else { return XCTFail("\(list[0].body)") }
+        XCTAssertEqual(voice, VoiceNote(id: mine.id, audio: audio, outgoing: true))
+        XCTAssertEqual(list[0].side, .outgoing)
+        XCTAssertEqual(list[0].accessibilityLabel, "Siz, 10:31: Səsli mesaj, 0:14. Göndərildi")
+        guard case .voice(let operatorVoice, _) = list[1].body else { return XCTFail() }
+        XCTAssertFalse(operatorVoice.outgoing)
+        XCTAssertNil(operatorVoice.durationMs)
+        let quoting = screen([mine]) { $0.replyingTo = mine.id }.composer.quote
+        XCTAssertEqual(quoting?.excerpt, "Səsli mesaj")
+    }
+
+    /// CM-130: the user's own voice message on its way plays from the kept recording; a spinner only while it uploads.
+    func testPendingVoiceMessages() {
+        let levels = Array(repeating: 40, count: 64)
+        var voice = PendingMessage(conversationId: "conv_5521",
+                                   message: ClientMessage(content: .attachment(uploadId: "", caption: nil),
+                                                          voice: ClientMessage.Voice(durationMs: 3_200, waveform: levels)),
+                                   preview: nil, createdAt: now)
+        voice.upload = PendingUpload(fileName: "voice-1.m4a", mime: "audio/mp4", size: 4_000, storedAs: "upload-3")
+        let file = URL(fileURLWithPath: "/tmp/upload-3")
+        func note(_ build: (inout ChatSnapshot) -> Void) -> VoiceNote? {
+            let list = bubbles(screen([]) {
+                $0.pending = [voice]
+                build(&$0)
+            })
+            guard case .voice(let note, _) = list.first?.body else { return nil }
+            return note
+        }
+        XCTAssertEqual(note { $0.localFiles = [voice.id: file] },
+                       VoiceNote.sending(clientId: voice.id, file: file, durationMs: 3_200, waveform: levels, uploading: true))
+        XCTAssertEqual(note { $0.localFiles = [voice.id: file]; $0.isOffline = true }?.sending, false, "waiting: no spinner")
+        XCTAssertNil(note { _ in }, "its recording gone: shown as the file it is")
+    }
+
     func testPendingAttachments() {
         var photo = PendingMessage(conversationId: "conv_5521",
                                    message: ClientMessage(content: .attachment(uploadId: "", caption: "Velosiped")),
@@ -546,12 +585,12 @@ final class ChatPresenterTests: XCTestCase {
         let open = screen([]).composer
         XCTAssertEqual(open.mode, .open)
         XCTAssertEqual(open.placeholder, "Mesaj yazın…")
-        XCTAssertTrue(open.showsAttach && open.showsEmoji)
+        XCTAssertTrue(open.showsAttach)
         XCTAssertEqual(open.limit, 4_000)
+        XCTAssertEqual(open.voiceSeconds, 300, "the recorder's limit, the config's or five minutes")
         XCTAssertEqual(open.sendLabel, "Göndər")
-        XCTAssertEqual([open.attachLabel, open.mediaLabel, open.cameraLabel, open.fileLabel, open.removeAttachmentLabel,
-                        open.emojiLabel],
-                       ["Fayl əlavə et", "Şəkil və ya video", "Kamera", "Fayl", "Sil", "Emoji"])
+        XCTAssertEqual([open.attachLabel, open.mediaLabel, open.cameraLabel, open.fileLabel, open.removeAttachmentLabel],
+                       ["Fayl əlavə et", "Şəkil və ya video", "Kamera", "Fayl", "Sil"])
         let closed = screen([]) { $0.conversation = Fixture.conversation(status: "closed") }.composer
         XCTAssertEqual(closed.mode, .closed(text: "Söhbət bağlanıb", action: "Yeni söhbət başlat"))
         let minimal = screen([]) { $0.config = Fixture.minimalConfig }.composer

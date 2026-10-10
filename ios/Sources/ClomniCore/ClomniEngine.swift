@@ -512,11 +512,12 @@ package actor ClomniEngine {
     /// the message, so a lost connection or a restart does not lose it: the outbox uploads it, then sends it.
     @discardableResult
     package func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
-                         in conversationId: String, replyTo: String? = nil) throws -> PendingMessage {
+                         in conversationId: String, replyTo: String? = nil, voice: ClientMessage.Voice? = nil) throws -> PendingMessage {
         let conversationId = resolved(conversationId)
         let megabytes = mime.hasPrefix("image/") ? config?.limits.imageMb ?? 10 : config?.limits.fileMb ?? 25
         guard data.count <= megabytes * 1_048_576 else { throw ClomniError.rejected("file over \(megabytes) MB") }
-        let message = ClientMessage(content: .attachment(uploadId: "", caption: caption), replyTo: replyTo)
+        // A voice message keeps its length and waveform through the outbox (they ride on the attachment).
+        let message = ClientMessage(content: .attachment(uploadId: "", caption: caption), replyTo: replyTo, voice: voice)
         let stored = "upload-\(message.clientId)"
         cache.write(data, stored)
         guard cache.contains(stored) else { throw ClomniError.rejected("file not stored") }
@@ -668,7 +669,7 @@ package actor ClomniEngine {
                     if case .attachment(_, let caption) = $0.message.content {
                         $0.message = ClientMessage(clientId: $0.message.clientId,
                                                    content: .attachment(uploadId: uploaded.uploadId, caption: caption),
-                                                   replyTo: $0.message.replyTo)
+                                                   replyTo: $0.message.replyTo, voice: $0.message.voice)
                     }
                 }
                 save()

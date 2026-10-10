@@ -21,8 +21,10 @@ struct StagedFile: Equatable {
 }
 
 /// White, with a 1 pt line on top (DESIGN-PASS-2 11): the field (surface, radius 20, at least 44 high, up to 5 lines
-/// then it scrolls), the emoji (its own sheet, DESIGN-PASS-3 A6) and attach icons (24, pressed as a 40 pt circle) inside it, and once there is something to send the round send
-/// button (36, brand colour) in the attach icon's place, coming in over 150 ms. A closed conversation offers a new one, and writing anyway
+/// then it scrolls) with the paper clip (24, pressed as a 40 pt circle) inside it, and right of it the round button
+/// (CM-130, operator 2026-10-09, WhatsApp's layout; the emoji button went, the keyboard has emoji): the microphone
+/// while there is nothing to send, the arrow once there is (`ComposerSendButton`). While a voice message is recorded
+/// its bar takes the field's place (`VoiceRecordingBar`). A closed conversation offers a new one, and writing anyway
 /// reopens it. A picked file waits above it as a 64 pt square with its ×. (While a flow waits for a choice the
 /// conversation shows no composer at all.)
 struct ComposerView: View {
@@ -36,13 +38,11 @@ struct ComposerView: View {
     let startNew: () -> Void
     /// The ✕ on the quote over the field.
     var cancelQuote: () -> Void = {}
+    /// Voice messages (CM-130); no recorder: the app does not explain the microphone, the button is only the arrow.
+    var recorder: VoiceRecorder?
+    var playback: VoicePlayback?
     @FocusState private var focused: Bool
-    @State private var choosingEmoji = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Where the cursor stood when the emoji sheet opened (UTF-16), so the emoji goes there.
-    @State private var emojiAt: Int?
-    /// An emoji was picked: the field takes the focus back when the sheet has gone.
-    @State private var emojiPicked = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(ClomniTheme.Space.s)) {
@@ -106,48 +106,32 @@ struct ComposerView: View {
         staged != nil || ChatPresenter.canSend(text, limit: composer.limit)
     }
 
+    @ViewBuilder
     private var field: some View {
+        if let recorder, let playback {
+            VoiceComposerRow(recorder: recorder, playback: playback, theme: theme, strings: composer.texts, canSend: canSend,
+                             send: send) { textField }
+        } else {
+            HStack(alignment: .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
+                textField
+                ComposerSendButton(canSend: canSend, recorder: nil, theme: theme, strings: composer.texts, send: send)
+                    .accessibilityIdentifier("clomni.composer.send")
+            }
+        }
+    }
+
+    private var textField: some View {
         HStack(alignment: .center, spacing: CGFloat(ClomniTheme.Space.s)) {
             input
-            if composer.showsEmoji {
-                iconButton("face.smiling", label: composer.emojiLabel) {
-                    emojiAt = focused ? TextInsertion.cursorOffset() : nil
-                    emojiPicked = false
-                    choosingEmoji = true
-                }
-                // The keyboard comes back once the sheet has gone, the cursor after the emoji (G3).
-                .sheet(isPresented: $choosingEmoji, onDismiss: refocus) { emojiSheet }
+            if composer.showsAttach {
+                iconButton("paperclip", label: composer.attachLabel, action: attach)
             }
-            ZStack {
-                if canSend {
-                    Button(action: send) {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(theme.colors.onPrimary.color)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(theme.colors.primary.color))
-                            .frame(width: 40, height: 40)
-                    }
-                    .buttonStyle(PressShapeStyle(shape: Circle()))
-                    .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
-                    .contentShape(Rectangle())
-                    .accessibilityLabel(Text(composer.sendLabel))
-                    .accessibilityIdentifier("clomni.composer.send")
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
-                } else if composer.showsAttach {
-                    iconButton("paperclip", label: composer.attachLabel, action: attach)
-                        .transition(.scale(scale: 0.6).combined(with: .opacity))
-                }
-            }
-            .frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: CGFloat(ClomniTheme.Size.touchTarget))
         }
         .padding(.leading, CGFloat(ClomniTheme.Space.xl))
-        .padding(.trailing, CGFloat(ClomniTheme.Space.xxs))
+        .padding(.trailing, composer.showsAttach ? CGFloat(ClomniTheme.Space.xxs) : CGFloat(ClomniTheme.Space.xl))
         .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
         .background(RoundedRectangle(cornerRadius: CGFloat(ClomniTheme.Radius.input), style: .continuous)
             .fill(theme.colors.surface.color))
-        // M7: send springs in from 0.6.
-        .animation(reduceMotion ? nil : Motion.spring, value: canSend)
     }
 
     @ViewBuilder
@@ -185,30 +169,46 @@ struct ComposerView: View {
         .contentShape(Rectangle())
         .accessibilityLabel(Text(label))
     }
+}
 
-    /// One emoji (operator, 2026-10-07, G3): it goes where the cursor was, and the sheet closes.
-    @ViewBuilder
-    private var emojiSheet: some View {
-        let sheet = EmojiPickerSheet(title: composer.emojiLabel, theme: theme) { emoji in
-            let at = emojiAt ?? text.utf16.count
-            text = TextInsertion.insert(emoji, into: text, atUTF16: at)
-            emojiAt = at + emoji.utf16.count
-            emojiPicked = true
-            choosingEmoji = false
-        }
-        if #available(iOS 16.0, *) {
-            sheet.presentationDetents([.medium, .large])
-        } else {
-            sheet
+/// The field and the round button right of it; while a voice message is made, its bar in the field's place. Locked or
+/// stopped, the bar has its own Send and the button goes; while the finger holds it stays, under the finger.
+private struct VoiceComposerRow<Field: View>: View {
+    @ObservedObject var recorder: VoiceRecorder
+    let playback: VoicePlayback
+    let theme: ClomniTheme
+    let strings: ClomniStrings
+    let canSend: Bool
+    let send: () -> Void
+    @ViewBuilder let field: () -> Field
+
+    var body: some View {
+        let state = recorder.state
+        HStack(alignment: state.isHolding ? .top : .bottom, spacing: CGFloat(ClomniTheme.Space.s)) {
+            if recorder.showsBar {
+                VoiceRecordingBar(recorder: recorder, playback: playback, theme: theme, strings: strings)
+            } else {
+                field()
+            }
+            if !state.isLockedOrReview && !recorder.dropping {
+                ComposerSendButton(canSend: canSend, recorder: recorder, theme: theme, strings: strings, send: send)
+                    .accessibilityIdentifier(canSend ? "clomni.composer.send" : "clomni.composer.voice")
+            }
         }
     }
+}
 
-    /// The field takes the focus back; the cursor goes where the emoji ended once the field is the first responder.
-    private func refocus() {
-        guard emojiPicked else { return }
-        focused = true
-        let cursor = emojiAt
-        DispatchQueue.main.async { if let cursor { TextInsertion.placeCursor(atUTF16: cursor) } }
+private extension VoiceRecording.State {
+    var isHolding: Bool {
+        if case .holding = self { return true }
+        return false
+    }
+
+    var isLockedOrReview: Bool {
+        switch self {
+        case .locked, .review: return true
+        default: return false
+        }
     }
 }
 

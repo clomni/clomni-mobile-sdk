@@ -146,6 +146,10 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/72-event-flow-text.json" to RealtimeEvent.Payload.ConversationUpdated::class,
             "fixtures/73-event-flow-ended.json" to RealtimeEvent.Payload.ConversationUpdated::class,
             "fixtures/99-invalid-conversation-start-client-id-empty.json" to JsonObject::class,
+            "fixtures/100-audio-voice-user.json" to MessageContent.Audio::class,
+            "fixtures/101-audio-operator-no-waveform.json" to MessageContent.Audio::class,
+            "fixtures/102-client-attachment-voice.json" to ClientMessage.Attachment::class,
+            "fixtures/104-reply-operator-to-voice.json" to MessageContent.Text::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
             "fixtures/65-invalid-appearance-default-language-off.json" to JsonObject::class,
@@ -165,6 +169,8 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/96-invalid-config-color.json" to MessengerConfig::class,
             "fixtures/97-invalid-event-ready-without-data.json" to RealtimeEvent.Payload.Unknown::class,
             "fixtures/98-invalid-card-button-both.json" to MessageContent.Card::class,
+            // The voice message without its waveform: plain bars.
+            "fixtures/103-invalid-audio-waveform-level.json" to MessageContent.Audio::class,
             "examples/brief/s5-language-select.json" to MessageContent.QuickReplies::class,
             "examples/brief/s5-button-reply.json" to ClientMessage.ButtonReply::class,
             "examples/brief/s5.1-envelope.json" to MessageContent.Text::class,

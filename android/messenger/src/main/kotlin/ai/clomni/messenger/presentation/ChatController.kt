@@ -353,6 +353,23 @@ internal class ChatController(
     }
 
     /**
+     * A recorded voice message (CM-130): sent like a file, through the outbox (kept on the device, uploaded, then sent
+     * with its length and waveform), so it waits with its clock while offline. The recording goes once the outbox has
+     * its own copy. [done] as for [attach].
+     */
+    fun sendVoice(clip: VoiceClip, done: (String?) -> Unit = {}) {
+        val id = conversationId
+        val quoted = takeQuote()
+        worker.execute {
+            val sent = runCatching {
+                source.sendFile(clip.file.readBytes(), clip.file.name, VOICE_MIME, null, id, quoted, clip.durationMs, clip.waveform).get()
+            }
+            clip.file.delete()
+            main.execute { done(if (sent.isSuccess) null else strings[Key.ERROR]) }
+        }
+    }
+
+    /**
      * "Yeni söhbət başlat": this screen moves to a new, empty conversation, which the server gets with its first
      * message ([ChatDataSource.draft]). On [main].
      */
@@ -516,6 +533,9 @@ internal class ChatController(
 
         /** How long a new conversation waits for its flow's first step before it shows empty. */
         const val FLOW_WAIT_MS = 8_000L
+
+        /** A recording's type: AAC in MP4 (.m4a), what the server plays and the panel's player opens. */
+        const val VOICE_MIME = "audio/mp4"
 
         /**
          * Silence after which a flow that offers nothing to answer gives the composer back. Longer than a step's

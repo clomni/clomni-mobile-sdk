@@ -52,6 +52,7 @@ internal interface ChatDataSource {
     /** A rating (CSAT): [score] 1–5 and the comment, if any. One that failed to go may be given again. */
     fun submitRating(message: Message, score: Int, comment: String?): Future<PendingMessage>
 
+    /** [durationMs] and [waveform]: a voice message's, as recorded (CM-130). */
     fun sendFile(
         data: ByteArray,
         fileName: String,
@@ -59,6 +60,8 @@ internal interface ChatDataSource {
         caption: String?,
         conversationId: String,
         replyTo: String? = null,
+        durationMs: Long? = null,
+        waveform: List<Int>? = null,
     ): Future<PendingMessage>
 
     fun retry(clientId: String): Future<Unit>

@@ -233,20 +233,25 @@ internal fun ClomniChat(
             }
         },
     )
-    ChatScreenView(
-        screen,
-        theme,
-        actions,
-        draft = draft,
-        changeDraft = {
-            draft = it
-            controller.textChanged(it)
-        },
-        writeAnyway = writeAnyway,
-        setWriteAnyway = { writeAnyway = true },
-        loadingOlder = loadingOlder,
-        picked = preview,
-    )
+    // Voice messages (CM-130): one player for the screen, and the recorder when the app declares the microphone.
+    val playback = rememberVoicePlayback()
+    val recorder = rememberVoiceRecorder(screen.composer.voiceSeconds) { clip -> controller.sendVoice(clip, refused) }
+    CompositionLocalProvider(LocalVoicePlayback provides playback, LocalVoiceRecorder provides recorder) {
+        ChatScreenView(
+            screen,
+            theme,
+            actions,
+            draft = draft,
+            changeDraft = {
+                draft = it
+                controller.textChanged(it)
+            },
+            writeAnyway = writeAnyway,
+            setWriteAnyway = { writeAnyway = true },
+            loadingOlder = loadingOlder,
+            picked = preview,
+        )
+    }
     fullScreen?.let { url -> FullScreenImage(url, screen.header.closeLabel) { fullScreen = null } }
 }
 

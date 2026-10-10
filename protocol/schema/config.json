@@ -151,7 +151,8 @@
       "properties": {
         "image_mb": { "type": "integer", "minimum": 1 },
         "file_mb": { "type": "integer", "minimum": 1 },
-        "text_chars": { "type": "integer", "minimum": 1 }
+        "text_chars": { "type": "integer", "minimum": 1 },
+        "voice_seconds": { "type": "integer", "minimum": 1, "description": "The longest voice message; the recorder stops there. An SDK uses 300 when it is absent." }
       }
     },
     "powered_by": { "type": "boolean", "description": "Show \"Powered by Clomni\" under Home; false only on a plan that allows it." }

@@ -50,7 +50,15 @@
       "properties": {
         "upload_id": { "type": "string", "pattern": "^upl_.+" },
         "caption": { "type": ["string", "null"], "maxLength": 4000 },
-        "reply_to": { "type": "string", "pattern": "^msg_.+", "description": "Optional, as for text." }
+        "reply_to": { "type": "string", "pattern": "^msg_.+", "description": "Optional, as for text." },
+        "duration_ms": { "type": "integer", "minimum": 1, "description": "A voice message: its length as recorded, at most config limits.voice_seconds. Only for an audio upload." },
+        "waveform": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "description": "A voice message: its loudness over time, 0-100 (the SDKs send 64 values). Only for an audio upload."
+        }
       }
     },
     "rating_submit": {

@@ -61,7 +61,7 @@ class MessengerConfigTest {
         assertEquals(MessengerConfig.Composer(attachments = true, emoji = true), config.composer)
         assertEquals("Salam, {first_name}", config.strings["greeting_line1"])
         assertEquals("the panel's own", "Bizdən nəsə soruşun", config.strings["greeting_line2"])
-        assertEquals(MessengerConfig.Limits(10, 25, 4000), config.limits)
+        assertEquals(MessengerConfig.Limits(10, 25, 4000, voiceSeconds = 300), config.limits)
         assertTrue(config.poweredBy)
         assertTrue(protocol.warnings.isEmpty())
     }
@@ -85,6 +85,14 @@ class MessengerConfigTest {
         assertEquals(MessengerConfig.HeaderStyle.SOLID, config("""{"brand":{"header_style":"solid"}}""").brand.headerStyle)
         assertEquals(MessengerConfig.ThemeMode.LIGHT, config("""{"theme":{"mode":"light"}}""").theme.mode)
         assertEquals("0–200", 200, config("""{"theme":{"launcher":{"bottom_padding":900}}}""").theme.launcher.bottomPadding)
+    }
+
+    /** The voice message's limit: the server's, or five minutes. */
+    @Test
+    fun voiceLimit() {
+        assertEquals(120, config("""{"limits":{"voice_seconds":120}}""").limits.voiceSeconds)
+        assertEquals(300, config("""{"limits":{"voice_seconds":0}}""").limits.voiceSeconds)
+        assertEquals(300, config("""{"limits":{}}""").limits.voiceSeconds)
     }
 
     /** "messages" and "send" are always there; the panel's order otherwise; unknown cards and channels over five dropped. */

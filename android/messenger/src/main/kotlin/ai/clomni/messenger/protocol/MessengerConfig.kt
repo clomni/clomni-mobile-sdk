@@ -179,9 +179,13 @@ internal data class MessengerConfig(
 
     data class Composer(val attachments: Boolean, val emoji: Boolean)
 
-    data class Limits(val imageMb: Int, val fileMb: Int, val textChars: Int)
+    /** [voiceSeconds]: the longest voice message; the recorder stops there. */
+    data class Limits(val imageMb: Int, val fileMb: Int, val textChars: Int, val voiceSeconds: Int = DEFAULT_VOICE_SECONDS)
 
     companion object {
         const val MAX_CHANNELS = 5
+
+        /** Five minutes, when the config does not say (protocol config.json limits.voice_seconds). */
+        const val DEFAULT_VOICE_SECONDS = 300
     }
 }

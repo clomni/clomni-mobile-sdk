@@ -9,7 +9,7 @@
     "id": { "type": "string", "pattern": "^msg_.+" },
     "client_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 64, "description": "UUID v4 the client sent with its own message; null for messages it did not send." },
     "conversation_id": { "type": "string", "pattern": "^conv_.+" },
-    "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, quick_replies, image, file, form, system, card, rating. Any other value is valid and rendered with fallback_text." },
+    "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, quick_replies, image, file, audio, form, system, card, rating. Any other value is valid and rendered with fallback_text." },
     "sender": { "$ref": "#/$defs/sender" },
     "created_at": { "type": "string", "format": "date-time" },
     "seq": { "type": "integer", "minimum": 1, "description": "Rises within the conversation; ordering uses it, never the id." },
@@ -25,6 +25,7 @@
     { "if": { "properties": { "type": { "const": "quick_replies" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/quick_replies" } } } },
     { "if": { "properties": { "type": { "const": "image" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/image" } } } },
     { "if": { "properties": { "type": { "const": "file" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/file" } } } },
+    { "if": { "properties": { "type": { "const": "audio" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/audio" } } } },
     { "if": { "properties": { "type": { "const": "form" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/form" } } } },
     { "if": { "properties": { "type": { "const": "system" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/system" } } } },
     { "if": { "properties": { "type": { "const": "card" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/card" } } } },
@@ -54,7 +55,7 @@
           ]
         },
         "excerpt": { "type": ["string", "null"], "maxLength": 120, "description": "Plain text, on one line. null: the message was deleted or is not there; the quote reads quote_deleted." },
-        "kind": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, image, file. Any other value is shown as text." }
+        "kind": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, image, file, audio. Any other value is shown as text." }
       }
     },
     "flow": {
@@ -113,6 +114,25 @@
         "size": { "type": "integer", "minimum": 0 },
         "mime": { "type": "string", "minLength": 1 },
         "caption": { "type": ["string", "null"], "description": "Text sent with the file, shown under it." }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "description": "A voice message, or another recording both SDKs can play: AAC in MP4 (m4a), MP3 or WAV. Other containers (Ogg/Opus, WebM, AMR) are sent as file until the server has made their AAC copy; that copy arrives as message.updated.",
+      "required": ["url", "mime", "size"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "mime": { "type": "string", "pattern": "^audio/" },
+        "size": { "type": "integer", "minimum": 0 },
+        "duration_ms": { "type": ["integer", "null"], "minimum": 0, "description": "null when unknown: the app reads the length from the file once it has it." },
+        "waveform": {
+          "type": ["array", "null"],
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "description": "Loudness over the recording, 0-100, as the app that recorded it measured it (64 values from the SDKs); null for a recording without one, drawn as plain bars."
+        },
+        "caption": { "type": ["string", "null"], "description": "Text sent with the recording, shown under it." }
       }
     },
     "form_field": {

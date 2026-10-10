@@ -4,6 +4,11 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /** The client-message fixtures, built the way the SDK builds them; each must encode to its file. */
 internal object ClientMessageFixtures {
+    /** The 64 levels of fixtures 100 and 102. */
+    val VOICE_WAVEFORM = listOf(
+        8, 28, 21, 37, 35, 45, 47, 49, 54, 47, 54, 39, 47, 28, 35, 19, 21, 13, 12, 12, 9, 19, 15, 34, 29, 54, 53, 74, 76, 89, 92, 94, 97, 88, 91, 72, 75, 50, 53, 33, 32, 19, 16, 13, 8, 14, 9, 23, 15, 35, 29, 46, 43, 52, 51, 52, 52, 44, 47, 31, 38, 18, 28, 13,
+    )
+
     val all: Map<String, ClientMessage> = mapOf(
         "fixtures/45-client-text.json" to ClientMessage.Text(
             text = "Gedişim bitmədi, pul çıxılmağa davam edir",
@@ -35,6 +40,12 @@ internal object ClientMessageFixtures {
             uploadId = "upl_77ab",
             caption = "Velosiped Nizami küçəsindədir",
             clientId = "3c2b1a09-8f7e-4d6c-9b5a-4f3e2d1c0b9a",
+        ),
+        "fixtures/102-client-attachment-voice.json" to ClientMessage.Attachment(
+            uploadId = "upl_5c9e",
+            clientId = "7d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+            durationMs = 14_260,
+            waveform = VOICE_WAVEFORM,
         ),
         "fixtures/51-client-button-end.json" to ClientMessage.ButtonReply(
             replyTo = "msg_f12",

@@ -46,6 +46,13 @@ pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git'
 <string>Чтобы снимать и отправлять фото в поддержку</string>
 ```
 
+Для голосовых сообщений нужен и текст для микрофона; без него кнопки микрофона нет:
+
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>Чтобы отправлять голосовые сообщения в поддержку</string>
+```
+
 ## Инициализация
 
 Вызовите `initialize` один раз при запуске приложения.

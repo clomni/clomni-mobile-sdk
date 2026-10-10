@@ -5,7 +5,7 @@ import XCTest
 /// Every file of protocol/fixtures and protocol/examples/brief goes through the parser its index names, the way the
 /// server's validator (protocol/scripts/validate.mjs) checks them against the schemas.
 final class FixtureIndexTests: ProtocolTestCase {
-    private static let contentTypes: Set = ["text", "quick_replies", "image", "file", "form", "system", "card", "rating"]
+    private static let contentTypes: Set = ["text", "quick_replies", "image", "file", "audio", "form", "system", "card", "rating"]
     private static let events: Set = ["ready", "message.created", "message.updated", "typing", "read",
                                       "conversation.updated", "unread.changed", "config.changed"]
 
@@ -153,6 +153,14 @@ final class InvalidFixtureTests: ProtocolTestCase {
         let event = try Fixtures.event("97-invalid-event-ready-without-data.json")
         XCTAssertEqual(event.data, .unknown(name: "ready"))
         XCTAssertTrue(log.contains("ready: ready.data: expected an object; event ignored"), "\(log.lines)")
+    }
+
+    func testVoiceWithAWaveformOutOfRangePlaysWithPlainBars() throws {
+        let message = try Fixtures.message("103-invalid-audio-waveform-level.json")
+        guard case .audio(let audio) = message.content else { return XCTFail("expected audio, got \(message.content)") }
+        XCTAssertNil(audio.waveform)
+        XCTAssertEqual(audio.durationMs, 8_000)
+        XCTAssertTrue(log.contains("msg_f103: audio.waveform: expected 1–128 levels of 0–100"), "\(log.lines)")
     }
 
     func testCardButtonWithPayloadAndUrlKeepsBoth() throws {

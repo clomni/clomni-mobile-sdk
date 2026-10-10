@@ -141,11 +141,13 @@ private class FakeChat : ChatDataSource {
         caption: String?,
         conversationId: String,
         replyTo: String?,
+        durationMs: Long?,
+        waveform: List<Int>?,
     ): Future<PendingMessage> {
         if (data.size > 10) return failed(ClomniError.Rejected("file over 10 MB"))
         if (data.isEmpty()) return failed(ClomniError.Rejected("file not stored"))
-        calls += "file $fileName"
-        val entry = queue(ClientMessage.Attachment("", caption), conversationId, caption)
+        calls += "file $fileName" + (durationMs?.let { " $mime ${it}ms ${waveform?.size} levels" } ?: "")
+        val entry = queue(ClientMessage.Attachment("", caption, durationMs = durationMs, waveform = waveform), conversationId, caption)
             .copy(upload = PendingUpload(fileName, mime, data.size.toLong(), "upload-1"))
         outbox[outbox.size - 1] = entry
         return done(entry)
@@ -368,6 +370,26 @@ class ChatControllerTest {
             listOf("text Salam", "file velo.jpg", "retry abc"),
             source.calls.filter { !it.startsWith("load") && !it.startsWith("read") && !it.startsWith("refresh") },
         )
+    }
+
+    /** CM-130: a recording goes like a file, through the outbox, with its length and waveform; then it is let go. */
+    @Test
+    fun aVoiceMessageGoesThroughTheOutbox() {
+        val chat = controller()
+        chat.load()
+        val recording = File.createTempFile("voice-", ".m4a").apply { writeBytes(ByteArray(5)) }
+        val refusals = mutableListOf<String?>()
+        chat.sendVoice(VoiceClip(recording, 3_200, List(64) { 50 })) { refusals += it }
+        assertEquals(listOf<String?>(null), refusals)
+        assertEquals(listOf("file ${recording.name} audio/mp4 3200ms 64 levels"), source.calls.filter { it.startsWith("file") })
+        assertFalse("the outbox keeps its own copy", recording.exists())
+        val queued = source.outbox.single().message as ClientMessage.Attachment
+        assertEquals(3_200L to 64, queued.durationMs to queued.waveform?.size)
+        // Too large for the outbox: said, and still let go.
+        val big = File.createTempFile("voice-", ".m4a").apply { writeBytes(ByteArray(20)) }
+        chat.sendVoice(VoiceClip(big, 300_000, emptyList())) { refusals += it }
+        assertEquals("Nəsə səhv getdi", refusals.last())
+        assertFalse(big.exists())
     }
 
     @Test

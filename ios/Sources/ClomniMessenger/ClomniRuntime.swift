@@ -193,6 +193,10 @@ final class ClomniRuntime {
         guard let backend, let coordinator else { return }
         coordinator.loggedOut()
         Task { await backend.logout() }
+        // The next user hears none of this one's voice messages.
+        #if canImport(AVFoundation) && canImport(UIKit)
+        CachedVoiceFiles.clear()
+        #endif
     }
 
     // MARK: - Launcher and push

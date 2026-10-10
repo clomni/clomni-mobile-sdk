@@ -161,6 +161,18 @@ package struct MessengerConfig: Sendable, Equatable {
         package let imageMb: Int
         package let fileMb: Int
         package let textChars: Int
+        /// The longest voice message; the recorder stops there.
+        package let voiceSeconds: Int
+
+        package init(imageMb: Int, fileMb: Int, textChars: Int, voiceSeconds: Int = Limits.defaultVoiceSeconds) {
+            self.imageMb = imageMb
+            self.fileMb = fileMb
+            self.textChars = textChars
+            self.voiceSeconds = voiceSeconds
+        }
+
+        /// Five minutes, when the config does not say (protocol config.json limits.voice_seconds).
+        package static let defaultVoiceSeconds = 300
     }
 
     package static let maxChannels = 5
@@ -295,7 +307,7 @@ extension MessengerConfig {
         let limits = section(f, "limits")
         let positive = { (key: String, fallback: Int) in limits.optionalInt(key).flatMap { $0 > 0 ? $0 : nil } ?? fallback }
         self.limits = Limits(imageMb: positive("image_mb", 10), fileMb: positive("file_mb", 25),
-                             textChars: positive("text_chars", 4000))
+                             textChars: positive("text_chars", 4000), voiceSeconds: positive("voice_seconds", Limits.defaultVoiceSeconds))
         poweredBy = f.optionalBool("powered_by") ?? true
         startsWithFlow = section(f, "conversation").optionalBool("starts_with_flow") ?? false
         sounds = f.optionalBool("sounds") ?? true

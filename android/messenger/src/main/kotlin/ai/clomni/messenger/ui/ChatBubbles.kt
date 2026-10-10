@@ -11,6 +11,7 @@ import ai.clomni.messenger.presentation.RatingCard
 import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.SystemLine
 import ai.clomni.messenger.presentation.TextRun
+import ai.clomni.messenger.presentation.VoicePlayer
 import ai.clomni.messenger.presentation.TypingLine
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -74,6 +75,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.IntrinsicMeasurable
 import androidx.compose.ui.layout.IntrinsicMeasureScope
 import androidx.compose.ui.layout.Layout
@@ -364,6 +366,18 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
                         if (a11y.isNotEmpty()) customActions = a11y
                     },
             )
+        }
+        is Bubble.VoiceBody -> Quoted(quote, shape, fill, ink, !incoming) {
+            val look = Modifier.clip(shape).background(fill.color)
+                .then(if (longPress != null) Modifier.longPressOverLinks(longPress) else Modifier)
+                .semantics { if (a11y.isNotEmpty()) customActions = a11y }
+            val playback = LocalVoicePlayback.current
+            if (playback != null) {
+                VoiceMessageBubble(body.note, playback, theme, body.strings, { meta(null) }, look)
+            } else {
+                // Previews and screenshots have no player: the message as it stands before a tap.
+                VoiceMessageContent(body.note, VoicePlayer.Track(), VoicePlayer.Speed.NORMAL, theme, body.strings, {}, {}, {}, { meta(null) }, look)
+            }
         }
         is ai.clomni.messenger.presentation.FormCard -> FormCardView(
             body,

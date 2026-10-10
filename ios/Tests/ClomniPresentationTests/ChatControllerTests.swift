@@ -108,11 +108,12 @@ actor FakeChat: ChatDataSource {
     }
 
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
-                  in conversationId: String, replyTo: String?) throws -> PendingMessage {
+                  in conversationId: String, replyTo: String?, voice: ClientMessage.Voice?) throws -> PendingMessage {
         guard data.count <= 10 else { throw ClomniError.rejected("file over 10 MB") }
-        calls.append("file \(fileName)" + (replyTo.map { " ↩ \($0)" } ?? ""))
+        calls.append("file \(fileName)" + (replyTo.map { " ↩ \($0)" } ?? "")
+                     + (voice.map { " \(mime) \($0.durationMs ?? 0)ms \($0.waveform?.count ?? 0) levels" } ?? ""))
         var entry = queue(.attachment(uploadId: "", caption: caption), in: conversationId, preview: caption,
-                          replyTo: replyTo)
+                          replyTo: replyTo, voice: voice)
         entry.upload = PendingUpload(fileName: fileName, mime: mime, size: data.count, storedAs: "upload-1")
         outbox[outbox.count - 1] = entry
         return entry
@@ -134,8 +135,9 @@ actor FakeChat: ChatDataSource {
     func stopObserving(_ token: UUID) { observers[token] = nil }
 
     private func queue(_ content: ClientMessage.Content, in conversationId: String, preview: String?,
-                       replyTo: String? = nil) -> PendingMessage {
-        let entry = PendingMessage(conversationId: conversationId, message: ClientMessage(content: content, replyTo: replyTo),
+                       replyTo: String? = nil, voice: ClientMessage.Voice? = nil) -> PendingMessage {
+        let entry = PendingMessage(conversationId: conversationId,
+                                   message: ClientMessage(content: content, replyTo: replyTo, voice: voice),
                                    preview: preview, createdAt: Date(timeIntervalSince1970: 1_790_850_700))
         outbox.append(entry)
         return entry
@@ -295,6 +297,27 @@ final class ChatControllerTests: XCTestCase {
         let made = await calls()
         XCTAssertEqual(made.filter { $0.hasPrefix("text") || $0.hasPrefix("file") },
                        ["text Bəli ↩ \(fromLeyla.id)", "text Bir də", "file a.pdf ↩ \(fromLeyla.id)"])
+    }
+
+    /// CM-130: a recording goes like a file, through the outbox, with its length and waveform; then it is let go.
+    func testAVoiceMessageGoesThroughTheOutbox() async throws {
+        let chat = controller()
+        await chat.load()
+        let recording = FileManager.default.temporaryDirectory.appendingPathComponent("voice-\(UUID().uuidString).m4a")
+        try Data(count: 5).write(to: recording)
+        let refused = await chat.sendVoice(VoiceClip(file: recording, durationMs: 3_200, waveform: Array(repeating: 50, count: 64)))
+        XCTAssertNil(refused)
+        let made = await calls()
+        XCTAssertEqual(made.filter { $0.hasPrefix("file") }, ["file \(recording.lastPathComponent) audio/mp4 3200ms 64 levels"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: recording.path), "the outbox keeps its own copy")
+        let queued = await source.outbox.last?.message.voice
+        XCTAssertEqual(queued, ClientMessage.Voice(durationMs: 3_200, waveform: Array(repeating: 50, count: 64)))
+        // Too large for the outbox: said, and still let go.
+        let big = FileManager.default.temporaryDirectory.appendingPathComponent("voice-\(UUID().uuidString).m4a")
+        try Data(count: 20).write(to: big)
+        let tooBig = await chat.sendVoice(VoiceClip(file: big, durationMs: 300_000, waveform: []))
+        XCTAssertEqual(tooBig, "Nəsə səhv getdi")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: big.path))
     }
 
     func testSendingTextFilesAndRetry() async {

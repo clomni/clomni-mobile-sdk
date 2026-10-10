@@ -196,7 +196,7 @@ class AppearanceSnapshotTest {
             .screen(ai.clomni.messenger.presentation.ChatSnapshot(config = config, load = MessengerSnapshot.Load.LOADED))
         paparazzi.snapshot("wordmark_conversation") {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalPreviewImages provides pictures) {
-                ChatScreenView(screen, ClomniTheme.make(config.brand, false), ChatActions())
+                WithVoice { ChatScreenView(screen, ClomniTheme.make(config.brand, false), ChatActions()) }
             }
         }
     }

@@ -66,6 +66,11 @@ describe('Info.plist', () => {
   it('leaves the background modes alone without push', () => {
     expect(setInfoPlist({}, { push: false }).UIBackgroundModes).toBeUndefined();
   });
+
+  it('adds the microphone text for voice messages only when the app asks for them', () => {
+    expect(setInfoPlist({}, {}).NSMicrophoneUsageDescription).toBeUndefined();
+    expect(setInfoPlist({}, { microphonePermission: 'Səsli mesaj üçün' }).NSMicrophoneUsageDescription).toBe('Səsli mesaj üçün');
+  });
 });
 
 describe('entitlements', () => {
@@ -79,6 +84,14 @@ describe('entitlements', () => {
 });
 
 describe('Android manifest', () => {
+  it('asks for RECORD_AUDIO only for voice messages, with or without push', () => {
+    expect(permissions(setAndroidManifest(manifest(), { microphonePermission: 'Səs' })))
+      .toEqual(['android.permission.POST_NOTIFICATIONS', 'android.permission.RECORD_AUDIO']);
+    expect(permissions(setAndroidManifest(manifest(), { push: false, microphonePermission: 'Səs' })))
+      .toEqual(['android.permission.RECORD_AUDIO']);
+    expect(permissions(setAndroidManifest(manifest(), { push: false }))).toEqual([]);
+  });
+
   it('asks for POST_NOTIFICATIONS once', () => {
     const once = setAndroidManifest(manifest(), {});
     expect(permissions(once)).toEqual(['android.permission.POST_NOTIFICATIONS']);

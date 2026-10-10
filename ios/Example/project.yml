@@ -54,6 +54,8 @@ targets:
         UIBackgroundModes: [remote-notification]
         NSPhotoLibraryUsageDescription: Söhbətə şəkil göndərmək üçün.
         NSCameraUsageDescription: Söhbətə şəkil çəkib göndərmək üçün.
+        # Voice messages (CM-130): without it the messenger shows no microphone.
+        NSMicrophoneUsageDescription: Dəstəyə səsli mesaj göndərmək üçün.
     entitlements:
       path: ClomniExample.entitlements
       properties:

@@ -20,6 +20,14 @@ dependencies {
 
 Android 6.0 (API 23) or newer. The SDK adds nothing to the app's screens and asks for no permission itself.
 
+Voice messages need the microphone, which the app declares (the SDK asks the user the first time the microphone is
+held). Without it the composer's round button is only the send arrow, and the log says why once.
+
+```xml
+<!-- AndroidManifest.xml of the app -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
 ## 3. Initialize, once
 
 In the app's `Application` (named in the manifest with `android:name`), so that a notification that starts the app

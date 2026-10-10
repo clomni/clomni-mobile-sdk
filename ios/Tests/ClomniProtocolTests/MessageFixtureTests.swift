@@ -132,6 +132,35 @@ final class MessageFixtureTests: ProtocolTestCase {
             mime: "application/pdf")))
     }
 
+    func testVoiceMessages() throws {
+        let voice = try Fixtures.message("100-audio-voice-user.json")
+        XCTAssertEqual(voice.content, .audio(MessageContent.Audio(
+            url: try XCTUnwrap(URL(string: "https://app.clomni.ai/f/voice-7d1c.m4a")), mime: "audio/mp4", size: 96_412,
+            durationMs: 14_260, waveform: ClientMessageTests.waveform)))
+        XCTAssertEqual(try Fixtures.message("101-audio-operator-no-waveform.json").content, .audio(MessageContent.Audio(
+            url: try XCTUnwrap(URL(string: "https://app.clomni.ai/f/cavab.mp3")), mime: "audio/mpeg", size: 381_220)))
+        XCTAssertEqual(try Fixtures.message("104-reply-operator-to-voice.json").replyTo?.kind, "audio")
+        XCTAssertTrue(log.lines.isEmpty, "\(log.lines)")
+
+        func waveform(_ levels: String) -> [Int]? {
+            let json = #"{"url":"https://a.b/v.m4a","mime":"audio/mp4","size":1,"waveform":"# + levels + "}"
+            guard case .audio(let audio) = MessageContent(type: "audio", json: ProtocolJSON.decode(Data(json.utf8)) ?? .null) else { return [-1] }
+            return audio.waveform
+        }
+        XCTAssertEqual(waveform("[0, 100, 7.0]"), [0, 100, 7])
+        XCTAssertNil(waveform("[1.5]"))
+        XCTAssertNil(waveform("[]"))
+        XCTAssertNil(waveform(#"["5"]"#))
+        XCTAssertNil(waveform("[" + Array(repeating: "5", count: 129).joined(separator: ",") + "]"))
+        XCTAssertEqual(waveform("[" + Array(repeating: "5", count: 128).joined(separator: ",") + "]")?.count, 128)
+        // Without its address or size it cannot play: the fallback text.
+        XCTAssertEqual(MessageContent(type: "audio", json: ["mime": "audio/mp4", "size": 1]).kind, "unknown")
+        XCTAssertEqual(MessageContent(type: "audio", json: ["url": "https://a.b/v.m4a", "mime": "audio/mp4"]).kind, "unknown")
+        guard case .audio(let negative) = MessageContent(type: "audio", json: ["url": "https://a.b/v.m4a", "mime": "audio/mp4", "size": 1, "duration_ms": -1])
+        else { return XCTFail() }
+        XCTAssertNil(negative.durationMs)
+    }
+
     func testForms() throws {
         let contact = try XCTUnwrap(try Fixtures.message("19-form-contact.json").content.form)
         XCTAssertEqual(contact.formId, "frm_contact")

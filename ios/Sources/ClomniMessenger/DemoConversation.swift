@@ -21,8 +21,8 @@ extension Clomni {
         let navigation = UIKitMessenger.sheet()
         // `-ClomniDemoFullScreen`: as an app's own full-screen presentation shows it, rather than the page sheet.
         if ProcessInfo.processInfo.arguments.contains("-ClomniDemoFullScreen") { navigation.modalPresentationStyle = .fullScreen }
-        let model = ChatModel(controller: ChatController(source: DemoChat(), conversationId: DemoChat.conversationId,
-                                                         language: "az"))
+        let controller = ChatController(source: DemoChat(), conversationId: DemoChat.conversationId, language: "az")
+        let model = ChatModel(controller: controller, recorder: DemoMicrophone.recorder(for: controller))
         let screen = ChatView(model: model,
                               back: { [weak navigation] in navigation?.dismiss(animated: true) },
                               close: { [weak navigation] in navigation?.dismiss(animated: true) })
@@ -61,6 +61,30 @@ extension Clomni {
         DemoSession.kept = (coordinator, messenger)
         Task { await coordinator.start() }
     }
+}
+
+/// The demo conversation's microphone (CM-130): a double, as the simulator's is not to be relied on in a UI test. It
+/// writes a few bytes and measures by the clock; the recorder around it is the real one, permission given.
+final class DemoMicrophone: MicInput {
+    private var startedAt = 0
+    private static func now() -> Int { Int(DispatchTime.now().uptimeNanoseconds / 1_000_000) }
+
+    @MainActor
+    static func recorder(for controller: ChatController) -> VoiceRecorder {
+        VoiceRecorder(controller: VoiceRecorderController(
+            mic: DemoMicrophone(), permission: { .granted }, askPermission: {}, newFile: CachedVoiceFiles.newRecording,
+            scheduler: MainQueueVoiceScheduler(), now: now, maxMs: 300_000,
+            send: { clip in Task { @MainActor in _ = await controller.sendVoice(clip) } }, feedback: MicrophoneAccess.feedback))
+    }
+
+    func start(_ file: URL) -> Bool {
+        startedAt = Self.now()
+        return FileManager.default.createFile(atPath: file.path, contents: Data("m4a".utf8))
+    }
+
+    func level() -> Double { Double.random(in: 0.2...0.9) }
+    func stop() -> Int? { Self.now() - startedAt }
+    func cancel() {}
 }
 
 /// The demo launcher's SDK: logged in, its look kept from last time, nothing on the network.
@@ -126,6 +150,9 @@ actor DemoChat: ChatDataSource {
     private var readUpTo = 0
     private var step = 1
     private var observers: [UUID: @Sendable (ClomniChange) -> Void] = [:]
+    /// Voice messages sent here (CM-130): they stay on their way, with their clock, as offline.
+    private var waiting: [PendingMessage] = []
+    private var files: [String: URL] = [:]
 
     init() {
         let form: JSONValue = .object([
@@ -297,11 +324,11 @@ actor DemoChat: ChatDataSource {
     func conversation(_ id: String) -> Conversation? { nil }
     func refreshConversation(_ id: String) async throws {}
     func messages(in conversationId: String) -> [Message] { stored }
-    func pending(in conversationId: String) -> [PendingMessage] { [] }
+    func pending(in conversationId: String) -> [PendingMessage] { waiting }
     func canAnswer(_ message: Message) -> Bool { answerable.contains(message.id) }
     /// The operator has read everything up to "Çox sağ olun": ✓✓ there, one ✓ after it.
     func readByOperator(in conversationId: String) -> Int? { readUpTo }
-    func localFile(of pending: PendingMessage) -> URL? { nil }
+    func localFile(of pending: PendingMessage) -> URL? { files[pending.id] }
     /// The first page 0.8 s after the cache, the second (with the first message) 0.8 s after that. A UI test that
     /// watches the history come holds it back until it looks: `-ClomniDemoHistoryAt <seconds since 1970>`.
     func loadMessages(in conversationId: String) async throws {
@@ -375,9 +402,20 @@ actor DemoChat: ChatDataSource {
         throw ClomniError.rejected("demo")
     }
 
+    /// A voice message stays pending, played from its own copy; anything else is refused.
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?, in conversationId: String,
-                  replyTo: String?) throws -> PendingMessage {
-        throw ClomniError.rejected("demo")
+                  replyTo: String?, voice: ClientMessage.Voice?) throws -> PendingMessage {
+        guard voice != nil else { throw ClomniError.rejected("demo") }
+        let message = ClientMessage(content: .attachment(uploadId: "", caption: caption), voice: voice)
+        let stored = "demo-\(message.clientId).m4a"
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(stored)
+        try data.write(to: file)
+        let entry = PendingMessage(file: message, fileName: fileName, mime: mime, size: data.count, storedAs: stored,
+                                   in: conversationId)
+        files[entry.id] = file
+        waiting.append(entry)
+        notify()
+        return entry
     }
 
     func retry(_ clientId: String) {}

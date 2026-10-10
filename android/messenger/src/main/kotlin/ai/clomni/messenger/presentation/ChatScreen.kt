@@ -134,6 +134,9 @@ internal data class Bubble(
         val caption: List<TextRun>?,
     ) : Body
 
+    /** A voice message (CM-130): drawn by VoiceMessageBubble, in [strings]' words. */
+    data class VoiceBody(val note: VoiceNote, val strings: ClomniStrings) : Body
+
     data class FileBody(
         val name: String,
         /** "182 KB" */
@@ -242,12 +245,10 @@ internal data class ChatComposer(
     val mode: Mode,
     val placeholder: String,
     val showsAttach: Boolean,
-    val showsEmoji: Boolean,
     /** Characters a message may have. */
     val limit: Int,
     val sendLabel: String,
     val attachLabel: String,
-    val emojiLabel: String,
     /** The attachment sheet: photo or video, the camera, any file; the × on a picked one. */
     val mediaLabel: String,
     val cameraLabel: String,
@@ -260,6 +261,10 @@ internal data class ChatComposer(
     val videoLabel: String = "",
     /** Said when the app's camera permission is refused. */
     val cameraDenied: String = "",
+    /** The longest voice message (config limits.voice_seconds): the recorder stops there. */
+    val voiceSeconds: Int = MessengerConfig.DEFAULT_VOICE_SECONDS,
+    /** The recorder's and the round button's texts (CM-130). */
+    val texts: ClomniStrings = ClomniStrings(null),
 ) {
     sealed interface Mode {
         data object Open : Mode

@@ -174,7 +174,11 @@ internal object MessengerRuntime {
         identity = null
         coordinator?.loggedOut()
         engine.logout()
-        app?.let { waits.execute { ClomniImages.clear(it) } }
+        app?.let {
+            waits.execute { ClomniImages.clear(it) }
+            // The next user hears none of this one's voice messages.
+            VoiceAudio.clear(it)
+        }
     }
 
     fun setDeviceToken(token: String) {

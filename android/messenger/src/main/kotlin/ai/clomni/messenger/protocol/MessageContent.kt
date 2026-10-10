@@ -39,6 +39,21 @@ internal sealed interface MessageContent {
         val mime: String,
     ) : MessageContent
 
+    /**
+     * A voice message, or another recording both platforms play (AAC in MP4, MP3, WAV). Without [durationMs] the player
+     * reads the length from the file; without [waveform] plain bars stand in for it.
+     */
+    data class Audio(
+        val url: String,
+        val mime: String,
+        /** Bytes. */
+        val size: Long,
+        val durationMs: Long?,
+        /** Loudness over the recording, 0–100 each, as the app that recorded it measured it (64 from the SDKs). */
+        val waveform: List<Int>?,
+        val caption: String?,
+    ) : MessageContent
+
     /** [submitted] holds the sent values once the form is read-only, otherwise null. */
     data class Form(
         val text: String?,

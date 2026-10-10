@@ -77,6 +77,10 @@ extension MessageContent {
         case .file(let file):
             return ["url": .string(file.url.absoluteString), "name": .string(file.name), "size": .int(file.size),
                     "mime": .string(file.mime)]
+        case .audio(let audio):
+            return ["url": .string(audio.url.absoluteString), "mime": .string(audio.mime), "size": .int(audio.size),
+                    "duration_ms": audio.durationMs.map(JSONValue.int) ?? .null,
+                    "waveform": audio.waveform.map { .array($0.map(JSONValue.int)) } ?? .null, "caption": .orNull(audio.caption)]
         case .form(let form):
             var fields: [String: JSONValue] = [
                 "form_id": .string(form.formId), "fields": .array(form.fields.map(\.json)),

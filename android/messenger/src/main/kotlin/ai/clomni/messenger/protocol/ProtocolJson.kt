@@ -6,10 +6,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import kotlin.math.abs
 
@@ -171,6 +173,8 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                     put("upload_id", message.uploadId)
                     put("caption", message.caption)
                     message.replyTo?.let { put("reply_to", it) }
+                    message.durationMs?.let { put("duration_ms", it) }
+                    message.waveform?.let { levels -> putJsonArray("waveform") { levels.forEach { add(it) } } }
                 }
                 is ClientMessage.RatingSubmit -> {
                     put("reply_to", message.replyTo)
@@ -275,6 +279,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
             "quick_replies" -> ::quickReplies
             "image" -> ::image
             "file" -> ::file
+            "audio" -> { o -> audio(o, prefix) }
             "form" -> ::form
             "system" -> ::system
             "card" -> { o -> MessageContent.Card(o.nonEmptyArray("cards").map { cardItem(it.asObject("card")) }) }
@@ -332,6 +337,28 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         size = o.long("size") ?: throw ProtocolException("size: expected an integer"),
         mime = o.requireString("mime"),
     )
+
+    private fun audio(o: JsonObject, prefix: String) = MessageContent.Audio(
+        url = o.requireString("url"),
+        mime = o.requireString("mime"),
+        size = o.long("size") ?: throw ProtocolException("size: expected an integer"),
+        durationMs = o.long("duration_ms")?.takeIf { it >= 0 },
+        waveform = o.present("waveform")?.let { element ->
+            levels(element).also { if (it == null) logger("${prefix}audio.waveform: expected 1–128 levels of 0–100; drawn as plain bars") }
+        },
+        caption = o.string("caption"),
+    )
+
+    /** 1–128 whole numbers of 0–100, or null: a waveform that breaks the rule is dropped, not the message. */
+    private fun levels(element: JsonElement): List<Int>? {
+        val array = element as? JsonArray ?: return null
+        if (array.size !in 1..MAX_WAVEFORM) return null
+        return array.map { level ->
+            val number = (level as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: return null
+            if (number % 1.0 != 0.0 || number !in 0.0..100.0) return null
+            number.toInt()
+        }
+    }
 
     private fun form(o: JsonObject) = MessageContent.Form(
         text = o.string("text"),
@@ -601,6 +628,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 imageMb = limits.int("image_mb")?.takeIf { it > 0 } ?: 10,
                 fileMb = limits.int("file_mb")?.takeIf { it > 0 } ?: 25,
                 textChars = limits.int("text_chars")?.takeIf { it > 0 } ?: 4000,
+                voiceSeconds = limits.int("voice_seconds")?.takeIf { it > 0 } ?: MessengerConfig.DEFAULT_VOICE_SECONDS,
             ),
             poweredBy = o.boolean("powered_by") ?: true,
             startsWithFlow = o.section("conversation").boolean("starts_with_flow") ?: false,
@@ -683,7 +711,14 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 values = c.requireObject("values").toMap(),
                 clientId = clientId,
             )
-            "attachment" -> ClientMessage.Attachment(c.requireString("upload_id"), c.string("caption"), clientId, c.string("reply_to"))
+            "attachment" -> ClientMessage.Attachment(
+                uploadId = c.requireString("upload_id"),
+                caption = c.string("caption"),
+                clientId = clientId,
+                replyTo = c.string("reply_to"),
+                durationMs = c.long("duration_ms"),
+                waveform = c.present("waveform")?.let(::levels),
+            )
             "rating_submit" -> ClientMessage.RatingSubmit(
                 replyTo = c.requireString("reply_to"),
                 score = c.int("score") ?: throw ProtocolException("score: expected an integer"),
@@ -696,6 +731,9 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
 
     private companion object {
         val hexColor = Regex("#[0-9A-Fa-f]{6}")
+
+        /** protocol/schema/message.json audio.waveform. */
+        const val MAX_WAVEFORM = 128
     }
 }
 

@@ -10,6 +10,7 @@ import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SecureStore
 import ai.clomni.messenger.api.SessionIdentity
 import ai.clomni.messenger.api.UserIdentity
+import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.ConversationStatus
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
@@ -21,6 +22,8 @@ import ai.clomni.messenger.store.MessageStore
 import ai.clomni.messenger.store.PendingMessage
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
@@ -714,6 +717,20 @@ class ClomniEngineTest {
         assertEquals("Velosiped", content.getValue("caption").jsonPrimitive.content)
         assertFalse("the staged copy is gone", local.exists())
         assertEquals(1, fake.userMessages(conversation).size)
+    }
+
+    /** CM-130: a voice message goes like a file, its length and waveform with the attachment, kept through the outbox. */
+    @Test
+    fun aVoiceMessageCarriesItsLengthAndWaveform() {
+        val (phone, conversation) = ready()
+        val levels = List(64) { it }
+        val pending = phone.engine.sendFile(ByteArray(900) { 1 }, "voice-1.m4a", "audio/mp4", null, conversation, null, 3_200, levels).await()
+        assertEquals(3_200L to levels, (pending.message as ClientMessage.Attachment).let { it.durationMs to it.waveform })
+        eventually("sent") { phone.engine.pending(conversation).isEmpty() }
+        val content = fake.sentBodies.last().getValue("content").jsonObject
+        assertEquals(3_200, content.getValue("duration_ms").jsonPrimitive.int)
+        assertEquals(levels, content.getValue("waveform").jsonArray.map { it.jsonPrimitive.int })
+        assertTrue(content.getValue("upload_id").jsonPrimitive.content.startsWith("upl_"))
     }
 
     /** Uploaded but not yet sent when the app closed: the next run sends the message without uploading again. */

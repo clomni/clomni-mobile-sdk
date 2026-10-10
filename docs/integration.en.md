@@ -593,6 +593,17 @@ language. With one language on, that one is always used.
 **Sounds.** A short sound for a message received or sent while a conversation is open. It follows the phone's silent
 mode. The panel can turn sounds off; `setSoundsEnabled(false)` turns them off whatever the panel says.
 
+**Voice messages.** The messenger records and plays voice messages when the app declares the microphone. Without it
+there is no microphone button, and the log says so once. React Native with Expo: the plugin's `microphonePermission`.
+
+```xml
+<!-- Android: AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<!-- iOS: Info.plist -->
+<key>NSMicrophoneUsageDescription</key>
+<string>To send voice messages to support</string>
+```
+
 **Links.** A news item's button carries a web address or the app's own deep link. With `onLink` the link goes to the
 app.
 

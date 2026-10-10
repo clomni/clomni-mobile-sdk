@@ -154,6 +154,41 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PanelPushState' }
         '404': { description: Not an App SDK inbox }
+  /api/v1/accounts/{account_id}/inboxes/{inbox_id}/app_sdk/push/title:
+    servers:
+      - url: https://my.clomni.co
+    parameters:
+      - { name: account_id, in: path, required: true, schema: { type: integer } }
+      - { name: inbox_id, in: path, required: true, schema: { type: integer } }
+    put:
+      tags: [Panel push keys]
+      operationId: updatePushTitle
+      summary: Choose the push title's style
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [style]
+              properties:
+                style: { type: string, enum: [operator_brand, brand, operator, custom] }
+                texts: { type: object, additionalProperties: { type: string, maxLength: 40 }, description: 'custom needs the default language' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PanelPushState' }
+        '422':
+          description: "{ errors: { 'texts.az': 'is required' } }"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors: { type: object, additionalProperties: { type: string } }
   /api/v1/accounts/{account_id}/inboxes/{inbox_id}/app_sdk/push/test:
     servers:
       - url: https://my.clomni.co
@@ -174,6 +209,8 @@ paths:
               required: [device_id]
               properties:
                 device_id: { type: integer }
+                title: { type: string, maxLength: 65, description: "Empty: the title style's, with the administrator as the operator" }
+                body: { type: string, maxLength: 180, description: 'Empty: a sample text in the device language' }
       responses:
         '200':
           description: 'What FCM or APNs answered: delivered, or why not, in its own words'
@@ -731,7 +768,8 @@ paths:
       operationId: upload
       summary: Upload a file before sending it
       description: Images up to 10 MB (the SDK scales them to at most 2048 px first), other files up to 25 MB. The
-        returned `upload_id` is then sent as an `attachment` message.
+        returned `upload_id` is then sent as an `attachment` message. A voice message is AAC in MP4, named `*.m4a`
+        (`mime` audio/mp4), sent with its `duration_ms` and `waveform`; it comes back as an `audio` message.
       parameters:
         - $ref: '#/components/parameters/Sdk'
       requestBody:
@@ -1050,6 +1088,17 @@ components:
               locale: { type: [string, 'null'] }
               last_seen_at: { type: [string, 'null'], format: date-time }
               push_environment: { type: [string, 'null'], enum: [sandbox, production, null] }
+        title:
+          $ref: '#/components/schemas/PanelPushTitle'
+    PanelPushTitle:
+      type: object
+      description: "The push title's style (CM-045): operator and brand (the default), the brand, the operator (the brand for a bot), or own texts per language, the user's language first, else the default one."
+      properties:
+        style: { type: string, enum: [operator_brand, brand, operator, custom] }
+        texts: { type: object, additionalProperties: { type: string, maxLength: 40 }, description: 'Per language that is on' }
+        languages: { type: object, properties: { enabled: { type: array, items: { $ref: '#/components/schemas/Language' } }, default: { $ref: '#/components/schemas/Language' } } }
+        brand: { type: string, description: 'The published brand name' }
+        operator: { type: string, description: 'The administrator as the inbox shows agents: the operator of a test push' }
     Language:
       enum: [az, en, ru]
     Platform:

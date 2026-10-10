@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -125,6 +126,14 @@ private fun MessageContent.toJson(): JsonElement = when (this) {
         put("name", name)
         put("size", size)
         put("mime", mime)
+    }
+    is MessageContent.Audio -> buildJsonObject {
+        put("url", url)
+        put("mime", mime)
+        put("size", size)
+        put("duration_ms", durationMs)
+        put("waveform", waveform?.let { levels -> JsonArray(levels.map(::JsonPrimitive)) } ?: JsonNull)
+        put("caption", caption)
     }
     is MessageContent.Form -> buildJsonObject {
         putIfPresent("text", text)

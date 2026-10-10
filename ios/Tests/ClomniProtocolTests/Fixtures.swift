@@ -104,6 +104,7 @@ extension MessageContent {
         case .quickReplies: return "quick_replies"
         case .image: return "image"
         case .file: return "file"
+        case .audio: return "audio"
         case .form: return "form"
         case .system: return "system"
         case .card: return "card"

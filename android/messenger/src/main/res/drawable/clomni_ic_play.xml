@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- play: a voice message's button, the triangle with rounded corners -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.5,5.6 v12.8 a0.6,0.6 0 0,0 0.9,0.5 l10.1,-6.4 a0.6,0.6 0 0,0 0,-1 l-10.1,-6.4 a0.6,0.6 0 0,0 -0.9,0.5 z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineJoin="round" />
+</vector>

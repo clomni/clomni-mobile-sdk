@@ -31,6 +31,16 @@ optional launcher draws on the app's activity and needs an AndroidX activity und
 class MainActivity : FlutterFragmentActivity()
 ```
 
+Voice messages: the app declares the microphone. Without it there is no microphone.
+
+```xml
+<!-- android/app/src/main/AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<!-- ios/Runner/Info.plist -->
+<key>NSMicrophoneUsageDescription</key>
+<string>To send voice messages to support</string>
+```
+
 To build against a checkout of this repository instead:
 
 - iOS with CocoaPods, in `ios/Podfile`: `pod 'ClomniMessenger', :path => '../path/to/clomni-mobile-sdk'`

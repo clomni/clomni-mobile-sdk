@@ -46,6 +46,13 @@ pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git'
 <string>Şəkil çəkib dəstəyə göndərmək üçün</string>
 ```
 
+Səsli mesajlar üçün mikrofon mətni də lazımdır; onsuz mikrofon düyməsi görünmür:
+
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>Dəstəyə səsli mesaj göndərmək üçün</string>
+```
+
 ## Başlatma
 
 `initialize`-i tətbiq açılanda bir dəfə çağırın.

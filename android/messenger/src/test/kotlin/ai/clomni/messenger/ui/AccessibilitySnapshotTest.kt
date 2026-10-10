@@ -93,7 +93,7 @@ class AccessibilitySnapshotTest {
         val theme = ClomniTheme.make(snapshot.config?.brand, dark)
         paparazzi.snapshot(name) {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalLayoutDirection provides direction(rtl)) {
-                ChatScreenView(screen, theme, ChatActions())
+                WithVoice { ChatScreenView(screen, theme, ChatActions()) }
             }
         }
         semantics.assertTouchTargets(name)
