@@ -47,6 +47,13 @@ Kullanıcılar konuşmada fotoğraf gönderebilir. iOS'un erişim isterken göst
 <string>Fotoğraf çekip destek ekibine göndermek için</string>
 ```
 
+Sesli mesajlar için mikrofon metni de gerekir; olmadan mikrofon düğmesi görünmez:
+
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>Destek ekibine sesli mesaj göndermek için</string>
+```
+
 ## Başlatma
 
 `initialize`'ı uygulama açılırken bir kez çağırın.

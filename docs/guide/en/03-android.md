@@ -20,6 +20,13 @@ dependencies {
 }
 ```
 
+For voice messages the app declares the microphone permission; without it there is no microphone button:
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
 ## Initialize
 
 Call `initialize` once, in your `Application` class. A notification can start the app's process, and the Messenger

@@ -20,6 +20,13 @@ dependencies {
 }
 ```
 
+Для голосовых сообщений приложение объявляет разрешение на микрофон; без него кнопки микрофона нет:
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
 ## Инициализация
 
 Вызовите `initialize` один раз, в классе `Application`. Процесс приложения может запустить уведомление, а открытому

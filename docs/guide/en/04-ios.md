@@ -46,6 +46,13 @@ Users can send photos in a conversation. Add the two texts iOS shows when it ask
 <string>To take and send photos to support</string>
 ```
 
+Voice messages need the microphone text too; without it there is no microphone button:
+
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>To send voice messages to support</string>
+```
+
 ## Initialize
 
 Call `initialize` once, when the app starts.

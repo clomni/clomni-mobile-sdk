@@ -58,6 +58,8 @@ thread-ində çağırılmalıdır, hadisələr də orada gəlir.
   `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]` ilə.
 - Android 13+ bildirişləri üçün `POST_NOTIFICATIONS` icazəsini istəyin
   (`UnityEngine.Android.Permission.RequestUserPermission`).
+- Səsli mesajlar: `Assets/Plugins/Android/AndroidManifest.xml`-də
+  `<uses-permission android:name="android.permission.RECORD_AUDIO" />`; onsuz mikrofon görünmür.
 - Bildiriş ikonu: drawable-ı `.androidlib` qovluğuna qoyun (`Assets/Plugins/Android/ClomniRes.androidlib/res/drawable/`)
   və `Clomni.SetNotificationIcon("ic_notification")`.
 
@@ -69,6 +71,8 @@ thread-ində çağırılmalıdır, hadisələr də orada gəlir.
 ### iOS
 
 - Player Settings → Target minimum iOS Version: **15.0**.
+- Səsli mesajlar: *Player Settings → iOS → Microphone Usage Description* (`NSMicrophoneUsageDescription`); onsuz mikrofon
+  görünmür.
 - EDM4U Podfile-a `ClomniMessenger` pod-unu yazır; build-dən sonra `.xcworkspace`-i açın.
 - `Plugins/iOS/ClomniUnityBridge.swift` və `ClomniUnityBridge.mm` Xcode layihəsində `UnityFramework` hədəfinə düşür.
   Swift faylı pod-u `import ClomniMessenger` ilə çağırır; `.mm` faylı ona `UnitySendMessage`-in ünvanını verir, ona görə
@@ -111,7 +115,8 @@ CocoaPods; until then Android and iOS builds cannot resolve them.
 > `identity_secret` into the game (C# code, assets, PlayerPrefs): it is easily pulled out of an APK or IPA.
 
 **Android**: call `Initialize` as early as possible (`RuntimeInitializeLoadType.BeforeSceneLoad`); ask for
-`POST_NOTIFICATIONS` on Android 13+; the notification icon is a drawable in an `.androidlib` folder, named with
+`POST_NOTIFICATIONS` on Android 13+; voice messages need `RECORD_AUDIO` in `Assets/Plugins/Android/AndroidManifest.xml`
+(and on iOS *Player Settings → Microphone Usage Description*), without which there is no microphone; the notification icon is a drawable in an `.androidlib` folder, named with
 `SetNotificationIcon`.
 
 **Unity 6 (6000.x)**: the version to test is 6000.3. Unity 6 starts with GameActivity by default; the package works

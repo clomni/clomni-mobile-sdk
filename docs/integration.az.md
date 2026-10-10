@@ -595,6 +595,17 @@ Paneldə bir dil yanılıdırsa, həmişə o işlənir.
 **Səs.** Söhbət açıq olanda gələn və göndərilən mesaj üçün qısa səs. Telefonun səssiz rejiminə tabedir. Panel onu
 söndürə bilər; `setSoundsEnabled(false)` paneldən asılı olmayaraq söndürür.
 
+**Səsli mesajlar.** Tətbiq mikrofon icazəsini elan edəndə messenger səsli mesaj yazır və oynadır. Onsuz mikrofon
+düyməsi görünmür, log bir dəfə bunu yazır. Expo ilə React Native: plugin-in `microphonePermission` parametri.
+
+```xml
+<!-- Android: AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<!-- iOS: Info.plist -->
+<key>NSMicrophoneUsageDescription</key>
+<string>Dəstəyə səsli mesaj göndərmək üçün</string>
+```
+
 **Linklər.** Xəbər kartının düyməsi veb ünvan və ya tətbiqin öz deep link-i ola bilər. `onLink` olanda link
 tətbiqə gəlir.
 

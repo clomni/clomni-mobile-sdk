@@ -67,6 +67,7 @@ plugins: [
 | Option | Writes |
 |---|---|
 | `photoLibraryPermission`, `cameraPermission` | iOS `NSPhotoLibraryUsageDescription`, `NSCameraUsageDescription` |
+| `microphonePermission` | Voice messages: iOS `NSMicrophoneUsageDescription` with this text, Android `RECORD_AUDIO`. Without it there is no microphone |
 | `push` (default `true`) | iOS `aps-environment` and `UIBackgroundModes: remote-notification`; Android `POST_NOTIFICATIONS` (Android 13+; the app asks the user for it) |
 | `apsEnvironment` | iOS `aps-environment`, when the app should not keep its own |
 | `notificationIcon` | Android `res/drawable/clomni_notification_icon.png`: then call `Clomni.setNotificationIcon('clomni_notification_icon')` |
@@ -105,6 +106,16 @@ That app already sets both Info.plist texts, `aps-environment: production`, `UIB
      messaging().onNotificationOpenedApp((message) => { Clomni.handlePush(message.data ?? {}); });
    }
    ```
+
+Voice messages without Expo: the app declares the microphone, as a native app does. Without it there is no microphone.
+
+```xml
+<!-- android/app/src/main/AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<!-- ios/<App>/Info.plist -->
+<key>NSMicrophoneUsageDescription</key>
+<string>To send voice messages to support</string>
+```
 
 ## Use
 

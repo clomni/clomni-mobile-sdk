@@ -20,6 +20,13 @@ dependencies {
 }
 ```
 
+Sesli mesajlar için uygulama mikrofon iznini bildirir; olmadan mikrofon düğmesi görünmez:
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
 ## Başlatma
 
 `initialize`'ı bir kez, `Application` sınıfınızda çağırın. Bir bildirim uygulamanın sürecini başlatabilir ve

@@ -5,7 +5,9 @@
 //   iOS:     NSPhotoLibraryUsageDescription and NSCameraUsageDescription (sending pictures), and for push the
 //            aps-environment entitlement and UIBackgroundModes: remote-notification;
 //   Android: the POST_NOTIFICATIONS permission (Android 13+) and, given a picture, the small icon of Clomni's
-//            notifications as res/drawable/clomni_notification_icon.png (then Clomni.setNotificationIcon).
+//            notifications as res/drawable/clomni_notification_icon.png (then Clomni.setNotificationIcon);
+//   both:    given `microphonePermission`, voice messages: NSMicrophoneUsageDescription and RECORD_AUDIO. Without
+//            it the messenger has no microphone (the app declares it, as a native app would).
 //
 // What the app already has stays: a text, an entitlement or a permission is only added where it is missing, unless an
 // option names it. MainActivity is not touched; React Native needs nothing there.
@@ -45,6 +47,8 @@ const NOTIFICATION_ICON = 'clomni_notification_icon';
  * @typedef {object} ClomniPluginOptions
  * @property {string} [photoLibraryPermission] iOS NSPhotoLibraryUsageDescription.
  * @property {string} [cameraPermission] iOS NSCameraUsageDescription.
+ * @property {string} [microphonePermission] Voice messages: iOS NSMicrophoneUsageDescription with this text, and
+ *   Android's RECORD_AUDIO permission. Off without it.
  * @property {boolean} [push] Push notifications (default true): the entitlement and background mode on iOS, the
  *   notification permission on Android.
  * @property {'development' | 'production'} [apsEnvironment] iOS: the aps-environment to write (default development,
@@ -69,6 +73,7 @@ function setInfoPlist(plist, options) {
     if (given) plist[key] = given;
     else if (!plist[key]) plist[key] = defaults[/** @type {keyof typeof defaults} */ (key)];
   }
+  if (options.microphonePermission) plist.NSMicrophoneUsageDescription = options.microphonePermission;
   if (options.push !== false) {
     const modes = Array.isArray(plist.UIBackgroundModes) ? plist.UIBackgroundModes : [];
     if (!modes.includes('remote-notification')) modes.push('remote-notification');
@@ -87,8 +92,10 @@ function setEntitlements(entitlements, options) {
 
 /** @param {any} manifest @param {ClomniPluginOptions} options */
 function setAndroidManifest(manifest, options) {
-  if (options.push === false) return manifest;
-  AndroidConfig.Permissions.ensurePermissions(manifest, ['android.permission.POST_NOTIFICATIONS']);
+  const wanted = [];
+  if (options.push !== false) wanted.push('android.permission.POST_NOTIFICATIONS');
+  if (options.microphonePermission) wanted.push('android.permission.RECORD_AUDIO');
+  if (wanted.length) AndroidConfig.Permissions.ensurePermissions(manifest, wanted);
   return manifest;
 }
 
