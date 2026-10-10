@@ -249,6 +249,9 @@ final class MessengerConfigTests: ProtocolTestCase {
         XCTAssertEqual(odd.strings, ["send": "Göndər"])
         XCTAssertEqual(odd.languages, MessengerConfig.Languages(), "an empty list: all three")
         XCTAssertEqual(odd.limits, MessengerConfig.Limits(imageMb: 10, fileMb: 5, textChars: 4000))
+        XCTAssertEqual(odd.limits.voiceSeconds, 300, "five minutes when the config does not say")
+        XCTAssertEqual(ProtocolJSON.parseConfig(Data(#"{"limits":{"voice_seconds":120}}"#.utf8))?.limits.voiceSeconds, 120)
+        XCTAssertEqual(ProtocolJSON.parseConfig(Data(#"{"limits":{"voice_seconds":0}}"#.utf8))?.limits.voiceSeconds, 300)
 
         let image = try XCTUnwrap(ProtocolJSON.parseConfig(Data(
             #"{"brand":{"header_style":"image","header_image_url":"https://app.clomni.ai/v1/images/h","glow":true}}"#.utf8)))

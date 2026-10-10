@@ -7,11 +7,26 @@ package struct ClientMessage: Sendable, Equatable {
     package let content: Content
     /// A text or an attachment answering a message (swipe or long press): its server id.
     package let replyTo: String?
+    /// An attachment that is a voice message: its length and waveform, as recorded.
+    package let voice: Voice?
 
-    package init(clientId: String = ClientMessage.newClientId(), content: Content, replyTo: String? = nil) {
+    package init(clientId: String = ClientMessage.newClientId(), content: Content, replyTo: String? = nil, voice: Voice? = nil) {
         self.clientId = clientId
         self.content = content
         self.replyTo = replyTo
+        self.voice = voice
+    }
+
+    /// What goes with a voice message's attachment (protocol client-message.json attachment.duration_ms, .waveform).
+    package struct Voice: Sendable, Equatable {
+        package let durationMs: Int?
+        /// 0–100 each (the SDKs send 64).
+        package let waveform: [Int]?
+
+        package init(durationMs: Int?, waveform: [Int]?) {
+            self.durationMs = durationMs
+            self.waveform = waveform
+        }
     }
 
     package enum Content: Sendable, Equatable {
@@ -63,6 +78,10 @@ extension ClientMessage {
                        "comment": comment.map(JSONValue.string) ?? .null]
         }
         if let replyTo, type == "text" || type == "attachment" { content["reply_to"] = .string(replyTo) }
+        if let voice, type == "attachment" {
+            content["duration_ms"] = voice.durationMs.map(JSONValue.int)
+            content["waveform"] = voice.waveform.map { .array($0.map(JSONValue.int)) }
+        }
         return ["client_id": .string(clientId), "type": .string(type), "content": .object(content)]
     }
 
@@ -89,5 +108,8 @@ extension ClientMessage {
         }
         clientId = try f.string("client_id")
         replyTo = type == "text" || type == "attachment" ? c.optionalString("reply_to") : nil
+        let duration = c.optionalInt("duration_ms")
+        let waveform = c["waveform"].flatMap(MessageContent.Audio.levels)
+        voice = type == "attachment" && (duration != nil || waveform != nil) ? Voice(durationMs: duration, waveform: waveform) : nil
     }
 }

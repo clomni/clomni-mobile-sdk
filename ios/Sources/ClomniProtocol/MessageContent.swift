@@ -7,6 +7,8 @@ package enum MessageContent: Sendable, Equatable {
     case quickReplies(QuickReplies)
     case image(Image)
     case file(File)
+    /// A voice message, or another recording both platforms play (AAC in MP4, MP3, WAV).
+    case audio(Audio)
     case form(Form)
     case system(System)
     case card([CardItem])
@@ -71,6 +73,30 @@ extension MessageContent {
             self.size = size
             self.mime = mime
         }
+    }
+
+    /// Without `durationMs` the player reads the length from the file; without `waveform` plain bars stand in for it.
+    package struct Audio: Sendable, Equatable {
+        package let url: URL
+        package let mime: String
+        /// Bytes.
+        package let size: Int
+        package let durationMs: Int?
+        /// Loudness over the recording, 0–100 each, as the app that recorded it measured it (64 from the SDKs).
+        package let waveform: [Int]?
+        package let caption: String?
+
+        package init(url: URL, mime: String, size: Int, durationMs: Int? = nil, waveform: [Int]? = nil, caption: String? = nil) {
+            self.url = url
+            self.mime = mime
+            self.size = size
+            self.durationMs = durationMs
+            self.waveform = waveform
+            self.caption = caption
+        }
+
+        /// protocol/schema/message.json audio.waveform.
+        static let maxWaveform = 128
     }
 
     package struct Form: Sendable, Equatable {
@@ -188,6 +214,7 @@ extension MessageContent {
             case "quick_replies": self = .quickReplies(try QuickReplies(f))
             case "image": self = .image(try Image(f))
             case "file": self = .file(try File(f))
+            case "audio": self = .audio(try Audio(f, prefix: prefix))
             case "form": self = .form(try Form(f))
             case "system": self = .system(try System(f))
             case "card": self = .card(try f.nonEmptyArray("cards") { try CardItem($0) })
@@ -235,6 +262,30 @@ extension MessageContent.Image {
 extension MessageContent.File {
     init(_ f: JSONFields) throws {
         self.init(url: try f.url("url"), name: try f.string("name"), size: try f.int("size"), mime: try f.string("mime"))
+    }
+}
+
+extension MessageContent.Audio {
+    init(_ f: JSONFields, prefix: String) throws {
+        var waveform: [Int]?
+        if let raw = f["waveform"] {
+            waveform = Self.levels(raw)
+            if waveform == nil { ClomniLog.warning("\(prefix)audio.waveform: expected 1–128 levels of 0–100; drawn as plain bars") }
+        }
+        self.init(url: try f.url("url"), mime: try f.string("mime"), size: try f.int("size"),
+                  durationMs: f.optionalInt("duration_ms").flatMap { $0 >= 0 ? $0 : nil }, waveform: waveform,
+                  caption: f.optionalString("caption"))
+    }
+
+    /// 1–128 whole numbers of 0–100, or nil: a waveform that breaks the rule is dropped, not the message.
+    static func levels(_ value: JSONValue) -> [Int]? {
+        guard let items = value.arrayValue, (1...maxWaveform).contains(items.count) else { return nil }
+        var levels: [Int] = []
+        for item in items {
+            guard case .number(let number) = item, number.rounded() == number, (0...100).contains(number) else { return nil }
+            levels.append(Int(number))
+        }
+        return levels
     }
 }
 

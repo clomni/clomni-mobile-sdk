@@ -43,6 +43,24 @@ final class ClientMessageTests: ProtocolTestCase {
                           as: "49-client-attachment.json")
     }
 
+    func testVoiceMessage() throws {
+        let voice = ClientMessage.Voice(durationMs: 14_260, waveform: Self.waveform)
+        try assertEncodes(ClientMessage(clientId: "7d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                                        content: .attachment(uploadId: "upl_5c9e", caption: nil), voice: voice),
+                          as: "102-client-attachment-voice.json")
+        // The outbox reads it back with its length and waveform; only an attachment carries them.
+        let text = ClientMessage(clientId: "c3", content: .text("a"), voice: voice)
+        XCTAssertFalse(String(decoding: ProtocolJSON.encode(text), as: UTF8.self).contains("duration_ms"))
+        let broken = #"{"client_id":"c","type":"attachment","content":{"upload_id":"u","duration_ms":900,"waveform":[300]}}"#
+        XCTAssertEqual(ProtocolJSON.parseClientMessage(Data(broken.utf8))?.voice, ClientMessage.Voice(durationMs: 900, waveform: nil))
+        XCTAssertNil(ProtocolJSON.parseClientMessage(Data(#"{"client_id":"c","type":"attachment","content":{"upload_id":"u"}}"#.utf8))?.voice)
+    }
+
+    /// The 64 levels of fixtures 100 and 102.
+    static let waveform = [
+        8, 28, 21, 37, 35, 45, 47, 49, 54, 47, 54, 39, 47, 28, 35, 19, 21, 13, 12, 12, 9, 19, 15, 34, 29, 54, 53, 74, 76, 89, 92, 94, 97, 88, 91, 72, 75, 50, 53, 33, 32, 19, 16, 13, 8, 14, 9, 23, 15, 35, 29, 46, 43, 52, 51, 52, 52, 44, 47, 31, 38, 18, 28, 13,
+    ]
+
     func testRating() throws {
         try assertEncodes(ClientMessage(clientId: "6f708192-a3b4-4c5d-9e6f-708192a3b4c5",
                                         content: .ratingSubmit(replyTo: "msg_f28", score: 5, comment: "Tez cavab verdiniz")),

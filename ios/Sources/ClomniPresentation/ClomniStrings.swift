@@ -64,6 +64,22 @@ package struct ClomniStrings: Sendable, Equatable {
         case ratingComment = "rating_comment"
         case ratingThanks = "rating_thanks"
         case ratingYours = "rating_yours"
+        // Voice messages (CM-130): the recorder and the player.
+        case voiceRecord = "voice_record"
+        case voiceHoldToRecord = "voice_hold_to_record"
+        case voiceSlideToCancel = "voice_slide_to_cancel"
+        case voiceRecording = "voice_recording"
+        case voiceLocked = "voice_locked"
+        case voiceStop = "voice_stop"
+        case voiceDelete = "voice_delete"
+        case voiceMessage = "voice_message"
+        case voicePlay = "voice_play"
+        case voicePause = "voice_pause"
+        case voiceSpeed = "voice_speed"
+        case voiceMicDenied = "voice_mic_denied"
+        case voiceOpenSettings = "voice_open_settings"
+        case voiceUnavailable = "voice_unavailable"
+        case voiceMaxLength = "voice_max_length"
     }
 
     /// az, en or ru; anything else reads as az.
@@ -151,6 +167,21 @@ package struct ClomniStrings: Sendable, Equatable {
             .rating1: "Çox pis", .rating2: "Pis", .rating3: "Normal", .rating4: "Yaxşı", .rating5: "Əla",
             .ratingStars: "5 ulduzdan %d", .ratingComment: "Rəyiniz", .ratingThanks: "Rəyiniz üçün təşəkkür edirik",
             .ratingYours: "Qiymətiniz: %@",
+            .voiceRecord: "Səsli mesaj yaz",
+            .voiceHoldToRecord: "Yazmaq üçün basıb saxlayın",
+            .voiceSlideToCancel: "Ləğv etmək üçün sürüşdürün",
+            .voiceRecording: "Səs yazılır",
+            .voiceLocked: "Yazma kilidləndi",
+            .voiceStop: "Dayandır",
+            .voiceDelete: "Sil",
+            .voiceMessage: "Səsli mesaj",
+            .voicePlay: "Oynat",
+            .voicePause: "Pauza",
+            .voiceSpeed: "Sürət",
+            .voiceMicDenied: "Səsli mesaj üçün mikrofona icazə verin",
+            .voiceOpenSettings: "Ayarlara keç",
+            .voiceUnavailable: "Səsi oynatmaq olmadı",
+            .voiceMaxLength: "Ən çox %d dəqiqə",
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
@@ -177,6 +208,21 @@ package struct ClomniStrings: Sendable, Equatable {
             .rating1: "Very bad", .rating2: "Bad", .rating3: "Okay", .rating4: "Good", .rating5: "Great",
             .ratingStars: "%d of 5 stars", .ratingComment: "Your feedback", .ratingThanks: "Thank you for your feedback",
             .ratingYours: "Your rating: %@",
+            .voiceRecord: "Record a voice message",
+            .voiceHoldToRecord: "Hold to record",
+            .voiceSlideToCancel: "Slide to cancel",
+            .voiceRecording: "Recording",
+            .voiceLocked: "Recording locked",
+            .voiceStop: "Stop",
+            .voiceDelete: "Delete",
+            .voiceMessage: "Voice message",
+            .voicePlay: "Play",
+            .voicePause: "Pause",
+            .voiceSpeed: "Speed",
+            .voiceMicDenied: "Allow microphone access to send voice messages",
+            .voiceOpenSettings: "Open Settings",
+            .voiceUnavailable: "Couldn't play this audio",
+            .voiceMaxLength: "Up to %d min",
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
@@ -203,6 +249,21 @@ package struct ClomniStrings: Sendable, Equatable {
             .rating1: "Очень плохо", .rating2: "Плохо", .rating3: "Нормально", .rating4: "Хорошо", .rating5: "Отлично",
             .ratingStars: "%d из 5 звёзд", .ratingComment: "Ваш отзыв", .ratingThanks: "Спасибо за ваш отзыв",
             .ratingYours: "Ваша оценка: %@",
+            .voiceRecord: "Записать голосовое сообщение",
+            .voiceHoldToRecord: "Удерживайте для записи",
+            .voiceSlideToCancel: "Проведите для отмены",
+            .voiceRecording: "Идёт запись",
+            .voiceLocked: "Запись закреплена",
+            .voiceStop: "Остановить",
+            .voiceDelete: "Удалить",
+            .voiceMessage: "Голосовое сообщение",
+            .voicePlay: "Воспроизвести",
+            .voicePause: "Пауза",
+            .voiceSpeed: "Скорость",
+            .voiceMicDenied: "Разрешите доступ к микрофону, чтобы отправлять голосовые сообщения",
+            .voiceOpenSettings: "Открыть настройки",
+            .voiceUnavailable: "Не удалось воспроизвести",
+            .voiceMaxLength: "Не больше %d мин",
         ],
     ]
 }

@@ -382,7 +382,8 @@ package struct ChatPresenter: Sendable {
             return .rating(card(message.id, rating, snapshot))
         case .system:
             return nil
-        case .card, .unknown:
+        // A voice message too, until the conversation draws VoiceMessageBubble (CM-130).
+        case .card, .audio, .unknown:
             // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
             return .text(TextLinks.linkify([TextRun(message.fallbackText)]))
         }
