@@ -217,19 +217,36 @@ final class KeyboardTests: XCTestCase {
 
         field.tap()
         onTheKeyboard(field, "\(presentation)-letters", file: file, line: line)
-        let switcher = app.keyboards.buttons.matching(NSPredicate(format: "label IN %@",
-                                                                  ["Emoji", "Next keyboard", "Next Keyboard"])).firstMatch
-        XCTAssertTrue(switcher.waitForExistence(timeout: 5), "the keyboard's emoji key", file: file, line: line)
+        guard let switcher = keyboardKey(["emoji", "next keyboard", "globe"], under: field, "the keyboard's emoji key",
+                                         file: file, line: line) else { return }
         switcher.tap()
         onTheKeyboard(field, "\(presentation)-emoji", file: file, line: line)
-        let letters = app.keyboards.buttons.matching(NSPredicate(format: "label IN %@", ["ABC", "Next keyboard",
-                                                                                          "Next Keyboard"])).firstMatch
-        XCTAssertTrue(letters.waitForExistence(timeout: 5), "the emoji keyboard's way back", file: file, line: line)
+        guard let letters = keyboardKey(["abc", "next keyboard", "globe"], under: field, "the emoji keyboard's way back",
+                                        file: file, line: line) else { return }
         letters.tap()
         onTheKeyboard(field, "\(presentation)-letters-again", file: file, line: line)
         // Typed text changes the suggestions over the letters, not where the composer stands.
         field.typeText("Salam")
         onTheKeyboard(field, "\(presentation)-typing", file: file, line: line)
+    }
+
+    /// A key of the software keyboard by its name, whatever kind of element the system makes it (a button or a key),
+    /// under the composer (the composer's own emoji button is called "Emoji" too, and the keyboard's bottom row with
+    /// the emoji key is outside XCUITest's keyboard element); the failure lists the names there are under it.
+    private func keyboardKey(_ names: [String], under field: XCUIElement, _ what: String, file: StaticString = #filePath,
+                             line: UInt = #line) -> XCUIElement? {
+        let below = field.frame.maxY + 20
+        let named = NSPredicate(format: "label IN[c] %@", names)
+        for _ in 0..<20 {
+            let found = app.descendants(matching: .any).matching(named).allElementsBoundByIndex
+                .first { $0.exists && $0.frame.minY > below }
+            if let found { return found }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        let there = app.descendants(matching: .any).allElementsBoundByIndex
+            .filter { $0.frame.minY > below && !$0.label.isEmpty }.map(\.label)
+        XCTFail("\(what): none of \(names) under the composer, among \(Set(there).sorted())", file: file, line: line)
+        return nil
     }
 
     /// The composer on the keyboard's top, read from the screen's pixels: under the field's grey only the composer's
