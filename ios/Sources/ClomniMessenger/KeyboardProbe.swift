@@ -1,6 +1,9 @@
 #if canImport(SwiftUI) && canImport(UIKit)
 import SwiftUI
 import UIKit
+#if canImport(ClomniPresentation)
+import ClomniPresentation
+#endif
 
 /// How much of a screen the keyboard covers, measured by UIKit's keyboard layout guide in that screen's coordinates
 /// (operator, 2026-10-07, H1). SwiftUI's keyboard avoidance did not reach the conversation inside the
@@ -94,9 +97,13 @@ final class KeyboardProbeView: UIView {
 
     /// How far the keyboard's top is above this view's bottom; 0 while it is down or floats.
     private func measure() {
-        guard window != nil else { return }
+        guard let window else { return }
         layoutIfNeeded()
-        let overlap = keyboardUp ? max(0, bounds.maxY - keyboardTop.frame.minY) : 0
+        // In this view's coordinates: the screen's bottom, the keyboard's top, and this view's bottom (the safe area's).
+        let screenBottom = convert(CGPoint(x: 0, y: window.bounds.maxY), from: window).y
+        let overlap = CGFloat(KeyboardInset.padding(
+            keyboardHeight: keyboardUp ? Double(screenBottom - keyboardTop.frame.minY) : nil,
+            safeAreaBottom: Double(screenBottom - bounds.maxY)))
         guard abs(overlap - reported) > 0.5 else { return }
         reported = overlap
         report(overlap, Date() < movingUntil ? Motion.keyboard : nil)

@@ -249,3 +249,41 @@ final class CameraOptionTests: XCTestCase {
                        "said once")
     }
 }
+
+/// CM-087, the operator's iPhone: a ~40 pt band between the composer and the emoji keyboard. The composer's bottom
+/// is the keyboard's top for every keyboard height, the home indicator counted once (the keyboard covers it).
+final class KeyboardInsetTests: XCTestCase {
+    /// An iPhone 16 in points: 874 high, the content ending 34 over the bottom (the home indicator).
+    private let screen = 874.0
+    private let homeIndicator = 34.0
+
+    /// Where the composer ends: the content's bottom, lifted by the padding.
+    private func composerBottom(keyboard height: Double?, safeArea: Double = 34) -> Double {
+        screen - safeArea - KeyboardInset.padding(keyboardHeight: height, safeAreaBottom: safeArea)
+    }
+
+    func testTheComposerStandsOnEveryKeyboard() {
+        // The letters with their suggestions, without them, the emoji keyboard with its search field, the letters
+        // again, a taller one (a language with a candidate bar): the keyboard's top every time, no band, no overlap.
+        for height in [336.0, 291, 380, 336, 400] {
+            XCTAssertEqual(composerBottom(keyboard: height), screen - height, "a keyboard \(height) high")
+        }
+        XCTAssertEqual(KeyboardInset.padding(keyboardHeight: 336, safeAreaBottom: homeIndicator), 302,
+                       "the keyboard less the home indicator it covers, not the whole keyboard on top of it")
+    }
+
+    func testDownFloatingOrBarelyThere() {
+        XCTAssertEqual(composerBottom(keyboard: nil), screen - homeIndicator, "down: over the home indicator")
+        XCTAssertEqual(KeyboardInset.padding(keyboardHeight: nil, safeAreaBottom: 34), 0, "floating (iPad): nothing covered")
+        // A hardware keyboard: only its bar, or nothing, at the bottom.
+        XCTAssertEqual(composerBottom(keyboard: 55), screen - 55, "a hardware keyboard's bar")
+        XCTAssertEqual(composerBottom(keyboard: 20), screen - homeIndicator, "a bar lower than the home indicator lifts nothing")
+        XCTAssertEqual(composerBottom(keyboard: 0), screen - homeIndicator)
+    }
+
+    func testWithoutAHomeIndicator() {
+        // An iPhone with a home button: nothing under the content, the whole keyboard is lifted.
+        XCTAssertEqual(KeyboardInset.padding(keyboardHeight: 260, safeAreaBottom: 0), 260)
+        XCTAssertEqual(composerBottom(keyboard: 260, safeArea: 0), screen - 260)
+    }
+}

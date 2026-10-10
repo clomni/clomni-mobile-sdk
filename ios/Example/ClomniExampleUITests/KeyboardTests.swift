@@ -192,20 +192,21 @@ final class KeyboardTests: XCTestCase {
     }
 
     /// The operator's iPhone (2026-10-09, dark mode, the emoji keyboard): a dark band of about 40 pt stood between the
-    /// composer and the keyboard. The composer stands right on the keyboard: with the letters, with the emoji keyboard
-    /// (its own height, its search field) and back, in the messenger's page sheet.
-    func testTheComposerStandsOnEveryKeyboard() {
+    /// composer and the keyboard. The composer stands right on the keyboard, in the messenger's page sheet. (Other
+    /// keyboard heights, the emoji keyboard's among them, are KeyboardInsetTests': the simulator's keyboard switch
+    /// is not one to rely on.)
+    func testTheComposerStandsOnTheKeyboard() {
         launch()
-        standsOnEveryKeyboard("sheet")
+        standsOnTheKeyboard("sheet")
     }
 
     /// The same in a full-screen presentation, where the screen reaches the home indicator.
-    func testTheComposerStandsOnEveryKeyboardFullScreen() {
+    func testTheComposerStandsOnTheKeyboardFullScreen() {
         launch(["-ClomniDemoFullScreen"])
-        standsOnEveryKeyboard("full-screen")
+        standsOnTheKeyboard("full-screen")
     }
 
-    private func standsOnEveryKeyboard(_ presentation: String, file: StaticString = #filePath, line: UInt = #line) {
+    private func standsOnTheKeyboard(_ presentation: String, file: StaticString = #filePath, line: UInt = #line) {
         let field = element("clomni.composer.field")
         XCTAssertTrue(field.waitForExistence(timeout: 15), file: file, line: line)
         // Down: the field at the bottom, over the home indicator (the composer's background reaches under it).
@@ -217,51 +218,23 @@ final class KeyboardTests: XCTestCase {
 
         field.tap()
         onTheKeyboard(field, "\(presentation)-letters", file: file, line: line)
-        guard let switcher = keyboardKey(["emoji", "next keyboard", "globe"], under: field, "the keyboard's emoji key",
-                                         file: file, line: line) else { return }
-        switcher.tap()
-        onTheKeyboard(field, "\(presentation)-emoji", file: file, line: line)
-        guard let letters = keyboardKey(["abc", "next keyboard", "globe"], under: field, "the emoji keyboard's way back",
-                                        file: file, line: line) else { return }
-        letters.tap()
-        onTheKeyboard(field, "\(presentation)-letters-again", file: file, line: line)
         // Typed text changes the suggestions over the letters, not where the composer stands.
         field.typeText("Salam")
         onTheKeyboard(field, "\(presentation)-typing", file: file, line: line)
     }
 
-    /// A key of the software keyboard by its name, whatever kind of element the system makes it (a button or a key),
-    /// under the composer (the composer's own emoji button is called "Emoji" too, and the keyboard's bottom row with
-    /// the emoji key is outside XCUITest's keyboard element); the failure lists the names there are under it.
-    private func keyboardKey(_ names: [String], under field: XCUIElement, _ what: String, file: StaticString = #filePath,
-                             line: UInt = #line) -> XCUIElement? {
-        let below = field.frame.maxY + 20
-        // XCUITest's queries take no case-insensitive IN: one comparison per name.
-        let named = NSCompoundPredicate(orPredicateWithSubpredicates: names.map { NSPredicate(format: "label ==[c] %@", $0) })
-        for _ in 0..<20 {
-            let found = app.descendants(matching: .any).matching(named).allElementsBoundByIndex
-                .first { $0.exists && $0.frame.minY > below }
-            if let found { return found }
-            Thread.sleep(forTimeInterval: 0.25)
-        }
-        let there = app.descendants(matching: .any).allElementsBoundByIndex
-            .filter { $0.frame.minY > below && !$0.label.isEmpty }.map(\.label)
-        XCTFail("\(what): none of \(names) under the composer, among \(Set(there).sorted())", file: file, line: line)
-        return nil
-    }
-
-    /// The composer on the keyboard's top, read from the screen's pixels: under the field's grey only the composer's
-    /// own padding of white, then the keyboard; no band of the page between them, and no keyboard over the field.
-    /// (XCUITest's keyboard frame leaves out the suggestions over the letters, and the composer's frame reaches under
-    /// the home indicator while it is down.)
+    /// The composer's bottom on the keyboard's top, within a point, read from the screen's pixels: under the field's
+    /// grey only the composer's own 8 pt of padding, then the keyboard; no band of the page between them, and no
+    /// keyboard over the field. (XCUITest's keyboard frame leaves out the suggestions over the letters, and the
+    /// composer's frame reaches under the home indicator while it is down.)
     private func onTheKeyboard(_ field: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
         _ = settledKeyboard(file: file, line: line)
         let frame = settled(field)
         let screenshot = app.screenshot()
         keep(name)
         let white = whiteUnder(frame, in: screenshot.image)
-        XCTAssertEqual(white, Self.composerBottomPadding, accuracy: 1.5,
-                       "\(name): \(white) pt of white between the field \(frame) and the keyboard, its padding alone",
+        XCTAssertEqual(white - Self.composerBottomPadding, 0, accuracy: 1,
+                       "\(name): \(white - Self.composerBottomPadding) pt between the composer (field \(frame)) and the keyboard",
                        file: file, line: line)
     }
 
