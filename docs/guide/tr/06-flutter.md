@@ -22,7 +22,7 @@ flutter pub add clomni_flutter
   yoksa `pod install` durur ve satırı ekrana yazar.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
   ```
 
 Fotoğraf metinlerini `ios/Runner/Info.plist` dosyasına ekleyin ([iOS bölümüne](04-ios.md#infoplist) bakın).

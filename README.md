@@ -21,12 +21,12 @@ Both native SDKs render the same `protocol/fixtures`; their tests fail when a fi
 iOS 15 or later, Xcode 15 or later.
 
 **Swift Package Manager**: File → Add Package Dependencies → `https://github.com/clomni/clomni-mobile-sdk.git`,
-version 1.0.0 or later, product `ClomniMessenger`.
+version 1.0.2 or later, product `ClomniMessenger`.
 
 **CocoaPods**: the SDK is not on CocoaPods trunk; take the pod from the tag:
 
 ```ruby
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
 ```
 
 Then, at launch, with the App ID and the iOS API key from Clomni (Channels → Mobile app):

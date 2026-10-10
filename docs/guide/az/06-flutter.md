@@ -22,7 +22,7 @@ flutter pub add clomni_flutter
   olmasa `pod install` dayanır və həmin sətri çap edir.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
   ```
 
 Şəkil mətnlərini `ios/Runner/Info.plist`-ə əlavə edin ([iOS bölməsinə](04-ios.md#infoplist) baxın).

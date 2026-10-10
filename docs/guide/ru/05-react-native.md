@@ -25,7 +25,7 @@ cd ios && pod install
 
 ```ruby
 # ios/Podfile, в таргете приложения
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
 ```
 
 ### Expo

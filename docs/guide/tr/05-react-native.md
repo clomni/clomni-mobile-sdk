@@ -26,7 +26,7 @@ uygulamanın target'ına pod olarak ekleyin. Paket bu durumda o pod'u kullanır 
 
 ```ruby
 # ios/Podfile, uygulamanın target'ı içinde
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
 ```
 
 ### Expo
