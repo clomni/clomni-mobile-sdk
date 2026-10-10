@@ -38,21 +38,19 @@ pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git'
 
 ### Info.plist
 
-Kullanıcılar konuşmada fotoğraf gönderebilir. iOS'un erişim isterken gösterdiği iki metni ekleyin:
+Kullanıcılar konuşmada fotoğraf gönderebilir. iOS'un erişim isterken gösterdiği metinleri ekleyin:
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Destek ekibine fotoğraf göndermek için</string>
 <key>NSCameraUsageDescription</key>
 <string>Fotoğraf çekip destek ekibine göndermek için</string>
-```
-
-Sesli mesajlar için mikrofon metni de gerekir; olmadan mikrofon düğmesi görünmez:
-
-```xml
 <key>NSMicrophoneUsageDescription</key>
-<string>Destek ekibine sesli mesaj göndermek için</string>
+<string>Desteğe sesli mesaj göndermek için</string>
 ```
+
+- `NSCameraUsageDescription` yoksa Messenger kamera seçeneğini göstermez.
+- `NSMicrophoneUsageDescription` yoksa mikrofon düğmesi görünmez (sesli mesaj SDK 1.0.2 ile gelir).
 
 ## Başlatma
 
@@ -108,6 +106,9 @@ Clomni.logout()
 ```
 
 Hash için bkz. [Kullanıcıların tanınması](02-identity.md).
+
+Kullanıcı oturum açmışsa, uygulama her açıldığında `loginUser`'ı yeni giriş yapmış gibi yeniden çağırın. Aynı kullanıcı
+için SDK kayıtlı oturumunu kullanır.
 
 ## Messenger'ı açma
 
@@ -179,6 +180,10 @@ Clomni.startFlow("ride_problem", data: ["ride_id": "R-1923"], openMessenger: tru
 
 Akışın metinleri veriyi `{{data.ride_id}}` biçiminde kullanabilir. Olaya bağlı yayınlanmış bir akış yoksa hiçbir şey
 olmaz. Kullanıcının dokunmadığı bir olay için `openMessenger: false` bırakın.
+
+**Olay adı akışın adı değildir.** `startFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki adı
+verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış `startFlow`
+ile başlamaz.
 
 ## Olaylar
 

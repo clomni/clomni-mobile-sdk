@@ -38,6 +38,10 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 class MainActivity : FlutterFragmentActivity()
 ```
 
+iOS-da tətbiqin `Info.plist`-inə şəkil, kamera və mikrofon üçün icazə mətnlərini əlavə edin: [iOS →
+Info.plist](04-ios.md#infoplist). Android-də səsli mesaj üçün (SDK 1.0.2-dən) tətbiqin manifestində `RECORD_AUDIO` elan
+olunmalıdır: [Android → Tələblər](03-android.md#tələblər).
+
 ## Başlatma
 
 ```dart
@@ -69,6 +73,9 @@ await Clomni.logout();
 ```
 
 Hash üçün bax: [İstifadəçinin tanıdılması](02-identity.md).
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `loginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi. Eyni
+istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -115,6 +122,10 @@ Clomni.onFlowCompleted.listen((flowId) => debugPrint('flow $flowId'));
 
 Flow üçün paneldə eyni adla "Tətbiq hadisəsi" trigger-i lazımdır və flow dərc olunmalıdır. Data JSON olmalıdır.
 Native SDK-nın hadisə callback-lərini plugin özü tutur. Onları tətbiqin native kodunda ayrıca təyin etməyin.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
 
 ## Linklər, dil, səslər və görünüş
 

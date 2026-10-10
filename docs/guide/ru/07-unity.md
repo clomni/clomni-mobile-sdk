@@ -44,6 +44,10 @@
 Чтобы быстро попробовать: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Добавьте
 `ClomniBasicSample` на пустой GameObject, заполните App ID и ключи в Inspector и соберите проект на устройство.
 
+На iOS добавьте в `Info.plist` приложения тексты разрешений для фото, камеры и микрофона: [iOS →
+Info.plist](04-ios.md#infoplist). На Android голосовым сообщениям (с SDK 1.0.2) нужно `RECORD_AUDIO`, объявленное в
+манифесте приложения: [Android → Требования](03-android.md#требования).
+
 ## Инициализация
 
 Как можно раньше, один раз:
@@ -79,6 +83,9 @@ Clomni.Logout();
 
 Хеш приходит с сервера вашей игры ([Идентификация пользователей](02-identity.md)). Никогда не кладите Identity
 Secret в игру: ни в код на C#, ни в ассеты, ни в PlayerPrefs.
+
+Пока пользователь вошёл в приложение, вызывайте `Clomni.LoginUser` при каждом запуске, как будто он только что вошёл.
+Для того же пользователя SDK использует сохранённую сессию.
 
 ## Открытие Messenger
 
@@ -140,6 +147,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null — как на �
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**Имя события и название сценария не одно и то же.** Передайте в `Clomni.StartFlow` имя из строки "Event: …" под
+сценарием в разделе Flows панели. Сценарий должен использовать триггер "App event": сценарий с триггером "When a
+conversation starts" через `Clomni.StartFlow` не запускается.
 
 ## Push-уведомления
 

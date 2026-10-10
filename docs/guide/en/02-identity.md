@@ -251,9 +251,11 @@ The mode is chosen under **Security** in the inbox's settings column.
 
 | Mode | What happens |
 |---|---|
-| Off | The hash is not checked and the user is not verified. For testing only. |
+| Off | The hash is not checked: any hash is accepted and the user is not verified. Anyone who gives the app another user's `user_id` can open their conversations. For testing only. |
 | Recommended (default) | A hash that is sent must be right; a wrong one refuses the login. Without a hash the user is accepted but not verified. Once a user has logged in with a verified hash, a hash is required for that user from then on. |
 | Enforced | No login without a right hash: the server answers `403 identity_verification_failed`. It can be turned on after the first verified login from the app. App versions that send no hash can no longer connect. |
+
+> **Never use Off in production.** In this mode any hash is accepted.
 
 A good order: release the app with `user_hash` in Recommended mode, watch **Overview** until no warnings about
 the hash are left, then switch to Enforced.

@@ -255,9 +255,11 @@ Mod, gelen kutusunun ayarlar sütununda **Security** bölümünde seçilir.
 
 | Mod | Ne olur |
 |---|---|
-| Off | Hash kontrol edilmez, kullanıcı doğrulanmaz. Yalnızca test için. |
+| Off | Hash kontrol edilmez: her hash kabul edilir ve kullanıcı doğrulanmaz. Uygulamaya başka birinin `user_id`'sini veren onun konuşmalarını açabilir. Yalnızca test için. |
 | Recommended (varsayılan) | Gönderilen hash doğru olmalıdır; yanlış hash oturum açmayı reddeder. Hash yoksa kullanıcı kabul edilir ama doğrulanmış sayılmaz. Bir kullanıcı doğrulanmış bir hash ile oturum açtıktan sonra, o kullanıcı için bundan sonra hash zorunludur. |
 | Enforced | Doğru hash olmadan oturum açılamaz: sunucu `403 identity_verification_failed` yanıtını verir. Uygulamadan ilk doğrulanmış oturum açmadan sonra açılabilir. Hash göndermeyen uygulama sürümleri artık bağlanamaz. |
+
+> **Off modunu canlı ortamda asla kullanmayın.** Bu modda her hash kabul edilir.
 
 Önerilen sıra: uygulamayı `user_hash` ile Recommended modda yayınlayın, **Overview**'da hash ile ilgili uyarı
 kalmayana kadar takip edin, ardından Enforced'a geçin.

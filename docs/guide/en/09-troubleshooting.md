@@ -4,8 +4,9 @@
 
 1. **The panel's Overview section.** It shows whether each platform has connected, whether push is active, and warnings
    such as "logins refused for a wrong hash" or "push is not set up", each with a **Fix** button.
-2. **The SDK's log.** Turn on the debug level while developing. The default level is `warning`, and integration
-   mistakes are logged as `error`.
+2. **The SDK's log.** The default level is `warning`: warnings and errors are always written, and integration
+   mistakes (keys, hashes, push) are written as `error`. Turn on the `debug` level while developing: it also writes
+   the SDK's steps.
 
 | Platform | Turn on | Where the log is |
 |---|---|---|
@@ -50,6 +51,8 @@ Some server messages are in Azerbaijani, exactly as the table below shows them.
 | A panel change does not show in the app | The Appearance draft is not published | Appearance → **Publish** |
 | The Messenger speaks another language than expected | `setLanguage` picked a language that is off, or none was picked | Turn the language on in Appearance → Languages, or call `setLanguage` |
 | The floating button does not show | It is off in the panel and in code | `setLauncherVisible(true)`, or turn it on in Appearance → Theme |
+| React Native: the floating button does not show on a cold start | A bug in SDK 1.0.1 | Fixed in SDK 1.0.2. Until then, open the Messenger from your own button |
+| React Native, Android: the open Messenger disappears when the app is opened again from its icon | `MainActivity` is `singleTask` | Fixed in SDK 1.0.2 |
 | Flutter, Android: the floating button does not show | `MainActivity` extends `FlutterActivity` | Extend `FlutterFragmentActivity` |
 
 ## Push notifications

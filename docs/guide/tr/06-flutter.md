@@ -39,6 +39,10 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 class MainActivity : FlutterFragmentActivity()
 ```
 
+iOS'ta uygulamanın `Info.plist` dosyasına fotoğraf, kamera ve mikrofon için izin metinlerini ekleyin: [iOS →
+Info.plist](04-ios.md#infoplist). Android'de sesli mesaj (SDK 1.0.2'den itibaren) için uygulamanın manifestinde
+`RECORD_AUDIO` bildirilmelidir: [Android → Gereksinimler](03-android.md#gereksinimler).
+
 ## Başlatma
 
 ```dart
@@ -70,6 +74,9 @@ await Clomni.logout();
 ```
 
 Hash için bkz. [Kullanıcıların tanınması](02-identity.md).
+
+Kullanıcı oturum açmışsa, uygulama her açıldığında `loginUser`'ı yeni giriş yapmış gibi yeniden çağırın. Aynı kullanıcı
+için SDK kayıtlı oturumunu kullanır.
 
 ## Messenger'ı açma
 
@@ -116,6 +123,10 @@ Clomni.onFlowCompleted.listen((flowId) => debugPrint('flow $flowId'));
 
 Akışın panelde aynı adla "App event" tetikleyicisine sahip olması ve yayınlanmış olması gerekir. Veri JSON
 olmalıdır. Yerel SDK'nın olay callback'leri eklentiye aittir; bunları ayrıca uygulamanın yerel kodunda atamayın.
+
+**Olay adı akışın adı değildir.** `startFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki adı
+verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış `startFlow`
+ile başlamaz.
 
 ## Bağlantılar, dil, sesler ve görünüm
 

@@ -45,6 +45,10 @@ diğer platformlarda her çağrı hiçbir şey yapmaz; ilk çağrı bunu logda b
 Hızlıca denemek için: Package Manager → Clomni Messenger → Samples → **Basic** → Import. `ClomniBasicSample`'ı boş
 bir GameObject'e ekleyin, Inspector'da App ID'yi ve anahtarları doldurun ve bir cihaza build alın.
 
+iOS'ta uygulamanın `Info.plist` dosyasına fotoğraf, kamera ve mikrofon için izin metinlerini ekleyin: [iOS →
+Info.plist](04-ios.md#infoplist). Android'de sesli mesaj (SDK 1.0.2'den itibaren) için uygulamanın manifestinde
+`RECORD_AUDIO` bildirilmelidir: [Android → Gereksinimler](03-android.md#gereksinimler).
+
 ## Başlatma
 
 Mümkün olduğunca erken, bir kez:
@@ -80,6 +84,9 @@ Clomni.Logout();
 
 Hash, oyununuzun sunucusundan gelir ([Kullanıcıların tanınması](02-identity.md)). Identity Secret'ı asla oyuna
 koymayın: ne C# koduna, ne asset'lere, ne de PlayerPrefs'e.
+
+Kullanıcı oturum açmışsa, uygulama her açıldığında `Clomni.LoginUser`'ı yeni giriş yapmış gibi yeniden çağırın. Aynı
+kullanıcı için SDK kayıtlı oturumunu kullanır.
 
 ## Messenger'ı açma
 
@@ -141,6 +148,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null telefona uyar
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**Olay adı akışın adı değildir.** `Clomni.StartFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki
+adı verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış
+`Clomni.StartFlow` ile başlamaz.
 
 ## Push bildirimleri
 

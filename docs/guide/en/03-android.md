@@ -3,11 +3,21 @@
 ## Requirements
 
 - Android 6.0 (API 23) or newer.
-- A recent `compileSdk` (35 or newer).
+- `compileSdk` 35 or newer.
 - Kotlin 1.8 or newer. Java works too (see the end of this chapter).
 - The App ID and the Android API key (`android_…`) from **Installation** in the inbox's settings column.
 
-The SDK asks for no permission of its own except network access, and adds nothing to your screens.
+SDK 1.0.1 asks for no permission of its own except network access, and adds nothing to your screens. From 1.0.2 a
+conversation can take photos and videos with the camera and send voice messages:
+
+- **The camera** needs no permission: the SDK opens the phone's own camera app, and the FileProvider is inside the SDK.
+  If the app's manifest declares `CAMERA`, the SDK asks for that permission first.
+- **Voice messages** need `RECORD_AUDIO`, declared by the app in its own `AndroidManifest.xml`. Without it the
+  microphone button does not show, and the SDK says so in the log.
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
 ## Install
 
@@ -18,13 +28,6 @@ The package is on Maven Central. Most projects already list `mavenCentral()` in 
 dependencies {
     implementation("ai.clomni:messenger:1.0.1")
 }
-```
-
-For voice messages the app declares the microphone permission; without it there is no microphone button:
-
-```xml
-<!-- AndroidManifest.xml -->
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
 ```
 
 ## Initialize
@@ -72,6 +75,9 @@ Clomni.updateUser(language = "az", customAttributes = mapOf("plan" to "premium")
 // With your app's own logout:
 Clomni.logout()
 ```
+
+Call `loginUser` on every app start while the user is signed in, as if they had just signed in. For the same user the
+SDK reuses its stored session.
 
 ## Open the Messenger
 
@@ -155,6 +161,10 @@ Clomni.startFlow(
 - Without a published flow bound to the event, nothing happens.
 - For an event the user did not tap (a failed payment, for example), keep `openMessenger = false`. The user learns of
   the conversation from a push or the unread count.
+
+**The event name is not the flow's name.** Pass `startFlow` the name on the flow's "Event: …" line in the panel's Flows
+section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not start
+with `startFlow`.
 
 ## Events
 

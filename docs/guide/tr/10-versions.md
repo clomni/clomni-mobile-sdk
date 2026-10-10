@@ -1,5 +1,49 @@
 # Sürümler
 
+## 1.0.2
+
+| Paket | Sürüm |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.2 |
+| React Native `@clomni/react-native` | 1.0.2 |
+| Flutter `clomni_flutter` | 1.0.2 |
+| Unity | `unity-1.0.2` etiketi |
+| iOS `ClomniMessenger` | 1.0.2 |
+
+### Ne değişti
+
+- Sesli mesaj: mikrofon düğmesini basılı tutun. Sola kaydırmak iptal eder, yukarı kaydırmak kilitler. Göndermeden önce
+  dinleyebilirsiniz, hız 1×, 1.5× ve 2×.
+- Kamerayla fotoğraf ve video.
+- İnternet yokken yazılan mesajlar sırada bekler ve bağlantı gelince gider.
+- `clomni.ai` gibi `https://` içermeyen adresler de bağlantı olur.
+- Yüzen düğme `initialize` geç çağrıldığında da görünür (React Native, Flutter, Unity).
+- Android: `MainActivity` `singleTask` olan uygulamada Messenger kaybolmaz.
+- Uygulama yeniden açıldığında kullanıcının adı kaybolmaz.
+- "Konuşmaya katıldı" satırı doğru yerde görünür.
+- "Siz" yazısının yanında şirketin logosu var.
+- Akış, devamı olmayan bir seçenekte biter ve yazma alanı açılır.
+- iPhone'da yazma alanı klavyeye yapışık kalır.
+- `debug` düzeyinde SDK'nın adımları loga yazılır.
+- Messenger'ın dili internet varken ve yokken aynıdır.
+- Emoji düğmesi kaldırıldı; yazma alanının sağında mikrofon düğmesi var.
+
+### İzinler
+
+- Android: sesli mesaj için uygulamanın manifestinde `RECORD_AUDIO` bildirilmelidir, yoksa mikrofon düğmesi görünmez.
+  Kamera için izin gerekmez. Bkz. [Android → Gereksinimler](03-android.md#gereksinimler).
+- iOS: `NSCameraUsageDescription` ve `NSMicrophoneUsageDescription`. Bkz. [iOS → Info.plist](04-ios.md#infoplist).
+
+### Nasıl güncellenir
+
+- **Android:** `implementation("ai.clomni:messenger:1.0.2")`.
+- **React Native:** `npm install @clomni/react-native@1.0.2`, ardından uygulamayı yeniden build edin (iOS'ta `pod
+  install`).
+- **Flutter:** `clomni_flutter: ^1.0.2`, ardından `flutter pub get`.
+- **Unity:** paket adresi `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2`, ardından **Force
+  Resolve**.
+- **iOS:** Swift Package Manager'da `from: "1.0.2"`, CocoaPods'ta `:tag => '1.0.2'`. Bu kez iOS kodu da değişti.
+
 ## 1.0.1
 
 | Paket | Sürüm |

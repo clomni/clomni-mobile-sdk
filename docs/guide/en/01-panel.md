@@ -64,7 +64,7 @@ inboxes. Below it are the sections, in three groups. The ones you need for the S
 
 | Group | Section | What is there |
 |---|---|---|
-| APP | Overview | The state of the channel, warnings, devices seen last |
+| APP | Overview | The state of the inbox, warnings, devices seen last |
 | | Installation | App ID, API keys, code for each platform, recent devices |
 | | Security | Identity verification mode, Identity Secret, hash tester |
 | | Push | Firebase and APNs keys, notification title, test push |
@@ -72,6 +72,8 @@ inboxes. Below it are the sections, in three groups. The ones you need for the S
 | MESSENGER | Appearance | Colours, logo, texts, languages, Home cards, theme |
 | | Flows | The flows of this inbox, by what starts them |
 | | News | News items on the Messenger's Home screen |
+| | CSAT | Asking the customer for a rating when a conversation is resolved: the survey, its display type, the message |
+| | Bot Configuration | A bot that answers conversations from the app before an agent does (when bots are on for the account) |
 | INBOX | Analytics | Active devices, conversations, pushes, SDK versions |
 
 The INBOX group also has the settings every inbox has: settings, collaborators, business hours. In the screenshots
@@ -180,6 +182,13 @@ The flows of this inbox, grouped by what starts them:
 enter the event name and publish the flow.
 
 **How does it look in the app?** (3) shows a choice and a form as the SDK draws them.
+
+**The event name is not the flow's name.** Pass `startFlow` the name on the flow's "Event: …" line in the panel's Flows
+section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not start
+with `startFlow`.
+
+Every choice in a flow must lead to a step. A choice that leads nowhere can leave the customer stuck. From SDK 1.0.2 the
+flow ends at such a choice and the customer gets the text field.
 
 ### News
 

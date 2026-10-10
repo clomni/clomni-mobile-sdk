@@ -1,5 +1,48 @@
 # Versions
 
+## 1.0.2
+
+| Package | Version |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.2 |
+| React Native `@clomni/react-native` | 1.0.2 |
+| Flutter `clomni_flutter` | 1.0.2 |
+| Unity | tag `unity-1.0.2` |
+| iOS `ClomniMessenger` | 1.0.2 |
+
+### What changed
+
+- Voice messages: press and hold the microphone button. Slide left to cancel, slide up to lock. You can listen before
+  sending, at 1×, 1.5× or 2×.
+- Photos and videos from the camera.
+- Messages written offline wait in a queue and go out when the connection is back.
+- Bare addresses such as `clomni.ai` become links.
+- The floating button shows even when `initialize` is called late (React Native, Flutter, Unity).
+- Android: the Messenger no longer disappears in an app whose `MainActivity` is `singleTask`.
+- The user's name is kept when the app opens again.
+- The "joined the conversation" line is in its right place.
+- The company's logo next to "You".
+- A flow ends at a choice that leads nowhere, and the text field opens.
+- On iPhone the text field stays on top of the keyboard.
+- The `debug` level writes the SDK's steps to the log.
+- The Messenger's language is the same online and offline.
+- The emoji button is gone; the microphone button is on the right of the text field.
+
+### Permissions
+
+- Android: voice messages need `RECORD_AUDIO` declared in the app's manifest, otherwise the microphone button does not
+  show. The camera needs no permission. See [Android → Requirements](03-android.md#requirements).
+- iOS: `NSCameraUsageDescription` and `NSMicrophoneUsageDescription`. See [iOS → Info.plist](04-ios.md#infoplist).
+
+### How to update
+
+- **Android:** `implementation("ai.clomni:messenger:1.0.2")`.
+- **React Native:** `npm install @clomni/react-native@1.0.2`, then build the app again (`pod install` on iOS).
+- **Flutter:** `clomni_flutter: ^1.0.2`, then `flutter pub get`.
+- **Unity:** the package URL `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2`, then **Force
+  Resolve**.
+- **iOS:** `from: "1.0.2"` in Swift Package Manager, `:tag => '1.0.2'` in CocoaPods. This time the iOS code changed too.
+
 ## 1.0.1
 
 | Package | Version |
