@@ -26,11 +26,11 @@ Instagram и чат на сайте.
 
 | Платформа | Пакет | Минимальные требования |
 |---|---|---|
-| Android | `ai.clomni:messenger:1.0.1` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
-| iOS | Swift Package `https://github.com/clomni/clomni-mobile-sdk.git`, версия 1.0.0, продукт `ClomniMessenger` | iOS 15, Xcode 15 |
+| Android | `ai.clomni:messenger:1.0.2` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
+| iOS | Swift Package `https://github.com/clomni/clomni-mobile-sdk.git`, версия 1.0.2, продукт `ClomniMessenger` | iOS 15, Xcode 15 |
 | React Native | `@clomni/react-native` | React Native 0.75 |
 | Flutter | `clomni_flutter` | Flutter 3.16, iOS 15, Android API 24 |
-| Unity | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1` | Unity 2021.3, iOS 15, Android API 23 |
+| Unity | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2` | Unity 2021.3, iOS 15, Android API 23 |
 
 React Native, Flutter и Unity работают поверх нативных SDK для Android и iOS, поэтому всё описанное в руководстве
 одинаково работает на всех платформах.

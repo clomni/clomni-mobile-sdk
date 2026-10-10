@@ -60,7 +60,7 @@ bölməsində dərc edin, yoxsa Messenger onu işlətmir.
 ## Kanal səhifəsi
 
 Kanalı sonra **Parametrlər → İş sahəsi parametrləri → Gələn qutular** bölməsindən açın. Kanalın ayarları panelin sol
-paneli yanında ayrıca sütundadır. Yuxarıda kanalın adı var, onun sağındakı **←** düyməsi gələn qutuların siyahısına
+paneli yanında ayrıca sütundadır. Yuxarıda kanalın adı var, onun sağındakı **←** düyməsi **Gələn qutular** siyahısına
 qaytarır. Altında bölmələr üç qrupdadır. SDK üçün lazım olanlar:
 
 | Qrup | Bölmə | Orada nə var |
@@ -68,11 +68,13 @@ qaytarır. Altında bölmələr üç qrupdadır. SDK üçün lazım olanlar:
 | TƏTBİQ | Ümumi baxış | Kanalın vəziyyəti, xəbərdarlıqlar, son görünən cihazlar |
 | | Quraşdırma | App ID, API açarları, hər platforma üçün kod, son cihazlar |
 | | Təhlükəsizlik | Identity verification rejimi, Identity Secret, hash yoxlayıcı |
-| | Push | Firebase və APNs açarları, bildirişin başlığı, test push |
+| | Push | Firebase və APNs açarları, bildirişin başlığı, test bildirişi |
 | | Təlimat | Bu təlimatın PDF-i və hər platforma üçün paket |
 | MESSENGER | Görünüş | Rənglər, loqo, mətnlər, dillər, ana səhifənin kartları, tema |
 | | Flow-lar | Bu kanalın flow-ları, nə ilə başladıqlarına görə |
 | | Xəbərlər | Messenger-in ana səhifəsindəki xəbərlər |
+| | CSAT | Söhbət həll olunanda müştəridən qiymət istəmək: sorğu, göstərmə növü, mesaj |
+| | Bot konfiqurasiyası | Tətbiqdən gələn söhbətlərə operatordan əvvəl cavab verən bot (hesabda botlar açıqdırsa) |
 | INBOX | Analitika | Aktiv cihazlar, söhbətlər, push-lar, SDK versiyaları |
 
 INBOX qrupunda bütün kanallarda olan ayarlar da var: parametrlər, əməkdaşlar, iş saatları. Şəkillərdə sütunun açıq
@@ -180,6 +182,13 @@ Bu kanalın flow-ları nə ilə başladıqlarına görə qruplanıb:
 seçin, hadisənin adını yazın və flow-u dərc edin.
 
 **Tətbiqdə necə görünür?** (3) seçim düymələrini və formanı SDK-da göründüyü kimi göstərir.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
+
+Flow-da hər seçim bir addıma bağlanmalıdır. Seçimin davamı yoxdursa, müştəri orada ilişib qala bilər. SDK 1.0.2-dən belə
+seçimdə flow bitir və müştəri üçün yazı yeri açılır.
 
 ### Xəbərlər
 

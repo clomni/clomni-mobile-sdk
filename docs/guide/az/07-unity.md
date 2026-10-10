@@ -9,7 +9,7 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
 - Android: Minimum API Level 23, compileSdk 35 və ya daha yeni.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 və ya daha yeni.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Native
-  SDK-ları o gətirir: `ai.clomni:messenger:1.0.1`-i Gradle ilə, `ClomniMessenger` pod-unu CocoaPods ilə.
+  SDK-ları o gətirir: `ai.clomni:messenger:1.0.2`-i Gradle ilə, `ClomniMessenger` pod-unu CocoaPods ilə.
 - Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və hər iki API açarı (`android_…`, `ios_…`).
 
 ## Quraşdırma
@@ -18,7 +18,7 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
 2. **Window → Package Manager → + → Add package from git URL** və bu ünvanı yazın:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2
    ```
 
    > **Yol:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,16 +33,20 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
    yox, `.xcworkspace`-i açın. Xcode Swift versiyasını soruşsa, `UnityFramework` hədəfinə `SWIFT_VERSION = 5.0`
    yazın.
 
-   EDM4U iOS build-inin Podfile-ına `pod 'ClomniMessenger', '1.0.0'` yazır. Bu forma pod-u CocoaPods trunk-da
+   EDM4U iOS build-inin Podfile-ına `pod 'ClomniMessenger', '1.0.2'` yazır. Bu forma pod-u CocoaPods trunk-da
    axtarır, SDK isə orada dərc olunmayıb. Hər iOS build-dən sonra build qovluğundakı `Podfile`-da həmin sətri
    dəyişin və orada `pod install` işlədin:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
    ```
 
 Tez sınamaq üçün: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Boş GameObject-ə
 `ClomniBasicSample` əlavə edin, Inspector-da App ID və açarları yazın və cihaza build edin.
+
+iOS-da tətbiqin `Info.plist`-inə şəkil, kamera və mikrofon üçün icazə mətnlərini əlavə edin: [iOS →
+Info.plist](04-ios.md#infoplist). Android-də səsli mesaj üçün (SDK 1.0.2-dən) tətbiqin manifestində `RECORD_AUDIO` elan
+olunmalıdır: [Android → Tələblər](03-android.md#tələblər).
 
 ## Başlatma
 
@@ -79,6 +83,9 @@ Clomni.Logout();
 
 Hash oyununuzun serverindən gəlir ([İstifadəçinin tanıdılması](02-identity.md)). Identity Secret-i heç vaxt oyuna
 qoymayın: nə C# koduna, nə asset-lərə, nə də PlayerPrefs-ə.
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `Clomni.LoginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi.
+Eyni istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -140,6 +147,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null telefonun dilinə
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**Hadisənin adı flow-un adı deyil.** `Clomni.StartFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow
+`Clomni.StartFlow` ilə başlamır.
 
 ## Push bildirişləri
 

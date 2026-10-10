@@ -23,11 +23,11 @@ SDK ekranlarınıza özü heç nə əlavə etmir. Messenger-i öz düymənizdən
 
 | Platforma | Paket | Minimum |
 |---|---|---|
-| Android | `ai.clomni:messenger:1.0.1` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
-| iOS | Swift Package `https://github.com/clomni/clomni-mobile-sdk.git`, versiya 1.0.0, məhsul `ClomniMessenger` | iOS 15, Xcode 15 |
+| Android | `ai.clomni:messenger:1.0.2` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
+| iOS | Swift Package `https://github.com/clomni/clomni-mobile-sdk.git`, versiya 1.0.2, məhsul `ClomniMessenger` | iOS 15, Xcode 15 |
 | React Native | `@clomni/react-native` | React Native 0.75 |
 | Flutter | `clomni_flutter` | Flutter 3.16, iOS 15, Android API 24 |
-| Unity | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1` | Unity 2021.3, iOS 15, Android API 23 |
+| Unity | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2` | Unity 2021.3, iOS 15, Android API 23 |
 
 React Native, Flutter və Unity altda native Android və iOS SDK-larını işlədir. Ona görə bu təlimatdakı hər şey bütün
 platformalarda eyni cür işləyir.
@@ -64,7 +64,8 @@ hansı platformada işləyirlərsə, onun açarını verirlər.
 
 ## Təlimatdakı sözlər
 
-- **Kanal (inbox)**: Clomni-də bir tətbiq. Onun mesajları, açarları və ayarları bir yerdədir.
+- **Kanal** (paneldə **Gələn qutular** siyahısında, ingiliscə inbox): Clomni-də bir tətbiq. Onun mesajları, açarları və
+  ayarları bir yerdədir.
 - **Mənbə (source)**: Messenger-i açanda verdiyiniz qısa ad, məsələn `profile_support`. Oradan başlanan söhbətlə
   birlikdə saxlanır və paneldəki statistikada görünür.
 - **Flow**: Clomni-nin flow qurucusunda qurulan avtomatik söhbət: düymələr, suallar, operatora ötürmə.

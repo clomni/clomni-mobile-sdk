@@ -1,6 +1,6 @@
 name: clomni_flutter
 description: "Clomni Messenger for Flutter: the native iOS and Android SDKs behind one Dart API."
-version: 1.0.1
+version: 1.0.2
 homepage: https://clomni.ai
 repository: https://github.com/clomni/clomni-mobile-sdk/tree/main/flutter
 

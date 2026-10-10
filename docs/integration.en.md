@@ -37,31 +37,31 @@ Later, everything is on the channel page's tabs: Overview, Installation, Securit
 
 ## 2. Install
 
-> The packages are published: Android, React Native, Flutter and Unity at 1.0.1, iOS at 1.0.0.
+> All packages are at 1.0.2: Android, iOS, React Native, Flutter and Unity.
 
 **Android** (Maven Central):
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.1")
+    implementation("ai.clomni:messenger:1.0.2")
 }
 ```
 
 The SDK asks for no permission itself and adds nothing to the app's screens.
 
 **iOS**, Swift Package Manager: File → Add Package Dependencies →
-`https://github.com/clomni/clomni-mobile-sdk.git`, rule "Up to Next Major Version" from `1.0.0`, product
+`https://github.com/clomni/clomni-mobile-sdk.git`, rule "Up to Next Major Version" from `1.0.2`, product
 `ClomniMessenger`. In a `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.0")
+.package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.2")
 ```
 
 The iOS SDK is not on CocoaPods trunk. A CocoaPods project takes the pod from the repository's tag:
 
 ```ruby
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
 ```
 
 **React Native**:

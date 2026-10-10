@@ -22,7 +22,7 @@ flutter pub add clomni_flutter
   `pod install` stops and prints the line.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
   ```
 
 Add the photo texts to `ios/Runner/Info.plist` (see the [iOS chapter](04-ios.md#infoplist)).
@@ -37,6 +37,10 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 
 class MainActivity : FlutterFragmentActivity()
 ```
+
+On iOS, add the permission texts for photos, the camera and the microphone to the app's `Info.plist`: [iOS →
+Info.plist](04-ios.md#infoplist). On Android, voice messages (from SDK 1.0.2) need `RECORD_AUDIO` declared in the app's
+manifest: [Android → Requirements](03-android.md#requirements).
 
 ## Initialize
 
@@ -69,6 +73,9 @@ await Clomni.logout();
 ```
 
 See [Identifying users](02-identity.md) for the hash.
+
+Call `loginUser` on every app start while the user is signed in, as if they had just signed in. For the same user the
+SDK reuses its stored session.
 
 ## Open the Messenger
 
@@ -115,6 +122,10 @@ Clomni.onFlowCompleted.listen((flowId) => debugPrint('flow $flowId'));
 
 The flow needs the "App event" trigger with the same name in the panel, and must be published. The data must be JSON.
 The plugin owns the native SDK's event callbacks; do not set them in the app's native code as well.
+
+**The event name is not the flow's name.** Pass `startFlow` the name on the flow's "Event: …" line in the panel's Flows
+section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not start
+with `startFlow`.
 
 ## Links, language, sounds and look
 

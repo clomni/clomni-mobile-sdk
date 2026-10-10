@@ -25,7 +25,7 @@ package then uses that pod and adds no Swift package:
 
 ```ruby
 # ios/Podfile, in the app's target
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
 ```
 
 ### Expo
@@ -54,6 +54,10 @@ iOS, and the `POST_NOTIFICATIONS` permission on Android. The icon is copied as t
 
 In a bare React Native app, add the two iOS texts to `Info.plist` yourself (see the [iOS chapter](04-ios.md#infoplist)).
 
+On iOS, add the permission texts for photos, the camera and the microphone to the app's `Info.plist`: [iOS →
+Info.plist](04-ios.md#infoplist). On Android, voice messages (from SDK 1.0.2) need `RECORD_AUDIO` declared in the app's
+manifest: [Android → Requirements](03-android.md#requirements).
+
 ## Initialize
 
 Once, at the app's start, outside any component. `index.js` is a good place, because a push can start the app
@@ -72,6 +76,9 @@ if (__DEV__) Clomni.setLogLevel('debug');
 AppRegistry.registerComponent(appName, () => App);
 ```
 
+The third parameter of `initialize` is `region`, `'eu'` by default. `'eu'` is the only region today, so there is no need
+to pass it: the SDK logs any other value and uses `'eu'`.
+
 ## The user
 
 ```ts
@@ -83,6 +90,13 @@ Clomni.logout();
 ```
 
 See [Identifying users](02-identity.md) for the hash.
+
+Call `loginUser` on every app start while the user is signed in, as if they had just signed in. For the same user the
+SDK reuses its stored session.
+
+A user who has not signed in needs no call: the Messenger makes an anonymous visitor itself when it opens.
+`Clomni.loginUnidentifiedUser()` does it in advance. The visitor stays the same on this device until `logout`; when
+`loginUser` is called, their conversations move to the user.
 
 ## Open the Messenger
 
@@ -133,6 +147,10 @@ const subscriptions = [
 The flow needs the "App event" trigger with the same name in the panel, and must be published. The data must be JSON.
 
 The module owns the native SDK's event callbacks. Do not set them in the app's native code as well.
+
+**The event name is not the flow's name.** Pass `startFlow` the name on the flow's "Event: …" line in the panel's Flows
+section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not start
+with `startFlow`.
 
 ## Links, language, sounds and look
 
@@ -282,6 +300,9 @@ your own (`withAppDelegate` and `withXcodeProject` from `expo/config-plugins`), 
 | iOS link errors on `ClomniMessenger` symbols | Add the `pod 'ClomniMessenger'` line to the Podfile and run `pod install` |
 | Android notifications do not appear while the app is closed | `setBackgroundMessageHandler` must be registered in `index.js`, outside components |
 | A tap on a Clomni notification on iOS only opens the app | The native delegate (steps 3 and 4) is missing or set after launch |
+| The floating button does not show on a cold start of the app | Fixed in SDK 1.0.2. Until then, open the Messenger from your own button |
+| Android: the open Messenger disappears when the app is opened again from its icon (`MainActivity` is `singleTask`) | Fixed in SDK 1.0.2 |
 
-Native logs: logcat tag `Clomni` on Android, the Xcode console on iOS. More in
+The logs are on the native side: logcat tag `Clomni` on Android, the Xcode console on iOS. The default level is
+`warning`, and integration mistakes are written as `error`; `setLogLevel('debug')` also shows the SDK's steps. More in
 [Troubleshooting](09-troubleshooting.md).

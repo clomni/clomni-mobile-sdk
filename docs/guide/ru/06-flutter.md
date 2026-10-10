@@ -22,7 +22,7 @@ flutter pub add clomni_flutter
   `pod install` остановится и выведет эту строку.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
   ```
 
 Добавьте тексты для доступа к фото в `ios/Runner/Info.plist` (см. [главу об iOS](04-ios.md#infoplist)).
@@ -37,6 +37,10 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 
 class MainActivity : FlutterFragmentActivity()
 ```
+
+На iOS добавьте в `Info.plist` приложения тексты разрешений для фото, камеры и микрофона: [iOS →
+Info.plist](04-ios.md#infoplist). На Android голосовым сообщениям (с SDK 1.0.2) нужно `RECORD_AUDIO`, объявленное в
+манифесте приложения: [Android → Требования](03-android.md#требования).
 
 ## Инициализация
 
@@ -69,6 +73,9 @@ await Clomni.logout();
 ```
 
 О хеше — в главе [Идентификация пользователей](02-identity.md).
+
+Пока пользователь вошёл в приложение, вызывайте `loginUser` при каждом запуске, как будто он только что вошёл. Для того
+же пользователя SDK использует сохранённую сессию.
 
 ## Открытие Messenger
 
@@ -116,6 +123,10 @@ Clomni.onFlowCompleted.listen((flowId) => debugPrint('flow $flowId'));
 В панели у сценария должен быть триггер «App event» с тем же именем, и сценарий должен быть опубликован. Данные
 должны быть JSON. Колбэки событий нативного SDK принадлежат плагину; не задавайте их дополнительно в нативном коде
 приложения.
+
+**Имя события и название сценария не одно и то же.** Передайте в `startFlow` имя из строки "Event: …" под сценарием в
+разделе Flows панели. Сценарий должен использовать триггер "App event": сценарий с триггером "When a conversation
+starts" через `startFlow` не запускается.
 
 ## Ссылки, язык, звуки и оформление
 

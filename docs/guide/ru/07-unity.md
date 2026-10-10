@@ -9,7 +9,7 @@
 - Android: Minimum API Level 23, compileSdk 35 или новее.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 или новее.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Он подтягивает
-  нативные SDK: `ai.clomni:messenger:1.0.1` через Gradle и pod `ClomniMessenger` через CocoaPods.
+  нативные SDK: `ai.clomni:messenger:1.0.2` через Gradle и pod `ClomniMessenger` через CocoaPods.
 - App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в колонке настроек канала.
 
 ## Установка
@@ -18,7 +18,7 @@
 2. Откройте **Window → Package Manager → + → Add package from git URL** и введите:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2
    ```
 
    > **Путь:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,16 +33,20 @@
    `.xcworkspace`, а не `.xcodeproj`. Если Xcode просит указать версию Swift, задайте `SWIFT_VERSION = 5.0` для
    таргета `UnityFramework`.
 
-   EDM4U записывает в Podfile iOS-сборки `pod 'ClomniMessenger', '1.0.0'`, а в такой форме pod ищется в CocoaPods
+   EDM4U записывает в Podfile iOS-сборки `pod 'ClomniMessenger', '1.0.2'`, а в такой форме pod ищется в CocoaPods
    trunk, где SDK не опубликован. После каждой сборки под iOS замените эту строку в `Podfile` папки сборки и
    выполните там `pod install`:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
    ```
 
 Чтобы быстро попробовать: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Добавьте
 `ClomniBasicSample` на пустой GameObject, заполните App ID и ключи в Inspector и соберите проект на устройство.
+
+На iOS добавьте в `Info.plist` приложения тексты разрешений для фото, камеры и микрофона: [iOS →
+Info.plist](04-ios.md#infoplist). На Android голосовым сообщениям (с SDK 1.0.2) нужно `RECORD_AUDIO`, объявленное в
+манифесте приложения: [Android → Требования](03-android.md#требования).
 
 ## Инициализация
 
@@ -79,6 +83,9 @@ Clomni.Logout();
 
 Хеш приходит с сервера вашей игры ([Идентификация пользователей](02-identity.md)). Никогда не кладите Identity
 Secret в игру: ни в код на C#, ни в ассеты, ни в PlayerPrefs.
+
+Пока пользователь вошёл в приложение, вызывайте `Clomni.LoginUser` при каждом запуске, как будто он только что вошёл.
+Для того же пользователя SDK использует сохранённую сессию.
 
 ## Открытие Messenger
 
@@ -140,6 +147,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null — как на �
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**Имя события и название сценария не одно и то же.** Передайте в `Clomni.StartFlow` имя из строки "Event: …" под
+сценарием в разделе Flows панели. Сценарий должен использовать триггер "App event": сценарий с триггером "When a
+conversation starts" через `Clomni.StartFlow` не запускается.
 
 ## Push-уведомления
 

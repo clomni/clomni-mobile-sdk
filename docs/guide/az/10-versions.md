@@ -1,5 +1,48 @@
 # Versiyalar
 
+## 1.0.2
+
+| Paket | Versiya |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.2 |
+| React Native `@clomni/react-native` | 1.0.2 |
+| Flutter `clomni_flutter` | 1.0.2 |
+| Unity | `unity-1.0.2` teqi |
+| iOS `ClomniMessenger` | 1.0.2 |
+
+### Nə dəyişib
+
+- Səsli mesaj: mikrofon düyməsini basıb saxlayın. Sola sürüşdürmək ləğv edir, yuxarı sürüşdürmək kilidləyir.
+  Göndərməzdən əvvəl dinləmək olar, sürət 1×, 1.5× və 2×.
+- Kamera ilə şəkil və video.
+- İnternet olmayanda yazılan mesajlar növbədə gözləyir və internet qayıdanda gedir.
+- `clomni.ai` kimi `https://`-siz ünvanlar da link olur.
+- Üzən düymə `initialize` gec çağırılanda da görünür (React Native, Flutter, Unity).
+- Android: `MainActivity` `singleTask` olan tətbiqdə Messenger itmir.
+- Tətbiq yenidən açılanda istifadəçinin adı itmir.
+- "Söhbətə qoşuldu" sətri öz yerində görünür.
+- "Siz" yazısının yanında şirkətin loqosu var.
+- Flow davamı olmayan seçimdə bitir və yazı yeri açılır.
+- iPhone-da yazı yeri klaviaturaya yapışıq qalır.
+- `debug` səviyyəsində SDK-nın addımları loga yazılır.
+- Messenger-in dili internet olanda və olmayanda eynidir.
+- Emoji düyməsi çıxıb, yazı yerinin sağında mikrofon düyməsi var.
+
+### İcazələr
+
+- Android: səsli mesaj üçün tətbiqin manifestində `RECORD_AUDIO` elan olunmalıdır, yoxsa mikrofon düyməsi görünmür.
+  Kamera üçün icazə lazım deyil. Bax: [Android → Tələblər](03-android.md#tələblər).
+- iOS: `NSCameraUsageDescription` və `NSMicrophoneUsageDescription`. Bax: [iOS → Info.plist](04-ios.md#infoplist).
+
+### Necə yeniləmək olar
+
+- **Android:** `implementation("ai.clomni:messenger:1.0.2")`.
+- **React Native:** `npm install @clomni/react-native@1.0.2`, sonra tətbiqi yenidən build edin (iOS-da `pod install`).
+- **Flutter:** `clomni_flutter: ^1.0.2`, sonra `flutter pub get`.
+- **Unity:** paketin ünvanı `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2`, sonra **Force
+  Resolve**.
+- **iOS:** Swift Package Manager-də `from: "1.0.2"`, CocoaPods-da `:tag => '1.0.2'`. Bu dəfə iOS kodu da dəyişib.
+
 ## 1.0.1
 
 | Paket | Versiya |

@@ -9,7 +9,7 @@ and on other platforms every call does nothing, and the first call says so once 
 - Android: Minimum API Level 23, compileSdk 35 or newer.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 or newer.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). It brings the
-  native SDKs: `ai.clomni:messenger:1.0.1` through Gradle and the `ClomniMessenger` pod through CocoaPods.
+  native SDKs: `ai.clomni:messenger:1.0.2` through Gradle and the `ClomniMessenger` pod through CocoaPods.
 - The App ID and both API keys (`android_…`, `ios_…`) from **Installation** in the inbox's settings column.
 
 ## Install
@@ -18,7 +18,7 @@ and on other platforms every call does nothing, and the first call says so once 
 2. **Window → Package Manager → + → Add package from git URL**, and enter:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.1
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2
    ```
 
    > **Path:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,16 +33,20 @@ and on other platforms every call does nothing, and the first call says so once 
    `.xcworkspace`, not the `.xcodeproj`. If Xcode asks for a Swift version, set `SWIFT_VERSION = 5.0` on the
    `UnityFramework` target.
 
-   EDM4U writes `pod 'ClomniMessenger', '1.0.0'` into the Podfile of the iOS build, and that form looks for the pod on
+   EDM4U writes `pod 'ClomniMessenger', '1.0.2'` into the Podfile of the iOS build, and that form looks for the pod on
    CocoaPods trunk, where the SDK is not published. After each iOS build, change that line in the build folder's
    `Podfile` and run `pod install` there:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
    ```
 
 To try it quickly: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Add `ClomniBasicSample` to an
 empty GameObject, fill in the App ID and keys in the Inspector and build to a device.
+
+On iOS, add the permission texts for photos, the camera and the microphone to the app's `Info.plist`: [iOS →
+Info.plist](04-ios.md#infoplist). On Android, voice messages (from SDK 1.0.2) need `RECORD_AUDIO` declared in the app's
+manifest: [Android → Requirements](03-android.md#requirements).
 
 ## Initialize
 
@@ -79,6 +83,9 @@ Clomni.Logout();
 
 The hash comes from your game's server ([Identifying users](02-identity.md)). Never put the Identity Secret into the
 game: not in C# code, not in assets, not in PlayerPrefs.
+
+Call `Clomni.LoginUser` on every app start while the user is signed in, as if they had just signed in. For the same user
+the SDK reuses its stored session.
 
 ## Open the Messenger
 
@@ -140,6 +147,10 @@ Clomni.SetLanguage("en");            // "az", "en", "ru"; null follows the phone
 Clomni.SetSoundsEnabled(false);
 Clomni.SetTheme(primaryColor: "#0A66C2", mode: ClomniThemeMode.Dark);
 ```
+
+**The event name is not the flow's name.** Pass `Clomni.StartFlow` the name on the flow's "Event: …" line in the panel's
+Flows section. The flow must use the "App event" trigger: a flow with the "When a conversation starts" trigger does not
+start with `Clomni.StartFlow`.
 
 ## Push notifications
 

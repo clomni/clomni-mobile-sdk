@@ -11,13 +11,13 @@
 ### Swift Package Manager
 
 Xcode-da: **File → Add Package Dependencies**, `https://github.com/clomni/clomni-mobile-sdk.git` ünvanını yazın,
-`1.0.0`-dan "Up to Next Major Version" qaydasını seçin və `ClomniMessenger` məhsulunu tətbiq hədəfinə əlavə edin.
+`1.0.2`-dan "Up to Next Major Version" qaydasını seçin və `ClomniMessenger` məhsulunu tətbiq hədəfinə əlavə edin.
 
 `Package.swift`-də:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.0"),
+    .package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.2"),
 ],
 targets: [
     .target(name: "App", dependencies: [
@@ -32,26 +32,24 @@ SDK CocoaPods trunk-da yoxdur. CocoaPods layihəsi pod-u repozitoriyanın tag-in
 
 ```ruby
 # Podfile, tətbiqin target-ində
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
 ```
 
 ### Info.plist
 
-İstifadəçilər söhbətdə şəkil göndərə bilir. iOS-un icazə istəyəndə göstərdiyi iki mətni əlavə edin:
+İstifadəçilər söhbətdə şəkil göndərə bilir. iOS-un icazə istəyəndə göstərdiyi mətnləri əlavə edin:
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Dəstəyə şəkil göndərmək üçün</string>
 <key>NSCameraUsageDescription</key>
 <string>Şəkil çəkib dəstəyə göndərmək üçün</string>
-```
-
-Səsli mesajlar üçün mikrofon mətni də lazımdır; onsuz mikrofon düyməsi görünmür:
-
-```xml
 <key>NSMicrophoneUsageDescription</key>
 <string>Dəstəyə səsli mesaj göndərmək üçün</string>
 ```
+
+- `NSCameraUsageDescription` yoxdursa, Messenger kamera seçimini göstərmir.
+- `NSMicrophoneUsageDescription` yoxdursa, mikrofon düyməsi görünmür (səsli mesaj SDK 1.0.2-dən).
 
 ## Başlatma
 
@@ -107,6 +105,9 @@ Clomni.logout()
 ```
 
 Hash üçün bax: [İstifadəçinin tanıdılması](02-identity.md).
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `loginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi. Eyni
+istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -178,6 +179,10 @@ Clomni.startFlow("ride_problem", data: ["ride_id": "R-1923"], openMessenger: tru
 
 Flow-un mətnləri datanı `{{data.ride_id}}` kimi işlədə bilər. Hadisəyə bağlı dərc olunmuş flow yoxdursa, heç nə baş
 vermir. İstifadəçinin özünün basmadığı hadisə üçün `openMessenger: false` saxlayın.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
 
 ## Hadisələr
 

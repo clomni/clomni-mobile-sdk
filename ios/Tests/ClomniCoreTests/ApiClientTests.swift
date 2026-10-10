@@ -65,7 +65,7 @@ final class ApiClientTests: XCTestCase {
         let request = try XCTUnwrap(server.requests.last)
         XCTAssertEqual(request.url.absoluteString, "https://app.clomni.ai/v1/conversations?limit=20")
         XCTAssertEqual(request.headers["Authorization"], "Bearer \(session.sessionToken)")
-        XCTAssertEqual(request.headers["X-Clomni-SDK"], "ios/1.0.0")
+        XCTAssertEqual(request.headers["X-Clomni-SDK"], "ios/\(SDKInfo.version)")
         XCTAssertNil(request.headers["X-Clomni-Api-Key"])
     }
 

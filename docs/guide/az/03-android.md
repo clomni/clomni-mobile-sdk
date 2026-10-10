@@ -3,11 +3,21 @@
 ## Tələblər
 
 - Android 6.0 (API 23) və ya daha yeni.
-- Təzə `compileSdk` (35 və ya daha yeni).
+- `compileSdk` 35 və ya daha yeni.
 - Kotlin 1.8 və ya daha yeni. Java da işləyir (bölmənin sonuna baxın).
 - Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və Android API açarı (`android_…`).
 
-SDK şəbəkə girişindən başqa heç bir icazə istəmir və ekranlarınıza heç nə əlavə etmir.
+SDK 1.0.1 şəbəkə girişindən başqa heç bir icazə istəmir və ekranlarınıza heç nə əlavə etmir. 1.0.2-dən söhbətdə kamera
+ilə şəkil və video çəkmək və səsli mesaj göndərmək olar:
+
+- **Kamera** üçün icazə lazım deyil: SDK telefonun öz kamera tətbiqini açır, FileProvider SDK-nın içindədir. Tətbiqin
+  manifestində `CAMERA` elan olunubsa, SDK əvvəlcə bu icazəni soruşur.
+- **Səsli mesaj** üçün tətbiq öz `AndroidManifest.xml`-ində `RECORD_AUDIO` elan etməlidir. Elan olunmayıbsa, mikrofon
+  düyməsi görünmür və SDK bunu loga yazır.
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
 ## Quraşdırma
 
@@ -16,15 +26,8 @@ Paket Maven Central-dadır. Əksər layihələrdə `settings.gradle.kts`-də `ma
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.1")
+    implementation("ai.clomni:messenger:1.0.2")
 }
-```
-
-Səsli mesajlar üçün tətbiq mikrofon icazəsini elan edir; onsuz mikrofon düyməsi görünmür:
-
-```xml
-<!-- AndroidManifest.xml -->
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
 ```
 
 ## Başlatma
@@ -74,6 +77,9 @@ Clomni.updateUser(language = "az", customAttributes = mapOf("plan" to "premium")
 // Tətbiqin öz çıxışı ilə birlikdə:
 Clomni.logout()
 ```
+
+Tətbiq hər açılanda, istifadəçi daxil olubsa, `loginUser`-i yenidən çağırın, istifadəçi təzə daxil olmuş kimi. Eyni
+istifadəçi üçün SDK saxlanmış sessiyanı işlədir.
 
 ## Messenger-i açmaq
 
@@ -156,6 +162,10 @@ Clomni.startFlow(
 - Hadisəyə bağlı dərc olunmuş flow yoxdursa, heç nə baş vermir.
 - İstifadəçinin özünün basmadığı hadisə üçün (məsələn, uğursuz ödəniş) `openMessenger = false` saxlayın. İstifadəçi
   söhbətdən push və ya oxunmamış mesajların sayı ilə xəbər tutur.
+
+**Hadisənin adı flow-un adı deyil.** `startFlow`-a paneldəki Flow-lar bölməsində flow-un altındakı "Hadisə: …"
+sətrindəki adı verin. Flow "Tətbiq hadisəsi" trigger-i ilə qurulmalıdır: "Söhbət başlayanda" trigger-li flow `startFlow`
+ilə başlamır.
 
 ## Hadisələr
 
@@ -259,7 +269,7 @@ plugins {
 }
 
 dependencies {
-    implementation("ai.clomni:messenger:1.0.1")
+    implementation("ai.clomni:messenger:1.0.2")
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-messaging")
 }

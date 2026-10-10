@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2
+
+The native SDKs 1.0.2 on both platforms: voice messages (the microphone replaces the emoji button), the camera,
+offline messages that wait and go when the network is back, the launcher after a late initialize, and the fixes the
+first integration tests found. Recording needs `RECORD_AUDIO` in the Android manifest and `NSMicrophoneUsageDescription`
+in the iOS Info.plist; without them the microphone is not shown.
+
 ## 1.0.1
 
 Android: the session carries the app's package name (Android SDK 1.0.1), so an inbox that names an Android

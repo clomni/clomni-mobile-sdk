@@ -3,11 +3,21 @@
 ## Gereksinimler
 
 - Android 6.0 (API 23) veya daha yenisi.
-- Güncel bir `compileSdk` (35 veya daha yenisi).
+- `compileSdk` 35 veya daha yenisi.
 - Kotlin 1.8 veya daha yenisi. Java da çalışır (bu bölümün sonuna bakın).
 - Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve Android API anahtarı (`android_…`).
 
-SDK, ağ erişimi dışında kendisi için hiçbir izin istemez ve ekranlarınıza hiçbir şey eklemez.
+SDK 1.0.1, ağ erişimi dışında kendisi için hiçbir izin istemez ve ekranlarınıza hiçbir şey eklemez. 1.0.2'den itibaren
+konuşmada kamerayla fotoğraf ve video çekmek ve sesli mesaj göndermek mümkündür:
+
+- **Kamera** için izin gerekmez: SDK telefonun kendi kamera uygulamasını açar, FileProvider SDK'nın içindedir.
+  Uygulamanın manifestinde `CAMERA` bildirilmişse SDK önce bu izni ister.
+- **Sesli mesaj** için uygulama kendi `AndroidManifest.xml` dosyasında `RECORD_AUDIO` bildirmelidir. Bildirilmemişse
+  mikrofon düğmesi görünmez ve SDK bunu loga yazar.
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
 ## Kurulum
 
@@ -16,15 +26,8 @@ Paket Maven Central'dadır. Çoğu projede `settings.gradle.kts` içinde `mavenC
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.1")
+    implementation("ai.clomni:messenger:1.0.2")
 }
-```
-
-Sesli mesajlar için uygulama mikrofon iznini bildirir; olmadan mikrofon düğmesi görünmez:
-
-```xml
-<!-- AndroidManifest.xml -->
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
 ```
 
 ## Başlatma
@@ -74,6 +77,9 @@ Clomni.updateUser(language = "az", customAttributes = mapOf("plan" to "premium")
 // Uygulamanın kendi oturum kapatma işlemiyle birlikte:
 Clomni.logout()
 ```
+
+Kullanıcı oturum açmışsa, uygulama her açıldığında `loginUser`'ı yeni giriş yapmış gibi yeniden çağırın. Aynı kullanıcı
+için SDK kayıtlı oturumunu kullanır.
 
 ## Messenger'ı açma
 
@@ -157,6 +163,10 @@ Clomni.startFlow(
 - Olaya bağlı yayınlanmış bir akış yoksa hiçbir şey olmaz.
 - Kullanıcının dokunmadığı bir olay için (örneğin başarısız bir ödeme) `openMessenger = false` bırakın. Kullanıcı
   konuşmadan bir push'la ya da okunmamış sayısından haberdar olur.
+
+**Olay adı akışın adı değildir.** `startFlow`'a paneldeki Flows bölümünde akışın altındaki "Event: …" satırındaki adı
+verin. Akış "App event" tetikleyicisiyle kurulmalıdır: "When a conversation starts" tetikleyicili bir akış `startFlow`
+ile başlamaz.
 
 ## Olaylar
 
@@ -261,7 +271,7 @@ plugins {
 }
 
 dependencies {
-    implementation("ai.clomni:messenger:1.0.1")
+    implementation("ai.clomni:messenger:1.0.2")
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-messaging")
 }
