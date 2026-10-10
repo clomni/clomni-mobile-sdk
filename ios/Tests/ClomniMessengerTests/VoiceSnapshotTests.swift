@@ -51,6 +51,7 @@ final class VoiceSnapshotTests: XCTestCase {
     }
 
     func testRecorderHeld() throws {
+        let strings = self.strings
         for dark in [false, true] {
             let recorder = recorder()
             recorder.controller.press()
@@ -71,6 +72,7 @@ final class VoiceSnapshotTests: XCTestCase {
     }
 
     func testRecorderLockedStoppedBinAndCapsules() throws {
+        let strings = self.strings
         for dark in [false, true] {
             let locked = recorder()
             locked.controller.pressLocked()
@@ -100,6 +102,7 @@ final class VoiceSnapshotTests: XCTestCase {
     /// The composer's new end (operator, 2026-10-09): the field with the paper clip in it, right of it the round button:
     /// the microphone while empty, the arrow with text; without a microphone, the arrow dimmed.
     func testComposerButton() throws {
+        let strings = self.strings
         for dark in [false, true] {
             let recorder = recorder()
             try snap("voice-composer" + (dark ? "-dark" : "-light"), dark: dark) { theme in
@@ -128,6 +131,7 @@ final class VoiceSnapshotTests: XCTestCase {
 
     /// Both sides, every state: ready, playing at 1.5×, paused half-heard, without a waveform, loading, uploading, broken.
     private func bubbles(_ theme: ClomniTheme, short: Bool = false) -> some View {
+        let strings = self.strings
         let mine = VoiceNote(id: "msg_f100", audio: audio, outgoing: true)
         let theirs = VoiceNote(id: "msg_f101", audio: operatorAudio, outgoing: false)
         let heard = VoiceNote(id: "msg_f102", audio: audio, outgoing: false)
