@@ -91,9 +91,11 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -accel on
           disable-animations: true
           working-directory: android
+          # The emulator's crashpad_handler outlives it and kept the job open after the tests had passed, until the
+          # job's 60 minutes cancelled it (2026-10-09). It goes with the tests, whatever they answered.
           script: |
             adb devices -l
-            ./gradlew --no-daemon :messenger:connectedDebugAndroidTest
+            ./gradlew --no-daemon :messenger:connectedDebugAndroidTest; status=$?; killall -INT crashpad_handler || true; exit $status
       - name: Device tests (retry once)
         if: steps.device-tests.outcome == 'failure'
         uses: reactivecircus/android-emulator-runner@v2
@@ -106,9 +108,11 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -accel on
           disable-animations: true
           working-directory: android
+          # The emulator's crashpad_handler outlives it and kept the job open after the tests had passed, until the
+          # job's 60 minutes cancelled it (2026-10-09). It goes with the tests, whatever they answered.
           script: |
             adb devices -l
-            ./gradlew --no-daemon :messenger:connectedDebugAndroidTest
+            ./gradlew --no-daemon :messenger:connectedDebugAndroidTest; status=$?; killall -INT crashpad_handler || true; exit $status
       # When it fails: what adb and the emulator saw.
       - name: Emulator state on failure
         if: failure() || steps.device-tests.outcome == 'failure'
