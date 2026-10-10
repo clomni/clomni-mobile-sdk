@@ -166,4 +166,106 @@ final class VoiceRecorderControllerTests: XCTestCase {
         XCTAssertFalse(exists(file))
         XCTAssertEqual(sent, [])
     }
+
+    // CM-131: on a device the microphone comes up to a second or more after the press (the audio session, a Bluetooth
+    // headset). The press does not wait for it, and is long or short by the finger.
+
+    func testThePressShowsAtOnceWhileTheMicrophoneIsStillComing() {
+        mic.startDelayMs = 1_500
+        let recorder = recorder()
+        recorder.press()
+        XCTAssertEqual(recorder.state, .holding(elapsedMs: 0, cancel: 0, lock: 0), "the overlay, at the touch")
+        XCTAssertEqual(feedback, [.start], "the haptic tick, at the touch")
+        XCTAssertEqual(changes, 1)
+        XCTAssertEqual(mic.started, [])
+        time.advance(1_000)
+        XCTAssertEqual(recorder.state, .holding(elapsedMs: 1_000, cancel: 0, lock: 0), "the timer runs from the touch")
+        XCTAssertEqual(recorder.levels, [], "nothing heard yet, no bars")
+        time.advance(500)
+        XCTAssertEqual(mic.started.count, 1)
+        time.advance(500)
+        XCTAssertEqual(recorder.levels.count, 11, "from the tick it came on: 1 500, 1 550 … 2 000")
+    }
+
+    func testAPressOfPointNineSecondsIsAMessageThoughTheMicrophoneCameLate() throws {
+        mic.startDelayMs = 400
+        let recorder = recorder()
+        recorder.press()
+        time.advance(900)
+        recorder.release()
+        let clip = try XCTUnwrap(sent.first, "900 ms from the touch is not a slip")
+        XCTAssertEqual(clip.durationMs, 500, "what the microphone heard")
+        XCTAssertNil(recorder.hint)
+    }
+
+    func testAHalfSecondPressAsksToHoldAndTheLateMicrophoneRecordsNothing() {
+        mic.startDelayMs = 1_500
+        let recorder = recorder()
+        recorder.press()
+        time.advance(500)
+        recorder.release()
+        XCTAssertEqual(recorder.hint, .hold)
+        XCTAssertEqual(mic.abandoned, 1)
+        time.advance(3_000)
+        XCTAssertEqual(mic.started, [], "the start that would have come after the finger left never records")
+        XCTAssertFalse(mic.isRecording)
+        XCTAssertEqual(sent, [])
+        XCTAssertEqual(time.pending, 0)
+    }
+
+    func testLetGoBeforeTheMicrophoneCameIsNothingRecorded() {
+        mic.startDelayMs = 1_500
+        let recorder = recorder()
+        recorder.press()
+        time.advance(900)
+        recorder.release()
+        XCTAssertEqual(sent, [], "there is no sound to send")
+        XCTAssertEqual(recorder.hint, .hold)
+        time.advance(1_000)
+        XCTAssertEqual(mic.started, [])
+        XCTAssertFalse(mic.isRecording)
+    }
+
+    func testCancelAndLockBeforeTheMicrophoneComes() throws {
+        mic.startDelayMs = 1_500
+        let recorder = recorder()
+        recorder.press()
+        time.advance(300)
+        recorder.drag(dx: -130, dy: 0)
+        XCTAssertEqual(recorder.state, .idle)
+        XCTAssertEqual(recorder.discards, 1)
+        XCTAssertEqual(feedback, [.start, .cancel])
+        time.advance(2_000)
+        XCTAssertEqual(mic.started, [])
+        XCTAssertEqual(mic.abandoned, 1)
+
+        recorder.press()
+        time.advance(300)
+        recorder.drag(dx: 0, dy: -100)
+        XCTAssertEqual(recorder.state, .locked(elapsedMs: 300))
+        XCTAssertEqual(feedback.last, .lock)
+        recorder.release()
+        time.advance(2_000)
+        XCTAssertEqual(recorder.state, .locked(elapsedMs: 2_300), "still the touch's clock")
+        XCTAssertEqual(mic.started.count, 1)
+        XCTAssertEqual(recorder.levels.count, 17, "bars only for what was heard: 3 800, 3 850 … 4 600")
+        recorder.stop()
+        XCTAssertEqual(recorder.review?.durationMs, 800)
+        recorder.sendNow()
+        XCTAssertEqual(sent.map(\.durationMs), [800])
+    }
+
+    func testClosingWhileTheMicrophoneIsComing() {
+        mic.startDelayMs = 1_500
+        let recorder = recorder()
+        recorder.press()
+        time.advance(200)
+        recorder.close()
+        XCTAssertEqual(recorder.state, .idle)
+        XCTAssertEqual(mic.abandoned, 1)
+        XCTAssertEqual(mic.closes, 1, "the audio goes at once")
+        time.advance(2_000)
+        XCTAssertEqual(mic.started, [])
+        XCTAssertEqual(time.pending, 0)
+    }
 }

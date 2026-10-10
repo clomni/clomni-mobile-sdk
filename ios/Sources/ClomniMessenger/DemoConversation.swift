@@ -64,9 +64,11 @@ extension Clomni {
 }
 
 /// The demo conversation's microphone (CM-130): a double, as the simulator's is not to be relied on in a UI test. It
-/// writes a few bytes and measures by the clock; the recorder around it is the real one, permission given.
+/// comes a third of a second after the press, as a device's does (CM-131), writes a few bytes and measures by the
+/// clock; the recorder around it is the real one, permission given.
 final class DemoMicrophone: MicInput {
     private var startedAt = 0
+    private var starting: DispatchWorkItem?
     private static func now() -> Int { Int(DispatchTime.now().uptimeNanoseconds / 1_000_000) }
 
     @MainActor
@@ -77,14 +79,25 @@ final class DemoMicrophone: MicInput {
             send: { clip in Task { @MainActor in _ = await controller.sendVoice(clip) } }, feedback: MicrophoneAccess.feedback))
     }
 
-    func start(_ file: URL) -> Bool {
-        startedAt = Self.now()
-        return FileManager.default.createFile(atPath: file.path, contents: Data("m4a".utf8))
+    func start(_ file: URL, ready: @escaping (Bool) -> Void) {
+        let work = DispatchWorkItem { [weak self] in
+            self?.starting = nil
+            self?.startedAt = Self.now()
+            ready(FileManager.default.createFile(atPath: file.path, contents: Data("m4a".utf8)))
+        }
+        starting = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 
     func level() -> Double { Double.random(in: 0.2...0.9) }
     func stop() -> Int? { Self.now() - startedAt }
-    func cancel() {}
+
+    func cancel() {
+        starting?.cancel()
+        starting = nil
+    }
+
+    func close() { cancel() }
 }
 
 /// The demo launcher's SDK: logged in, its look kept from last time, nothing on the network.

@@ -123,13 +123,41 @@ internal object VoiceAudio {
     }
 }
 
-/** [MicInput] on MediaRecorder. */
+/**
+ * [MicInput] on MediaRecorder. Its prepare and start run on a thread of their own: they can take a good part of a
+ * second on a device, and on the UI thread they held back the press's overlay and haptic tick (CM-131). The rest runs
+ * on the UI thread once the start came back.
+ */
 internal class MediaRecorderMic(private val context: Context) : MicInput {
     private var recorder: MediaRecorder? = null
     private var file: File? = null
     private var startedAt = 0L
 
-    override fun start(file: File): Boolean {
+    /** The start on its way; a stop or a cancel before it comes back clears it, and what it began is thrown away. */
+    private var starting: Any? = null
+
+    override fun start(file: File, ready: (Boolean) -> Unit) {
+        val ticket = Any()
+        starting = ticket
+        worker.execute {
+            val recorder = record(file)
+            val at = SystemClock.elapsedRealtime()
+            main.post {
+                if (starting !== ticket) {
+                    if (recorder != null) worker.execute { discard(recorder, file) }
+                    return@post
+                }
+                starting = null
+                this.recorder = recorder
+                this.file = file.takeIf { recorder != null }
+                startedAt = at
+                ready(recorder != null)
+            }
+        }
+    }
+
+    /** A MediaRecorder recording into [file], or null when the microphone cannot be had. On [worker]. */
+    private fun record(file: File): MediaRecorder? {
         val recorder = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
         return try {
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -141,21 +169,19 @@ internal class MediaRecorderMic(private val context: Context) : MicInput {
             recorder.setOutputFile(file.absolutePath)
             recorder.prepare()
             recorder.start()
-            this.recorder = recorder
-            this.file = file
-            startedAt = SystemClock.elapsedRealtime()
-            true
+            recorder
         } catch (e: Exception) {
             ClomniLog.warning { "the microphone did not start: ${e.message}" }
             recorder.release()
             file.delete()
-            false
+            null
         }
     }
 
     override fun level(): Float = Waveform.levelOfAmplitude(runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0))
 
     override fun stop(): Long? {
+        starting = null
         val recorder = recorder ?: return null
         val duration = SystemClock.elapsedRealtime() - startedAt
         // stop() throws when nothing was recorded yet; the file is then useless.
@@ -167,15 +193,24 @@ internal class MediaRecorderMic(private val context: Context) : MicInput {
     }
 
     override fun cancel() {
-        recorder?.let { runCatching { it.stop() }; it.release() }
+        starting = null
+        recorder?.let { discard(it, null) }
         recorder = null
         file?.delete()
         file = null
     }
 
+    private fun discard(recorder: MediaRecorder, file: File?) {
+        runCatching { recorder.stop() }
+        recorder.release()
+        file?.delete()
+    }
+
     private companion object {
         const val SAMPLE_RATE = 22_050
         const val BIT_RATE = 32_000
+        val main = Handler(Looper.getMainLooper())
+        val worker = Executors.newSingleThreadExecutor { Thread(it, "clomni-microphone").apply { isDaemon = true } }
     }
 }
 

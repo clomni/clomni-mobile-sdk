@@ -5,8 +5,12 @@ import java.io.File
 
 /** The microphone as [VoiceRecorderController] uses it: Android's MediaRecorder in the SDK, a fake in tests. */
 internal interface MicInput {
-    /** Starts recording AAC (m4a) into [file]; false when the microphone cannot be had. */
-    fun start(file: File): Boolean
+    /**
+     * Starts recording AAC (m4a) into [file], off the UI thread: MediaRecorder's prepare and start can take a good part
+     * of a second on a device. [ready] comes on the UI thread: true once it records, false when the microphone cannot be
+     * had; never when [cancel] came first.
+     */
+    fun start(file: File, ready: (Boolean) -> Unit)
 
     /** The loudness since the last call, 0–1. */
     fun level(): Float
@@ -14,7 +18,7 @@ internal interface MicInput {
     /** Stops; the recording's length in ms, or null when nothing usable was written (the file is then gone). */
     fun stop(): Long?
 
-    /** Stops and deletes what was written. */
+    /** Stops and deletes what was written; a start still on its way records nothing. */
     fun cancel()
 }
 
@@ -26,6 +30,10 @@ internal data class VoiceClip(val file: File, val durationMs: Long, val waveform
  * [TICK_MS] for the timer and the live waveform, and hands a finished recording to [send]. The view reads [state],
  * [levels], [hint] and [review] after each [onChange], and drops the microphone into the bin each time [discards]
  * grows. On the UI thread, like ChatController; the same as the iOS SDK's VoiceRecorderController.
+ *
+ * The press shows at once and the clock runs from the touch (CM-131): the overlay, the haptic tick and the timer do not
+ * wait for the microphone, and a press is long or short by the finger, not by the microphone. Let go before the
+ * microphone came, nothing was recorded: the hint asks to hold.
  */
 internal class VoiceRecorderController(
     private val mic: MicInput,
@@ -71,8 +79,15 @@ internal class VoiceRecorderController(
         private set
 
     private var file: File? = null
+
+    /** A recording is under way: the microphone is coming or records. */
     private var recording = false
-    private var startedAt = 0L
+
+    /** The microphone's start came back: it records. */
+    private var micOn = false
+
+    /** When the finger went down. */
+    private var pressedAt = 0L
     private var cancelTick: (() -> Unit)? = null
     private var cancelHint: (() -> Unit)? = null
 
@@ -124,37 +139,59 @@ internal class VoiceRecorderController(
     private fun start() {
         setHint(null)
         val target = newFile()
-        if (!mic.start(target)) {
-            machine.fail()
-            return
-        }
         file = target
         recording = true
-        startedAt = now()
+        micOn = false
+        pressedAt = now()
         feedback(Feedback.START)
         cancelTick = scheduler.after(TICK_MS, ::tick)
+        mic.start(target) { ok -> micReady(ok, target) }
+    }
+
+    private fun micReady(ok: Boolean, target: File) {
+        if (!recording || file != target) return
+        if (!ok) {
+            stopTicking()
+            recording = false
+            file = null
+            run(machine.fail())
+            return
+        }
+        micOn = true
+        onChange?.invoke()
+    }
+
+    private fun stopTicking() {
+        cancelTick?.invoke()
+        cancelTick = null
     }
 
     private fun tick() {
         if (!recording) return
-        val effects = machine.tick(now() - startedAt, mic.level())
+        val effects = machine.tick(now() - pressedAt, if (micOn) mic.level() else null)
         if (Effect.Stop in effects) setHint(Hint.LIMIT)
         run(effects)
         if (recording) cancelTick = scheduler.after(TICK_MS, ::tick)
     }
 
-    /** The recording's length, or null when the recorder had nothing. */
+    /** The recording's length, or null when the recorder had nothing (or had not come yet). */
     private fun stopMic(): Long? {
-        cancelTick?.invoke()
-        cancelTick = null
+        stopTicking()
         recording = false
+        if (!micOn) {
+            mic.cancel()
+            return null
+        }
+        micOn = false
         return mic.stop()
     }
 
     private fun finish(waveform: List<Int>) {
         val clip = if (recording) {
+            val early = !micOn
             val duration = stopMic()
             val target = file
+            if (duration == null && early) setHint(Hint.HOLD)
             if (duration == null || target == null) null else VoiceClip(target, duration, waveform)
         } else {
             review?.copy(waveform = waveform)
@@ -178,9 +215,9 @@ internal class VoiceRecorderController(
 
     private fun discard(animated: Boolean) {
         if (recording) {
-            cancelTick?.invoke()
-            cancelTick = null
+            stopTicking()
             recording = false
+            micOn = false
             mic.cancel()
         } else {
             review?.file?.delete()
