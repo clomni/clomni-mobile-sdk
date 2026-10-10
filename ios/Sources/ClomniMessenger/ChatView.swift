@@ -17,9 +17,17 @@ final class ChatModel: ObservableObject {
     @Published private(set) var screen: ChatScreen
     @Published private(set) var config: MessengerConfig?
     let controller: ChatController
+    /// Voice messages (CM-130): one player for the screen, and the recorder when the app's Info.plist explains the
+    /// microphone. `recorder` replaces the live one (the debug build's demo uses a microphone double).
+    let playback: VoicePlayback
+    let recorder: VoiceRecorder?
 
-    init(controller: ChatController) {
+    init(controller: ChatController, recorder: VoiceRecorder?? = nil) {
         self.controller = controller
+        playback = VoicePlayback.live()
+        self.recorder = recorder ?? VoiceRecorder.live(
+            maxSeconds: controller.config?.limits.voiceSeconds ?? MessengerConfig.Limits.defaultVoiceSeconds
+        ) { clip in Task { @MainActor in _ = await controller.sendVoice(clip) } }
         screen = controller.screen
         config = controller.config
         controller.onChange = { [weak self] in self?.sync() }
@@ -132,7 +140,8 @@ struct ChatView: View {
             if composerShown {
                 ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
                              staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew,
-                             cancelQuote: { model.controller.reply(to: nil) })
+                             cancelQuote: { model.controller.reply(to: nil) }, recorder: model.recorder,
+                             playback: model.playback)
                     // Always as tall as it needs, the transcript giving way: a picked file's strip must not leave it
                     // overflowing its earlier height, half of it under the keyboard (CM-087).
                     .fixedSize(horizontal: false, vertical: true)
@@ -150,6 +159,7 @@ struct ChatView: View {
         // M7: the composer comes and goes by height and fade, 220 ms.
         .animation(reduceMotion ? nil : Motion.decelerate(0.22), value: composerShown)
         .environment(\.clomniLoadingLabel, model.screen.loadingLabel)
+        .environment(\.clomniVoicePlayback, model.playback)
         .environment(\.clomniScreenWidth, screenWidth)
         .background(GeometryReader { proxy in
             Color.clear
@@ -159,7 +169,12 @@ struct ChatView: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .configCrossfade(model.config)
         .task { await model.controller.load() }
-        .onDisappear { Task { await model.controller.stop() } }
+        .onDisappear {
+            Task { await model.controller.stop() }
+            // A recording in progress is thrown away; what plays stops where it is.
+            model.recorder?.controller.close()
+            model.playback.player.pause()
+        }
         .onChange(of: draft) { text in Task { await model.controller.textChanged(text) } }
         // A picked file opens its strip over the composer: the end of the conversation comes into sight over it, from
         // wherever the user was reading (CM-087: the last message stayed under the strip).

@@ -97,15 +97,18 @@ package struct ChatPresenter: Sendable {
             // is back. So it is when it waits for a choice that is no longer there (`flowStalled`).
             mode = .hidden
         }
-        return ChatComposer(
+        var composer = ChatComposer(
             mode: mode, placeholder: strings[.composerPlaceholder],
-            showsAttach: config?.composer.attachments ?? true, showsEmoji: config?.composer.emoji ?? true,
+            showsAttach: config?.composer.attachments ?? true,
             limit: config?.limits.textChars ?? 4_000, sendLabel: strings[.send], attachLabel: strings[.attach],
-            emojiLabel: strings[.emoji], mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
+            mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
             fileLabel: strings[.pickFile], removeAttachmentLabel: strings[.removeAttachment],
             quote: mode == .open ? snapshot.replyingTo.flatMap { id in snapshot.messages.first { $0.id == id } }
                 .map { quote($0, snapshot) } : nil,
             cancelQuoteLabel: strings[.close])
+        composer.voiceSeconds = config?.limits.voiceSeconds ?? MessengerConfig.Limits.defaultVoiceSeconds
+        composer.texts = strings
+        return composer
     }
 
     // MARK: - Transcript
@@ -334,7 +337,7 @@ package struct ChatPresenter: Sendable {
         switch body {
         case .image: return strings[.opensImage]
         case .file(let file): return file.url == nil ? nil : strings[.opensFile]
-        case .text, .form, .rating: return nil
+        case .text, .voice, .form, .rating: return nil
         }
     }
 
@@ -357,6 +360,7 @@ package struct ChatPresenter: Sendable {
         case .quickReplies(let replies): return replies.text.map(LimitedMarkdown.plainText) ?? message.fallbackText
         case .form(let form): return form.text.map(LimitedMarkdown.plainText) ?? message.fallbackText
         case .rating(let rating): return LimitedMarkdown.plainText(rating.text)
+        case .audio(let audio): return strings[.voiceMessage] + (audio.durationMs.map { ", \(VoiceTime.length($0))" } ?? "")
         default: return message.fallbackText
         }
     }
@@ -380,10 +384,11 @@ package struct ChatPresenter: Sendable {
             return .form(card(message.id, form, snapshot))
         case .rating(let rating):
             return .rating(card(message.id, rating, snapshot))
+        case .audio(let audio):
+            return .voice(VoiceNote(id: message.id, audio: audio, outgoing: message.sender.type == .user), strings)
         case .system:
             return nil
-        // A voice message too, until the conversation draws VoiceMessageBubble (CM-130).
-        case .card, .audio, .unknown:
+        case .card, .unknown:
             // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
             return .text(TextLinks.linkify([TextRun(message.fallbackText)]))
         }
@@ -404,6 +409,13 @@ package struct ChatPresenter: Sendable {
             return .text([TextRun(pending.preview ?? strings[.back])])
         case .attachment(_, let caption):
             guard let upload = pending.upload else { return caption.map { .text([TextRun($0)]) } }
+            // The user's voice message on its way, played from the recording kept for it: a spinner while it uploads,
+            // the clock in its time while it waits for the connection.
+            if upload.mime.hasPrefix("audio/"), let recording = snapshot.localFiles[pending.id] {
+                let uploading = pending.state == .sending && upload.uploadId == nil && !snapshot.isOffline
+                return .voice(VoiceNote.sending(clientId: pending.id, file: recording, durationMs: pending.message.voice?.durationMs,
+                                                waveform: pending.message.voice?.waveform, uploading: uploading), strings)
+            }
             if Media.isImage(mime: upload.mime) {
                 let box = Media.imageBox(width: nil, height: nil)
                 return .image(Bubble.ImageBody(url: nil, fullUrl: nil, localFile: snapshot.localFiles[pending.id],
@@ -539,6 +551,7 @@ package struct ChatPresenter: Sendable {
         switch message.content {
         case .image(let image): excerpt = image.caption ?? strings[.image]
         case .file(let file): excerpt = file.name
+        case .audio: excerpt = strings[.voiceMessage]
         default: excerpt = readable(message)
         }
         return Bubble.Quote(messageId: message.id, author: author(message.sender, snapshot),

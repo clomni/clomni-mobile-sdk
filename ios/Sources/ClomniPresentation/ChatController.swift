@@ -25,8 +25,9 @@ package protocol ChatDataSource: Sendable {
     func goBack(from message: Message) async throws -> PendingMessage
     func submitForm(_ message: Message, values: [String: JSONValue]) async throws -> PendingMessage
     func submitRating(_ message: Message, score: Int, comment: String?) async throws -> PendingMessage
+    /// `voice`: a voice message's length and waveform, as recorded (CM-130).
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
-                  in conversationId: String, replyTo: String?) async throws -> PendingMessage
+                  in conversationId: String, replyTo: String?, voice: ClientMessage.Voice?) async throws -> PendingMessage
     func retry(_ clientId: String) async throws
     func draftConversation(openedFrom: String?) async -> String
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
@@ -302,7 +303,7 @@ package final class ChatController {
         let quoted = takeQuote()
         do {
             _ = try await source.sendFile(data, fileName: fileName, mime: mime, caption: caption, in: conversationId,
-                                          replyTo: quoted)
+                                          replyTo: quoted, voice: nil)
             sound(.sent)
             return nil
         } catch ClomniError.rejected {
@@ -312,6 +313,27 @@ package final class ChatController {
             return strings[.error]
         }
     }
+
+    /// A recorded voice message (CM-130): sent like a file, through the outbox (kept on the device, uploaded, then sent
+    /// with its length and waveform), so it waits with its clock while offline. The recording goes once the outbox has
+    /// its own copy. Returns the text to show when it could not go.
+    package func sendVoice(_ clip: VoiceClip) async -> String? {
+        let quoted = takeQuote()
+        defer { try? FileManager.default.removeItem(at: clip.file) }
+        do {
+            let data = try Data(contentsOf: clip.file)
+            _ = try await source.sendFile(data, fileName: clip.file.lastPathComponent, mime: Self.voiceMime, caption: nil,
+                                          in: conversationId, replyTo: quoted,
+                                          voice: ClientMessage.Voice(durationMs: clip.durationMs, waveform: clip.waveform))
+            sound(.sent)
+            return nil
+        } catch {
+            return strings[.error]
+        }
+    }
+
+    /// A recording's type: AAC in MP4 (.m4a), what the server plays and the panel's player opens.
+    package static let voiceMime = "audio/mp4"
 
     /// "Yeni söhbət başlat": this screen moves to a new conversation's draft, which the server creates with its
     /// first message.

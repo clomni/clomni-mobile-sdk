@@ -287,6 +287,9 @@ struct BubbleBody: View {
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel(Text(bubble.accessibilityLabel))
             .accessibilityHint(Text(bubble.accessibilityHint ?? "")))
+        case .voice(let note, let strings):
+            quoted(VoiceBubbleView(note: note, strings: strings, theme: theme, stamp: stamp)
+                .background(shape.fill(bubble.quote == nil ? fill : .clear)))
         case .form(let card):
             FormCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill,
                          stamp: stamp, submit: { values in await actions.submit(card.messageId, values) },
@@ -295,6 +298,29 @@ struct BubbleBody: View {
             RatingCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill, stamp: stamp,
                            rate: { score, comment in await actions.rate(card.messageId, score, comment) },
                            focus: actions.focus)
+        }
+    }
+}
+
+/// A voice message in its bubble (CM-130): the screen's player when there is one; a snapshot draws it as it stands
+/// before a tap.
+private struct VoiceBubbleView: View {
+    let note: VoiceNote
+    let strings: ClomniStrings
+    let theme: ClomniTheme
+    let stamp: BubbleStamp
+    @Environment(\.clomniVoicePlayback) private var playback
+
+    var body: some View {
+        if let playback {
+            VoiceMessageBubble(note: note, playback: playback, theme: theme, strings: strings) {
+                StampView(stamp: stamp, color: stamp.color(theme))
+            }
+        } else {
+            VoiceMessageContent(note: note, track: VoicePlayer.Track(), speed: .normal, theme: theme, strings: strings,
+                                toggle: {}, seek: { _ in }, cycleSpeed: {}) {
+                StampView(stamp: stamp, color: stamp.color(theme))
+            }
         }
     }
 }

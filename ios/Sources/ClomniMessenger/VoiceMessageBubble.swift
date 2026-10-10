@@ -9,6 +9,18 @@ import ClomniCore
 import ClomniPresentation
 #endif
 
+private struct VoicePlaybackKey: EnvironmentKey {
+    static let defaultValue: VoicePlayback? = nil
+}
+
+extension EnvironmentValues {
+    /// The conversation's player (`ChatModel.playback`); none in previews and snapshots.
+    var clomniVoicePlayback: VoicePlayback? {
+        get { self[VoicePlaybackKey.self] }
+        set { self[VoicePlaybackKey.self] = newValue }
+    }
+}
+
 /// `VoicePlayer` for SwiftUI: `version` moves with every change, so the bubbles reading it redraw.
 final class VoicePlayback: ObservableObject {
     let player: VoicePlayer

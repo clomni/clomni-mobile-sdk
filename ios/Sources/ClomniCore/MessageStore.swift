@@ -152,6 +152,14 @@ extension PendingMessage {
         self.init(conversationId: conversationId, message: ClientMessage(content: .text(text)), preview: text,
                   createdAt: Date())
     }
+
+    /// A file on its way, for a source other than the engine (the demo conversation's voice messages, CM-130):
+    /// `storedAs` names it in the source's own folder.
+    package init(file message: ClientMessage, fileName: String, mime: String, size: Int, storedAs: String,
+                 in conversationId: String) {
+        self.init(conversationId: conversationId, message: message, preview: nil, createdAt: Date())
+        upload = PendingUpload(fileName: fileName, mime: mime, size: size, storedAs: storedAs)
+    }
 }
 
 /// An attached file on its way: uploaded first (POST /uploads), then sent as an `attachment` message.
