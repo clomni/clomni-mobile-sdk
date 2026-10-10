@@ -300,11 +300,12 @@ struct AttachmentSheet: View {
 enum AttachmentSource {
     case media, camera, file
 
-    /// The camera, when the device has one and the app declared why it uses it (NSCameraUsageDescription).
+    /// The camera, when the device has one and the app declared why it uses it (NSCameraUsageDescription); without
+    /// that, the log says so (CameraOption).
     @MainActor
     static var cameraAvailable: Bool {
-        UIImagePickerController.isSourceTypeAvailable(.camera)
-            && Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") != nil
+        CameraOption.offered(deviceHasCamera: UIImagePickerController.isSourceTypeAvailable(.camera),
+                             usageDescription: Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription"))
     }
 }
 

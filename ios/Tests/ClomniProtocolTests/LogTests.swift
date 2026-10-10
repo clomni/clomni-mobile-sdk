@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(os)
+import os
+#endif
 import XCTest
 @testable import ClomniProtocol
 
@@ -60,6 +63,17 @@ final class LogTests: XCTestCase {
         XCTAssertEqual(levels.read { $0 }, [.warning, .debug])
         XCTAssertTrue(log.lines[1].hasPrefix("[Clomni] debug: unknown event"))
     }
+
+    #if canImport(os)
+    /// CM-087: what the app asked for shows where developers look. As `.debug` and `.info` the lines were hidden in
+    /// Console.app and `log stream` (and so in the React Native and Flutter log commands) unless told otherwise.
+    func testEveryLevelIsVisibleInTheSystemLog() {
+        XCTAssertEqual(ClomniLog.osLogType(.error), .error)
+        for level in [LogLevel.warning, .info, .debug] {
+            XCTAssertEqual(ClomniLog.osLogType(level), .default, level.name)
+        }
+    }
+    #endif
 
     func testTheSystemLogTakesALine() {
         ClomniLog.reset()

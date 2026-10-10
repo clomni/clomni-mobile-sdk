@@ -91,10 +91,10 @@ package struct ChatPresenter: Sendable {
             mode = .hidden
         } else if snapshot.conversation?.status == .closed {
             mode = .closed(text: strings[.closed], action: strings[.startNewConversation])
-        } else if snapshot.conversation?.flow?.holdsTheComposer == true {
+        } else if snapshot.conversation?.flow?.holdsTheComposer == true, !snapshot.flowStalled {
             // The server says whether a flow drives the conversation (operator, 2026-10-05): while it waits for a
             // button, a form or its next step there is no field; it waits for typed text, or it is over, and the field
-            // is back.
+            // is back. So it is when it waits for a choice that is no longer there (`flowStalled`).
             mode = .hidden
         }
         return ChatComposer(
@@ -149,16 +149,9 @@ package struct ChatPresenter: Sendable {
             previous = date
         }
 
-        // Only the newest bot message's choices, while nothing has answered it (operator, 2026-10-04, 72): a choice
-        // made, here or on another device, or anything the user wrote after it, and the choices are gone; old ones
-        // in the history are never drawn.
-        let lastOther = snapshot.messages.last { $0.sender.type != .user && $0.sender.type != .system }
-        let answeredLater = lastOther.map { last in
-            !snapshot.pending.isEmpty || snapshot.messages.contains { $0.sender.type == .user && $0.seq > last.seq }
-        } ?? true
-        let choicesFor = answeredLater ? nil : lastOther?.id
+        let choicesFor = Self.liveChoices(snapshot)
 
-        for message in snapshot.messages {
+        for message in Self.joinedFirst(snapshot.messages) {
             separate(key(message), message.createdAt)
             if case .system(let system) = message.content {
                 entries.append(.system(SystemLine(id: message.id, text: system.text,
@@ -177,8 +170,7 @@ package struct ChatPresenter: Sendable {
                 draft.copyText = copyText(message.content)
                 entries.append(.draft(draft))
             }
-            if case .quickReplies(let replies) = message.content, message.id == choicesFor,
-               snapshot.answerable.contains(message.id) {
+            if case .quickReplies(let replies) = message.content, message.id == choicesFor {
                 entries.append(.replies(block(message.id, replies)))
             }
         }
@@ -208,6 +200,49 @@ package struct ChatPresenter: Sendable {
         }
         markStatuses(&entries, snapshot)
         return runs(entries)
+    }
+
+    /// Only the newest bot message's choices, while nothing has answered it (operator, 2026-10-04, 72): a choice
+    /// made, here or on another device, or anything the user wrote after it, and the choices are gone; old ones in the
+    /// history are never drawn. The id of the message whose choices show, if any.
+    static func liveChoices(_ snapshot: ChatSnapshot) -> String? {
+        let lastOther = snapshot.messages.last { $0.sender.type != .user && $0.sender.type != .system }
+        guard let last = lastOther, snapshot.pending.isEmpty,
+              !snapshot.messages.contains(where: { $0.sender.type == .user && $0.seq > last.seq }),
+              case .quickReplies = last.content, snapshot.answerable.contains(last.id) else { return nil }
+        return last.id
+    }
+
+    /// How long before "Leyla söhbətə qoşuldu" her first messages may have been written for the line to go before them.
+    static let joinReach: TimeInterval = 300
+
+    /// The panel assigns an operator when she first replies, so the server numbers "Leyla söhbətə qoşuldu" after her
+    /// first messages (CM-087: the RN test on Android). The line goes before them: before the run of her messages
+    /// right in front of it, written within `joinReach` of it, when she wrote nothing earlier (then she joins again,
+    /// and the line stays where it is).
+    static func joinedFirst(_ messages: [Message]) -> [Message] {
+        var shown: [Message] = []
+        for message in messages {
+            guard case .system(let system) = message.content, system.event == .operatorJoined else {
+                shown.append(message)
+                continue
+            }
+            func hers(_ other: Message) -> Bool {
+                guard other.sender.type == .operator, let name = other.sender.name, !name.isEmpty else { return false }
+                return system.text.contains(name)
+            }
+            var start = shown.count
+            while start > 0, hers(shown[start - 1]),
+                  message.createdAt.timeIntervalSince(shown[start - 1].createdAt) <= joinReach {
+                start -= 1
+            }
+            if start < shown.count, !shown[..<start].contains(where: hers) {
+                shown.insert(message, at: start)
+            } else {
+                shown.append(message)
+            }
+        }
+        return shown
     }
 
     /// Every message of the user's has its mark after its time, in the bubble (G7): the clock while it goes, then ✓,

@@ -143,6 +143,7 @@ actor ApiClient {
         let response = try await request("POST", "/mobile/sessions", json: .object(body), auth: .app)
         let session = try read(response, ProtocolJSON.parseSession)
         keep(session)
+        ClomniLog.debug("session opened for \(session.anonymous ? "an anonymous visitor" : "user \(session.userId)")")
         self.identity = identity
         vault.setValue(identity, for: Key.identity)
         vault.setValue(session.anonymous ? session.userId : nil, for: Key.anonymousId)

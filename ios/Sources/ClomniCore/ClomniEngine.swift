@@ -23,8 +23,10 @@ package enum ClomniChange: Sendable, Equatable {
 /// The SDK below the screens: the session, the socket, the cache and the outbox (brief 8 · 9: Api, Realtime, Store).
 ///
 /// Messages are sent through the outbox: each one is on disk until the server has it, and is repeated with the same
-/// `client_id` until then, so a message written offline or lost with the connection arrives once. Three failed
-/// attempts mark it failed; `retry` sends it again.
+/// `client_id` until then, so a message written offline or lost with the connection arrives once. Without a connection
+/// it keeps its clock and waits, however long, and goes as soon as the network is back (CM-087: the RN test on
+/// Android). Only an answer counts against it: a refusal fails it at once, three server errors in a row fail it;
+/// `retry` sends it again.
 package actor ClomniEngine {
     static let attempts = 3
     static let cachedMessagesPerConversation = 100
@@ -49,6 +51,12 @@ package actor ClomniEngine {
     private var delivering: Task<Void, Never>?
     /// Tells a cancelled delivery loop apart from the one that replaced it.
     private var deliveryRun = 0
+    /// The delivery loop's wait for the network (`waitForNetwork`): the network coming back ends it at once.
+    private var networkWait: UUID?
+    /// Tries in a row that got no answer at all, for the wait before the next one.
+    private var unanswered = 0
+    /// The phone's network path (Network framework), followed while the socket is wanted.
+    var networkObserver: AnyObject?
     /// NotificationCenter observers of the app's foreground and background (iOS).
     var lifecycleObservers: [Any] = []
     private var filling: Set<String> = []
@@ -135,6 +143,10 @@ package actor ClomniEngine {
     /// `userHash` = hex(HMAC-SHA256(identity_secret, user_id)), computed on the customer's server. An anonymous user's
     /// conversations move to this user.
     package func loginUser(_ user: UserIdentity, userHash: String?) async throws {
+        // An empty name is none (a wrapper's "" for a missing one): the name kept with the identity stays, and the
+        // server is not told to clear it.
+        var user = user
+        if user.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true { user.name = nil }
         try await login(.user(user, hash: userHash))
     }
 
@@ -153,7 +165,7 @@ package actor ClomniEngine {
         guard session.sessionToken != previous?.sessionToken else {
             // The same session under a new name: Home greets them by it at once (G6).
             if await userName != previousName { notify(.session) }
-            return deliver()
+            return deliverNow()
         }
         // Another identified user's conversations are not this one's.
         if let previous, !previous.anonymous, previous.userId != session.userId {
@@ -164,7 +176,7 @@ package actor ClomniEngine {
             await realtime.stop()
             await realtime.start()
         }
-        deliver()
+        deliverNow()
     }
 
     /// Ends the session and deletes everything kept on this device for the user.
@@ -174,6 +186,7 @@ package actor ClomniEngine {
         delivering?.cancel()
         delivering = nil
         deliveryRun += 1
+        networkWait = nil
         await api.logout()
         // The server dropped this device's token with the session; the next login registers it again.
         if var registration = vault.value(PushRegistration.self, for: Files.push) {
@@ -207,9 +220,12 @@ package actor ClomniEngine {
         #if canImport(UIKit) && !os(watchOS)
         observeApplicationState()
         #endif
+        #if canImport(Network)
+        observeNetwork()
+        #endif
         await realtime.setHandler { [weak self] event in await self?.handle(event) }
         await realtime.start()
-        deliver()
+        deliverNow()
         Task { await self.registerPush() }
     }
 
@@ -225,7 +241,7 @@ package actor ClomniEngine {
 
     package func applicationWillEnterForeground() async {
         if wantsSocket { await realtime.start() }
-        deliver()
+        deliverNow()
         Task { await self.registerPush() }
     }
 
@@ -272,7 +288,7 @@ package actor ClomniEngine {
             try? await fetch(conversationId, after: newest)
             fillGaps(conversationId)
         }
-        deliver()
+        deliverNow()
     }
 
     // MARK: - Reading
@@ -315,6 +331,7 @@ package actor ClomniEngine {
         configLanguage = language
         do {
             if case .changed(let config, let body, let etag) = try await api.config(language: language, etag: configETag) {
+                ClomniLog.debug("config \(config.version) in \(language ?? "the server's language")")
                 self.config = config
                 configETag = etag
                 cache.write(body, Files.config)
@@ -509,7 +526,7 @@ package actor ClomniEngine {
         entry.upload = PendingUpload(fileName: fileName, mime: mime, size: data.count, storedAs: stored)
         outbox.add(entry)
         changed(conversationId)
-        deliver()
+        deliverNow()
         return entry
     }
 
@@ -560,7 +577,7 @@ package actor ClomniEngine {
             $0.fields = [:]
         }
         changed(outbox.entry(clientId)?.conversationId)
-        deliver()
+        deliverNow()
     }
 
     package func discard(_ clientId: String) {
@@ -587,9 +604,38 @@ package actor ClomniEngine {
                                    preview: preview, createdAt: time.now())
         entry.openedFrom = drafts[conversationId] ?? nil
         outbox.add(entry)
+        ClomniLog.debug("queued \(entry.id) for \(conversationId)")
         changed(conversationId)
-        deliver()
+        deliverNow()
         return entry
+    }
+
+    /// The outbox goes now: a delivery loop that waits for the network tries again at once (the socket is back, the
+    /// app came to the foreground, the user wrote or tapped retry); otherwise as `deliver`.
+    private func deliverNow() {
+        guard networkWait != nil, let waiting = delivering else { return deliver() }
+        networkWait = nil
+        waiting.cancel()
+        delivering = nil
+        unanswered = 0
+        deliver()
+    }
+
+    /// The phone has a way to the network again (the system says so, or a screen saw it): what waits in the outbox
+    /// goes at once rather than at the next try, and a socket waiting to reconnect tries now.
+    package func networkAvailable() async {
+        ClomniLog.debug("network is back")
+        if wantsSocket { await realtime.reconnectNow() }
+        deliverNow()
+    }
+
+    /// No answer: 1, 2, 4 … 30 s before the next try, unless the network comes back first (`deliverNow`).
+    private func waitForNetwork() async {
+        unanswered += 1
+        let wait = UUID()
+        networkWait = wait
+        defer { if networkWait == wait { networkWait = nil } }
+        try? await time.sleep(seconds: RealtimeClient.delay(afterFailures: unanswered - 1))
     }
 
     /// Works through the outbox in order, one message at a time.
@@ -635,8 +681,10 @@ package actor ClomniEngine {
                 entry = updated
             }
             let message = try await api.send(entry.message, to: entry.conversationId)
+            unanswered = 0
             removePending(entry.id)
             receive(message)
+            ClomniLog.debug("sent \(entry.id) as \(message.id)")
             return
         } catch ClomniError.server(409, let error) {
             // already_answered / stale_interaction: the server has moved on; show its copy of the message.
@@ -654,6 +702,12 @@ package actor ClomniEngine {
                 $0.fields = error?.fields ?? [:]
             }
         } catch is CancellationError {
+            return
+        } catch ClomniError.network(let reason) {
+            // No answer at all: the phone is offline, or the server cannot be reached. That is not the message's
+            // fault: it keeps its clock and waits for the connection.
+            ClomniLog.debug("send \(entry.id): no connection (\(reason)); it waits for the network")
+            await waitForNetwork()
             return
         } catch {
             outbox.update(entry.id) { $0.attempts += 1 }
@@ -800,6 +854,7 @@ package actor ClomniEngine {
             }
             registration.registeredFor = user
             vault.setValue(registration, for: Files.push)
+            ClomniLog.debug("push token registered (\(registration.sandbox ? "sandbox" : "production"))")
         } while registerPushAgain
     }
 

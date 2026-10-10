@@ -67,14 +67,7 @@ package enum ClomniLog {
 
     package static let system: @Sendable (LogLevel, String) -> Void = { level, line in
         #if canImport(os)
-        let type: OSLogType
-        switch level {
-        case .error: type = .error
-        case .warning: type = .default
-        case .info: type = .info
-        case .debug: type = .debug
-        }
-        logger.log(level: type, "\(format(level, line), privacy: .public)")
+        logger.log(level: osLogType(level), "\(format(level, line), privacy: .public)")
         #else
         print(format(level, line))
         #endif
@@ -82,6 +75,13 @@ package enum ClomniLog {
 
     #if canImport(os)
     private static let logger = Logger(subsystem: "ai.clomni.messenger", category: "Clomni")
+
+    /// Errors as errors; every other line as the system log's default. The lines below `warning` are written only
+    /// when the app asked for them (`setLogLevel`), and as `.info` or `.debug` Console.app, `log stream` and the
+    /// React Native and Flutter log commands hid them unless told otherwise (CM-087): the level is in the line.
+    package static func osLogType(_ level: LogLevel) -> OSLogType {
+        level == .error ? .error : .default
+    }
     #endif
 
     private struct Settings {

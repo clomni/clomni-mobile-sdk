@@ -215,11 +215,12 @@ final class FacadeTests: XCTestCase {
         XCTAssertTrue(Clomni.shouldShowForeground(clomniPush), "nothing is open")
         XCTAssertEqual(told.lines, [])
 
+        // The launcher, turned on before initialize, needs a session to open the messenger with: with nobody logged
+        // in, the anonymous visitor the messenger would make anyway, and then it shows (CM-087: it never did).
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
-        let made = await calls(including: "setDeviceToken ab01 production")
-        XCTAssertEqual(made, ["setDeviceToken ab01 production"])
-        XCTAssertEqual(runtime.coordinator?.launcher?.bottomPadding, nil, "the launcher waits for the SDK to be ready")
-        Clomni.loginUnidentifiedUser()
+        let made = await calls(including: "config")
+        XCTAssertEqual(made.filter { $0 != "setDeviceToken ab01 production" }, ["loginUnidentifiedUser", "connect", "config"])
+        XCTAssertTrue(made.contains("setDeviceToken ab01 production"))
         await settle()
         XCTAssertEqual(runtime.coordinator?.launcher?.bottomPadding, 64)
     }
@@ -381,13 +382,14 @@ final class FacadeTests: XCTestCase {
 
     func testPushes() async {
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
+        let initialized = log.all.count
         XCTAssertTrue(Clomni.isClomniPush(clomniPush))
         XCTAssertFalse(Clomni.isClomniPush(ownPush))
 
         // The app's own pushes stay the app's, without a word in the log.
         XCTAssertFalse(Clomni.handlePush(ownPush))
         XCTAssertTrue(Clomni.shouldShowForeground(ownPush))
-        XCTAssertEqual(log.all, [])
+        XCTAssertEqual(Array(log.all.dropFirst(initialized)), [])
 
         XCTAssertTrue(Clomni.shouldShowForeground(clomniPush), "closed: shown")
         XCTAssertEqual(told.lines, ["unread 1"], "its count reaches the app")
@@ -453,6 +455,25 @@ final class FacadeTests: XCTestCase {
             Clomni.setLogLevel(level)
             XCTAssertEqual(ClomniLog.level, expected)
         }
+    }
+
+    /// CM-087 (the RN test on Android): `setLogLevel(debug)`, as React Native, Flutter and Unity pass it, says it
+    /// arrived, and what the SDK does is then in the log: getting ready, opening and closing.
+    func testDebugLinesFollowSetLogLevel() async {
+        Clomni.setLogLevel(.debug)
+        XCTAssertTrue(log.contains("[Clomni] info: log level debug, SDK \(Clomni.version)"), "\(log.all)")
+        Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
+        Clomni.present(source: "profile_support")
+        Clomni.dismiss()
+        XCTAssertTrue(log.contains("[Clomni] debug: initialize app_8x2k0001 at https://app.clomni.ai/v1"), "\(log.all)")
+        XCTAssertTrue(log.contains("[Clomni] debug: messenger opened from profile_support"), "\(log.all)")
+        XCTAssertTrue(log.contains("[Clomni] debug: messenger closed"), "\(log.all)")
+        XCTAssertFalse(log.contains("ios_sdk-test"), "never the api key")
+
+        let before = log.all.count
+        Clomni.setLogLevel(.warning)
+        Clomni.present()
+        XCTAssertEqual(log.all.count, before, "below warning, nothing")
     }
 
     func testEventsCanBeReadBack() {

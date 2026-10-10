@@ -101,6 +101,12 @@ actor FakeChat: ChatDataSource {
     /// The last queued message failed to go.
     func failLast() { outbox[outbox.count - 1].state = .failed }
 
+    /// The server has what was queued: these are the conversation's messages now, and nothing is pending.
+    func delivered(_ messages: [Message], in id: String = "conv_5521") {
+        stored[id] = messages
+        outbox = []
+    }
+
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                   in conversationId: String, replyTo: String?) throws -> PendingMessage {
         guard data.count <= 10 else { throw ClomniError.rejected("file over 10 MB") }
@@ -480,6 +486,50 @@ final class ChatControllerTests: XCTestCase {
         XCTAssertEqual(chat.screen.composer.mode, .open)
     }
 
+    /// CM-087 (the RN test on Android): a choice whose "next" is null ends the flow's path, and the server keeps saying
+    /// it waits for a choice. With the choices gone and nothing more coming, the composer is back after 8 s; the next
+    /// step, when there is one, takes it away again.
+    func testAFlowThatWaitsForAChoiceNoLongerThereGivesTheComposerBack() async {
+        let step = Fixture.message("10-example-level2-S-chips.json")
+        await source.set([step], answerable: [step.id])
+        await source.setConversation(Fixture.onAMenu)
+        let chat = controller()
+        await chat.load()
+        XCTAssertEqual(chat.screen.composer.mode, .hidden, "the choices are there to answer")
+        XCTAssertNil(chat.stallWait)
+
+        await chat.tap("o_t", in: step.id)
+        XCTAssertEqual(chat.screen.composer.mode, .hidden, "the answer is on its way")
+        XCTAssertNil(chat.stallWait)
+        let answer = Fixture.message("03-text-user.json", ["id": "msg_u2", "seq": 2, "content": ["text": "Velosiped dayandı"]])
+        await source.delivered([step, answer])
+        await source.push(.messages(conversationId: "conv_5521"))
+        await chat.settled()
+        XCTAssertEqual(chat.screen.composer.mode, .hidden, "the next step may still come")
+        await timer.waitForSleepers(1)
+        let waited = await timer.durations
+        XCTAssertEqual(waited, [8])
+        await timer.fire()
+        await chat.stallWait?.value
+        XCTAssertEqual(chat.screen.composer.mode, .open, "nothing came: the user can write")
+
+        // A next step after all: its choices, and no composer.
+        let next = Fixture.message("10-example-level2-S-chips.json", ["id": "msg_n3", "seq": 3])
+        await source.set([step, answer, next], answerable: [next.id])
+        await source.push(.messages(conversationId: "conv_5521"))
+        await chat.settled()
+        XCTAssertEqual(chat.screen.composer.mode, .hidden)
+        XCTAssertTrue(chat.screen.items.contains { if case .replies = $0 { return true }; return false })
+
+        // The flow ends properly: the composer is back at once, with no wait.
+        await source.set([step, answer, next, Fixture.message("03-text-user.json", ["id": "msg_u4", "seq": 4])])
+        await source.put(Fixture.conversation(status: "bot"))
+        await source.push(.conversations)
+        await chat.settled()
+        XCTAssertEqual(chat.screen.composer.mode, .open)
+        XCTAssertNil(chat.stallWait)
+    }
+
     func testOtherChangesAndStop() async throws {
         let chat = controller()
         await chat.load()
@@ -522,6 +572,36 @@ final class ChatControllerTests: XCTestCase {
         XCTAssertEqual(chat.conversationId, "conv_new", "another draft's")
         made = await calls()
         XCTAssertFalse(made.contains("start"))
+    }
+
+    /// CM-087 (the RN test on Android): without `setLanguage` every frame speaks one language, the one the panel's
+    /// config picks for the phone. The conversation's first frame spoke az whatever the phone and the panel said.
+    func testEveryFrameSpeaksTheSameLanguage() async throws {
+        let russianOnly = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"languages":{"enabled":["ru"],"default":"ru"}}"#.utf8)))
+        await source.setConfig(russianOnly)
+        let (timer, pollTimer) = (timer, pollTimer)
+        let chat = ChatController(source: source, conversationId: "conv_5521", language: nil, config: russianOnly,
+                                  sleep: { try await timer.sleep($0) }, poll: { try await pollTimer.sleep($0) })
+        XCTAssertEqual(chat.screen.loadingLabel, "Загрузка", "the first frame")
+        await chat.load()
+        XCTAssertEqual(chat.screen.loadingLabel, "Загрузка", "once loaded")
+        await chat.stop()
+
+        // No config at all (offline, first launch): the rule Home and the launcher use, the phone's language if it
+        // is one of the three; the same before the load as after it.
+        await source.setConfig(nil)
+        let bare = ChatController(source: source, conversationId: "conv_5521", language: nil,
+                                  sleep: { try await timer.sleep($0) }, poll: { try await pollTimer.sleep($0) })
+        let home = HomeController(source: FakeSource(), language: nil, userName: nil)
+        let phone = ClomniStrings(language: MessengerConfig?.none.speaks(nil))[.loading]
+        XCTAssertEqual(bare.screen.loadingLabel, phone)
+        XCTAssertEqual(home.home.loadingLabel, phone)
+        await bare.load()
+        XCTAssertEqual(bare.screen.loadingLabel, phone)
+        await bare.stop()
+        // The host's language, when the panel has it on, wins in the first frame too.
+        let english = ChatController(source: source, conversationId: "conv_5521", language: "en")
+        XCTAssertEqual(english.screen.loadingLabel, "Loading")
     }
 
     func testTheEngineIsAChatSource() {

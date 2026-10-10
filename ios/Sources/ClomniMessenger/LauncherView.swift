@@ -18,10 +18,17 @@ import ClomniPresentation
 final class LauncherController {
     private var window: LauncherWindow?
 
+    /// false when there is no scene in the foreground yet, or no key window to take the safe area from (a cold start
+    /// whose `initialize` came first): the caller shows it again once there is.
+    @discardableResult
     func show(_ state: LauncherState, config: MessengerConfig?, typeface: Typeface?, themeOverride: ThemeOverride,
-              tap: @escaping () -> Void) {
-        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive }) else { return }
+              tap: @escaping () -> Void) -> Bool {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive })
+            ?? scenes.first(where: { $0.activationState == .foregroundInactive }) else {
+            ClomniLog.debug("launcher: no scene in the foreground yet")
+            return false
+        }
         let window = self.window ?? LauncherWindow(windowScene: scene)
         let button = LauncherButton(state: state, config: config, typeface: typeface, themeOverride: themeOverride,
                                     tap: tap)
@@ -36,13 +43,16 @@ final class LauncherController {
         let margin: CGFloat = 16
         let side = CGFloat(LauncherState.size) + 2 * margin
         let screen = scene.coordinateSpace.bounds
-        let insets = scene.windows.first { $0.isKeyWindow }?.safeAreaInsets ?? .zero
+        let key = scene.windows.first { $0.isKeyWindow }
+        let insets = (key ?? scene.windows.first { !($0 is LauncherWindow) })?.safeAreaInsets ?? .zero
         let edge = CGFloat(LauncherState.edgePadding) - margin
         let x = state.side == .left ? insets.left + edge : screen.width - insets.right - edge - side
         let y = screen.height - insets.bottom - edge - CGFloat(state.bottomPadding) - side
         window.frame = CGRect(x: x, y: y, width: side, height: side)
+        if window.isHidden { ClomniLog.debug("launcher shown") }
         window.isHidden = false
         self.window = window
+        return key != nil
     }
 
     func hide() {
@@ -101,6 +111,7 @@ struct LauncherButton: View {
         .buttonStyle(LauncherPressStyle())
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(Text(state.accessibilityLabel))
+        .accessibilityIdentifier("clomni.launcher")
         .environment(\.clomniTypeface, typeface)
         .environment(\.clomniThemeOverride, themeOverride)
     }

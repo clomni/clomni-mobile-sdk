@@ -308,6 +308,19 @@ extension ChatSnapshot {
     }
 }
 
+extension ChatSnapshot {
+    /// The flow holds the composer for a choice or a form, yet nothing on screen answers it: its choices were taken
+    /// and no step came after (a choice that leads nowhere, "next": null, CM-087), and nothing is on its way.
+    package var waitsForNothingShown: Bool {
+        guard let flow = conversation?.flow, flow.holdsTheComposer, flow.awaiting == "menu" || flow.awaiting == "form",
+              pending.isEmpty, ChatPresenter.liveChoices(self) == nil else { return false }
+        return !messages.contains { message in
+            if case .form(let form) = message.content { return form.submitted == nil && answerable.contains(message.id) }
+            return false
+        }
+    }
+}
+
 extension Sender {
     /// This sender is the one shown `typing`: the same kind, and the same person when both are named; a bot is a bot.
     package func isTyping(_ typing: Sender) -> Bool {
@@ -336,6 +349,9 @@ package struct ChatSnapshot: Sendable, Equatable {
     package var known: [String: String] = [:]
     /// The message the user is answering (swipe or "Cavabla"), until it is sent or dismissed.
     package var replyingTo: String?
+    /// The flow says it waits for a choice or a form that is not there to answer (`waitsForNothingShown`), and has
+    /// for a while: the composer is back, so the user is not stuck.
+    package var flowStalled = false
 
     package init(config: MessengerConfig? = nil, conversation: Conversation? = nil, messages: [Message] = []) {
         self.config = config

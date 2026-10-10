@@ -21,6 +21,7 @@ Clomni: static func setSoundsEnabled(_ enabled: Bool)
 Clomni: static func setTheme(primaryColor: String? = nil, typeface: String? = nil, mode: ClomniThemeMode? = nil)
 Clomni: static func setTypeface(_ familyName: String?)
 Clomni: static func shouldShowForeground(_ userInfo: [AnyHashable: Any]) -> Bool
+Clomni: static func startDemoLauncher()
 Clomni: static func startFlow(_ event: String, data: [String: Any] = [:], openMessenger: Bool = false, source: String? = nil)
 Clomni: static func updateUser(name: String? = nil, language: String? = nil, customAttributes: [String: Any]? = nil)
 Clomni: static let version: String

@@ -60,9 +60,12 @@ public enum Clomni {
         MainThread.run { ClomniRuntime.shared.logout() }
     }
 
-    /// `none` writes nothing; the default is `warning`. Lines go to the system log as "[Clomni] error: …".
+    /// `none` writes nothing; the default is `warning`. Lines go to the system log as "[Clomni] error: …", every
+    /// level visible in Xcode, Console.app and `log stream` as it is (subsystem ai.clomni.messenger).
     public static func setLogLevel(_ level: ClomniLogLevel) {
         ClomniLog.level = level.level
+        // The first line at that level: the call reached the SDK (from React Native, Flutter or Unity too).
+        ClomniLog.info("log level \(level.level?.name ?? "none"), SDK \(SDKInfo.version)")
     }
 
     // MARK: - Opening the messenger

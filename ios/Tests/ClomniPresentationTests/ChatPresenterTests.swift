@@ -429,6 +429,49 @@ final class ChatPresenterTests: XCTestCase {
         }
     }
 
+    /// CM-087 (the RN test on Android): the panel assigns Leyla when she first replies, so the server numbers
+    /// "Leyla söhbətə qoşuldu" after her first messages. The line stands before them.
+    func testTheOperatorJoinsBeforeHerFirstMessages() {
+        func leyla(_ seq: Int, _ at: String, _ text: String) -> Message {
+            Fixture.message("02-text-operator-markdown.json", ["id": .string("msg_l\(seq)"), "seq": .number(Double(seq)),
+                                                               "created_at": .string(at), "content": ["text": .string(text)]])
+        }
+        let user = Fixture.message("03-text-user.json", ["id": "msg_u1", "seq": 1, "created_at": "2026-10-01T10:38:00Z"])
+        func joined(_ seq: Int, _ at: String) -> Message {
+            Fixture.message("23-system-operator-joined.json", ["id": .string("msg_j\(seq)"), "seq": .number(Double(seq)),
+                                                               "created_at": .string(at)])
+        }
+        func order(_ messages: [Message]) -> [String] {
+            screen(messages).items.compactMap { item -> String? in
+                switch item {
+                case .bubble(let bubble): return text(bubble)
+                case .system(let line): return line.text
+                default: return nil
+                }
+            }
+        }
+        XCTAssertEqual(order([user, leyla(2, "2026-10-01T10:40:10Z", "Salam"), leyla(3, "2026-10-01T10:40:30Z", "Baxıram"),
+                              joined(4, "2026-10-01T10:40:31Z")]),
+                       ["Gedişim bitmədi, pul çıxılmağa davam edir", "Leyla söhbətə qoşuldu", "Salam", "Baxıram"])
+        XCTAssertEqual(ChatPresenter.joinedFirst([user, leyla(2, "2026-10-01T10:40:10Z", "Salam"),
+                                                  joined(3, "2026-10-01T10:40:31Z")]).map(\.id),
+                       ["msg_u1", "msg_j3", "msg_l2"])
+
+        // Where it already stands, it stays: before her messages; after someone else's; when she wrote earlier (she
+        // joins again); after messages of hers long before it.
+        XCTAssertEqual(ChatPresenter.joinedFirst([user, joined(2, "2026-10-01T10:40:00Z"), leyla(3, "2026-10-01T10:40:10Z", "Salam")])
+            .map(\.id), ["msg_u1", "msg_j2", "msg_l3"])
+        let rauf = Fixture.message("02-text-operator-markdown.json", ["id": "msg_r2", "seq": 2, "created_at": "2026-10-01T10:40:10Z",
+                                                                      "sender": ["type": "operator", "name": "Rauf"]])
+        XCTAssertEqual(ChatPresenter.joinedFirst([user, rauf, joined(3, "2026-10-01T10:40:31Z")]).map(\.id),
+                       ["msg_u1", "msg_r2", "msg_j3"])
+        XCTAssertEqual(ChatPresenter.joinedFirst([leyla(1, "2026-10-01T10:30:00Z", "Əvvəl"), user,
+                                                  leyla(3, "2026-10-01T10:40:10Z", "Yenə"), joined(4, "2026-10-01T10:40:31Z")])
+            .map(\.id), ["msg_l1", "msg_u1", "msg_l3", "msg_j4"])
+        XCTAssertEqual(ChatPresenter.joinedFirst([user, leyla(2, "2026-10-01T10:30:00Z", "Çoxdan"), joined(3, "2026-10-01T10:40:31Z")])
+            .map(\.id), ["msg_u1", "msg_l2", "msg_j3"])
+    }
+
     /// CM-087: a rating is a card of its own, open until answered; the answer on its way or sent locks it with the
     /// thanks, a failed one opens it again.
     func testRating() throws {

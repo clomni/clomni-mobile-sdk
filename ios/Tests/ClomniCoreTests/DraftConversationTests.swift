@@ -142,7 +142,7 @@ final class DraftConversationTests: EngineTestCase {
         server.inject(.offline, "POST", "/conversations")
         let draft = await before.engine.draftConversation(openedFrom: "ride_screen")
         let pending = try await before.engine.sendText("Yazdım və çıxdım", in: draft)
-        await expect { await before.pending(draft).first?.attempts == 1 }
+        await expect { self.server.requests("POST", "/conversations").count == 1 && frozen.sleeping == 1 }
 
         let after = await device(cache: before.cache, vault: before.vault)
         let fromDisk = await after.pending(draft).map(\.id)

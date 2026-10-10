@@ -64,7 +64,25 @@ final class TextLinksTests: XCTestCase {
         XCTAssertEqual(links("HTTPS://EXAMPLE.COM"), ["HTTPS://EXAMPLE.COM → HTTPS://EXAMPLE.COM"])
         XCTAssertEqual(links("https://example.com/ödəniş"), ["https://example.com/ödəniş → https://example.com/%C3%B6d%C9%99ni%C5%9F"])
         XCTAssertEqual(links("link:https://example.com"), ["https://example.com → https://example.com"])
-        XCTAssertEqual(links("https:// www. www.example https://localhost awww.example.com example.com"), [], "no host, or none at all")
+        XCTAssertEqual(links("https:// www. www.example https://localhost"), [], "no host, or none at all")
+    }
+
+    /// A bare domain is a link as an email and a phone number are (the RN test on Android, CM-087), when it ends in a
+    /// known top-level domain: numbers, versions, file names and abbreviations are not.
+    func testBareDomains() {
+        XCTAssertEqual(links("Bizim sayt clomni.ai, ətraflı orada."), ["clomni.ai → https://clomni.ai"])
+        XCTAssertEqual(links("(example.com.az/qiymet?x=1) və shop-1.example.co/ödəniş."),
+                       ["example.com.az/qiymet?x=1 → https://example.com.az/qiymet?x=1",
+                        "shop-1.example.co/ödəniş → https://shop-1.example.co/%C3%B6d%C9%99ni%C5%9F"])
+        XCTAssertEqual(links("Qeydiyyat clomni.ai-da, sonra «Clomni.ai»."),
+                       ["clomni.ai → https://clomni.ai", "Clomni.ai → https://Clomni.ai"])
+        XCTAssertEqual(links("awww.example.com"), ["awww.example.com → https://awww.example.com"])
+        XCTAssertEqual(links("Versiya 1.5, v1.0, 3.14.az, fayl.txt, index.html, e.g. və s. Salam.Az qaldı. Ad.Soyad"), [],
+                       "numbers, versions, files, abbreviations, a sentence with no space after its dot")
+        XCTAssertEqual(links("aysel@clomni.ai https://clomni.ai www.clomni.ai"),
+                       ["aysel@clomni.ai → mailto:aysel@clomni.ai", "https://clomni.ai → https://clomni.ai",
+                        "www.clomni.ai → https://www.clomni.ai"], "an email or an address stays what it is")
+        XCTAssertEqual(links("-clomni.ai clomni-.ai clomni..ai .ai"), [])
     }
 
     func testEmails() {
@@ -207,5 +225,65 @@ final class MediaTests: XCTestCase {
                        "English, 2 of 3")
         XCTAssertEqual(ClomniStrings(language: "ru").buttonPosition(title: "Русский", index: 3, count: 3),
                        "Русский, 3 из 3")
+    }
+}
+
+/// CM-087 (the RN test on Android): the attachment sheet has the camera when the app may use it; without the app's
+/// NSCameraUsageDescription iOS would stop the app as it opens, so the row is not there and the log says why, once.
+final class CameraOptionTests: XCTestCase {
+    override func tearDown() {
+        ClomniLog.reset()
+        super.tearDown()
+    }
+
+    func testTheCameraIsOfferedOnlyWithItsUsageDescription() {
+        let lines = Locked<[String]>([])
+        ClomniLog.handler = { level, line in lines.write { $0.append(ClomniLog.format(level, line)) } }
+        XCTAssertTrue(CameraOption.offered(deviceHasCamera: true, usageDescription: "Söhbətə şəkil çəkib göndərmək üçün."))
+        XCTAssertFalse(CameraOption.offered(deviceHasCamera: false, usageDescription: "Şəkil"), "no camera (a simulator)")
+        XCTAssertEqual(lines.read { $0 }, [])
+        XCTAssertFalse(CameraOption.offered(deviceHasCamera: true, usageDescription: nil))
+        XCTAssertFalse(CameraOption.offered(deviceHasCamera: true, usageDescription: "  "), "an empty text is none")
+        XCTAssertEqual(lines.read { $0 },
+                       ["[Clomni] warning: the camera is not offered: the app's Info.plist has no NSCameraUsageDescription"],
+                       "said once")
+    }
+}
+
+/// CM-087, the operator's iPhone: a ~40 pt band between the composer and the emoji keyboard. The composer's bottom
+/// is the keyboard's top for every keyboard height, the home indicator counted once (the keyboard covers it).
+final class KeyboardInsetTests: XCTestCase {
+    /// An iPhone 16 in points: 874 high, the content ending 34 over the bottom (the home indicator).
+    private let screen = 874.0
+    private let homeIndicator = 34.0
+
+    /// Where the composer ends: the content's bottom, lifted by the padding.
+    private func composerBottom(keyboard height: Double?, safeArea: Double = 34) -> Double {
+        screen - safeArea - KeyboardInset.padding(keyboardHeight: height, safeAreaBottom: safeArea)
+    }
+
+    func testTheComposerStandsOnEveryKeyboard() {
+        // The letters with their suggestions, without them, the emoji keyboard with its search field, the letters
+        // again, a taller one (a language with a candidate bar): the keyboard's top every time, no band, no overlap.
+        for height in [336.0, 291, 380, 336, 400] {
+            XCTAssertEqual(composerBottom(keyboard: height), screen - height, "a keyboard \(height) high")
+        }
+        XCTAssertEqual(KeyboardInset.padding(keyboardHeight: 336, safeAreaBottom: homeIndicator), 302,
+                       "the keyboard less the home indicator it covers, not the whole keyboard on top of it")
+    }
+
+    func testDownFloatingOrBarelyThere() {
+        XCTAssertEqual(composerBottom(keyboard: nil), screen - homeIndicator, "down: over the home indicator")
+        XCTAssertEqual(KeyboardInset.padding(keyboardHeight: nil, safeAreaBottom: 34), 0, "floating (iPad): nothing covered")
+        // A hardware keyboard: only its bar, or nothing, at the bottom.
+        XCTAssertEqual(composerBottom(keyboard: 55), screen - 55, "a hardware keyboard's bar")
+        XCTAssertEqual(composerBottom(keyboard: 20), screen - homeIndicator, "a bar lower than the home indicator lifts nothing")
+        XCTAssertEqual(composerBottom(keyboard: 0), screen - homeIndicator)
+    }
+
+    func testWithoutAHomeIndicator() {
+        // An iPhone with a home button: nothing under the content, the whole keyboard is lifted.
+        XCTAssertEqual(KeyboardInset.padding(keyboardHeight: 260, safeAreaBottom: 0), 260)
+        XCTAssertEqual(composerBottom(keyboard: 260, safeArea: 0), screen - 260)
     }
 }

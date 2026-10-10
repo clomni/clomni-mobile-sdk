@@ -207,6 +207,27 @@ final class EngineTests: EngineTestCase {
         XCTAssertNil(name)
     }
 
+    /// CM-087 (the RN test on Android): the greeting's name is kept with the identity, on this device. The next launch
+    /// greets the user by it without `loginUser`; a login without a name, or with an empty one, keeps it; a name set
+    /// by `updateUser` is the one kept.
+    func testTheNameIsKeptWithTheIdentityAcrossLaunches() async throws {
+        let phone = await device()
+        try await phone.engine.loginUser(UserIdentity(userId: "5", name: "Aysel"), userHash: nil)
+
+        let relaunched = await device(cache: phone.cache, vault: phone.vault)
+        var name = await relaunched.engine.userName
+        XCTAssertEqual(name, "Aysel", "no loginUser at this launch")
+        try await relaunched.engine.loginUser(UserIdentity(userId: "5", name: "  "), userHash: nil)
+        name = await relaunched.engine.userName
+        XCTAssertEqual(name, "Aysel", "an empty name is no name")
+        _ = try await relaunched.engine.updateUser(["name": "Aysel Məmmədova"])
+
+        let again = await device(cache: phone.cache, vault: phone.vault)
+        name = await again.engine.userName
+        XCTAssertEqual(name, "Aysel Məmmədova")
+        XCTAssertEqual(server.requests("POST", "/mobile/sessions").count, 1, "one session all along")
+    }
+
     func testAnotherPersonGetsANewSession() async throws {
         let phone = await device()
         try await phone.engine.loginUser(UserIdentity(userId: "1"), userHash: "hash_1")
@@ -282,7 +303,7 @@ final class EngineTests: EngineTestCase {
         server.inject(.offline, "POST", "/messages")
         let pending = try await before.engine.sendFile(Data("pdf".utf8), fileName: "qaime.pdf", mime: "application/pdf",
                                                        caption: nil, in: id)
-        await expect { await before.pending(id).first?.attempts == 1 }
+        await expect { self.server.requests("POST", "/messages").count == 1 && frozen.sleeping == 1 }
         let uploaded = await before.pending(id).first?.upload?.uploadId
         XCTAssertEqual(uploaded, "upl_1")
 
@@ -464,6 +485,8 @@ final class EngineTests: EngineTestCase {
         } catch {
             XCTAssertEqual(error as? ClomniError, .rejected("rating not open"))
         }
+        // The answer is still out (held): a second one is refused. Once it has failed, a new one may take its place.
+        server.hold("POST", "/messages")
         try await phone.engine.submitRating(rating, score: 5, comment: "Tez cavab verdiniz")
         do {
             try await phone.engine.submitRating(rating, score: 4, comment: nil)
@@ -471,6 +494,7 @@ final class EngineTests: EngineTestCase {
         } catch {
             XCTAssertEqual(error as? ClomniError, .rejected("rating not open"))
         }
+        server.release()
         await expect { await phone.pending("conv_5521").count == 2 && phone.changes.all.count > 0 }
         await expect { self.server.requests("POST", "/messages").count == 3 }
         XCTAssertEqual(body(server.requests("POST", "/messages").last)?["content"],

@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// The messenger's conversation on a simulator, in the page sheet the SDK presents, driven like a user
@@ -9,6 +10,8 @@ final class KeyboardTests: XCTestCase {
     private var app: XCUIApplication!
     /// Under the last message when the list is at its end: ChatTranscript's bottom padding (Space.s).
     private static let listBottomPadding: CGFloat = 8
+    /// Under the composer's field: ComposerView's vertical padding (Space.s).
+    private static let composerBottomPadding: CGFloat = 8
 
     private func launch(_ arguments: [String] = []) {
         continueAfterFailure = false
@@ -186,6 +189,135 @@ final class KeyboardTests: XCTestCase {
         XCTAssertEqual(bar.minY - frame.maxY, Self.listBottomPadding, accuracy: 2,
                        "at the end, the list's padding between the answer \(frame) and the composer \(bar)")
         XCTAssertFalse(capsule.exists, "the capsule is gone")
+    }
+
+    /// The operator's iPhone (2026-10-09, dark mode, the emoji keyboard): a dark band of about 40 pt stood between the
+    /// composer and the keyboard. The composer stands right on the keyboard, in the messenger's page sheet. (Other
+    /// keyboard heights, the emoji keyboard's among them, are KeyboardInsetTests': the simulator's keyboard switch
+    /// is not one to rely on.)
+    func testTheComposerStandsOnTheKeyboard() {
+        launch()
+        standsOnTheKeyboard("sheet")
+    }
+
+    /// The same in a full-screen presentation, where the screen reaches the home indicator.
+    func testTheComposerStandsOnTheKeyboardFullScreen() {
+        launch(["-ClomniDemoFullScreen"])
+        standsOnTheKeyboard("full-screen")
+    }
+
+    private func standsOnTheKeyboard(_ presentation: String, file: StaticString = #filePath, line: UInt = #line) {
+        let field = element("clomni.composer.field")
+        XCTAssertTrue(field.waitForExistence(timeout: 15), file: file, line: line)
+        // Down: the field at the bottom, over the home indicator (the composer's background reaches under it).
+        let down = settled(field)
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(down.maxY, window.maxY - 80, "\(presentation): down, the field \(down) is at the bottom",
+                             file: file, line: line)
+        XCTAssertLessThan(down.maxY, window.maxY - 20, "and over the home indicator", file: file, line: line)
+
+        field.tap()
+        onTheKeyboard(field, "\(presentation)-letters", file: file, line: line)
+        // Typed text changes the suggestions over the letters, not where the composer stands.
+        field.typeText("Salam")
+        onTheKeyboard(field, "\(presentation)-typing", file: file, line: line)
+    }
+
+    /// The composer's bottom on the keyboard's top, within a point, read from the screen's pixels: under the field's
+    /// grey only the composer's own 8 pt of padding, then the keyboard; no band of the page between them, and no
+    /// keyboard over the field. (XCUITest's keyboard frame leaves out the suggestions over the letters, and the
+    /// composer's frame reaches under the home indicator while it is down.)
+    private func onTheKeyboard(_ field: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        _ = settledKeyboard(file: file, line: line)
+        let frame = settled(field)
+        let screenshot = app.screenshot()
+        keep(name)
+        let white = whiteUnder(frame, in: screenshot.image)
+        XCTAssertEqual(white - Self.composerBottomPadding, 0, accuracy: 1,
+                       "\(name): \(white - Self.composerBottomPadding) pt between the composer (field \(frame)) and the keyboard",
+                       file: file, line: line)
+    }
+
+    /// How much white is under the field's grey background before something else (the keyboard) begins, in points:
+    /// read down the screenshot from just under the field's text. 0 when the field's grey runs into the keyboard.
+    private func whiteUnder(_ field: CGRect, in image: UIImage) -> CGFloat {
+        guard let picture = image.cgImage else { return -1 }
+        let width = picture.width, height = picture.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(picture, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return -1 }
+        let scale = CGFloat(width) / image.size.width
+        let x = Int(field.midX * scale)
+        func isWhite(_ y: Int) -> Bool {
+            let offset = (y * width + x) * 4
+            return bytes[offset] > 250 && bytes[offset + 1] > 250 && bytes[offset + 2] > 250
+        }
+        // The field's grey goes on at most 20 pt under its text; where it ends the white starts, or the keyboard.
+        var y = Int((field.maxY + 1) * scale)
+        let greyEnds = min(height, Int((field.maxY + 20) * scale))
+        while y < greyEnds, !isWhite(y) { y += 1 }
+        guard y < greyEnds else { return 0 }
+        let start = y
+        while y < height, isWhite(y) { y += 1 }
+        return CGFloat(y - start) / scale
+    }
+
+    /// CM-087 (the RN test on Android): a picked file opens its strip over the composer; the end of the conversation
+    /// comes into sight over it, also when the user was reading further up. The demo picks a picture ten seconds
+    /// after "Şəkil göndərirəm", as the photo library would hand it over.
+    func testAPickedFileBringsTheEndIntoSightOverItsStrip() {
+        launch()
+        let composer = element("clomni.composer.field")
+        XCTAssertTrue(composer.waitForExistence(timeout: 15))
+        composer.tap()
+        _ = settledKeyboard()
+        composer.typeText("Şəkil göndərirəm")
+        element("clomni.composer.send").tap()
+        let sent = labelled("Şəkil göndərirəm")
+        XCTAssertTrue(sent.waitForExistence(timeout: 3))
+        // Back into the history, well past what still counts as the end, the drag over and held.
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 350)), withVelocity: .default,
+                    thenHoldForDuration: 0.3)
+        keep("reading-above-before-the-file")
+
+        let picked = labelled("image.jpg")
+        XCTAssertTrue(picked.waitForExistence(timeout: 15), "the picture's strip over the composer")
+        let bubble = settled(sent)
+        let strip = settled(picked)
+        let field = settled(composer)
+        keep("file-picked")
+        XCTAssertLessThanOrEqual(strip.maxY, field.minY, "the strip \(strip) is over the field \(field)")
+        onTheKeyboard(composer, "file-picked-on-the-keyboard")
+        XCTAssertLessThan(bubble.maxY, strip.minY, "the last message \(bubble) is over the strip \(strip)")
+        XCTAssertGreaterThan(bubble.minY, 0)
+        XCTAssertEqual(settled(element("clomni.composer")).minY - bubble.maxY, Self.listBottomPadding, accuracy: 2,
+                       "at the list's very end")
+    }
+
+    /// CM-087 (the RN test on Android, where TalkBack read the last bot message twice): a message is one element for
+    /// VoiceOver, the last of the bot's and of the operator's too, and a step that comes after a choice.
+    func testTheLastMessagesAreOneElementEach() {
+        launch(["-ClomniDemoFlow"])
+        XCTAssertTrue(labelled("Nə baş verib? (1)").waitForExistence(timeout: 15))
+        keep("one-element-each")
+        XCTAssertEqual(count("Nə baş verib? (1)"), 1, "the bot's last message")
+        XCTAssertEqual(count("Başqa sualınız olsa, yazın"), 1, "the operator's last message")
+        labelled("Velosiped dayandı 1").tap()
+        XCTAssertTrue(labelled("Nə baş verib? (2)").waitForExistence(timeout: 10))
+        XCTAssertEqual(count("Nə baş verib? (2)"), 1, "the next step")
+        XCTAssertEqual(count("Velosiped dayandı 1"), 1, "the choice, now the user's message")
+    }
+
+    /// How many elements VoiceOver has whose words contain `text`.
+    private func count(_ text: String) -> Int {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).count
     }
 
     // MARK: - Helpers

@@ -116,6 +116,14 @@ actor RealtimeClient {
         state = .stopped
     }
 
+    /// The network is back: a socket waiting out its backoff (up to 30 s) connects now.
+    func reconnectNow() {
+        guard case .waiting = state else { return }
+        stop()
+        failures = 0
+        start()
+    }
+
     /// 1, 2, 4, 8, 16, 30, 30 … seconds.
     static func delay(afterFailures failures: Int) -> Double {
         min(30, pow(2, Double(min(failures, 5))))
@@ -126,6 +134,7 @@ actor RealtimeClient {
             var opened: WebSocketConnection?
             do {
                 state = .connecting
+                ClomniLog.debug("socket connecting")
                 let url = try await address()
                 guard generation == self.generation else { return }
                 let connection = transport.connect(url)
@@ -142,6 +151,7 @@ actor RealtimeClient {
             let delay = Self.delay(afterFailures: failures)
             failures += 1
             state = .waiting(delay)
+            ClomniLog.debug("socket reconnects in \(Int(delay)) s")
             try? await time.sleep(seconds: delay)
         }
     }
@@ -188,6 +198,7 @@ actor RealtimeClient {
             heartbeat = Double(max(1, heartbeatSec))
             failures = 0
             state = .connected
+            ClomniLog.debug("socket connected")
         }
         await handler?(event)
     }

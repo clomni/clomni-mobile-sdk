@@ -1,8 +1,8 @@
 import Foundation
 
 /// Web addresses, emails and phone numbers written as plain text in a message, made tappable (CM-087): `https://`,
-/// `http://` and `www.` addresses, `name@domain.tld`, and `+994…` or any 9 to 15 digits (spaces, dashes and
-/// parentheses between them). A scanner of its own rather than NSDataDetector, which Linux's Foundation lacks: the
+/// `http://` and `www.` addresses, a bare domain of a known top-level domain (`clomni.ai`, `example.com.az/qiymet`),
+/// `name@domain.tld`, and `+994…` or any 9 to 15 digits (spaces, dashes and parentheses between them). A scanner of its own rather than NSDataDetector, which Linux's Foundation lacks: the
 /// same rules on every platform, and tested where the tests run.
 package enum TextLinks {
     package struct Match: Sendable, Equatable {
@@ -43,7 +43,9 @@ package enum TextLinks {
             guard !chars[start].isWhitespace else { start += 1; continue }
             var end = start
             while end < chars.count, !chars[end].isWhitespace { end += 1 }
-            if let link = address(chars, start, end) ?? email(chars, start, end) { found.append(link) }
+            if let link = address(chars, start, end) ?? email(chars, start, end) ?? domain(chars, start, end) {
+                found.append(link)
+            }
             start = end
         }
         // A phone number may run over several words; never inside an address or email.
@@ -98,6 +100,62 @@ package enum TextLinks {
         guard named.contains("."), named.first != ".", named.last != ".", !named.contains("..") else { return nil }
         guard let url = webURL(isWWW ? "https://" + raw : raw) else { return nil }
         return (from, to, url)
+    }
+
+    // MARK: - Bare domains
+
+    /// The top-level domains a bare domain may end in. A list rather than "any letters": "fayl.txt", "e.g." or
+    /// "Ad.Soyad" are no addresses, and "1.5" or "v1.0" never were.
+    private static let topLevelDomains: Set<String> = [
+        "com", "net", "org", "info", "biz", "io", "ai", "app", "dev", "co", "me", "tv", "online", "site", "store",
+        "shop", "tech", "cloud", "pro", "edu", "gov", "az", "ru", "tr", "ua", "by", "kz", "ge", "uz", "kg", "am",
+        "eu", "uk", "us", "de", "fr", "it", "es", "nl", "pl", "ch", "at", "be", "se", "no", "dk", "fi", "cz", "ca",
+        "au", "jp", "cn", "in", "ae", "sa", "qa", "il", "br",
+    ]
+
+    /// "clomni.ai", "(example.com.az/qiymet)": labels of ASCII letters, digits and dashes, the last one a known
+    /// top-level domain written in lower case ("Salam.Az" starts a sentence) after a name with a letter in it, then
+    /// the path as an address has it.
+    private static func domain(_ chars: [Character], _ start: Int, _ end: Int) -> (start: Int, end: Int, url: URL)? {
+        // Opening punctuation in front: "(clomni.ai)", "«clomni.ai»".
+        var from = start
+        while from < end, "([{\"'«“‘<".contains(chars[from]) { from += 1 }
+        var to = from
+        while to < end, chars[to].isASCII, chars[to].isLetter || chars[to].isNumber || chars[to] == "-" || chars[to] == "." {
+            to += 1
+        }
+        // Not inside an email ("x@clomni.ai" the email has), a scheme ("https:") or a path.
+        if to < end, chars[to] == "@" || chars[to] == ":" && to + 1 < end && chars[to + 1] == "/" { return nil }
+        var host = String(chars[from..<to])
+        while host.hasSuffix(".") { host.removeLast() }
+        var labels = host.split(separator: ".", omittingEmptySubsequences: false)
+        // A case ending after a dash is not the domain's: "clomni.ai-dan" is clomni.ai.
+        if let last = labels.last, let dash = last.firstIndex(of: "-"), topLevelDomains.contains(String(last[..<dash])) {
+            labels[labels.count - 1] = last[..<dash]
+            host = labels.joined(separator: ".")
+        }
+        guard labels.count >= 2, labels.allSatisfy({ !$0.isEmpty && $0.first != "-" && $0.last != "-" }),
+              let tld = labels.last, tld.allSatisfy({ $0.isLowercase }), topLevelDomains.contains(String(tld)),
+              labels[labels.count - 2].contains(where: \.isLetter) else {
+            // A name with a letter before the top-level domain: "3.14.az" is a number.
+            return nil
+        }
+        // The path, as an address's: whatever follows the host in the word, less the sentence's punctuation.
+        var last = from + host.count
+        if last < end, "/?#".contains(chars[last]) {
+            last = end
+            while last > from + host.count {
+                let char = chars[last - 1]
+                if trailing.contains(char) || char == ")" && chars[from..<last].filter({ $0 == ")" }).count
+                    > chars[from..<last].filter({ $0 == "(" }).count {
+                    last -= 1
+                } else {
+                    break
+                }
+            }
+        }
+        guard let url = webURL("https://" + String(chars[from..<last])) else { return nil }
+        return (from, last, url)
     }
 
     /// An address as written, letters outside ASCII ("…/ödəniş") percent-encoded so `URL` takes it.

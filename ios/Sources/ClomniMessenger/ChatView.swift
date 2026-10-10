@@ -27,9 +27,9 @@ final class ChatModel: ObservableObject {
         NetworkMonitor.shared.follow(controller) { $0.isOffline = $1 }
     }
 
-    convenience init(engine: ClomniEngine, conversationId: String, language: String?, known: [String: String] = [:]) {
+    convenience init(engine: ClomniEngine, conversationId: String, language: String?, config: MessengerConfig? = nil) {
         self.init(controller: ChatController(source: engine, conversationId: conversationId, language: language,
-                                             known: known))
+                                             config: config))
     }
 
     private func sync() {
@@ -133,6 +133,9 @@ struct ChatView: View {
                 ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
                              staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew,
                              cancelQuote: { model.controller.reply(to: nil) })
+                    // Always as tall as it needs, the transcript giving way: a picked file's strip must not leave it
+                    // overflowing its earlier height, half of it under the keyboard (CM-087).
+                    .fixedSize(horizontal: false, vertical: true)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -158,6 +161,17 @@ struct ChatView: View {
         .task { await model.controller.load() }
         .onDisappear { Task { await model.controller.stop() } }
         .onChange(of: draft) { text in Task { await model.controller.textChanged(text) } }
+        // A picked file opens its strip over the composer: the end of the conversation comes into sight over it, from
+        // wherever the user was reading (CM-087: the last message stayed under the strip).
+        .onChange(of: staged != nil) { picked in
+            guard picked else { return }
+            unseen = false
+            pin.follow()
+        }
+        #if DEBUG
+        // The UI tests' file, picked without the system's picker (DemoChat).
+        .onReceive(NotificationCenter.default.publisher(for: DemoChat.stageFile)) { _ in staged = DemoChat.stagedPicture() }
+        #endif
         .onChange(of: model.screen.announcement) { announcement in announce(announcement) }
         .sheet(isPresented: $choosingAttachment) {
             attachmentSheet

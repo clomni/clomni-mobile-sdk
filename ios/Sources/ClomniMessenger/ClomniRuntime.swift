@@ -128,6 +128,7 @@ final class ClomniRuntime {
 
     func initialize(appId: String, apiKey: String, baseURL: URL) {
         guard backend == nil else { return ClomniLog.warning("initialize was called before; the first call stays") }
+        ClomniLog.debug("initialize \(appId) at \(baseURL.absoluteString)")
         let backend = makeBackend(appId, apiKey, baseURL)
         let coordinator = MessengerCoordinator(session: backend, language: language)
         coordinator.events = events()

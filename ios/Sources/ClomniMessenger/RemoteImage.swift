@@ -10,15 +10,17 @@ import ClomniPresentation
 #endif
 
 /// A picture of the panel's (logo, avatars, header picture) at the width this screen needs and as WebP, cached in
-/// memory and on disk; `primary_soft` until it is here (or `placeholder` when given). A kept picture is there in the
-/// first frame, offline too; only one that came over the network fades in (DESIGN-PASS-3 C2).
-struct RemoteImage: View {
+/// memory and on disk; `fallback` until it is here, and instead of it when it cannot come (`primary_soft`, or the
+/// `placeholder` colour, unless a view is given). Never both: a logo with transparent parts shows what is behind it,
+/// not a grey disc and an initial (CM-087). A kept picture is there in the first frame, offline too; only one that
+/// came over the network fades in (DESIGN-PASS-3 C2).
+struct RemoteImage<Fallback: View>: View {
     let url: URL
     let kind: ImageSizing.Kind
     let points: Double
     let theme: ClomniTheme
     var fit = false
-    var placeholder: Color?
+    let fallback: Fallback
     @Environment(\.displayScale) private var scale
     @Environment(\.clomniLoadsRemoteImages) private var loadsImages
     @StateObject private var loader = ImageLoader()
@@ -36,7 +38,7 @@ struct RemoteImage: View {
                     .aspectRatio(contentMode: fit ? .fit : .fill)
                     .transition(.opacity)
             } else {
-                placeholder ?? theme.colors.primarySoft.color
+                fallback
             }
         }
         .animation(loader.fromNetwork ? .easeOut(duration: 0.2) : nil, value: shown != nil)
@@ -44,6 +46,14 @@ struct RemoteImage: View {
             guard loadsImages else { return }
             await loader.load(sized)
         }
+    }
+}
+
+extension RemoteImage where Fallback == Color {
+    init(url: URL, kind: ImageSizing.Kind, points: Double, theme: ClomniTheme, fit: Bool = false,
+         placeholder: Color? = nil) {
+        self.init(url: url, kind: kind, points: points, theme: theme, fit: fit,
+                  fallback: placeholder ?? theme.colors.primarySoft.color)
     }
 }
 
@@ -87,6 +97,11 @@ final class ImageCache: @unchecked Sendable {
         configuration.requestCachePolicy = .returnCacheDataElseLoad
         session = URLSession(configuration: configuration)
         memory.countLimit = 100
+    }
+
+    /// Keeps a picture for its URL (the tests' pictures, with no network).
+    func keep(_ image: UIImage, for url: URL) {
+        memory.setObject(image, forKey: url as NSURL)
     }
 
     /// The picture if it is kept, in memory or on disk; nothing is asked of the network.
