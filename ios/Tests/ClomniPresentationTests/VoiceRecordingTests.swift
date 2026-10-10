@@ -110,4 +110,13 @@ final class VoiceRecordingTests: XCTestCase {
         _ = voice.tick(elapsedMs: 50, level: 2)
         XCTAssertEqual(voice.levels, [1], "clamped")
     }
+
+    func testBeforeTheMicrophoneComesTheClockRunsWithoutBars() {
+        var voice = VoiceRecording(maxMs: 300_000)
+        _ = voice.press(.granted)
+        XCTAssertEqual(voice.tick(elapsedMs: 800, level: nil), [])
+        XCTAssertEqual(voice.state, .holding(elapsedMs: 800, cancel: 0, lock: 0))
+        XCTAssertEqual(voice.levels, [])
+        XCTAssertEqual(voice.release(), [.send(waveform: Waveform.encode([]))], "800 ms from the touch is not a slip")
+    }
 }

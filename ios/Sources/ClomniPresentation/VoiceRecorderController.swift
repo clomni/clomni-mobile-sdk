@@ -2,14 +2,18 @@ import Foundation
 
 /// The microphone as `VoiceRecorderController` uses it: AVAudioRecorder in the SDK, a double in tests.
 package protocol MicInput: AnyObject {
-    /// Starts recording AAC (m4a) into `file`; false when the microphone cannot be had.
-    func start(_ file: URL) -> Bool
+    /// Starts recording AAC (m4a) into `file`, off the main thread: getting the microphone can take a second on a
+    /// device, longer with a Bluetooth headset. `ready` comes on the main queue: true once it records, false when the
+    /// microphone cannot be had; never when `cancel()` came first.
+    func start(_ file: URL, ready: @escaping (Bool) -> Void)
     /// The loudness now, 0–1.
     func level() -> Double
     /// Stops; the recording's length in ms, or nil when nothing usable was written (the file is then gone).
     func stop() -> Int?
-    /// Stops and deletes what was written.
+    /// Stops and deletes what was written; a start still on its way records nothing.
     func cancel()
+    /// The conversation closed: the audio is let go now, not a few seconds later.
+    func close()
 }
 
 /// A finished recording: the m4a, its length and its waveform (0–100 each).
@@ -29,6 +33,10 @@ package struct VoiceClip: Sendable, Equatable {
 /// `tickMs` for the timer and the live waveform, and hands a finished recording to `send`. The view reads `state`,
 /// `levels`, `hint` and `review` after each `onChange`, and drops the microphone into the bin each time `discards`
 /// grows. On the main queue; the same as the Android SDK's VoiceRecorderController.
+///
+/// The press shows at once and the clock runs from the touch (CM-131): the overlay, the haptic tick and the timer do not
+/// wait for the microphone, which may come a second later, and a press is long or short by the finger, not by the
+/// microphone. Let go before the microphone came, nothing was recorded: the hint asks to hold.
 package final class VoiceRecorderController {
     /// What the capsule over the button says: hold longer; the microphone is refused (with the way to the settings);
     /// the recording reached the limit and stopped.
@@ -65,8 +73,12 @@ package final class VoiceRecorderController {
     private let send: (VoiceClip) -> Void
     private let feedback: (Feedback) -> Void
     private var file: URL?
+    /// A recording is under way: the microphone is coming or records.
     private var recording = false
-    private var startedAt = 0
+    /// The microphone's start came back: it records.
+    private var micOn = false
+    /// When the finger went down.
+    private var pressedAt = 0
     private var cancelTick: (() -> Void)?
     private var cancelHint: (() -> Void)?
 
@@ -109,6 +121,7 @@ package final class VoiceRecorderController {
         _ = machine.fail()
         discard(animated: false)
         setHint(nil)
+        mic.close()
     }
 
     private func run(_ effects: [VoiceRecording.Effect]) {
@@ -132,41 +145,66 @@ package final class VoiceRecorderController {
     private func start() {
         setHint(nil)
         let target = newFile()
-        guard mic.start(target) else {
-            _ = machine.fail()
-            return
-        }
         file = target
         recording = true
-        startedAt = now()
+        micOn = false
+        pressedAt = now()
         feedback(.start)
         scheduleTick()
+        mic.start(target) { [weak self] ok in self?.micReady(ok, target) }
+    }
+
+    private func micReady(_ ok: Bool, _ target: URL) {
+        guard recording, file == target else { return }
+        guard ok else {
+            stopTicking()
+            recording = false
+            file = nil
+            run(machine.fail())
+            return
+        }
+        micOn = true
+        onChange?()
     }
 
     private func scheduleTick() {
         cancelTick = scheduler.after(Self.tickMs) { [weak self] in self?.tick() }
     }
 
+    private func stopTicking() {
+        cancelTick?()
+        cancelTick = nil
+    }
+
     private func tick() {
         guard recording else { return }
-        let effects = machine.tick(elapsedMs: now() - startedAt, level: mic.level())
+        let effects = machine.tick(elapsedMs: now() - pressedAt, level: micOn ? mic.level() : nil)
         if effects.contains(.stop) { setHint(.limit) }
         run(effects)
         if recording { scheduleTick() }
     }
 
-    /// The recording's length, or nil when the recorder had nothing.
+    /// The recording's length, or nil when the recorder had nothing (or had not come yet).
     private func stopMic() -> Int? {
-        cancelTick?()
-        cancelTick = nil
+        stopTicking()
         recording = false
+        guard micOn else {
+            mic.cancel()
+            return nil
+        }
+        micOn = false
         return mic.stop()
     }
 
     private func finish(_ waveform: [Int]) {
         var clip: VoiceClip?
         if recording {
-            if let duration = stopMic(), let file { clip = VoiceClip(file: file, durationMs: duration, waveform: waveform) }
+            let early = !micOn
+            if let duration = stopMic(), let file {
+                clip = VoiceClip(file: file, durationMs: duration, waveform: waveform)
+            } else if early {
+                setHint(.hold)
+            }
         } else if let review {
             clip = VoiceClip(file: review.file, durationMs: review.durationMs, waveform: waveform)
         }
@@ -187,9 +225,9 @@ package final class VoiceRecorderController {
 
     private func discard(animated: Bool) {
         if recording {
-            cancelTick?()
-            cancelTick = nil
+            stopTicking()
             recording = false
+            micOn = false
             mic.cancel()
         } else if let review {
             try? FileManager.default.removeItem(at: review.file)

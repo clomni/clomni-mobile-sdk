@@ -15,13 +15,24 @@ import ClomniPresentation
 
 /// The audio session while a voice message plays or records. An app's own category (a call, its own player) is left
 /// as it is; the default one, or the ambient one of the message sounds, becomes playback while a voice message plays
-/// (it plays with the silent switch on, as in WhatsApp) and play-and-record while one is recorded, and comes back after.
+/// (it plays with the silent switch on, as in WhatsApp) and play-and-record while one is recorded, and comes back once
+/// neither the player nor the microphone holds it. The microphone begins it on its own queue, the player on the main
+/// one; the lock keeps them in turn.
 enum VoiceSession {
+    enum User: Hashable {
+        case microphone, player
+    }
+
+    private static let lock = NSLock()
     private static var saved: (category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions)?
+    private static var users: Set<User> = []
 
     @discardableResult
-    static func begin(recording: Bool) -> Bool {
+    static func begin(_ user: User) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         let session = AVAudioSession.sharedInstance()
+        let recording = user == .microphone
         let mine: [AVAudioSession.Category] = recording ? [.soloAmbient, .ambient, .playback] : [.soloAmbient, .ambient]
         do {
             if mine.contains(session.category) {
@@ -33,14 +44,24 @@ enum VoiceSession {
                 }
             }
             try session.setActive(true)
+            users.insert(user)
             return true
         } catch {
             ClomniLog.warning("voice message: the audio session would not start: \(error.localizedDescription)")
+            if users.isEmpty { restore() }
             return false
         }
     }
 
-    static func end() {
+    /// `user` is done with it; the last one out lets the session go and gives the app its category back.
+    static func end(_ user: User) {
+        lock.lock()
+        defer { lock.unlock() }
+        users.remove(user)
+        if users.isEmpty { restore() }
+    }
+
+    private static func restore() {
         guard let saved else { return }
         self.saved = nil
         let session = AVAudioSession.sharedInstance()
@@ -141,26 +162,70 @@ final class CachedVoiceFiles: VoiceFiles {
 }
 
 /// `MicInput` on AVAudioRecorder, with metering for the waveform.
+///
+/// Getting the microphone means activating the play-and-record session: the route changes (a Bluetooth headset goes to
+/// its hands-free profile) and the call blocks, for up to a second or more on a device. So it runs on a queue of its own,
+/// and the recorder records the moment the session is up (CM-131). The session is not begun before the press: it stops
+/// the music of other apps as it starts, and the message sounds play only in the ambient category. After a recording
+/// it stays up for `keepSeconds`, so the next press records at once; the conversation closing lets it go at once.
 final class AVMicInput: MicInput {
-    private var recorder: AVAudioRecorder?
+    /// How long the session stays up after a recording: a second message usually follows within seconds.
+    static let keepSeconds = 5.0
+    private static let settings: [String: Any] = [
+        AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 22_050, AVNumberOfChannelsKey: 1,
+        AVEncoderBitRateKey: 32_000, AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
+    ]
 
-    func start(_ file: URL) -> Bool {
-        guard VoiceSession.begin(recording: true) else { return false }
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 22_050, AVNumberOfChannelsKey: 1,
-            AVEncoderBitRateKey: 32_000, AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
-        ]
+    private let queue = DispatchQueue(label: "ai.clomni.voice.microphone", qos: .userInitiated)
+    private var recorder: AVAudioRecorder?
+    /// The start on its way; a stop or a cancel before it comes back clears it, and what it began is thrown away.
+    private var starting: UUID?
+    private var release: DispatchWorkItem?
+
+    func start(_ file: URL, ready: @escaping (Bool) -> Void) {
+        release?.cancel()
+        release = nil
+        let ticket = UUID()
+        starting = ticket
+        queue.async {
+            let recorder = Self.record(into: file)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.starting == ticket else {
+                    recorder?.stop()
+                    recorder?.deleteRecording()
+                    self?.releaseSoon()
+                    return
+                }
+                self.starting = nil
+                self.recorder = recorder
+                if recorder == nil { self.releaseSoon() }
+                ready(recorder != nil)
+            }
+        }
+    }
+
+    /// The session and a recorder that records; nil when the microphone cannot be had. On `queue`.
+    private static func record(into file: URL) -> AVAudioRecorder? {
+        let began = DispatchTime.now().uptimeNanoseconds
+        guard VoiceSession.begin(.microphone) else { return nil }
         do {
             let recorder = try AVAudioRecorder(url: file, settings: settings)
             recorder.isMeteringEnabled = true
             guard recorder.record() else { throw CocoaError(.fileWriteUnknown) }
-            self.recorder = recorder
-            return true
+            ClomniLog.debug("voice message: the microphone records \((DispatchTime.now().uptimeNanoseconds - began) / 1_000_000) ms after the press")
+            return recorder
         } catch {
             ClomniLog.warning("the microphone did not start: \(error.localizedDescription)")
-            VoiceSession.end()
-            return false
+            return nil
         }
+    }
+
+    /// The session goes `keepSeconds` after the last recording, unless another one starts first.
+    private func releaseSoon() {
+        release?.cancel()
+        let work = DispatchWorkItem { [queue] in queue.async { VoiceSession.end(.microphone) } }
+        release = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.keepSeconds, execute: work)
     }
 
     func level() -> Double {
@@ -170,11 +235,12 @@ final class AVMicInput: MicInput {
     }
 
     func stop() -> Int? {
+        starting = nil
         guard let recorder else { return nil }
         let duration = Int(recorder.currentTime * 1000)
         recorder.stop()
         self.recorder = nil
-        VoiceSession.end()
+        releaseSoon()
         guard duration > 0 else {
             recorder.deleteRecording()
             return nil
@@ -183,11 +249,19 @@ final class AVMicInput: MicInput {
     }
 
     func cancel() {
+        starting = nil
         guard let recorder else { return }
         recorder.stop()
         recorder.deleteRecording()
         self.recorder = nil
-        VoiceSession.end()
+        releaseSoon()
+    }
+
+    func close() {
+        cancel()
+        release?.cancel()
+        release = nil
+        queue.async { VoiceSession.end(.microphone) }
     }
 }
 
@@ -230,14 +304,14 @@ final class AVVoiceOutput: NSObject, AudioOutput, AVAudioPlayerDelegate {
 
     func play(rate: Double) {
         guard let player else { return }
-        VoiceSession.begin(recording: false)
+        VoiceSession.begin(.player)
         player.rate = Float(rate)
         player.play()
     }
 
     func pause() {
         player?.pause()
-        VoiceSession.end()
+        VoiceSession.end(.player)
     }
 
     func seek(to positionMs: Int) {
@@ -254,7 +328,7 @@ final class AVVoiceOutput: NSObject, AudioOutput, AVAudioPlayerDelegate {
         player?.stop()
         player = nil
         listener = nil
-        VoiceSession.end()
+        VoiceSession.end(.player)
     }
 
     func duration(of file: URL) -> Int? {
@@ -265,7 +339,7 @@ final class AVVoiceOutput: NSObject, AudioOutput, AVAudioPlayerDelegate {
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         guard player === self.player else { return }
-        VoiceSession.end()
+        VoiceSession.end(.player)
         if flag { listener?.finished() } else { listener?.failed() }
     }
 
