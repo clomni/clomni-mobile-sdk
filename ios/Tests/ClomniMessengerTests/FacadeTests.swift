@@ -218,7 +218,9 @@ final class FacadeTests: XCTestCase {
         // The launcher, turned on before initialize, needs a session to open the messenger with: with nobody logged
         // in, the anonymous visitor the messenger would make anyway, and then it shows (CM-087: it never did).
         Clomni.initialize(appId: "app_8x2k0001", apiKey: "ios_sdk-test")
-        let made = await calls(including: "config")
+        // The device token goes out on its own task, sometimes just after config: wait for both.
+        _ = await calls(including: "config")
+        let made = await calls(including: "setDeviceToken ab01 production")
         XCTAssertEqual(made.filter { $0 != "setDeviceToken ab01 production" }, ["loginUnidentifiedUser", "connect", "config"])
         XCTAssertTrue(made.contains("setDeviceToken ab01 production"))
         await settle()
