@@ -163,7 +163,7 @@ internal class HomePresenter(
         val config = snapshot.config
         val cards = config?.home?.cards ?: MessengerConfig.HomeCard.entries
         val recent = if (MessengerConfig.HomeCard.RECENT in cards) {
-            snapshot.conversations.asSequence().mapNotNull { row(it, config, snapshot.userName) }.firstOrNull()
+            snapshot.conversations.asSequence().mapNotNull { row(it, config) }.firstOrNull()
         } else {
             null
         }
@@ -227,7 +227,7 @@ internal class HomePresenter(
     }
 
     fun messages(snapshot: MessengerSnapshot): MessagesScreen {
-        val rows = snapshot.conversations.mapNotNull { row(it, snapshot.config, snapshot.userName) }
+        val rows = snapshot.conversations.mapNotNull { row(it, snapshot.config) }
         val failed = rows.isEmpty() && snapshot.conversationsLoad == MessengerSnapshot.Load.FAILED
         val phase = when {
             rows.isNotEmpty() || snapshot.conversationsLoad == MessengerSnapshot.Load.LOADED -> HomeScreen.Phase.READY
@@ -249,10 +249,11 @@ internal class HomePresenter(
     }
 
     /**
-     * A conversation with a last message; one without has nothing to show yet. The face is the one who wrote that
-     * message: the user's own initial ([userName]'s, else "Siz"'s) next to "Siz", never the operator's (test report).
+     * A conversation with a last message; one without has nothing to show yet. Next to the user's own message ("Siz")
+     * the conversation's own face, the company's, as a chat list shows it; never the operator's (test report), the same
+     * as iOS.
      */
-    fun row(conversation: Conversation, config: MessengerConfig?, userName: String? = null): ConversationRow? {
+    fun row(conversation: Conversation, config: MessengerConfig?): ConversationRow? {
         val message = conversation.lastMessage ?: return null
         val brand = config?.brand?.name.orEmpty()
         val botName = config?.bot?.name?.takeIf { it.isNotEmpty() }
@@ -267,12 +268,13 @@ internal class HomePresenter(
         val system = message.sender.type == SenderType.SYSTEM
         // A system line ("Leyla söhbətə qoşuldu") shows who answers: the assignee, else the bot.
         val faceName = when {
-            fromUser -> userName?.trim()?.takeIf { it.isNotEmpty() } ?: name
+            fromUser -> brand.ifEmpty { botName.orEmpty() }
             system -> conversation.assignee?.name ?: botName ?: brand
             else -> name
         }
         val face = when {
-            fromUser -> null
+            // The company: its logo, else the panel's bot picture, else its initial.
+            fromUser -> config?.brand?.logoUrl ?: config?.bot?.avatarUrl
             system -> conversation.assignee?.avatarUrl ?: botAvatar
             // The panel's bot picture, as in the conversation.
             message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar

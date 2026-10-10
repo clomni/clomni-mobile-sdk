@@ -214,18 +214,21 @@ class PresenterTest {
             row.accessibilityLabel,
         )
 
-        // The user wrote last: "Siz", and the user's own initial; the operator's face was beside it (test report).
+        // The user wrote last: "Siz", and the company's face, the conversation's own; the operator's was beside it
+        // (test report). Its logo, else the panel's bot picture, else its initial: as on iOS.
         val fromUser = Fixture.conversation("conv_2", "03-text-user.json", assignee = "Rauf", at = "2026-10-01T10:31:50Z")
         val mine = presenter().row(fromUser, Fixture.exampleConfig)!!
         assertEquals("Siz · indi", mine.detail)
-        assertEquals("S", mine.initial)
-        assertNull("not the operator's picture", mine.avatarUrl)
+        assertEquals("E", mine.initial)
+        assertEquals("not the operator's picture", Fixture.exampleConfig.brand.logoUrl, mine.avatarUrl)
         assertFalse(mine.unread)
         assertFalse(mine.accessibilityLabel.contains("Oxunmamış"))
-        assertEquals("the logged-in user's initial", "A", presenter().row(fromUser, Fixture.exampleConfig, "Aysel Məmmədova")!!.initial)
-        val card = presenter().home(snapshot(Fixture.exampleConfig, listOf(fromUser)).copy(userName = "Aysel")).recent!!.row
-        assertNull("Home's card the same", card.avatarUrl)
-        assertEquals("A", card.initial)
+        val card = presenter().home(snapshot(Fixture.exampleConfig, listOf(fromUser))).recent!!.row
+        assertEquals("Home's card the same", Fixture.exampleConfig.brand.logoUrl, card.avatarUrl)
+        val noLogo = Fixture.exampleConfig.let { it.copy(brand = it.brand.copy(logoUrl = null), bot = it.bot.copy(avatarUrl = null)) }
+        val bare = presenter(config = noLogo).row(fromUser, noLogo)!!
+        assertNull("no logo: the brand's initial on its disc", bare.avatarUrl)
+        assertEquals("E", bare.initial)
 
         // A bot's quick replies: its fallback text on one line, the bot's name and avatar.
         val fromBot = Fixture.conversation("conv_3", "10-example-level2-S-chips.json")
