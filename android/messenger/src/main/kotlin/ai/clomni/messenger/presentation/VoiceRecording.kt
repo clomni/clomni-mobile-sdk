@@ -115,14 +115,17 @@ internal class VoiceRecording(private val maxMs: Long) {
         return if (holding.elapsedMs < MIN_MS) listOf(Effect.Discard(animated = false), Effect.HoldHint) else listOf(Effect.Send(waveform()))
     }
 
-    /** The recorder's clock, and the loudness since the last tick. */
-    fun tick(elapsedMs: Long, level: Float): List<Effect> {
+    /**
+     * The time since the finger went down, and the loudness since the last tick: null while the microphone is still
+     * starting and has recorded nothing (CM-131).
+     */
+    fun tick(elapsedMs: Long, level: Float?): List<Effect> {
         state = when (val current = state) {
             is State.Holding -> current.copy(elapsedMs = elapsedMs)
             is State.Locked -> current.copy(elapsedMs = elapsedMs)
             else -> return emptyList()
         }
-        recorded += level.coerceIn(0f, 1f)
+        if (level != null) recorded += level.coerceIn(0f, 1f)
         if (elapsedMs < maxMs) return emptyList()
         state = State.Review(elapsedMs)
         return listOf(Effect.Stop)

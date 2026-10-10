@@ -34,31 +34,50 @@ internal class FakeTime : Scheduler {
 
 /**
  * The microphone's test double (CI has none): writes a few bytes where it records, measures by [time], and says how
- * loud it is from [level].
+ * loud it is from [level]. With [startDelayMs] it comes that much later, as a device's does while its recorder starts
+ * (CM-131).
  */
 internal class FakeMic(private val time: FakeTime) : MicInput {
     var starts = true
     var stopsEmpty = false
     var level = 0.5f
+    var startDelayMs = 0L
+
+    /** The files it actually recorded into. */
     val started = mutableListOf<File>()
     var stops = 0
     var cancels = 0
+
+    /** Starts given up before they came; they never record. */
+    var abandoned = 0
+
+    /** Recording now: started, and neither stopped nor cancelled. */
+    var isRecording = false
+        private set
     private var file: File? = null
     private var startedAt = 0L
+    private var coming: (() -> Unit)? = null
 
-    override fun start(file: File): Boolean {
-        if (!starts) return false
-        file.writeText("m4a")
-        started += file
-        this.file = file
-        startedAt = time.now
-        return true
+    override fun start(file: File, ready: (Boolean) -> Unit) {
+        val begin = {
+            coming = null
+            if (starts) {
+                file.writeText("m4a")
+                started += file
+                this.file = file
+                startedAt = time.now
+                isRecording = true
+            }
+            ready(starts)
+        }
+        if (startDelayMs == 0L) begin() else coming = time.after(startDelayMs, begin)
     }
 
     override fun level(): Float = level
 
     override fun stop(): Long? {
         stops++
+        isRecording = false
         if (stopsEmpty) {
             file?.delete()
             return null
@@ -68,6 +87,13 @@ internal class FakeMic(private val time: FakeTime) : MicInput {
 
     override fun cancel() {
         cancels++
+        coming?.let {
+            it()
+            coming = null
+            abandoned++
+            return
+        }
+        isRecording = false
         file?.delete()
     }
 }
