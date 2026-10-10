@@ -104,14 +104,15 @@ package struct VoiceRecording: Sendable {
         return elapsed < Self.minMs ? [.discard(animated: false), .holdHint] : [.send(waveform: waveform)]
     }
 
-    /// The recorder's clock, and the loudness since the last tick.
-    package mutating func tick(elapsedMs: Int, level: Double) -> [Effect] {
+    /// The time since the finger went down, and the loudness since the last tick: nil while the microphone is still
+    /// starting and has recorded nothing (CM-131).
+    package mutating func tick(elapsedMs: Int, level: Double?) -> [Effect] {
         switch state {
         case let .holding(_, cancel, lock): state = .holding(elapsedMs: elapsedMs, cancel: cancel, lock: lock)
         case .locked: state = .locked(elapsedMs: elapsedMs)
         default: return []
         }
-        levels.append(min(1, max(0, level)))
+        if let level { levels.append(min(1, max(0, level))) }
         guard elapsedMs >= maxMs else { return [] }
         state = .review(durationMs: elapsedMs)
         return [.stop]

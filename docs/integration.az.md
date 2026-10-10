@@ -38,31 +38,31 @@ Analitika.
 
 ## 2. Quraşdırma
 
-> Bütün paketlər 1.0.2-dir: Android, iOS, React Native, Flutter və Unity.
+> Bütün paketlər 1.0.3-dür: Android, iOS, React Native, Flutter və Unity.
 
 **Android** (Maven Central):
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.2")
+    implementation("ai.clomni:messenger:1.0.3")
 }
 ```
 
 SDK özü heç bir icazə istəmir və tətbiqin ekranlarına heç nə əlavə etmir.
 
 **iOS**, Swift Package Manager: File → Add Package Dependencies →
-`https://github.com/clomni/clomni-mobile-sdk.git`, qayda "Up to Next Major Version", `1.0.2`-dan, məhsul
+`https://github.com/clomni/clomni-mobile-sdk.git`, qayda "Up to Next Major Version", `1.0.3`-dan, məhsul
 `ClomniMessenger`. `Package.swift`-də:
 
 ```swift
-.package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.2")
+.package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.3")
 ```
 
 iOS SDK CocoaPods trunk-da yoxdur. CocoaPods layihəsi pod-u repo-nun teqindən götürür:
 
 ```ruby
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
 ```
 
 **React Native**:

@@ -1,5 +1,10 @@
 # @clomni/react-native — changelog
 
+## 1.0.3
+
+The native SDKs 1.0.3: the microphone answers the moment it is touched, and a press of about a second records instead
+of asking to hold.
+
 ## 1.0.2
 
 The native SDKs 1.0.2 on both platforms: voice messages (the microphone replaces the emoji button), the camera,

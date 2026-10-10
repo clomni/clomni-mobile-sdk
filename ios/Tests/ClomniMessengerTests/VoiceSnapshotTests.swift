@@ -229,9 +229,9 @@ private final class SteadyMic: MicInput {
 
     init(time: StepTime) { self.time = time }
 
-    func start(_ file: URL) -> Bool {
+    func start(_ file: URL, ready: @escaping (Bool) -> Void) {
         startedAt = time.now
-        return true
+        ready(true)
     }
 
     func level() -> Double {
@@ -241,6 +241,7 @@ private final class SteadyMic: MicInput {
 
     func stop() -> Int? { time.now - startedAt }
     func cancel() {}
+    func close() {}
 }
 
 private final class NoFiles: VoiceFiles {

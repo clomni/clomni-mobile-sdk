@@ -15,6 +15,8 @@ import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.store.PendingMessage
 import ai.clomni.messenger.store.PendingUpload
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -54,14 +56,19 @@ class VoiceComposerTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-    /** Writes a few bytes where it records and measures by the clock. */
+    /**
+     * Comes a third of a second after the press, as a device's microphone does (CM-131), writes a few bytes where it
+     * records and measures by the clock.
+     */
     private class Mic : MicInput {
         private var startedAt = 0L
 
-        override fun start(file: File): Boolean {
-            file.writeText("m4a")
-            startedAt = SystemClock.elapsedRealtime()
-            return true
+        override fun start(file: File, ready: (Boolean) -> Unit) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                file.writeText("m4a")
+                startedAt = SystemClock.elapsedRealtime()
+                ready(true)
+            }, 300)
         }
 
         override fun level(): Float = 0.6f

@@ -25,7 +25,7 @@ package then uses that pod and adds no Swift package:
 
 ```ruby
 # ios/Podfile, in the app's target
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
 ```
 
 ### Expo

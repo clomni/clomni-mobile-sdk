@@ -149,4 +149,13 @@ class VoiceRecordingTest {
         voice.tick(50, 2f)
         assertEquals("clamped", listOf(1f), voice.levels)
     }
+
+    @Test
+    fun beforeTheMicrophoneComesTheClockRunsWithoutBars() {
+        voice.press(Permission.GRANTED)
+        assertEquals(emptyList<Effect>(), voice.tick(800, null))
+        assertEquals(State.Holding(800, 0f, 0f), voice.state)
+        assertEquals(emptyList<Float>(), voice.levels)
+        assertEquals("800 ms from the touch is not a slip", listOf(Effect.Send(emptyList())), voice.release())
+    }
 }

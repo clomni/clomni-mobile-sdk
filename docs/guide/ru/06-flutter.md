@@ -22,7 +22,7 @@ flutter pub add clomni_flutter
   `pod install` остановится и выведет эту строку.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
   ```
 
 Добавьте тексты для доступа к фото в `ios/Runner/Info.plist` (см. [главу об iOS](04-ios.md#infoplist)).

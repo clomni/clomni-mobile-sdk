@@ -1,6 +1,6 @@
 {
   "name": "@clomni/react-native",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Clomni Messenger for React Native: the native iOS and Android SDKs behind one TypeScript API.",
   "license": "Apache-2.0",
   "homepage": "https://clomni.ai",

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'ClomniMessenger'
-  s.version = '1.0.2'
+  s.version = '1.0.3'
   s.summary = 'Clomni Messenger for iOS apps: native chat, flow buttons and push replies.'
   s.description = <<~DESC
     Opens the Clomni Messenger inside your own iOS app. Your users write to your team in Clomni, the flows built for

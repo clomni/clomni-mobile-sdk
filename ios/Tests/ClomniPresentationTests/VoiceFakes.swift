@@ -27,31 +27,46 @@ final class FakeTime: VoiceScheduler {
     var pending: Int { timers.count }
 }
 
-/// The microphone's test double (CI has none): writes a few bytes where it records, measures by `time`.
+/// The microphone's test double (CI has none): writes a few bytes where it records, measures by `time`. With
+/// `startDelayMs` it comes that much later, as a device's does while the audio session starts (CM-131).
 final class FakeMic: MicInput {
     var starts = true
     var stopsEmpty = false
     var loudness = 0.5
+    var startDelayMs = 0
+    /// The files it actually recorded into.
     private(set) var started: [URL] = []
     private(set) var stops = 0
     private(set) var cancels = 0
+    private(set) var closes = 0
+    /// Starts given up before they came; they never record.
+    private(set) var abandoned = 0
+    /// Recording now: started, and neither stopped nor cancelled.
+    private(set) var isRecording = false
     private let time: FakeTime
     private var startedAt = 0
+    private var coming: (() -> Void)?
 
     init(time: FakeTime) { self.time = time }
 
-    func start(_ file: URL) -> Bool {
-        guard starts else { return false }
-        FileManager.default.createFile(atPath: file.path, contents: Data("m4a".utf8))
-        started.append(file)
-        startedAt = time.now
-        return true
+    func start(_ file: URL, ready: @escaping (Bool) -> Void) {
+        let begin = { [unowned self] in
+            coming = nil
+            guard starts else { return ready(false) }
+            FileManager.default.createFile(atPath: file.path, contents: Data("m4a".utf8))
+            started.append(file)
+            startedAt = time.now
+            isRecording = true
+            ready(true)
+        }
+        if startDelayMs == 0 { begin() } else { coming = time.after(startDelayMs, begin) }
     }
 
     func level() -> Double { loudness }
 
     func stop() -> Int? {
         stops += 1
+        isRecording = false
         if stopsEmpty {
             try? FileManager.default.removeItem(at: started.last!)
             return nil
@@ -61,8 +76,17 @@ final class FakeMic: MicInput {
 
     func cancel() {
         cancels += 1
+        if let coming {
+            coming()
+            self.coming = nil
+            abandoned += 1
+            return
+        }
+        isRecording = false
         if let file = started.last { try? FileManager.default.removeItem(at: file) }
     }
+
+    func close() { closes += 1 }
 }
 
 /// The speaker's double: what was asked of it, in order; the test answers through `listener`.

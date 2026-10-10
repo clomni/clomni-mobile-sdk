@@ -11,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 /** The recorder against a microphone double: what is recorded, sent, kept or thrown away (as iOS's tests). */
 class VoiceRecorderControllerTest {
@@ -193,5 +194,111 @@ class VoiceRecorderControllerTest {
         recorder.close()
         assertFalse(file.exists())
         assertEquals(emptyList<VoiceClip>(), sent)
+    }
+
+    // CM-131: on a device the microphone comes a good part of a second after the press (MediaRecorder's prepare and
+    // start). The press does not wait for it, and is long or short by the finger.
+
+    @Test
+    fun thePressShowsAtOnceWhileTheMicrophoneIsStillComing() {
+        mic.startDelayMs = 1_500
+        val recorder = recorder()
+        recorder.press()
+        assertEquals("the overlay, at the touch", State.Holding(0, 0f, 0f), recorder.state)
+        assertEquals("the haptic tick, at the touch", listOf(Feedback.START), feedback)
+        assertEquals(1, changes)
+        assertEquals(emptyList<File>(), mic.started)
+        time.advance(1_000)
+        assertEquals("the timer runs from the touch", State.Holding(1_000, 0f, 0f), recorder.state)
+        assertEquals("nothing heard yet, no bars", emptyList<Float>(), recorder.levels)
+        time.advance(500)
+        assertEquals(1, mic.started.size)
+        time.advance(500)
+        assertEquals("from the tick it came on: 1 500, 1 550 … 2 000", 11, recorder.levels.size)
+    }
+
+    @Test
+    fun aPressOfPointNineSecondsIsAMessageThoughTheMicrophoneCameLate() {
+        mic.startDelayMs = 400
+        val recorder = recorder()
+        recorder.press()
+        time.advance(900)
+        recorder.release()
+        assertEquals("900 ms from the touch is not a slip; 500 ms is what the microphone heard", listOf(500L), sent.map { it.durationMs })
+        assertNull(recorder.hint)
+    }
+
+    @Test
+    fun aHalfSecondPressAsksToHoldAndTheLateMicrophoneRecordsNothing() {
+        mic.startDelayMs = 1_500
+        val recorder = recorder()
+        recorder.press()
+        time.advance(500)
+        recorder.release()
+        assertEquals(Hint.HOLD, recorder.hint)
+        assertEquals(1, mic.abandoned)
+        time.advance(3_000)
+        assertEquals("the start that would have come after the finger left never records", emptyList<File>(), mic.started)
+        assertFalse(mic.isRecording)
+        assertEquals(emptyList<VoiceClip>(), sent)
+        assertEquals(0, time.pending)
+    }
+
+    @Test
+    fun letGoBeforeTheMicrophoneCameIsNothingRecorded() {
+        mic.startDelayMs = 1_500
+        val recorder = recorder()
+        recorder.press()
+        time.advance(900)
+        recorder.release()
+        assertEquals("there is no sound to send", emptyList<VoiceClip>(), sent)
+        assertEquals(Hint.HOLD, recorder.hint)
+        time.advance(1_000)
+        assertEquals(emptyList<File>(), mic.started)
+        assertFalse(mic.isRecording)
+    }
+
+    @Test
+    fun cancelAndLockBeforeTheMicrophoneComes() {
+        mic.startDelayMs = 1_500
+        val recorder = recorder()
+        recorder.press()
+        time.advance(300)
+        recorder.drag(-130f, 0f)
+        assertEquals(State.Idle, recorder.state)
+        assertEquals(1, recorder.discards)
+        assertEquals(listOf(Feedback.START, Feedback.CANCEL), feedback)
+        time.advance(2_000)
+        assertEquals(emptyList<File>(), mic.started)
+        assertEquals(1, mic.abandoned)
+
+        recorder.press()
+        time.advance(300)
+        recorder.drag(0f, -100f)
+        assertEquals(State.Locked(300), recorder.state)
+        assertEquals(Feedback.LOCK, feedback.last())
+        recorder.release()
+        time.advance(2_000)
+        assertEquals("still the touch's clock", State.Locked(2_300), recorder.state)
+        assertEquals(1, mic.started.size)
+        assertEquals("bars only for what was heard: 3 800, 3 850 … 4 600", 17, recorder.levels.size)
+        recorder.stop()
+        assertEquals(800L, recorder.review?.durationMs)
+        recorder.send()
+        assertEquals(listOf(800L), sent.map { it.durationMs })
+    }
+
+    @Test
+    fun closingWhileTheMicrophoneIsComing() {
+        mic.startDelayMs = 1_500
+        val recorder = recorder()
+        recorder.press()
+        time.advance(200)
+        recorder.close()
+        assertEquals(State.Idle, recorder.state)
+        assertEquals(1, mic.abandoned)
+        time.advance(2_000)
+        assertEquals(emptyList<File>(), mic.started)
+        assertEquals(0, time.pending)
     }
 }
