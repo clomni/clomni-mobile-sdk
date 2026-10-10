@@ -1,5 +1,5 @@
 group = "ai.clomni.flutter"
-version = "1.0.1"
+version = "1.0.2"
 
 buildscript {
     val kotlinVersion = "2.4.0"
@@ -56,5 +56,5 @@ kotlin {
 dependencies {
     // The Android SDK. Before it is published, the app's settings.gradle substitutes this repository's build
     // (README.md; the example does).
-    implementation("ai.clomni:messenger:1.0.1")
+    implementation("ai.clomni:messenger:1.0.2")
 }

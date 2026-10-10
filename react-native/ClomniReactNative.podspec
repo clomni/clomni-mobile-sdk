@@ -30,12 +30,12 @@ Pod::Spec.new do |s|
   elsif respond_to?(:spm_dependency, true)
     spm_dependency(s,
       url: "https://github.com/clomni/clomni-mobile-sdk.git",
-      requirement: { "kind" => "upToNextMajorVersion", "minimumVersion" => "1.0.0" },
+      requirement: { "kind" => "upToNextMajorVersion", "minimumVersion" => "1.0.2" },
       products: ["ClomniMessenger"])
   else
     raise Pod::Informative, "@clomni/react-native needs React Native 0.75 or later: the iOS SDK comes through Swift " \
       "Package Manager (spm_dependency). On an older version, add to the Podfile: " \
-      "pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'"
+      "pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'"
   end
 
   # React Native 0.71+: React-Core, and in the New Architecture codegen's ClomniSpec and the TurboModule headers.

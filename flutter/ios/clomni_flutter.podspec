@@ -2,7 +2,7 @@
 # 3.24 behind a flag) Flutter uses clomni_flutter/Package.swift instead, and this file is not read.
 Pod::Spec.new do |s|
   s.name             = 'clomni_flutter'
-  s.version          = '1.0.1'
+  s.version          = '1.0.2'
   s.summary          = 'Clomni Messenger for Flutter: the native iOS and Android SDKs behind one Dart API.'
   s.homepage         = 'https://clomni.ai'
   s.license          = { :type => 'Apache-2.0', :file => '../LICENSE' }
@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   if podfile_path && File.exist?(podfile_path) &&
      !File.read(podfile_path).match?(/^\s*pod\s+["']ClomniMessenger["']/)
     raise Pod::Informative, "clomni_flutter: the iOS SDK is not on CocoaPods trunk. Add to ios/Podfile, in target " \
-      "'Runner': pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0' " \
+      "'Runner': pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2' " \
       "(or turn on Swift Package Manager: flutter config --enable-swift-package-manager)"
   end
   s.platform = :ios, '15.0'

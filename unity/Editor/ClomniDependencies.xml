@@ -5,9 +5,9 @@
     <repositories>
       <repository>https://repo.maven.apache.org/maven2</repository>
     </repositories>
-    <androidPackage spec="ai.clomni:messenger:1.0.1" />
+    <androidPackage spec="ai.clomni:messenger:1.0.2" />
   </androidPackages>
   <iosPods>
-    <iosPod name="ClomniMessenger" version="1.0.0" minTargetSdk="15.0" addToAllTargets="false" />
+    <iosPod name="ClomniMessenger" version="1.0.2" minTargetSdk="15.0" addToAllTargets="false" />
   </iosPods>
 </dependencies>
