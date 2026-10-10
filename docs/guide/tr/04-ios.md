@@ -50,7 +50,7 @@ Kullanıcılar konuşmada fotoğraf gönderebilir. iOS'un erişim isterken göst
 ```
 
 - `NSCameraUsageDescription` yoksa Messenger kamera seçeneğini göstermez.
-- `NSMicrophoneUsageDescription` sesli mesaj içindir, SDK 1.0.2'den itibaren gerekir.
+- `NSMicrophoneUsageDescription` yoksa mikrofon düğmesi görünmez (sesli mesaj SDK 1.0.2 ile gelir).
 
 ## Başlatma
 

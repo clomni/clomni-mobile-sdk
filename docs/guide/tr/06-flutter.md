@@ -40,7 +40,8 @@ class MainActivity : FlutterFragmentActivity()
 ```
 
 iOS'ta uygulamanın `Info.plist` dosyasına fotoğraf, kamera ve mikrofon için izin metinlerini ekleyin: [iOS →
-Info.plist](04-ios.md#infoplist).
+Info.plist](04-ios.md#infoplist). Android'de sesli mesaj (SDK 1.0.2'den itibaren) için uygulamanın manifestinde
+`RECORD_AUDIO` bildirilmelidir: [Android → Gereksinimler](03-android.md#gereksinimler).
 
 ## Başlatma
 

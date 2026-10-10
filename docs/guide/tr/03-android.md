@@ -8,8 +8,16 @@
 - Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve Android API anahtarı (`android_…`).
 
 SDK 1.0.1, ağ erişimi dışında kendisi için hiçbir izin istemez ve ekranlarınıza hiçbir şey eklemez. 1.0.2'den itibaren
-konuşmada kamerayla fotoğraf çekmek ve sesli mesaj göndermek mümkündür: `CAMERA` ve `RECORD_AUDIO` izinleri ve kamera
-için FileProvider SDK'nın manifestindedir, uygulamaya bir şey eklemeniz gerekmez.
+konuşmada kamerayla fotoğraf ve video çekmek ve sesli mesaj göndermek mümkündür:
+
+- **Kamera** için izin gerekmez: SDK telefonun kendi kamera uygulamasını açar, FileProvider SDK'nın içindedir.
+  Uygulamanın manifestinde `CAMERA` bildirilmişse SDK önce bu izni ister.
+- **Sesli mesaj** için uygulama kendi `AndroidManifest.xml` dosyasında `RECORD_AUDIO` bildirmelidir. Bildirilmemişse
+  mikrofon düğmesi görünmez ve SDK bunu loga yazar.
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
 ## Kurulum
 

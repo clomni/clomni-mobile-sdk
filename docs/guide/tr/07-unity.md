@@ -46,7 +46,8 @@ Hızlıca denemek için: Package Manager → Clomni Messenger → Samples → **
 bir GameObject'e ekleyin, Inspector'da App ID'yi ve anahtarları doldurun ve bir cihaza build alın.
 
 iOS'ta uygulamanın `Info.plist` dosyasına fotoğraf, kamera ve mikrofon için izin metinlerini ekleyin: [iOS →
-Info.plist](04-ios.md#infoplist).
+Info.plist](04-ios.md#infoplist). Android'de sesli mesaj (SDK 1.0.2'den itibaren) için uygulamanın manifestinde
+`RECORD_AUDIO` bildirilmelidir: [Android → Gereksinimler](03-android.md#gereksinimler).
 
 ## Başlatma
 

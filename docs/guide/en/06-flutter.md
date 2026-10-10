@@ -39,7 +39,8 @@ class MainActivity : FlutterFragmentActivity()
 ```
 
 On iOS, add the permission texts for photos, the camera and the microphone to the app's `Info.plist`: [iOS →
-Info.plist](04-ios.md#infoplist).
+Info.plist](04-ios.md#infoplist). On Android, voice messages (from SDK 1.0.2) need `RECORD_AUDIO` declared in the app's
+manifest: [Android → Requirements](03-android.md#requirements).
 
 ## Initialize
 

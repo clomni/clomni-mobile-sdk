@@ -55,7 +55,8 @@ iOS, and the `POST_NOTIFICATIONS` permission on Android. The icon is copied as t
 In a bare React Native app, add the two iOS texts to `Info.plist` yourself (see the [iOS chapter](04-ios.md#infoplist)).
 
 On iOS, add the permission texts for photos, the camera and the microphone to the app's `Info.plist`: [iOS →
-Info.plist](04-ios.md#infoplist).
+Info.plist](04-ios.md#infoplist). On Android, voice messages (from SDK 1.0.2) need `RECORD_AUDIO` declared in the app's
+manifest: [Android → Requirements](03-android.md#requirements).
 
 ## Initialize
 

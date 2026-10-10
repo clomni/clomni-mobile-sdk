@@ -49,7 +49,7 @@ Users can send photos in a conversation. Add the texts iOS shows when it asks fo
 ```
 
 - Without `NSCameraUsageDescription` the Messenger does not offer the camera.
-- `NSMicrophoneUsageDescription` is for voice messages, needed from SDK 1.0.2.
+- Without `NSMicrophoneUsageDescription` the microphone button does not show (voice messages come with SDK 1.0.2).
 
 ## Initialize
 

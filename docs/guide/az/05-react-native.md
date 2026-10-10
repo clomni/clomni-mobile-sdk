@@ -57,7 +57,8 @@ Adi (bare) React Native tətbiqində iOS-un iki mətnini `Info.plist`-ə özün�
 ([iOS bölməsinə](04-ios.md#infoplist) baxın).
 
 iOS-da tətbiqin `Info.plist`-inə şəkil, kamera və mikrofon üçün icazə mətnlərini əlavə edin: [iOS →
-Info.plist](04-ios.md#infoplist).
+Info.plist](04-ios.md#infoplist). Android-də səsli mesaj üçün (SDK 1.0.2-dən) tətbiqin manifestində `RECORD_AUDIO` elan
+olunmalıdır: [Android → Tələblər](03-android.md#tələblər).
 
 ## Başlatma
 

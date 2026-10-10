@@ -8,8 +8,16 @@
 - The App ID and the Android API key (`android_…`) from **Installation** in the inbox's settings column.
 
 SDK 1.0.1 asks for no permission of its own except network access, and adds nothing to your screens. From 1.0.2 a
-conversation can take a photo with the camera and send a voice message: the `CAMERA` and `RECORD_AUDIO` permissions and
-the FileProvider for the camera are in the SDK's manifest, so the app adds nothing.
+conversation can take photos and videos with the camera and send voice messages:
+
+- **The camera** needs no permission: the SDK opens the phone's own camera app, and the FileProvider is inside the SDK.
+  If the app's manifest declares `CAMERA`, the SDK asks for that permission first.
+- **Voice messages** need `RECORD_AUDIO`, declared by the app in its own `AndroidManifest.xml`. Without it the
+  microphone button does not show, and the SDK says so in the log.
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
 ## Install
 

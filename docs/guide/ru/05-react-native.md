@@ -55,7 +55,8 @@ Android — разрешение `POST_NOTIFICATIONS`. Иконка копиру
 [главу об iOS](04-ios.md#infoplist)).
 
 На iOS добавьте в `Info.plist` приложения тексты разрешений для фото, камеры и микрофона: [iOS →
-Info.plist](04-ios.md#infoplist).
+Info.plist](04-ios.md#infoplist). На Android голосовым сообщениям (с SDK 1.0.2) нужно `RECORD_AUDIO`, объявленное в
+манифесте приложения: [Android → Требования](03-android.md#требования).
 
 ## Инициализация
 

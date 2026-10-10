@@ -49,7 +49,7 @@ pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git'
 ```
 
 - `NSCameraUsageDescription` yoxdursa, Messenger kamera seçimini göstərmir.
-- `NSMicrophoneUsageDescription` səsli mesaj üçündür, SDK 1.0.2-dən lazımdır.
+- `NSMicrophoneUsageDescription` yoxdursa, mikrofon düyməsi görünmür (səsli mesaj SDK 1.0.2-dən).
 
 ## Başlatma
 

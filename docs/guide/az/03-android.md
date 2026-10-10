@@ -8,9 +8,16 @@
 - Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və Android API açarı (`android_…`).
 
 SDK 1.0.1 şəbəkə girişindən başqa heç bir icazə istəmir və ekranlarınıza heç nə əlavə etmir. 1.0.2-dən söhbətdə kamera
-ilə şəkil
-çəkmək və səsli mesaj göndərmək olar: `CAMERA` və `RECORD_AUDIO` icazələri və kamera üçün FileProvider SDK-nın
-manifestindədir, tətbiqə heç nə əlavə etmək lazım deyil.
+ilə şəkil və video çəkmək və səsli mesaj göndərmək olar:
+
+- **Kamera** üçün icazə lazım deyil: SDK telefonun öz kamera tətbiqini açır, FileProvider SDK-nın içindədir. Tətbiqin
+  manifestində `CAMERA` elan olunubsa, SDK əvvəlcə bu icazəni soruşur.
+- **Səsli mesaj** üçün tətbiq öz `AndroidManifest.xml`-ində `RECORD_AUDIO` elan etməlidir. Elan olunmayıbsa, mikrofon
+  düyməsi görünmür və SDK bunu loga yazır.
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
 ## Quraşdırma
 
