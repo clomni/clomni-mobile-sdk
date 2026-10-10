@@ -41,7 +41,8 @@ final class VoiceRecorder: ObservableObject {
         return VoiceRecorder(controller: VoiceRecorderController(
             mic: AVMicInput(), permission: { MicrophoneAccess.permission }, askPermission: MicrophoneAccess.ask,
             newFile: CachedVoiceFiles.newRecording, scheduler: MainQueueVoiceScheduler(),
-            now: { Int(ProcessInfo.processInfo.systemUptime * 1000) }, maxMs: maxSeconds * 1000, send: send,
+            // A clock that only goes forward; not systemUptime, a required-reason API (PrivacyManifestTests).
+            now: { Int(DispatchTime.now().uptimeNanoseconds / 1_000_000) }, maxMs: maxSeconds * 1000, send: send,
             feedback: MicrophoneAccess.feedback))
     }
 }
