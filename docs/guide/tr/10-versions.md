@@ -1,5 +1,15 @@
 # Sürümler
 
+## 1.0.3
+
+Tüm paketler 1.0.3: Android, iOS, React Native, Flutter ve Unity (`unity-1.0.3` etiketi).
+
+- Mikrofon düğmesi dokunulduğu anda yanıt verir: daire, sayaç ve titreşim hemen gelir.
+- Bir saniyelik basış da kaydedilir, "basılı tutun" ipucu artık çıkmaz.
+
+Güncellemek için sürümü 1.0.3 yapın: Android `ai.clomni:messenger:1.0.3`, React Native `@clomni/react-native@1.0.3`,
+Flutter `clomni_flutter: ^1.0.3`, Unity `#unity-1.0.3`, iOS `from: "1.0.3"` veya `:tag => '1.0.3'`.
+
 ## 1.0.2
 
 | Paket | Sürüm |

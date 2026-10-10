@@ -9,7 +9,7 @@ diğer platformlarda her çağrı hiçbir şey yapmaz; ilk çağrı bunu logda b
 - Android: Minimum API Level 23, compileSdk 35 veya daha yenisi.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 veya daha yenisi.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Yerel
-  SDK'ları getirir: Gradle üzerinden `ai.clomni:messenger:1.0.2` ve CocoaPods üzerinden `ClomniMessenger` pod'u.
+  SDK'ları getirir: Gradle üzerinden `ai.clomni:messenger:1.0.3` ve CocoaPods üzerinden `ClomniMessenger` pod'u.
 - Gelen kutusunun ayarlar sütununda **Installation** bölümünden App ID ve her iki API anahtarı (`android_…`, `ios_…`).
 
 ## Kurulum
@@ -18,7 +18,7 @@ diğer platformlarda her çağrı hiçbir şey yapmaz; ilk çağrı bunu logda b
 2. **Window → Package Manager → + → Add package from git URL** yolunu açın ve şunu girin:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.3
    ```
 
    > **Yol:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -34,12 +34,12 @@ diğer platformlarda her çağrı hiçbir şey yapmaz; ilk çağrı bunu logda b
    değil, `.xcworkspace`'i açın. Xcode bir Swift sürümü isterse `UnityFramework` target'ında `SWIFT_VERSION = 5.0`
    ayarlayın.
 
-   EDM4U, iOS build'inin Podfile'ına `pod 'ClomniMessenger', '1.0.2'` yazar; bu biçim pod'u, SDK'nın yayınlanmadığı
+   EDM4U, iOS build'inin Podfile'ına `pod 'ClomniMessenger', '1.0.3'` yazar; bu biçim pod'u, SDK'nın yayınlanmadığı
    CocoaPods trunk'ta arar. Her iOS build'inden sonra build klasöründeki `Podfile`'da bu satırı değiştirin ve orada
    `pod install` çalıştırın:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
    ```
 
 Hızlıca denemek için: Package Manager → Clomni Messenger → Samples → **Basic** → Import. `ClomniBasicSample`'ı boş

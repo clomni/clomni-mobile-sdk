@@ -11,13 +11,13 @@
 ### Swift Package Manager
 
 В Xcode: **File → Add Package Dependencies**, введите `https://github.com/clomni/clomni-mobile-sdk.git`, выберите
-правило «Up to Next Major Version» от `1.0.2` и добавьте продукт `ClomniMessenger` в таргет приложения.
+правило «Up to Next Major Version» от `1.0.3` и добавьте продукт `ClomniMessenger` в таргет приложения.
 
 В `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.2"),
+    .package(url: "https://github.com/clomni/clomni-mobile-sdk.git", from: "1.0.3"),
 ],
 targets: [
     .target(name: "App", dependencies: [
@@ -32,7 +32,7 @@ SDK не опубликован в CocoaPods trunk. Проект на CocoaPods 
 
 ```ruby
 # Podfile, в таргете приложения
-pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
 ```
 
 ### Info.plist

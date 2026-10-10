@@ -1,5 +1,15 @@
 # Versiyalar
 
+## 1.0.3
+
+Bütün paketlər 1.0.3-dür: Android, iOS, React Native, Flutter və Unity (`unity-1.0.3` teqi).
+
+- Mikrofon düyməsi toxunan kimi cavab verir: dairə, taymer və titrəmə dərhal gəlir.
+- Bir saniyəlik basış da yazılır, "basıb saxlayın" ipucu artıq çıxmır.
+
+Yeniləmək üçün versiyanı 1.0.3 edin: Android `ai.clomni:messenger:1.0.3`, React Native `@clomni/react-native@1.0.3`,
+Flutter `clomni_flutter: ^1.0.3`, Unity `#unity-1.0.3`, iOS `from: "1.0.3"` və ya `:tag => '1.0.3'`.
+
 ## 1.0.2
 
 | Paket | Versiya |

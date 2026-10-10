@@ -1,5 +1,15 @@
 # Versions
 
+## 1.0.3
+
+All packages are 1.0.3: Android, iOS, React Native, Flutter and Unity (tag `unity-1.0.3`).
+
+- The microphone button answers the moment it is touched: the circle, the timer and the vibration come at once.
+- A one-second press is recorded too, and the "press and hold" hint no longer shows.
+
+To update, set the version to 1.0.3: Android `ai.clomni:messenger:1.0.3`, React Native `@clomni/react-native@1.0.3`,
+Flutter `clomni_flutter: ^1.0.3`, Unity `#unity-1.0.3`, iOS `from: "1.0.3"` or `:tag => '1.0.3'`.
+
 ## 1.0.2
 
 | Package | Version |

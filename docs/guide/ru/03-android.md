@@ -26,7 +26,7 @@ SDK 1.0.1 не запрашивает собственных разрешени�
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.2")
+    implementation("ai.clomni:messenger:1.0.3")
 }
 ```
 
@@ -270,7 +270,7 @@ plugins {
 }
 
 dependencies {
-    implementation("ai.clomni:messenger:1.0.2")
+    implementation("ai.clomni:messenger:1.0.3")
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-messaging")
 }

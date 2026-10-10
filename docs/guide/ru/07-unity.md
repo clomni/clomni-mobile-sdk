@@ -9,7 +9,7 @@
 - Android: Minimum API Level 23, compileSdk 35 или новее.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 или новее.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Он подтягивает
-  нативные SDK: `ai.clomni:messenger:1.0.2` через Gradle и pod `ClomniMessenger` через CocoaPods.
+  нативные SDK: `ai.clomni:messenger:1.0.3` через Gradle и pod `ClomniMessenger` через CocoaPods.
 - App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в колонке настроек канала.
 
 ## Установка
@@ -18,7 +18,7 @@
 2. Откройте **Window → Package Manager → + → Add package from git URL** и введите:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.2
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.3
    ```
 
    > **Путь:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,12 +33,12 @@
    `.xcworkspace`, а не `.xcodeproj`. Если Xcode просит указать версию Swift, задайте `SWIFT_VERSION = 5.0` для
    таргета `UnityFramework`.
 
-   EDM4U записывает в Podfile iOS-сборки `pod 'ClomniMessenger', '1.0.2'`, а в такой форме pod ищется в CocoaPods
+   EDM4U записывает в Podfile iOS-сборки `pod 'ClomniMessenger', '1.0.3'`, а в такой форме pod ищется в CocoaPods
    trunk, где SDK не опубликован. После каждой сборки под iOS замените эту строку в `Podfile` папки сборки и
    выполните там `pod install`:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
    ```
 
 Чтобы быстро попробовать: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Добавьте

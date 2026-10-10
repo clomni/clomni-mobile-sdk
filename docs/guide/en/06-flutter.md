@@ -22,7 +22,7 @@ flutter pub add clomni_flutter
   `pod install` stops and prints the line.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.2'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.3'
   ```
 
 Add the photo texts to `ios/Runner/Info.plist` (see the [iOS chapter](04-ios.md#infoplist)).
