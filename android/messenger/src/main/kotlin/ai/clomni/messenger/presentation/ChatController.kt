@@ -521,6 +521,6 @@ internal class ChatController(
          * Silence after which a flow that offers nothing to answer gives the composer back. Longer than a step's
          * rhythm (a few messages, 0.6-1.2 s each) and the network's usual delay.
          */
-        const val STEP_WAIT_MS = 10_000L
+        const val STEP_WAIT_MS = 8_000L
     }
 }

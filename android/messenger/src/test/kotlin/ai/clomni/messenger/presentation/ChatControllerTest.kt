@@ -274,7 +274,7 @@ class ChatControllerTest {
         source.outbox.clear()
         source.push(ClomniChange.Messages("conv_5521"))
         assertEquals("just answered: the next step may come", ChatComposer.Mode.Hidden, chat.screen.composer.mode)
-        assertEquals(10_000L, steps.delays.last())
+        assertEquals("8 s, as on iOS", 8_000L, steps.delays.last())
         steps.fire()
         assertEquals("nothing came: the composer is back", ChatComposer.Mode.Open, chat.screen.composer.mode)
 
