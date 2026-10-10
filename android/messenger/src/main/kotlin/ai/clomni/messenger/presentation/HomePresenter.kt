@@ -248,7 +248,11 @@ internal class HomePresenter(
         )
     }
 
-    /** A conversation with a last message; one without has nothing to show yet. */
+    /**
+     * A conversation with a last message; one without has nothing to show yet. Next to the user's own message ("Siz")
+     * the conversation's own face, the company's, as a chat list shows it; never the operator's (test report), the same
+     * as iOS.
+     */
     fun row(conversation: Conversation, config: MessengerConfig?): ConversationRow? {
         val message = conversation.lastMessage ?: return null
         val brand = config?.brand?.name.orEmpty()
@@ -259,12 +263,19 @@ internal class HomePresenter(
             SenderType.OPERATOR -> message.sender.name ?: conversation.assignee?.name ?: brand
             SenderType.SYSTEM, SenderType.UNKNOWN -> brand
         }
-        // The avatar is the other side's: the operator's, or the bot's.
-        val fromUs = message.sender.type == SenderType.USER || message.sender.type == SenderType.SYSTEM
-        val otherName = if (fromUs) conversation.assignee?.name ?: botName ?: brand else name
         val botAvatar = botAvatar(config)
-        val otherAvatar = when {
-            fromUs -> conversation.assignee?.avatarUrl ?: botAvatar
+        val fromUser = message.sender.type == SenderType.USER
+        val system = message.sender.type == SenderType.SYSTEM
+        // A system line ("Leyla söhbətə qoşuldu") shows who answers: the assignee, else the bot.
+        val faceName = when {
+            fromUser -> brand.ifEmpty { botName.orEmpty() }
+            system -> conversation.assignee?.name ?: botName ?: brand
+            else -> name
+        }
+        val face = when {
+            // The company: its logo, else the panel's bot picture, else its initial.
+            fromUser -> config?.brand?.logoUrl ?: config?.bot?.avatarUrl
+            system -> conversation.assignee?.avatarUrl ?: botAvatar
             // The panel's bot picture, as in the conversation.
             message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar
             else -> message.sender.avatarUrl
@@ -274,8 +285,8 @@ internal class HomePresenter(
         val unread = conversation.unreadCount > 0
         return ConversationRow(
             id = conversation.id,
-            avatarUrl = otherAvatar,
-            initial = otherName.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
+            avatarUrl = face,
+            initial = faceName.firstOrNull()?.toString()?.uppercase(Locale.ROOT).orEmpty(),
             preview = preview,
             detail = "$name · $ago",
             name = name,

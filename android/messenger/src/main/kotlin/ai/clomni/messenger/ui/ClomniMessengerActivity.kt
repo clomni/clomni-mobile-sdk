@@ -6,7 +6,6 @@ import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.HomePresenter
 import ai.clomni.messenger.presentation.MessengerRoute
 import ai.clomni.messenger.presentation.MessengerSnapshot
-import ai.clomni.messenger.protocol.speaks
 import android.app.Activity
 import android.os.Build
 import android.os.Bundle
@@ -109,7 +108,9 @@ internal class ClomniMessengerActivity : ComponentActivity() {
                 override fun handleOnBackPressed() = MessengerRuntime.back()
             },
         )
-        setContentView(ComposeView(this).apply { setContent { MessengerRoot(MessengerRuntime, closing) { finish() } } })
+        // Back after Android took it away while open (G-16): where it was, without sliding up again.
+        val restored = savedInstanceState == null && intent.getBooleanExtra(EXTRA_RESTORED, false)
+        setContentView(ComposeView(this).apply { setContent { MessengerRoot(MessengerRuntime, closing, restored) { finish() } } })
     }
 
     override fun finish() {
@@ -121,8 +122,13 @@ internal class ClomniMessengerActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        MessengerRuntime.detach(this, closedByUser = isFinishing && !isChangingConfigurations)
+        MessengerRuntime.detach(this, finishing = isFinishing && !isChangingConfigurations)
         super.onDestroy()
+    }
+
+    internal companion object {
+        /** Opened again where Android took it away: no opening motion. */
+        const val EXTRA_RESTORED = "ai.clomni.messenger.restored"
     }
 }
 
@@ -180,7 +186,7 @@ internal fun Window.barIcons(darkStatus: Boolean, darkNavigation: Boolean) {
  * from the start.
  */
 @Composable
-internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, closed: () -> Unit = {}) {
+internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, restored: Boolean = false, closed: () -> Unit = {}) {
     val coordinator = runtime.coordinator ?: return
     val engine = runtime.engine ?: return
     val state = runtime.root
@@ -218,9 +224,9 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         openNews = { coordinator.navigate(MessengerRoute.News(it)) },
         openLink = openLink,
     )
-    val intro = remember { HomeIntro(played = false) }
+    val intro = remember { HomeIntro(played = restored) }
     CompositionLocalProvider(LocalHomeIntro provides intro, LocalOpenLink provides openLink) {
-    MessengerSheet(theme, closing, closed, dismiss = close) {
+    MessengerSheet(theme, closing, closed, dismiss = close, restored = restored) {
         if (!state.ready || route == null) {
             // Not ready yet: the grey skeleton, the indicator in the middle while there is no look kept, ✕ working.
             val snapshot = if (state.failed) {
@@ -228,7 +234,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
             } else {
                 MessengerSnapshot(isOffline = state.offline)
             }
-            val presenter = HomePresenter(ClomniStrings(state.config.speaks(runtime.language)), now = System.currentTimeMillis())
+            val presenter = HomePresenter(ClomniStrings.of(state.config, runtime.language), now = System.currentTimeMillis())
             val skeleton = presenter.home(snapshot)
             HomeView(skeleton, theme, MessengerActions(close = close, retry = { coordinator.prepare() }))
             if (state.config == null) {
@@ -316,10 +322,12 @@ private fun MessengerSheet(
     closing: Boolean,
     closed: () -> Unit,
     dismiss: () -> Unit,
+    /** Already up: it was there before Android took it away. */
+    restored: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val still = reduceMotion()
-    val visible = remember { MutableTransitionState(false) }
+    val visible = remember { MutableTransitionState(restored) }
     visible.targetState = !closing
     LaunchedEffect(visible.currentState, visible.isIdle) {
         if (closing && visible.isIdle && !visible.currentState) closed()
@@ -331,7 +339,7 @@ private fun MessengerSheet(
         tween(250, easing = if (closing) Motion.EmphasizedAccelerate else Motion.EmphasizedDecelerate),
         label = "scrim",
     )
-    var shown by remember { mutableStateOf(false) }
+    var shown by remember { mutableStateOf(restored) }
     LaunchedEffect(Unit) { shown = true }
     val inside by animateFloatAsState(
         if (shown && !closing) 1f else 0f,

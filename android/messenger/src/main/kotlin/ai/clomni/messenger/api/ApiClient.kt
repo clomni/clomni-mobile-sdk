@@ -97,6 +97,10 @@ internal class ApiClient(
 
     val sdkHeader: String get() = "android/${config.sdkVersion}"
 
+    /** Told after every call: true when the server answered (whatever it said), false when nothing came back. */
+    @Volatile
+    var reachability: ((Boolean) -> Unit)? = null
+
     /**
      * A new session for [identity]. The anonymous user kept from earlier goes along: resumed for an anonymous visitor,
      * merged into an identified user (whose conversations it then joins).
@@ -304,9 +308,13 @@ internal class ApiClient(
                     Response(it.code, it.body?.string().orEmpty(), it.header("ETag"), it.header("Retry-After"))
                 }
             } catch (e: IOException) {
+                ClomniLog.debug { "$method ${url.encodedPath}: no answer (${e.message ?: e.javaClass.simpleName})" }
+                reachability?.invoke(false)
                 throw ClomniError.Network(e.message ?: e.javaClass.simpleName)
             }
+            reachability?.invoke(true)
             val status = response.status
+            ClomniLog.debug { "$method ${url.encodedPath}: $status" }
             when {
                 status in 200..299 || status == 304 -> return response
                 status == 401 && token != null && !refreshed && error(response)?.code == "token_expired" -> {

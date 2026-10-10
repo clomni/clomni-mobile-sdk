@@ -15,6 +15,7 @@ import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.protocol.speaks
 import ai.clomni.messenger.realtime.RealtimeClient
 import ai.clomni.messenger.store.MessageStore
 import ai.clomni.messenger.store.PendingMessage
@@ -74,7 +75,11 @@ class ClomniEngineTest {
             MessageStore(dir, protocol),
             protocol,
             http,
-            timing = ClomniEngine.Timing(RealtimeClient.Timing(reconnectDelayMs = { 50L }), outboxRetryMs = { retryMs }),
+            timing = ClomniEngine.Timing(
+                RealtimeClient.Timing(reconnectDelayMs = { 50L }),
+                outboxRetryMs = { retryMs },
+                offlineRetryMs = { retryMs },
+            ),
         ).also { it.observe { change -> changes += change } }
 
         init {
@@ -266,7 +271,7 @@ class ClomniEngineTest {
         assertEquals(listOf("Salam"), fake.userMessages(conversation).map { it.getValue("content").jsonObject.getValue("text").jsonPrimitive.content })
     }
 
-    /** Offline: the draft's message waits, fails, and on retry creates the conversation once. */
+    /** Offline: the draft's message waits, and with the network back creates the conversation once. */
     @Test
     fun aDraftsFirstMessageWaitsForTheNetwork() {
         val phone = Phone()
@@ -275,28 +280,59 @@ class ClomniEngineTest {
         phone.caughtUp()
         val draft = phone.engine.draft(null)
         fake.offline = true
-        val sent = phone.engine.sendText("Salam", draft).await()
-        eventually("failed") { phone.engine.pending(draft).singleOrNull()?.state == PendingMessage.State.FAILED }
+        phone.engine.sendText("Salam", draft).await()
+        eventually("tried four times") { fake.count("POST /v1/conversations") >= 4 }
         assertEquals("the message stays on the draft's screen", "Salam", phone.engine.pending(draft).single().preview)
+        assertEquals(PendingMessage.State.SENDING, phone.engine.pending(draft).single().state)
         fake.offline = false
-        phone.engine.retry(sent.id).await()
         eventually("sent") { phone.engine.pending(draft).isEmpty() && phone.engine.conversations().isNotEmpty() }
         phone.engine.refreshConversations().await()
         val conversation = phone.engine.conversations().single().id
         assertEquals(listOf("Salam"), fake.userMessages(conversation).map { it.getValue("content").jsonObject.getValue("text").jsonPrimitive.content })
     }
 
+    /**
+     * G-17 (test report): offline, a message said "Göndərilmədi" after 3 s and went 20 s after the network came back.
+     * Without an answer it waits with its clock, however many tries, and goes as soon as the network is back.
+     */
+    @Test
+    fun offlineAMessageWaitsAndGoesWhenTheNetworkIsBack() {
+        val (phone, conversation) = ready(Phone(retryMs = 60_000))
+        val changes = phone.changes
+        fake.acceptSockets = false
+        fake.closeSockets()
+        fake.offline = true
+        eventually("the socket is down") { !phone.engine.isLive }
+        phone.engine.sendText("Salam", conversation).await()
+        eventually("the first try got no answer") { sends(conversation) == 1 }
+        phone.engine.awaitIdle()
+        val waiting = phone.engine.pending(conversation).single()
+        assertEquals("not failed: it waits", PendingMessage.State.SENDING, waiting.state)
+        assertEquals("no answer is not a failed attempt", 0, waiting.attempts)
+        eventually("the capsule is told") { ai.clomni.messenger.core.ClomniChange.Connection(false) in changes }
+        Thread.sleep(200)
+        assertEquals("the next try waits for its pause (60 s here)", 1, sends(conversation))
+
+        fake.offline = false
+        fake.acceptSockets = true
+        phone.engine.networkAvailable().await()
+        eventually("sent at once, no tap on retry") { phone.engine.pending(conversation).isEmpty() }
+        assertEquals(1, fake.userMessages(conversation).size)
+        eventually("and the server answers again") { changes.last { it is ai.clomni.messenger.core.ClomniChange.Connection } == ai.clomni.messenger.core.ClomniChange.Connection(true) }
+    }
+
+    /** A server that answers with errors (5xx, after the client's own repeats): three attempts make the message failed. */
     @Test
     fun threeFailedAttemptsMakeAMessageFailedUntilRetried() {
         val (phone, conversation) = ready()
-        fake.offline = true
+        fake.outages["POST /v1/conversations/$conversation/messages"] = 503
         val sent = phone.engine.sendText("Salam", conversation).await()
         eventually("the message fails") { phone.engine.pending(conversation).singleOrNull()?.state == PendingMessage.State.FAILED }
         assertEquals(3, phone.engine.pending(conversation).single().attempts)
-        assertEquals(3, sends(conversation))
-        fake.offline = false
+        fake.outages.clear()
         // A failed message does not go by itself, not even after the connection is back.
         phone.engine.applicationWillEnterForeground().await()
+        phone.engine.networkAvailable().await()
         assertEquals(PendingMessage.State.FAILED, phone.engine.pending(conversation).single().state)
 
         phone.engine.retry(sent.id).await()
@@ -311,7 +347,7 @@ class ClomniEngineTest {
         val (phone, conversation) = ready(Phone(retryMs = 400))
         fake.offline = true
         phone.engine.sendText("Salam", conversation).await()
-        eventually("the first attempt fails") { phone.engine.pending(conversation).singleOrNull()?.attempts == 1 }
+        eventually("the first attempt gets no answer") { sends(conversation) == 1 }
         assertEquals(PendingMessage.State.SENDING, phone.engine.pending(conversation).single().state)
         fake.offline = false
         eventually("the next attempt delivers it") { phone.engine.pending(conversation).isEmpty() }
@@ -355,7 +391,7 @@ class ClomniEngineTest {
         val (first, conversation) = ready(Phone(vault, dir, retryMs = 60_000))
         fake.offline = true
         first.engine.sendText("Salam", conversation).await()
-        eventually("the first attempt fails") { first.engine.pending(conversation).singleOrNull()?.attempts == 1 }
+        eventually("the first attempt gets no answer") { sends(conversation) == 1 }
         first.engine.shutdown()
 
         fake.offline = false
@@ -401,6 +437,19 @@ class ClomniEngineTest {
         eventually("the missed messages") { phone.texts(conversation).containsAll(listOf("Bir", "İki")) }
         assertTrue(fake.log.toString(), fake.log.any { it.startsWith("GET /v1/conversations/$conversation/messages?after_seq=1") })
         assertEquals(listOf(1L, 2L, 3L), phone.engine.messages(conversation).map { it.seq })
+    }
+
+    /** The user loginUser named stays with the session: the next launch knows their name before the app logs in. */
+    @Test
+    fun theUserIsKeptForTheNextLaunch() {
+        val vault = MemorySecureStore()
+        val first = Phone(vault)
+        first.engine.loginUser(aysel.copy(name = "Aysel"), "hash").await()
+        first.engine.shutdown()
+        val next = Phone(vault)
+        assertEquals("Aysel", next.engine.keptUser().await()?.name)
+        next.engine.logout().await()
+        assertNull("not after logout", next.engine.keptUser().await())
     }
 
     @Test
@@ -544,10 +593,10 @@ class ClomniEngineTest {
     @Test
     fun logoutLeavesNothing() {
         val (phone, conversation) = ready()
-        fake.offline = true
+        fake.outages["POST /v1/conversations/$conversation/messages"] = 503
         phone.engine.sendText("Göndərilməyəcək", conversation).await()
         eventually("failed") { phone.engine.pending(conversation).singleOrNull()?.state == PendingMessage.State.FAILED }
-        fake.offline = false
+        fake.outages.clear()
         val deviceId = phone.credentials.deviceId
         val token = phone.token
 
@@ -572,7 +621,14 @@ class ClomniEngineTest {
         phone.changes.clear()
         assertEquals("Example", phone.engine.refreshConfig().await()?.brand?.name)
         assertEquals("Example", phone.engine.refreshConfig("az").await()?.brand?.name)
-        assertEquals(listOf("GET /v1/mobile/config", "GET /v1/mobile/config?lang=az"), fake.log.filter { it.startsWith("GET /v1/mobile/config") })
+        // Always in a language the SDK chose (the one it would speak with no config yet: the phone's), never left to the
+        // server's guess, so the texts kept are known to be that language's (test report: English online, Azerbaijani
+        // offline).
+        val phones = (null as ai.clomni.messenger.protocol.MessengerConfig?).speaks(null)
+        assertEquals(
+            listOf("GET /v1/mobile/config?lang=$phones", "GET /v1/mobile/config?lang=az"),
+            fake.log.filter { it.startsWith("GET /v1/mobile/config") },
+        )
         assertEquals(1, phone.changes.count { it == ClomniChange.Config })
         assertEquals("Example", phone.engine.config?.brand?.name)
     }
@@ -668,7 +724,8 @@ class ClomniEngineTest {
         val (before, conversation) = ready(Phone(vault, dir, retryMs = 60_000))
         fake.drops["POST /v1/conversations/$conversation/messages"] = 1
         val pending = before.engine.sendFile("pdf".toByteArray(), "qaime.pdf", "application/pdf", null, conversation).await()
-        eventually("the send fails once") { before.engine.pending(conversation).singleOrNull()?.attempts == 1 }
+        eventually("the send gets no answer once") { sends(conversation) == 1 }
+        before.engine.awaitIdle()
         val uploaded = before.engine.pending(conversation).single().upload?.uploadId
         assertTrue(uploaded.orEmpty().startsWith("upl_"))
         before.engine.shutdown()
@@ -709,11 +766,12 @@ class ClomniEngineTest {
         val (phone, conversation) = ready(Phone(retryMs = 60_000))
         fake.offline = true
         val pending = phone.engine.sendFile("x".toByteArray(), "a.txt", "text/plain", null, conversation).await()
-        eventually("first attempt") { phone.engine.pending(conversation).singleOrNull()?.attempts == 1 }
+        eventually("first attempt") { fake.count("POST /v1/uploads") == 1 }
+        phone.engine.awaitIdle()
         phone.engine.localFile(pending)!!.delete()
         fake.offline = false
-        // The next attempt, without waiting for the pause.
-        phone.engine.applicationWillEnterForeground().await()
+        // The next attempt, without waiting for the pause: the network is back.
+        phone.engine.networkAvailable().await()
         eventually("failed") { phone.engine.pending(conversation).singleOrNull()?.state == PendingMessage.State.FAILED }
         assertEquals("file_missing", phone.engine.pending(conversation).single().errorCode)
         assertEquals("only the offline attempt reached for the server", 1, fake.count("POST /v1/uploads"))

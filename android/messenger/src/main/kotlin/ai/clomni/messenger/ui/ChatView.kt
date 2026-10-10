@@ -141,15 +141,39 @@ internal fun ClomniChat(
     val refused: (String?) -> Unit = { text -> if (text != null) Toast.makeText(context, text, Toast.LENGTH_LONG).show() }
     val resolver = context.contentResolver
     // A picked file waits over the field, with its preview and ×, and goes with the next send (its text the caption).
-    var picked by remember { mutableStateOf<Uri?>(null) }
+    var picked by rememberSaveable { mutableStateOf<Uri?>(null) }
     val photo = rememberResultLauncher(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) picked = uri }
     val document = rememberResultLauncher(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) picked = uri }
-    var shot by remember { mutableStateOf<Uri?>(null) }
-    val camera = rememberResultLauncher(ActivityResultContracts.TakePicture()) { taken -> if (taken) picked = shot }
-    val mayUseCamera = remember(context) {
-        context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
+    // The camera (G-10): a photo, or a video up to the file limit, written to a file of the messenger's own and then
+    // picked like any other. Kept across the activity being recreated while the camera app is in front.
+    var shot by rememberSaveable { mutableStateOf<Uri?>(null) }
     val limit = (config?.limits?.fileMb ?: 25).coerceAtLeast(config?.limits?.imageMb ?: 10) * 1_048_576L
+    val camera = rememberResultLauncher(ActivityResultContracts.TakePicture()) { taken -> if (taken) picked = shot }
+    val video = rememberResultLauncher(CaptureVideoUpTo((config?.limits?.fileMb ?: 25) * 1_048_576L)) { taken -> if (taken) picked = shot }
+    val cameraAccess = remember(context) { CameraAccess.of(context) }
+    var afterGrant by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val permission = rememberResultLauncher(ActivityResultContracts.RequestPermission()) { granted ->
+        val next = afterGrant
+        afterGrant = null
+        if (granted) next?.invoke() else refused(screen.composer.cameraDenied)
+    }
+    val shoot: (Boolean) -> Unit = { asVideo ->
+        val launch = {
+            Attachments.cameraTarget(context, asVideo)?.let { target ->
+                shot = target
+                runCatching { if (asVideo) video?.launch(target) else camera?.launch(target) }
+                    .onFailure { refused(screen.composer.cameraDenied) }
+            }
+            Unit
+        }
+        val granted = context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (cameraAccess == CameraAccess.ASK && !granted && permission != null) {
+            afterGrant = launch
+            permission.launch(android.Manifest.permission.CAMERA)
+        } else {
+            launch()
+        }
+    }
     val preview = picked?.let { uri ->
         remember(uri) {
             val image = resolver.getType(uri)?.startsWith("image/") == true
@@ -175,13 +199,13 @@ internal fun ClomniChat(
         pickImage = {
             photo?.launch(PickVisualMediaRequest.Builder().setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo).build())
         },
-        pickCamera = if (mayUseCamera && camera != null) {
-            {
-                Attachments.cameraTarget(context)?.let { target ->
-                    shot = target
-                    camera.launch(target)
-                }
-            }
+        pickCamera = if (cameraAccess != CameraAccess.NONE && camera != null) {
+            { shoot(false) }
+        } else {
+            null
+        },
+        pickVideo = if (cameraAccess != CameraAccess.NONE && video != null) {
+            { shoot(true) }
         } else {
             null
         },
@@ -432,6 +456,30 @@ private fun LazyTranscript(
         }
         placed = true
     }
+    // The end stays in view while the user is at it and something takes room from under it, frame by frame: a picked
+    // file's preview or a quote over the field, a status line under the last bubble (test report: the preview covered
+    // the last messages, and "Göndərilmədi" was cut under the field). Reading further up, nothing moves; a new item
+    // is the arrival's own business (above).
+    val lastIndex by rememberUpdatedState(last)
+    LaunchedEffect(state) {
+        val slop = with(density) { 2.dp.roundToPx() }
+        var was = state.distanceToEnd()
+        var count = state.layoutInfo.totalItemsCount
+        snapshotFlow { Triple(state.isScrollInProgress, state.distanceToEnd(), state.layoutInfo.totalItemsCount) }
+            .collect { (scrolling, distance, items) ->
+                val atEnd = was <= slop && items == count
+                was = distance
+                count = items
+                if (scrolling || auto[0] || !atEnd || distance <= slop) return@collect
+                auto[0] = true
+                try {
+                    state.keepEnd(lastIndex)
+                } finally {
+                    auto[0] = false
+                }
+                was = state.distanceToEnd()
+            }
+    }
     // G4/H1: while the composer has the cursor, the transcript rises with the keyboard, frame by frame with its own
     // animation: what stood just over it stays there, the last message too, however tall. A form field brings itself
     // into view instead (FormCardView).
@@ -525,6 +573,14 @@ private fun ChatItem.takesToEnd(): Boolean = when (this) {
     else -> false
 }
 
+/** Scrolls so the transcript's end is at the screen's bottom, at once: a tall last item shows its end. */
+private suspend fun LazyListState.keepEnd(lastIndex: Int) {
+    if (lastIndex < 0) return
+    if (distanceToEnd() == Int.MAX_VALUE) scrollToItem(lastIndex)
+    val left = distanceToEnd()
+    if (left in 1 until Int.MAX_VALUE) scrollBy(left.toFloat())
+}
+
 /** How far the transcript's end is under the screen's bottom, in px; the end not laid out yet counts as far. */
 private fun LazyListState.distanceToEnd(): Int {
     val info = layoutInfo
@@ -571,24 +627,37 @@ internal fun NewMessageCapsule(shown: Boolean, label: String, theme: ClomniTheme
     }
 }
 
-/** TalkBack reads a new incoming message out; the one there when the screen opened is not news. */
+/**
+ * TalkBack reads a new incoming message out; the one there when the screen opened is not news. Once read, the words
+ * leave this node ([ANNOUNCED_MS]): kept, TalkBack found the last bot message twice when moving through the screen,
+ * the bubble and this (test report).
+ */
 @Composable
 private fun Announcer(id: String?, text: String?) {
     var first by remember { mutableStateOf(id) }
-    var spoken by remember { mutableStateOf("") }
+    // Null until the first news: no node at all.
+    var spoken by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(id) {
-        if (id != null && id != first && text != null) spoken = text
+        val news = id != null && id != first && text != null
         first = null
+        if (news) {
+            spoken = text
+            delay(ANNOUNCED_MS)
+            spoken = ""
+        }
     }
-    if (spoken.isNotEmpty()) {
+    spoken?.let { words ->
         Box(
             Modifier.size(1.dp).semantics {
                 liveRegion = LiveRegionMode.Polite
-                contentDescription = spoken
+                if (words.isNotEmpty()) contentDescription = words
             },
         )
     }
 }
+
+/** Long enough for TalkBack to take the words of a polite announcement. */
+internal const val ANNOUNCED_MS = 3_000L
 
 /**
  * The conversation's [TopBar], its middle 4 under the sheet's handle: 8 after back's circle who answers (the

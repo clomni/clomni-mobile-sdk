@@ -55,6 +55,7 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     private val operatorRead = HashMap<String, Long>()
     private val answered = LinkedHashSet<String>()
     private var configBody: String? = null
+    private var configLanguage: String? = null
     private var conversationsDirty = false
     private var configDirty = false
     private val messagesDirty = mutableSetOf<String>()
@@ -213,12 +214,14 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         changes += ClomniChange.Unread(total)
     }
 
+    /** [language]: the one the config was asked in, kept with it so the next launch knows its texts' language. */
     @Synchronized
-    fun setConfig(config: MessengerConfig, body: String, etag: String?) {
+    fun setConfig(config: MessengerConfig, body: String, etag: String?, language: String? = null) {
         configRead = true
         this.config = config
         configBody = body
         configEtag = etag
+        configLanguage = language
         configDirty = true
         changes += ClomniChange.Config
     }
@@ -264,7 +267,8 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         configRead = true
         val cachedConfig = configFile?.read() as? JsonObject
         (cachedConfig?.get("body") as? JsonPrimitive)?.contentOrNull?.let { body ->
-            config = protocol.parseConfig(body)
+            configLanguage = (cachedConfig["lang"] as? JsonPrimitive)?.contentOrNull
+            config = protocol.parseConfig(body)?.let { parsed -> configLanguage?.let(parsed::answeredIn) ?: parsed }
             configBody = body.takeIf { config != null }
             configEtag = (cachedConfig["etag"] as? JsonPrimitive)?.contentOrNull.takeIf { config != null }
         }
@@ -319,6 +323,7 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         config = null
         configBody = null
         configEtag = null
+        configLanguage = null
         configRead = true
         news = emptyList()
         newsBody = null
@@ -388,7 +393,7 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         }
         messagesDirty.clear()
         if (configDirty) {
-            configFile?.write(buildJsonObject { put("etag", configEtag); put("body", configBody) })
+            configFile?.write(buildJsonObject { put("etag", configEtag); put("lang", configLanguage); put("body", configBody) })
             configDirty = false
         }
         if (newsDirty) {

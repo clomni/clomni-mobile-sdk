@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
@@ -113,5 +114,26 @@ class AccessibilityChecksTest {
         screen = chat(greeting, message("m3", user, """{"text":"Kömək edin"}""", "2026-10-01T10:31:00Z"), languages.copy(seq = 4))
         compose.waitForIdle()
         compose.onAllNodes(announced).assertCountEquals(1)
+    }
+
+    /**
+     * Test report: TalkBack moving through the screen found the last bot message twice, its bubble and the
+     * announcement. Once read out, the announcement keeps no words: the message is in the tree once.
+     */
+    @Test
+    fun anAnnouncedMessageIsInTheTreeOnce() {
+        var screen by mutableStateOf(chat(greeting))
+        compose.mainClock.autoAdvance = false
+        compose.setContent { ChatScreenView(screen, ClomniTheme.make(config.brand, false), ChatActions()) }
+        compose.mainClock.advanceTimeByFrame()
+        val saying = SemanticsMatcher("says the bot's question") { node ->
+            node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.contains("Please choose your language") } ||
+                node.config.getOrNull(SemanticsProperties.Text).orEmpty().any { it.text.contains("Please choose your language") }
+        }
+        screen = chat(greeting, languages.copy(seq = 4))
+        compose.mainClock.advanceTimeBy(500)
+        compose.onAllNodes(saying, useUnmergedTree = false).assertCountEquals(2)
+        compose.mainClock.advanceTimeBy(ANNOUNCED_MS)
+        compose.onAllNodes(saying, useUnmergedTree = false).assertCountEquals(1)
     }
 }

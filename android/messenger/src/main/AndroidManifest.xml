@@ -3,7 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The "İnternet yoxdur" strip of the open messenger. No other permission: the launcher lives in the app's own
-         windows (no SYSTEM_ALERT_WINDOW), photos come from the Photo Picker. -->
+         windows (no SYSTEM_ALERT_WINDOW), photos come from the Photo Picker, and the camera app takes a photo or a
+         video for the messenger (an app that declares CAMERA itself is asked for it first). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
@@ -14,7 +15,14 @@
             android:theme="@style/clomni_messenger"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- A photo taken for a message: the camera app writes it here (the app's cache), for this one use. -->
+        <!-- Follows the app's activities from the process's start, so a late Clomni.initialize (React Native, Flutter,
+             Unity) knows the screen in front and shows a launcher at once. Nothing else: no disk, no network. -->
+        <provider
+            android:name="ai.clomni.messenger.ui.ClomniStartup"
+            android:authorities="${applicationId}.clomni.startup"
+            android:exported="false" />
+
+        <!-- A photo or video taken for a message: the camera app writes it here (the app's cache), for this one use. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.clomni.camera"

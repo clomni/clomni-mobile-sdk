@@ -24,6 +24,7 @@ import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.protocol.RealtimeEvent
 import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.protocol.speaks
 import ai.clomni.messenger.protocol.UploadedFile
 import ai.clomni.messenger.realtime.RealtimeClient
 import ai.clomni.messenger.store.Drafts
@@ -54,11 +55,14 @@ import java.util.concurrent.TimeUnit
  * at once from the store, and every [observe]r hears what changed (on the worker thread).
  *
  * Messages are sent through the outbox: each one is on disk until the server has it, and is repeated with the same
- * `client_id` until then (after 1 s, then 2 s), so a message written offline or lost with the connection arrives
- * once. Three failed attempts mark it failed; [retry] sends it again. A message the server refuses (4xx) fails at once
- * with its reason; a 409 drops it and reloads the message it answered. An attached file goes the same way: it is kept on
- * the device, uploaded (repeated like a message), and then sent with its `upload_id`, which is kept too, so a restart
- * after the upload does not upload it again.
+ * `client_id` until then, so a message written offline or lost with the connection arrives once. With no answer at all
+ * (offline, a timeout) it waits with its clock, however long, tried again after 1, 2, 4 … 30 s and at once when the
+ * network comes back ([networkAvailable]) or the socket is ready (test report G-17: offline it said "Göndərilmədi" after
+ * 3 s). An answer that is a server error (5xx after the client's own repeats) counts as a failed attempt; three make it
+ * failed, and [retry] sends it again. A message the server refuses (4xx) fails at once with its reason; a 409 drops it
+ * and reloads the message it answered. An attached file goes the same way: it is kept on the device, uploaded (repeated
+ * like a message), and then sent with its `upload_id`, which is kept too, so a restart after the upload does not upload
+ * it again.
  */
 internal class ClomniEngine(
     private val api: ApiClient,
@@ -73,12 +77,22 @@ internal class ClomniEngine(
 
     data class Timing(
         val realtime: RealtimeClient.Timing = RealtimeClient.Timing(),
-        /** The pause before the next attempt of a message with no answer, after [attempts] failed ones: 1 s, 2 s. */
+        /** The pause before the next attempt of a message the server failed, after [attempts] failed ones: 1 s, 2 s. */
         val outboxRetryMs: (attempts: Int) -> Long = { attempts -> 1_000L shl (attempts - 1) },
+        /** The pause after [tries] attempts in a row without an answer: 1, 2, 4, 8, 16, then every 30 s. */
+        val offlineRetryMs: (tries: Int) -> Long = { tries -> minOf(1_000L shl minOf(tries - 1, 5), 30_000L) },
     )
 
     private val realtime = RealtimeClient(http, protocol, executor, api.sdkHeader, this, timing.realtime)
     private val outboxRetryMs = timing.outboxRetryMs
+    private val offlineRetryMs = timing.offlineRetryMs
+
+    /** Attempts in a row that got no answer; on the worker. */
+    private var unanswered = 0
+
+    /** [ClomniChange.Connection]'s state. */
+    @Volatile
+    private var reachable = true
     private val uploads: ExecutorService =
         Executors.newCachedThreadPool { Thread(it, "clomni-upload").apply { isDaemon = true } }
     private val observers = ConcurrentHashMap<UUID, (ClomniChange) -> Unit>()
@@ -94,6 +108,7 @@ internal class ClomniEngine(
         private set
 
     init {
+        api.reachability = ::reached
         // The previous run's state, on screen before the network answers.
         executor.execute {
             store.load()
@@ -124,6 +139,9 @@ internal class ClomniEngine(
      */
     fun loginUser(user: UserIdentity, userHash: String?): Future<Unit> = login(SessionIdentity.User(user, userHash))
 
+    /** The identified user kept with the session (name, email, phone), read from the secure store on the worker. */
+    override fun keptUser(): Future<UserIdentity?> = submit { (credentials.identity as? SessionIdentity.User)?.user }
+
     /**
      * The stored session is reused for the same person: an expired one is refreshed on its first call, and a refused
      * refresh opens a new one then. Only another identity (or none stored) opens a new session here.
@@ -141,6 +159,7 @@ internal class ClomniEngine(
                 throw e
             }
             isAppDisabled = false
+            ClomniLog.info { "session opened for ${if (session.anonymous) "an anonymous visitor" else "user"} ${session.userId}" }
             // Another identified user's conversations are not this one's.
             if (previous != null && !previous.anonymous && previous.userId != session.userId) clearLocalData()
         }
@@ -191,6 +210,16 @@ internal class ClomniEngine(
         if (wantsSocket) realtime.start(::endpoint)
         deliver()
         registerPush()
+    }
+
+    /**
+     * The device has a network again: what waits in the outbox goes now, not after its pause, and the socket
+     * reconnects without waiting out its delay.
+     */
+    fun networkAvailable(): Future<Unit> = submit {
+        unanswered = 0
+        if (wantsSocket && inForeground) realtime.retryNow()
+        deliver()
     }
 
     // Reading (from the store, at once)
@@ -458,10 +487,14 @@ internal class ClomniEngine(
         try {
             when (val data = event.data) {
                 is RealtimeEvent.Payload.Ready -> {
+                    ClomniLog.debug { "realtime: ready" }
                     live = true
+                    reached(true)
+                    unanswered = 0
                     catchUp()
                 }
                 is RealtimeEvent.Payload.MessageCreated -> {
+                    ClomniLog.debug { "realtime: ${data.message.id} (${data.message.type}) in ${data.message.conversationId}" }
                     receive(data.message)
                     val message = data.message
                     if (message.sender.type != SenderType.USER) store.changed(ClomniChange.Arrived(message.conversationId, message.sender))
@@ -494,6 +527,7 @@ internal class ClomniEngine(
     }
 
     override fun onDisconnected() {
+        if (live) ClomniLog.debug { "realtime: disconnected" }
         live = false
     }
 
@@ -518,6 +552,18 @@ internal class ClomniEngine(
 
     private fun publish() {
         store.commit().forEach(::notify)
+    }
+
+    /**
+     * ApiClient's word after every call (any thread). No answer counts only while the socket is down: a live socket
+     * says the server is there, whatever one slow request did.
+     */
+    @Synchronized
+    private fun reached(answered: Boolean) {
+        if (answered == reachable || (!answered && isLive)) return
+        reachable = answered
+        ClomniLog.debug { if (answered) "the server answers again" else "the server does not answer" }
+        notify(ClomniChange.Connection(answered))
     }
 
     private fun notify(change: ClomniChange) {
@@ -593,7 +639,7 @@ internal class ClomniEngine(
     /** The published news, in the config's language; kept with its ETag. */
     override fun refreshNews(language: String?): Future<List<NewsItem>> = submit {
         try {
-            when (val response = authed { api.getNews(language ?: configLanguage, store.newsEtag) }) {
+            when (val response = authed { api.getNews(language ?: configLanguage ?: store.config.speaks(null), store.newsEtag) }) {
                 NewsResponse.NotModified -> Unit
                 is NewsResponse.Changed -> store.setNews(response.items, response.body, response.etag)
             }
@@ -613,13 +659,21 @@ internal class ClomniEngine(
         }
     }
 
+    /**
+     * Always in a language of the SDK's choosing (the one asked for last, else the one it would speak now), never the
+     * server's guess from the session: the texts kept are then known to be that language's
+     * ([MessengerConfig.stringsLanguage]).
+     */
     private fun loadConfig(requested: String?) {
-        val language = requested ?: configLanguage
+        val language = requested ?: configLanguage ?: store.config.speaks(null)
         configLanguage = language
         try {
             when (val response = authed { api.getConfig(language, store.configEtag) }) {
                 ConfigResponse.NotModified -> Unit
-                is ConfigResponse.Changed -> store.setConfig(response.config, response.body, response.etag)
+                is ConfigResponse.Changed -> {
+                    ClomniLog.debug { "config: version ${response.config.version}, language $language" }
+                    store.setConfig(response.config.answeredIn(language), response.body, response.etag, language)
+                }
             }
         } catch (e: ClomniError) {
             ClomniLog.info { "config not refreshed: ${e.message}" }
@@ -701,10 +755,20 @@ internal class ClomniEngine(
         val status = try {
             val ready = uploaded(started(entry)) ?: return true
             val message = authed { api.sendMessage(ready.conversationId, ready.message) }
+            ClomniLog.debug { "sent ${entry.id} as ${message.id}" }
+            unanswered = 0
             store.outbox.remove(entry.id)
             receive(message)
             return true
+        } catch (e: ClomniError.Network) {
+            // No answer: offline or a timeout. Not a failure of the message: it waits with its clock and goes once
+            // the server answers again; the network's return or the socket's ready cut the pause short.
+            val pause = offlineRetryMs(++unanswered)
+            ClomniLog.debug { "send ${entry.id}: no answer (${e.message}), again in ${pause / 1000.0} s" }
+            nextAttempt = executor.schedule(::deliver, pause, TimeUnit.MILLISECONDS)
+            return false
         } catch (e: ClomniError.Server) {
+            unanswered = 0
             when {
                 e.status == 409 -> {
                     // already_answered / stale_interaction: the server has moved on; show its copy of the message.

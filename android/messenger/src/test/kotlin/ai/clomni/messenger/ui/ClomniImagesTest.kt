@@ -56,6 +56,16 @@ class ClomniImagesTest {
         assertNull(disk.openSnapshot(key.key))
     }
 
+    /** Test report: the logo stayed a grey square and nothing said why. A picture that fails says what and why. */
+    @Test
+    fun aPictureThatFailsSaysWhy() {
+        assertEquals(
+            "image https://app.clomni.ai/v1/images/img_1?w=96&format=webp: HTTP 403: Forbidden",
+            ClomniImages.failure("https://app.clomni.ai/v1/images/img_1?w=96&format=webp", IllegalStateException("HTTP 403: Forbidden")),
+        )
+        assertEquals("image x: UnknownHostException", ClomniImages.failure("x", java.net.UnknownHostException()))
+    }
+
     /**
      * DESIGN-PASS-3 C2: a picture from the disk or memory is there in its first frame; only one from the network fades
      * in. (Coil's own pipeline needs a running main looper, which these tests do not have.)

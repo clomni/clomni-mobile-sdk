@@ -344,6 +344,22 @@ class ChatPresenterTest {
         assertEquals("ended, stopped or handed over", ChatComposer.Mode.Open, mode("""{"active":false,"awaiting":null}"""))
         assertEquals("no flow sent (an older server): open", ChatComposer.Mode.Open, mode("null"))
         assertEquals("the earlier form reads as none", ChatComposer.Mode.Open, mode("""{"flow_id":"flw_1","node_id":"S"}"""))
+        // G-03: a menu whose chosen option leads nowhere. The server still says "menu" and sends nothing more: once
+        // the next step is no longer expected, nothing to answer gives the composer back; an answer on its way does not.
+        fun deadEnd(build: (ChatSnapshot) -> ChatSnapshot) = screen(listOf(languages)) {
+            build(it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), answerable = emptySet()))
+        }.composer.mode
+        assertEquals("the next step may still come", ChatComposer.Mode.Hidden, deadEnd { it })
+        assertEquals("silence: the composer is back", ChatComposer.Mode.Open, deadEnd { it.copy(stepExpected = false) })
+        val answer = PendingMessage("conv_5521", ClientMessage.ButtonReply(languages.id, "az", "lang:az"), "Azərbaycan dili", now)
+        assertEquals("the answer is still going", ChatComposer.Mode.Hidden, deadEnd { it.copy(stepExpected = false, pending = listOf(answer)) })
+        assertEquals(
+            "buttons to tap keep it away however long",
+            ChatComposer.Mode.Hidden,
+            screen(listOf(languages)) {
+                it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), answerable = setOf(languages.id), stepExpected = false)
+            }.composer.mode,
+        )
 
         // Example S: chips, the back button, no composer.
         val step = ChatFixture.message("10-example-level2-S-chips.json")
@@ -505,6 +521,56 @@ class ChatPresenterTest {
         assertFalse(ChatPresenter.canSend(" \n ", 10))
         assertFalse(ChatPresenter.canSend("12345678901", 10))
         assertTrue("emoji count once", ChatPresenter.canSend("👍👍👍", 3))
+    }
+
+    /**
+     * G-07 (test report): the server writes "Kanan söhbətə qoşuldu" when the conversation is assigned, which came after
+     * eight of Kanan's messages. The line stands before Kanan's first message since the last system line; another
+     * operator's messages, the bot's and the user's stay where they are, and a line naming nobody here stays put.
+     */
+    @Test
+    fun anOperatorJoinsBeforeTheirFirstMessage() {
+        fun operator(seq: Int, name: String, text: String) = ChatFixture.message(
+            "02-text-operator-markdown.json", "id" to "msg_$seq", "seq" to seq, "content" to mapOf("text" to text),
+            "sender" to mapOf("type" to "operator", "id" to "op_$name", "name" to name),
+            "created_at" to "2026-10-01T10:%02d:00Z".format(seq),
+        )
+        fun joined(seq: Int, name: String) = ChatFixture.message(
+            "23-system-operator-joined.json", "id" to "msg_sys_$seq", "seq" to seq,
+            "content" to mapOf("event" to "operator_joined", "text" to "$name Rzayev söhbətə qoşuldu"),
+            "created_at" to "2026-10-01T10:%02d:00Z".format(seq),
+        )
+        val waiting = ChatFixture.message("22-system-waiting-in-queue.json", "id" to "msg_sys_1", "seq" to 1)
+        val user = ChatFixture.message("03-text-user.json", "id" to "msg_3", "seq" to 3, "client_id" to "c_3")
+        val messages = listOf(waiting, operator(2, "Kanan", "Salam"), user, operator(4, "Kanan", "Baxıram"), joined(5, "Kanan"))
+        fun order(list: List<Message>) = screen(list).items.mapNotNull {
+            when (it) {
+                is ChatItem.SystemItem -> it.line.text
+                is ChatItem.BubbleItem -> text(it.bubble)
+                else -> null
+            }
+        }
+        val userText = text(bubbles(screen(listOf(user))).single())
+        assertEquals(
+            listOf("Sizi operatora yönləndiririk", "Kanan Rzayev söhbətə qoşuldu", "Salam", userText, "Baxıram"),
+            order(messages),
+        )
+        assertEquals(
+            "a line in its place, or one for someone who has not written, stays",
+            listOf("Sizi operatora yönləndiririk", "Salam", "Leyla Rzayev söhbətə qoşuldu"),
+            order(listOf(waiting, operator(2, "Kanan", "Salam"), joined(3, "Leyla"))),
+        )
+        assertEquals(
+            "not before a system line: Kanan's messages before the last one were another stretch",
+            listOf("Salam", "Sizi operatora yönləndiririk", "Kanan Rzayev söhbətə qoşuldu", "Yenə"),
+            order(
+                listOf(
+                    operator(1, "Kanan", "Salam"),
+                    ChatFixture.message("22-system-waiting-in-queue.json", "id" to "msg_sys_2", "seq" to 2),
+                    operator(3, "Kanan", "Yenə"), joined(4, "Kanan"),
+                ),
+            ),
+        )
     }
 
     @Test

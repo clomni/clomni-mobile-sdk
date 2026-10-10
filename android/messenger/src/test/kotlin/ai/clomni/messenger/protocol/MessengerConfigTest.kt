@@ -134,6 +134,25 @@ class MessengerConfigTest {
         assertEquals(MessengerConfig.Languages(), config("""{"languages":{"enabled":[],"default":"az"}}""").languages)
     }
 
+    /**
+     * Test report: without setLanguage, English online and Azerbaijani offline. A config kept in one language gives its
+     * texts only to that language; another one speaks the SDK's own texts, the same online and offline.
+     */
+    @Test
+    fun aConfigsTextsAreOnlyItsLanguages() {
+        val kept = config("""{"languages":{"enabled":["az","en","ru"],"default":"az"},"strings":{"send":"Göndər!"}}""")
+        val az = kept.answeredIn("az")
+        assertEquals("az", az.stringsLanguage)
+        assertEquals(mapOf("send" to "Göndər!"), az.strings("az"))
+        assertEquals(emptyMap<String, String>(), az.strings("en"))
+        assertEquals("a language that is off is answered in the default", "az", kept.answeredIn("tr").stringsLanguage)
+        assertEquals("en", kept.answeredIn("en-GB").stringsLanguage)
+        assertEquals("a config kept by an older SDK: its texts as they are", mapOf("send" to "Göndər!"), kept.strings("en"))
+        val english = ai.clomni.messenger.presentation.ClomniStrings.of(az, "en")
+        assertEquals("Send", english[ai.clomni.messenger.presentation.ClomniStrings.Key.SEND])
+        assertEquals("Göndər!", ai.clomni.messenger.presentation.ClomniStrings.of(az, "az")[ai.clomni.messenger.presentation.ClomniStrings.Key.SEND])
+    }
+
     @Test
     fun anEmptyObjectIsAConfigOfDefaults() {
         val config = config("{}")

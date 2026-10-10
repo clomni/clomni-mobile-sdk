@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- An app's main activity as React Native's template declares it: singleTask (G-16). -->
+        <activity
+            android:name="ai.clomni.messenger.ui.SingleTaskHost"
+            android:exported="false"
+            android:launchMode="singleTask" />
+    </application>
+
+</manifest>
