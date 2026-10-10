@@ -1,6 +1,6 @@
 {
   "name": "ai.clomni.messenger",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "displayName": "Clomni Messenger",
   "license": "Apache-2.0",
   "description": "Opens the Clomni Messenger inside a Unity game or app on Android and iOS, through the native Clomni SDKs: users, flows, push and the unread count.",

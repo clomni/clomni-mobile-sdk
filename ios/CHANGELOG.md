@@ -1,5 +1,12 @@
 # ClomniMessenger for iOS — changelog
 
+## 1.0.3
+
+The microphone answers the moment it is touched: the circle, the haptic and the clock start at once, and the hold that
+records is counted from the touch, not from when the microphone is ready (on a phone that took up to two seconds, so a
+short message was refused with "hold to record"). The audio session starts off the main thread and stays up between
+messages recorded one after another.
+
 ## 1.0.2
 
 Voice messages, as in WhatsApp: hold the microphone to record, slide left to cancel, slide up to lock, listen
