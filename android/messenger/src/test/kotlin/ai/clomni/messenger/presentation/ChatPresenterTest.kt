@@ -255,6 +255,48 @@ class ChatPresenterTest {
         assertEquals("an attachment the app uploaded itself shows its caption", "Yalnız mətn", text(list[2]))
     }
 
+    /** CM-130: a voice message in its bubble, mine on the right and theirs on the left; quoted and read out by name. */
+    @Test
+    fun voiceMessages() {
+        val mine = ChatFixture.message("100-audio-voice-user.json")
+        val theirs = ChatFixture.message("101-audio-operator-no-waveform.json")
+        val list = bubbles(screen(listOf(mine, theirs)))
+        val voice = list[0].body as Bubble.VoiceBody
+        assertEquals(VoiceNote.of(mine.id, mine.content as MessageContent.Audio, outgoing = true), voice.note)
+        assertEquals(Bubble.Side.OUTGOING, list[0].side)
+        assertEquals("Siz, 10:31: Səsli mesaj, 0:14", list[0].accessibilityLabel)
+        val operator = list[1].body as Bubble.VoiceBody
+        assertEquals(false to null, operator.note.outgoing to operator.note.durationMs)
+        assertEquals(Bubble.Side.INCOMING, list[1].side)
+        assertNull("nothing to copy", list[0].copyText)
+        // Answering it quotes it as a voice message.
+        val quoting = screen(listOf(mine)) { it.copy(replyingTo = mine.id) }.composer.quote
+        assertEquals("Səsli mesaj", quoting?.excerpt)
+    }
+
+    /** CM-130: the user's own voice message on its way plays from the kept recording; a ring only while it uploads. */
+    @Test
+    fun pendingVoiceMessages() {
+        val levels = List(64) { 40 }
+        val voice = pending(
+            ClientMessage.Attachment("", null, durationMs = 3_200, waveform = levels),
+            null,
+            PendingUpload("voice-1.m4a", "audio/mp4", 4_000, "upload-3"),
+        )
+        val file = File("/tmp/upload-3")
+        val online = bubbles(screen(emptyList()) { it.copy(pending = listOf(voice), localFiles = mapOf(voice.id to file)) }).single()
+        assertEquals(Bubble.VoiceBody(VoiceNote.sending(voice.id, file, 3_200, levels, uploading = true), ClomniStrings("az")).note, (online.body as Bubble.VoiceBody).note)
+        assertEquals("the clock in its time", Bubble.Status.Mark.SENDING, online.status?.mark)
+        val offline = bubbles(screen(emptyList()) { it.copy(pending = listOf(voice), localFiles = mapOf(voice.id to file), isOffline = true) }).single()
+        assertFalse("waiting for the connection: no ring", (offline.body as Bubble.VoiceBody).note.sending)
+        val uploaded = voice.copy(upload = voice.upload?.copy(uploadId = "upl_1"))
+        val sending = bubbles(screen(emptyList()) { it.copy(pending = listOf(uploaded), localFiles = mapOf(voice.id to file)) }).single()
+        assertFalse("uploaded: only the message is left to go", (sending.body as Bubble.VoiceBody).note.sending)
+        // Its recording gone from the device: shown as the file it is.
+        val lost = bubbles(screen(emptyList()) { it.copy(pending = listOf(voice)) }).single()
+        assertTrue(lost.body is Bubble.FileBody)
+    }
+
     @Test
     fun header() {
         val bot = screen(emptyList()).header
@@ -503,12 +545,13 @@ class ChatPresenterTest {
         val open = screen(emptyList()).composer
         assertEquals(ChatComposer.Mode.Open, open.mode)
         assertEquals("Mesaj yazın…", open.placeholder)
-        assertTrue(open.showsAttach && open.showsEmoji)
+        assertTrue(open.showsAttach)
         assertEquals(4_000, open.limit)
+        assertEquals("the recorder's limit, the config's or five minutes", 300, open.voiceSeconds)
         assertEquals("Göndər", open.sendLabel)
         assertEquals(
-            listOf("Fayl əlavə et", "Şəkil və ya video", "Kamera", "Fayl", "Sil", "Emoji"),
-            listOf(open.attachLabel, open.mediaLabel, open.cameraLabel, open.fileLabel, open.removeLabel, open.emojiLabel),
+            listOf("Fayl əlavə et", "Şəkil və ya video", "Kamera", "Fayl", "Sil"),
+            listOf(open.attachLabel, open.mediaLabel, open.cameraLabel, open.fileLabel, open.removeLabel),
         )
         val closed = screen(emptyList()) { it.copy(conversation = ChatFixture.conversation("closed")) }.composer
         assertEquals(ChatComposer.Mode.Closed("Söhbət bağlanıb", "Yeni söhbət başlat"), closed.mode)

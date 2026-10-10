@@ -19,3 +19,19 @@ internal fun MessengerScreenAt(
     Shown.HOME -> HomeView(home, theme, actions)
     Shown.MESSAGES -> MessagesView(messages, theme, home.header.closeLabel, actions)
 }
+
+/** The composer as an app that declares the microphone has it: the round button shows the microphone (CM-130). */
+@Composable
+internal fun WithVoice(content: @Composable () -> Unit) {
+    val recorder = androidx.compose.runtime.remember {
+        val time = ai.clomni.messenger.presentation.FakeTime()
+        VoiceRecorder(
+            ai.clomni.messenger.presentation.VoiceRecorderController(
+                ai.clomni.messenger.presentation.FakeMic(time), { ai.clomni.messenger.presentation.VoiceRecording.Permission.GRANTED },
+                {}, { java.io.File("voice.m4a") }, time, { time.now }, 300_000, {},
+            ),
+            300,
+        )
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalVoiceRecorder provides recorder, content = content)
+}

@@ -3,6 +3,8 @@
 
     <!-- Clomni's notifications on Android 13+; the app asks for it (MainActivity), never the SDK. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Voice messages (CM-130): the messenger asks for it the first time the microphone is held. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".SampleApp"

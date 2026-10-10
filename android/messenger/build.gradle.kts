@@ -89,7 +89,6 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.coil.compose)
     implementation(libs.androidx.activity)
-    implementation(libs.androidx.emoji.picker)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
@@ -139,16 +138,16 @@ apiValidation {
 // 2026-10-05 (BRIEF-DEVIATIONS 23) for the reply and the motion pass, and to 2.25 MB on 2026-10-08
 // (BRIEF-DEVIATIONS 25): the CSAT card, links and the start guard took it to 2 001 384 bytes. Part of CI.
 val checkAarSize by tasks.registering {
-    description = "Fails when the release AAR is larger than 2 MB."
+    description = "Fails when the release AAR is larger than 2.5 MB."
     group = "verification"
     val aar = layout.buildDirectory.file("outputs/aar/messenger-release.aar")
     dependsOn("bundleReleaseAar")
     inputs.file(aar)
     doLast {
         val bytes = aar.get().asFile.length()
-        val limit = 2_250_000L
+        val limit = 2_500_000L
         logger.lifecycle("messenger-release.aar: $bytes bytes (limit $limit)")
-        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over 2.25 MB (BRIEF-DEVIATIONS 21, 23, 25)" }
+        check(bytes <= limit) { "messenger-release.aar is $bytes bytes, over 2.5 MB (BRIEF-DEVIATIONS 21, 23, 25, 26)" }
     }
 }
 

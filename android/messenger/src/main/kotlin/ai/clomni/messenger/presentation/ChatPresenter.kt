@@ -112,11 +112,9 @@ internal class ChatPresenter(
             mode = mode,
             placeholder = strings[Key.COMPOSER_PLACEHOLDER],
             showsAttach = config?.composer?.attachments ?: true,
-            showsEmoji = config?.composer?.emoji ?: true,
             limit = config?.limits?.textChars ?: 4_000,
             sendLabel = strings[Key.SEND],
             attachLabel = strings[Key.ATTACH],
-            emojiLabel = strings[Key.EMOJI],
             mediaLabel = strings[Key.PICK_MEDIA],
             cameraLabel = strings[Key.PICK_CAMERA],
             fileLabel = strings[Key.PICK_FILE],
@@ -127,6 +125,8 @@ internal class ChatPresenter(
             cancelQuoteLabel = strings[Key.CLOSE],
             videoLabel = strings[Key.PICK_VIDEO],
             cameraDenied = strings[Key.CAMERA_DENIED],
+            voiceSeconds = config?.limits?.voiceSeconds ?: MessengerConfig.DEFAULT_VOICE_SECONDS,
+            texts = strings,
         )
     }
 
@@ -380,6 +380,7 @@ internal class ChatPresenter(
         val excerpt = when (val content = message.content) {
             is MessageContent.Image -> content.caption ?: strings[Key.IMAGE]
             is MessageContent.File -> content.name
+            is MessageContent.Audio -> strings[Key.VOICE_MESSAGE]
             else -> readable(message)
         }
         return Bubble.Quote(message.id, author(message.sender, snapshot), oneLine(excerpt).take(EXCERPT_CHARS))
@@ -411,6 +412,7 @@ internal class ChatPresenter(
         is MessageContent.QuickReplies -> content.text?.let(LimitedMarkdown::plainText) ?: message.fallbackText
         is MessageContent.Form -> content.text?.let(LimitedMarkdown::plainText) ?: message.fallbackText
         is MessageContent.Rating -> content.text
+        is MessageContent.Audio -> strings[Key.VOICE_MESSAGE] + (content.durationMs?.let { ", ${VoiceTime.length(it)}" } ?: "")
         else -> message.fallbackText
     }
 
@@ -438,10 +440,10 @@ internal class ChatPresenter(
         )
         is MessageContent.Form -> card(message, content, snapshot)
         is MessageContent.Rating -> rating(message, content, snapshot)
+        is MessageContent.Audio -> Bubble.VoiceBody(VoiceNote.of(message.id, content, message.sender.type == SenderType.USER), strings)
         is MessageContent.System -> null
-        // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text. A voice message too, until
-        // the conversation draws VoiceMessageBubble (CM-130).
-        is MessageContent.Card, is MessageContent.Audio, is MessageContent.Unknown -> Bubble.TextBody(LimitedMarkdown.linked(message.fallbackText))
+        // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
+        is MessageContent.Card, is MessageContent.Unknown -> Bubble.TextBody(LimitedMarkdown.linked(message.fallbackText))
     }
 
     /**
@@ -454,8 +456,18 @@ internal class ChatPresenter(
             is ClientMessage.ButtonReply -> Bubble.TextBody(listOf(TextRun(pending.preview ?: strings[Key.BACK])))
             is ClientMessage.Attachment -> {
                 val upload = pending.upload
+                val recording = snapshot.localFiles[pending.id]
                 when {
                     upload == null -> message.caption?.let { Bubble.TextBody(LimitedMarkdown.linked(it)) }
+                    // The user's voice message on its way, played from the recording kept for it: a ring while it
+                    // uploads, the clock in its time while it waits for the connection.
+                    upload.mime.startsWith("audio/") && recording != null -> Bubble.VoiceBody(
+                        VoiceNote.sending(
+                            pending.id, recording, message.durationMs, message.waveform,
+                            uploading = pending.state == PendingMessage.State.SENDING && upload.uploadId == null && !snapshot.isOffline,
+                        ),
+                        strings,
+                    )
                     Media.isImage(upload.mime) -> {
                         val box = Media.imageBox(null, null)
                         Bubble.ImageBody(

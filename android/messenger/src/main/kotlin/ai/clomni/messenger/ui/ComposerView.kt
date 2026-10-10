@@ -4,15 +4,9 @@ import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.ChatComposer
 import ai.clomni.messenger.presentation.ChatPresenter
 import ai.clomni.messenger.presentation.ClomniTheme
-import androidx.compose.animation.AnimatedContent
+import ai.clomni.messenger.presentation.VoiceRecording
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -43,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,8 +46,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -66,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
-import kotlinx.coroutines.flow.first
 
 /** A file picked in the sheet, shown over the field until it is sent with the message, or removed. */
 internal class PickedPreview(
@@ -78,9 +68,11 @@ internal class PickedPreview(
 /**
  * A white strip with the top hairline over the navigation bar, rising with the keyboard (DESIGN-PASS-2 11): a picked
  * file's 64 dp preview with its ×, then the field (surface, radius 20, at least 44 high, up to 5 lines, then it
- * scrolls) with the emoji and attach icons (24) inside it at the end; once there is something to send, the 36 dp send
- * button in the brand colour takes the attach icon's place (150 ms, scale and fade). A closed conversation offers a new
- * one, and writing anyway reopens it. While a step waits for a button there is no composer (see ChatScreenView).
+ * scrolls) with the paper clip (24) inside it at the end, and right of it the round button (CM-130, operator
+ * 2026-10-09, WhatsApp's layout; the emoji button went, the keyboard has emoji): the microphone while there is nothing
+ * to send, the arrow once there is ([ComposerSendButton]). While a voice message is recorded its bar takes the field's
+ * place ([VoiceRecordingBar]). A closed conversation offers a new one, and writing anyway reopens it. While a step
+ * waits for a button there is no composer (see ChatScreenView).
  */
 @Composable
 internal fun ComposerView(
@@ -115,14 +107,14 @@ internal fun ComposerView(
                 // Not shown: ChatScreenView leaves the composer out while a step waits for a button.
                 ChatComposer.Mode.Hidden -> Unit
                 is ChatComposer.Mode.Closed -> if (writeAnyway) {
-                    Field(composer, theme, text, changeText, actions, focus, picked != null)
+                    Writing(composer, theme, text, changeText, actions, focus, picked != null)
                     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
                 } else {
                     Closed(mode, theme, actions.startNew) {
                         setWriteAnyway()
                     }
                 }
-                ChatComposer.Mode.Open -> Field(composer, theme, text, changeText, actions, focus, picked != null)
+                ChatComposer.Mode.Open -> Writing(composer, theme, text, changeText, actions, focus, picked != null)
             }
         }
     }
@@ -177,8 +169,12 @@ private fun Closed(mode: ChatComposer.Mode.Closed, theme: ClomniTheme, startNew:
     }
 }
 
+/**
+ * The field and the round button right of it; while a voice message is made, its bar in the field's place. Locked or
+ * stopped, the bar has its own Send, and the button goes; while the finger holds it stays, under the finger.
+ */
 @Composable
-private fun Field(
+private fun Writing(
     composer: ChatComposer,
     theme: ClomniTheme,
     text: String,
@@ -187,21 +183,35 @@ private fun Field(
     focus: FocusRequester,
     hasPicked: Boolean,
 ) {
-    val keyboard = LocalSoftwareKeyboardController.current
-    val canSend = hasPicked || ChatPresenter.canSend(text, composer.limit)
-    var sheet by remember { mutableStateOf(false) }
-    var emoji by remember { mutableStateOf(false) }
-    // G3: a picked emoji closes the sheet and gives the field the cursor and the keyboard back, once the sheet's window
-    // has gone and the messenger's has the focus again.
-    var refocus by remember { mutableStateOf(0) }
-    val window = LocalWindowInfo.current
-    LaunchedEffect(refocus) {
-        if (refocus == 0) return@LaunchedEffect
-        snapshotFlow { window.isWindowFocused }.first { it }
-        runCatching { focus.requestFocus() }
-        keyboard?.show()
+    val recorder = LocalVoiceRecorder.current
+    val playback = LocalVoicePlayback.current
+    val state = recorder?.state
+    val holding = state is VoiceRecording.State.Holding
+    Row(verticalAlignment = if (holding) Alignment.Top else Alignment.Bottom) {
+        if (recorder != null && playback != null && recorder.showsBar) {
+            VoiceRecordingBar(recorder, playback, theme, composer.texts, Modifier.weight(1f))
+        } else {
+            Field(composer, theme, text, changeText, actions, focus, Modifier.weight(1f))
+        }
+        if (state !is VoiceRecording.State.Locked && state !is VoiceRecording.State.Review && recorder?.dropping != true) {
+            val canSend = hasPicked || ChatPresenter.canSend(text, composer.limit)
+            ComposerSendButton(canSend, recorder, theme, composer.texts, actions.send, Modifier.padding(start = 8.dp))
+        }
     }
-    // The field keeps its cursor, so a picked emoji goes where the cursor is; the text itself is the screen's.
+}
+
+@Composable
+private fun Field(
+    composer: ChatComposer,
+    theme: ClomniTheme,
+    text: String,
+    changeText: (String) -> Unit,
+    actions: ChatActions,
+    focus: FocusRequester,
+    modifier: Modifier,
+) {
+    var sheet by remember { mutableStateOf(false) }
+    // The field keeps its cursor; the text itself is the screen's.
     var field by remember { mutableStateOf(TextFieldValue(text, TextRange(text.length))) }
     if (field.text != text) field = TextFieldValue(text, TextRange(text.length))
     // The field is the 44 dp grey box; its target is 48, 2 dp of it above and below laying out over the bar's padding.
@@ -212,7 +222,7 @@ private fun Field(
             field = it
             if (it.text != text) changeText(it.text)
         },
-        Modifier.fillMaxWidth().bleed(vertical = slack).heightIn(min = ClomniTheme.Size.touchTarget.dp)
+        modifier.bleed(vertical = slack).heightIn(min = ClomniTheme.Size.touchTarget.dp)
             .focusRequester(focus).semantics { contentDescription = composer.placeholder },
         textStyle = clomniText(16f, theme.colors.textPrimary),
         maxLines = 5,
@@ -223,7 +233,7 @@ private fun Field(
                 Modifier.padding(vertical = slack).heightIn(min = 44.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(theme.colors.surface.color)
-                    .padding(start = 16.dp, end = 4.dp),
+                    .padding(start = 16.dp, end = if (composer.showsAttach) 4.dp else 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.weight(1f).padding(vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
@@ -237,58 +247,12 @@ private fun Field(
                     }
                     inner()
                 }
-                if (composer.showsEmoji) {
-                    IconButton(R.drawable.clomni_ic_emoji, composer.emojiLabel, theme) {
-                        keyboard?.hide()
-                        emoji = true
-                    }
-                }
-                // Send takes the attach icon's place once there is something to send: it comes in on a spring from
-                // 0.6 (M7); with the system's animations off it only fades.
-                val still = reduceMotion()
-                AnimatedContent(
-                    canSend,
-                    transitionSpec = {
-                        if (still) {
-                            fadeIn(tween(150)) togetherWith fadeOut(tween(150))
-                        } else {
-                            (scaleIn(spring(dampingRatio = 0.6f, stiffness = 500f), initialScale = 0.6f) + fadeIn(tween(150))) togetherWith
-                                (scaleOut(tween(120), targetScale = 0.6f) + fadeOut(tween(120)))
-                        }
-                    },
-                    label = "send",
-                ) { sending ->
-                    when {
-                        sending -> SendButton(composer.sendLabel, theme, actions.send)
-                        composer.showsAttach -> IconButton(R.drawable.clomni_ic_attach, composer.attachLabel, theme) { sheet = true }
-                        else -> Spacer(Modifier.size(0.dp))
-                    }
-                }
+                if (composer.showsAttach) IconButton(R.drawable.clomni_ic_attach, composer.attachLabel, theme) { sheet = true }
             }
         },
     )
     if (sheet) {
         AttachmentSheet(composer, theme, actions) { sheet = false }
-    }
-    if (emoji) {
-        EmojiSheet(theme, pick = { picked ->
-            val at = field.selection
-            val next = field.text.replaceRange(at.min, at.max, picked)
-            field = TextFieldValue(next, TextRange(at.min + picked.length))
-            changeText(next)
-            refocus++
-        }) { emoji = false }
-    }
-}
-
-/** 36 dp circle in the brand colour with the white arrow, in a 40 dp slot (its target reaches 48). */
-@Composable
-private fun SendButton(label: String, theme: ClomniTheme, send: () -> Unit) {
-    val inset = (ClomniTheme.Size.touchTarget.dp - 40.dp) / 2
-    Box(Modifier.bleed(inset, inset).size(ClomniTheme.Size.touchTarget.dp).button(label, CircleShape, 40.dp, send), Alignment.Center) {
-        Box(Modifier.size(36.dp).clip(CircleShape).background(theme.colors.primary.color), Alignment.Center) {
-            Icon(R.drawable.clomni_ic_send_up, theme.colors.onPrimary, 18.dp)
-        }
     }
 }
 

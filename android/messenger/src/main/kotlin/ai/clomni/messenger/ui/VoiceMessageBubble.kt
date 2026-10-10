@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -64,6 +65,9 @@ internal class VoicePlayback(val player: VoicePlayer) {
 
     val speed: VoicePlayer.Speed get() = version.let { player.speed }
 }
+
+/** The conversation's player, from [ClomniChat]; none in previews and screenshots. */
+internal val LocalVoicePlayback = staticCompositionLocalOf<VoicePlayback?> { null }
 
 /** One player for the conversation's screen, let go with it. */
 @Composable

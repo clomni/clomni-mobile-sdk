@@ -63,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -124,6 +125,9 @@ internal class VoiceRecorder(val controller: VoiceRecorderController, val maxSec
     /** The bar takes the field's place: while recording, while listening back, and while the bin closes. */
     val showsBar: Boolean get() = state != State.Idle || dropping
 }
+
+/** The conversation's recorder, from [ClomniChat]; none without RECORD_AUDIO, in previews and screenshots. */
+internal val LocalVoiceRecorder = staticCompositionLocalOf<VoiceRecorder?> { null }
 
 /**
  * The conversation's recorder, or null when the app does not declare RECORD_AUDIO (no microphone then) or in a
