@@ -517,11 +517,14 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         createdAt = o.requireTime("created_at"),
     )
 
-    /** `{active, awaiting, flow_id?, node_id?}`; the earlier `{flow_id, node_id}` (no `active`) reads as none. */
+    /**
+     * `{active, awaiting, flow_id?, node_id?, input_disabled?}`; the earlier `{flow_id, node_id}` (no `active`) reads as
+     * none.
+     */
     private fun conversationFlow(element: JsonElement?): Conversation.Flow? {
         val o = element as? JsonObject ?: return null
         val active = o.boolean("active") ?: return null
-        return Conversation.Flow(active, o.string("awaiting"), o.string("flow_id"), o.string("node_id"))
+        return Conversation.Flow(active, o.string("awaiting"), o.string("flow_id"), o.string("node_id"), o.boolean("input_disabled") == true)
     }
 
     private fun conversationWithMessages(o: JsonObject) =

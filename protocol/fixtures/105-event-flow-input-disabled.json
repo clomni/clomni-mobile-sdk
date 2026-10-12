@@ -1,0 +1,15 @@
+{
+  "event": "conversation.updated",
+  "data": {
+    "id": "conv_5521",
+    "status": "closed",
+    "assignee": null,
+    "unread_count": 0,
+    "flow": {
+      "active": false,
+      "awaiting": null,
+      "input_disabled": true
+    }
+  },
+  "ts": "2026-10-05T10:32:00Z"
+}

@@ -60,7 +60,7 @@ final class MessageFixtureTests: ProtocolTestCase {
         XCTAssertEqual(replies.buttons.first, MessageContent.Button(id: "az", title: "Azərbaycan dili", icon: "🇦🇿",
                                                                     payload: "set_lang:az"))
         XCTAssertEqual(replies.layout, .vertical)
-        XCTAssertFalse(replies.inputDisabled)
+        XCTAssertTrue(replies.inputDisabled, "a language step locks the composer, as the server sends it")
         XCTAssertEqual(before.flow?.interactive, true)
 
         let after = try Fixtures.message("08-language-select-answered.json")

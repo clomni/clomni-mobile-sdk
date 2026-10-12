@@ -1232,7 +1232,7 @@ components:
         status:
           enum: [bot, queued, open, closed]
           description: '`bot` while a flow runs, `queued` after a handover until an operator joins, `closed` when
-            resolved. Writing into a closed conversation reopens it.'
+            resolved. Writing into a closed conversation reopens it, unless `flow.input_disabled` is true.'
         assignee:
           oneOf:
             - type: 'null'

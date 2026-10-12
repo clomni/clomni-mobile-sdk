@@ -76,29 +76,46 @@ struct ComposerView: View {
     private var content: some View {
         switch composer.mode {
         case .closed(let closed, let action) where !writeAnyway:
-            HStack(spacing: CGFloat(ClomniTheme.Space.xs)) {
-                Button {
-                    writeAnyway = true
-                    focused = true
-                } label: {
+            closedRow(closed, action, canWrite: true)
+        case .locked(let closed, let action):
+            // Typing turned off by the flow (CM-170): a new conversation, never writing into this one.
+            closedRow(closed, action, canWrite: false)
+        default:
+            field
+        }
+    }
+
+    /// "Söhbət bağlanıb · Yeni söhbət başlat": the first writes anyway, the second starts a new conversation. When the
+    /// flow turned typing off the first is only text, and without it the action stands alone.
+    private func closedRow(_ closed: String?, _ action: String, canWrite: Bool) -> some View {
+        HStack(spacing: CGFloat(ClomniTheme.Space.xs)) {
+            if let closed {
+                if canWrite {
+                    Button {
+                        writeAnyway = true
+                        focused = true
+                    } label: {
+                        Text(closed)
+                            .foregroundStyle(theme.colors.textSecondary.color)
+                            .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
+                    }
+                } else {
                     Text(closed)
                         .foregroundStyle(theme.colors.textSecondary.color)
                         .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
                 }
                 Text(verbatim: "·").foregroundStyle(theme.colors.textSecondary.color).accessibilityHidden(true)
-                Button(action: startNew) {
-                    Text(action)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(theme.colors.primary.color)
-                        .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
-                }
             }
-            .clomniFont(13, relativeTo: .footnote)
-            .buttonStyle(PlainButtonStyle())
-            .frame(maxWidth: .infinity)
-        default:
-            field
+            Button(action: startNew) {
+                Text(action)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(theme.colors.primary.color)
+                    .frame(minHeight: CGFloat(ClomniTheme.Size.touchTarget))
+            }
         }
+        .clomniFont(13, relativeTo: .footnote)
+        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity)
     }
 
     /// Text that may go, or a picked file.

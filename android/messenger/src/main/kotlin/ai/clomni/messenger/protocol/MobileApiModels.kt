@@ -30,8 +30,17 @@ internal data class Conversation(
     /** Epoch milliseconds, UTC. */
     val createdAt: Long,
 ) {
-    /** [awaiting]: menu, text, form or null, kept as sent. [flowId] and [nodeId] while [active]. */
-    data class Flow(val active: Boolean, val awaiting: String?, val flowId: String? = null, val nodeId: String? = null) {
+    /**
+     * [awaiting]: menu, text, form or null, kept as sent. [flowId] and [nodeId] while [active]. [inputDisabled]: a flow
+     * step turned typing off in this conversation, also after the flow is over (protocol 1.0.4).
+     */
+    data class Flow(
+        val active: Boolean,
+        val awaiting: String?,
+        val flowId: String? = null,
+        val nodeId: String? = null,
+        val inputDisabled: Boolean = false,
+    ) {
         /** The composer stays away while a flow drives the conversation, unless it waits for typed text. */
         val holdsComposer: Boolean get() = active && awaiting != "text"
     }

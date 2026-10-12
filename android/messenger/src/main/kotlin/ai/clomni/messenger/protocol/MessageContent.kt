@@ -16,7 +16,10 @@ internal sealed interface MessageContent {
         val text: String?,
         val buttons: List<Button>,
         val layout: QuickRepliesLayout,
-        /** The composer is hidden while this message waits for a button. */
+        /**
+         * true: the composer is hidden while this message waits for a button. false: while the flow waits on it the user
+         * may type too (the step's builder switch, SDK 1.0.4).
+         */
         val inputDisabled: Boolean,
         /** A back button follows the others; it sends [ClientMessage.back]. */
         val allowBack: Boolean,

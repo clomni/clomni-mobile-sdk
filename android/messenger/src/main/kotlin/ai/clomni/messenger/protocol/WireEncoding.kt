@@ -41,6 +41,7 @@ internal fun Conversation.toJson(): JsonObject = buildJsonObject {
                 put("awaiting", it.awaiting)
                 putIfPresent("flow_id", it.flowId)
                 putIfPresent("node_id", it.nodeId)
+                if (it.inputDisabled) put("input_disabled", true)
             }
         } ?: JsonNull,
     )

@@ -54,6 +54,9 @@ class MobileApiModelsTest {
         )
         assertEquals(full, protocol.json.parseConversation(full.toJson().toString()))
         assertEquals(conversation, protocol.json.parseConversation(conversation.toJson().toString()))
+        // Typing turned off by the flow (CM-170) survives the copy on disk.
+        val locked = full.copy(flow = Conversation.Flow(active = false, awaiting = null, inputDisabled = true))
+        assertEquals(locked, protocol.json.parseConversation(locked.toJson().toString()))
         assertEquals(
             Conversation("conv_1", ConversationStatus.UNKNOWN, null, 0, null, null, null, millis("2026-10-01T10:30:00Z")),
             protocol.json.parseConversation(
