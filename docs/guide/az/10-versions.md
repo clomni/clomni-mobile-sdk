@@ -1,5 +1,20 @@
 # Versiyalar
 
+## 1.0.4
+
+Bütün paketlər 1.0.4-dür: Android, iOS, React Native, Flutter və Unity (`unity-1.0.4` teqi).
+
+- Düymə addımında "Müştəri yaza bilməsin" söndürülübsə, yazı qutusu düymələrin altında qalır. Müştəri düymə seçə və ya
+  cavabı yaza bilər.
+- "Yazmanı bağla" addımından sonra müştəri bu söhbətə yaza bilmir. Kilid flow bitəndən sonra da qalır: söhbət
+  bağlıdırsa, müştəriyə yalnız "Yeni söhbət başlat" qalır. Sual addımında, operatora ötürəndə və ya operator yazanda
+  yazı qutusu qayıdır.
+- Bu ayarları işlətməyən flow-lar əvvəlki kimi işləyir. Köhnə SDK versiyaları bu ayarları görmür və əvvəlki kimi
+  davranır.
+
+Yeniləmək üçün versiyanı 1.0.4 edin: Android `ai.clomni:messenger:1.0.4`, React Native `@clomni/react-native@1.0.4`,
+Flutter `clomni_flutter: ^1.0.4`, Unity `#unity-1.0.4`, iOS `from: "1.0.4"` və ya `:tag => '1.0.4'`.
+
 ## 1.0.3
 
 Bütün paketlər 1.0.3-dür: Android, iOS, React Native, Flutter və Unity (`unity-1.0.3` teqi).
