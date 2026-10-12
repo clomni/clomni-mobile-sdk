@@ -110,10 +110,12 @@ internal fun ComposerView(
                     Writing(composer, theme, text, changeText, actions, focus, picked != null)
                     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
                 } else {
-                    Closed(mode, theme, actions.startNew) {
+                    Closed(mode.text, mode.action, theme, actions.startNew) {
                         setWriteAnyway()
                     }
                 }
+                // Typing turned off by the flow (CM-170): a new conversation, never writing into this one.
+                is ChatComposer.Mode.Locked -> Closed(mode.text, mode.action, theme, actions.startNew, writeAnyway = null)
                 ChatComposer.Mode.Open -> Writing(composer, theme, text, changeText, actions, focus, picked != null)
             }
         }
@@ -150,21 +152,27 @@ private fun Preview(picked: PickedPreview, removeLabel: String, theme: ClomniThe
     }
 }
 
-/** "Söhbət bağlanıb · Yeni söhbət başlat": the first writes anyway, the second starts a new conversation. */
+/**
+ * "Söhbət bağlanıb · Yeni söhbət başlat": the first writes anyway, the second starts a new conversation. Without
+ * [writeAnyway] (typing turned off by the flow) the first is only text, and without [text] the action stands alone.
+ */
 @Composable
-private fun Closed(mode: ChatComposer.Mode.Closed, theme: ClomniTheme, startNew: () -> Unit, writeAnyway: () -> Unit) {
+private fun Closed(text: String?, action: String, theme: ClomniTheme, startNew: () -> Unit, writeAnyway: (() -> Unit)?) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(ClomniTheme.Space.xs.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val target = Modifier.heightIn(min = ClomniTheme.Size.touchTarget.dp)
-        Box(target.button(mode.text, RoundedCornerShape(8.dp), onClick = writeAnyway), Alignment.Center) {
-            BasicText(mode.text, style = clomniText(13f, theme.colors.textSecondary))
+        if (text != null) {
+            val label = if (writeAnyway != null) target.button(text, RoundedCornerShape(8.dp), onClick = writeAnyway) else target
+            Box(label, Alignment.Center) {
+                BasicText(text, style = clomniText(13f, theme.colors.textSecondary))
+            }
+            BasicText("·", Modifier.clearAndSetSemantics {}, style = clomniText(13f, theme.colors.textSecondary))
         }
-        BasicText("·", Modifier.clearAndSetSemantics {}, style = clomniText(13f, theme.colors.textSecondary))
-        Box(target.button(mode.action, RoundedCornerShape(8.dp), onClick = startNew), Alignment.Center) {
-            BasicText(mode.action, style = clomniText(13f, theme.colors.primaryText, FontWeight.SemiBold))
+        Box(target.button(action, RoundedCornerShape(8.dp), onClick = startNew), Alignment.Center) {
+            BasicText(action, style = clomniText(13f, theme.colors.primaryText, FontWeight.SemiBold))
         }
     }
 }

@@ -90,7 +90,7 @@
         "text": { "type": "string", "maxLength": 4000 },
         "buttons": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "$ref": "#/$defs/button" } },
         "layout": { "enum": ["vertical", "chips"], "default": "vertical" },
-        "input_disabled": { "type": "boolean", "default": false },
+        "input_disabled": { "type": "boolean", "default": false, "description": "true: while these buttons can be answered the user cannot type. false: the user may also type, and a typed button title answers like a tap. A flow step sends true unless its builder switch says otherwise; SDK 1.0.4 shows the composer for false while the flow waits, earlier SDKs hide it whenever conversation.flow holds it." },
         "allow_back": { "type": "boolean", "default": false }
       }
     },

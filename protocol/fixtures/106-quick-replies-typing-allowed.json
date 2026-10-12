@@ -1,0 +1,43 @@
+{
+  "id": "msg_f106",
+  "client_id": null,
+  "conversation_id": "conv_5521",
+  "type": "quick_replies",
+  "sender": {
+    "type": "bot",
+    "id": "bot_default",
+    "name": "Clomni",
+    "avatar_url": "https://app.clomni.ai/a/bot.png"
+  },
+  "created_at": "2026-10-01T10:30:00Z",
+  "seq": 12,
+  "lang": "az",
+  "flow": {
+    "flow_id": "flw_example_az",
+    "node_id": "Q",
+    "version": 7,
+    "interactive": true
+  },
+  "content": {
+    "text": "Hansı şəhərdəsiniz? Siyahıda yoxdursa, adını yazın.",
+    "buttons": [
+      {
+        "id": "o_baku",
+        "title": "Bakı",
+        "icon": null,
+        "payload": "node:B"
+      },
+      {
+        "id": "o_ganja",
+        "title": "Gəncə",
+        "icon": null,
+        "payload": "node:G"
+      }
+    ],
+    "layout": "chips",
+    "input_disabled": false,
+    "allow_back": false
+  },
+  "fallback_text": "Hansı şəhərdəsiniz? Siyahıda yoxdursa, adını yazın.\nBakı / Gəncə",
+  "meta": {}
+}

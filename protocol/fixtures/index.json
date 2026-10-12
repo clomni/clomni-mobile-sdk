@@ -495,5 +495,15 @@
     "file": "104-reply-operator-to-voice.json",
     "schema": "message.json",
     "note": "Operatorun cavabı istifadəçinin səsli mesajına: sitatda \"Siz\" və \"Səsli mesaj (0:14)\", kind audio"
+  },
+  {
+    "file": "105-event-flow-input-disabled.json",
+    "schema": "event.json",
+    "note": "Flow yazmanı bağladı (input_disabled true), söhbət bağlıdır: yazı qutusu yoxdur, yalnız \"Yeni söhbət başlat\" (SDK 1.0.4)"
+  },
+  {
+    "file": "106-quick-replies-typing-allowed.json",
+    "schema": "message.json",
+    "note": "Flow düymələri, müştəri yaza da bilər (input_disabled false): düymələrin altında yazı qutusu (SDK 1.0.4)"
   }
 ]

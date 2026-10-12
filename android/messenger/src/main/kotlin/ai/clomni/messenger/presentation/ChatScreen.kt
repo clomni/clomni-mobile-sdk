@@ -274,6 +274,12 @@ internal data class ChatComposer(
 
         /** "Söhbət bağlanıb · Yeni söhbət başlat"; writing anyway reopens it. */
         data class Closed(val text: String, val action: String) : Mode
+
+        /**
+         * A flow step turned typing off (conversation.flow.input_disabled) and the flow is over: only a new conversation,
+         * "Söhbət bağlanıb · Yeni söhbət başlat" without writing into this one, or the action alone when it is not closed.
+         */
+        data class Locked(val text: String?, val action: String) : Mode
     }
 }
 
@@ -333,3 +339,8 @@ internal val ChatSnapshot.flowHasTheFloor: Boolean
     get() = answerable.isNotEmpty() || stepExpected || pending.any {
         it.state == PendingMessage.State.SENDING && (it.message is ClientMessage.ButtonReply || it.message is ClientMessage.FormSubmit)
     }
+
+/** The live buttons on screen let the user type an answer too (quick_replies.input_disabled false, CM-170). */
+internal val ChatSnapshot.typingAllowed: Boolean
+    get() = (messages.lastOrNull { it.id in answerable && it.content is MessageContent.QuickReplies }?.content as? MessageContent.QuickReplies)
+        ?.inputDisabled == false

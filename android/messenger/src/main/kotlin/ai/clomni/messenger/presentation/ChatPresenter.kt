@@ -97,15 +97,21 @@ internal class ChatPresenter(
 
     private fun composer(snapshot: ChatSnapshot, known: Boolean): ChatComposer {
         val config = snapshot.config
+        val flow = snapshot.conversation?.flow
+        val closed = snapshot.conversation?.status == ConversationStatus.CLOSED
         val mode = when {
             // Not "shown" by default (DESIGN-PASS-3 C5): until the messages and their buttons are known there is none,
             // so a flow's step never finds one to take away.
             !known -> ChatComposer.Mode.Hidden
-            snapshot.conversation?.status == ConversationStatus.CLOSED ->
-                ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
+            // A flow step turned typing off (CM-170): no field while the flow runs, then only a new conversation.
+            flow?.inputDisabled == true && flow.active -> ChatComposer.Mode.Hidden
+            flow?.inputDisabled == true ->
+                ChatComposer.Mode.Locked(strings[Key.CLOSED].takeIf { closed }, strings[Key.START_NEW_CONVERSATION])
+            closed -> ChatComposer.Mode.Closed(strings[Key.CLOSED], strings[Key.START_NEW_CONVERSATION])
             // The server says whether a flow drives the conversation (conversation.flow): while it waits for a button,
             // a form or its next step there is no field; it waits for typed text, or it is over, and the field is back.
-            snapshot.conversation?.flow?.holdsComposer == true && snapshot.flowHasTheFloor -> ChatComposer.Mode.Hidden
+            // Buttons whose step lets the user type too keep it (input_disabled false, CM-170).
+            flow?.holdsComposer == true && snapshot.flowHasTheFloor && !snapshot.typingAllowed -> ChatComposer.Mode.Hidden
             else -> ChatComposer.Mode.Open
         }
         return ChatComposer(

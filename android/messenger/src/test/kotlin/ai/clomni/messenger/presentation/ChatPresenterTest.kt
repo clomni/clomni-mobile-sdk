@@ -375,9 +375,12 @@ class ChatPresenterTest {
         assertTrue(answered.items.none { it is ChatItem.RepliesItem })
         assertEquals(1, bubbles(answered).size)
 
-        // The composer goes by conversation.flow alone (operator, 2026-10-05).
-        fun mode(flow: String, messages: List<Message> = listOf(languages)) =
-            screen(messages) { it.copy(conversation = ChatFixture.conversation("bot", flow = flow), answerable = setOf(languages.id)) }.composer.mode
+        // The composer goes by conversation.flow (operator, 2026-10-05), on a step whose buttons lock it (fixture 09).
+        val locking = ChatFixture.message("09-example-level1-A.json")
+        fun mode(flow: String, messages: List<Message> = listOf(locking)) =
+            screen(messages) {
+                it.copy(conversation = ChatFixture.conversation("bot", flow = flow), answerable = messages.map { message -> message.id }.toSet())
+            }.composer.mode
         assertEquals("a menu", ChatComposer.Mode.Hidden, mode(ChatFixture.flow("menu")))
         assertEquals("a form", ChatComposer.Mode.Hidden, mode(ChatFixture.flow("form")))
         assertEquals("a wait step: its next step follows", ChatComposer.Mode.Hidden, mode(ChatFixture.flow(null)))
@@ -398,8 +401,34 @@ class ChatPresenterTest {
         assertEquals(
             "buttons to tap keep it away however long",
             ChatComposer.Mode.Hidden,
-            screen(listOf(languages)) {
-                it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), answerable = setOf(languages.id), stepExpected = false)
+            screen(listOf(locking)) {
+                it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu")), answerable = setOf(locking.id), stepExpected = false)
+            }.composer.mode,
+        )
+
+        // CM-170: buttons whose step lets the user type keep the composer (input_disabled false, fixture 106), until
+        // they are answered; a step that turned typing off takes it away, and once the flow is over only a new
+        // conversation is offered.
+        val typing = ChatFixture.message("106-quick-replies-typing-allowed.json")
+        assertEquals("typing allowed", ChatComposer.Mode.Open, mode(ChatFixture.flow("menu"), listOf(typing)))
+        assertEquals(
+            "answered: the next step may come",
+            ChatComposer.Mode.Hidden,
+            screen(listOf(typing)) { it.copy(conversation = ChatFixture.conversation("bot", flow = ChatFixture.flow("menu"))) }.composer.mode,
+        )
+        val lockedFlow = """{"active":true,"awaiting":"menu","flow_id":"flw_1","node_id":"S","input_disabled":true}"""
+        assertEquals("typing turned off wins over the step", ChatComposer.Mode.Hidden, mode(lockedFlow, listOf(typing)))
+        assertEquals("turned off while it waits for words too", ChatComposer.Mode.Hidden, mode(lockedFlow.replace("menu", "text")))
+        val over = """{"active":false,"awaiting":null,"input_disabled":true}"""
+        fun ended(status: String) =
+            screen(listOf(locking)) { it.copy(conversation = ChatFixture.conversation(status, flow = over)) }.composer.mode
+        assertEquals("closed: no writing into it", ChatComposer.Mode.Locked("Söhbət bağlanıb", "Yeni söhbət başlat"), ended("closed"))
+        assertEquals("not closed: a new conversation only", ChatComposer.Mode.Locked(null, "Yeni söhbət başlat"), ended("open"))
+        assertEquals(
+            "without the flag, closed as before",
+            ChatComposer.Mode.Closed("Söhbət bağlanıb", "Yeni söhbət başlat"),
+            screen(listOf(locking)) {
+                it.copy(conversation = ChatFixture.conversation("closed", flow = """{"active":false,"awaiting":null}"""))
             }.composer.mode,
         )
 

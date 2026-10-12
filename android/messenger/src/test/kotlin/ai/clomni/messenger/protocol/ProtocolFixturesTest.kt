@@ -150,6 +150,8 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/101-audio-operator-no-waveform.json" to MessageContent.Audio::class,
             "fixtures/102-client-attachment-voice.json" to ClientMessage.Attachment::class,
             "fixtures/104-reply-operator-to-voice.json" to MessageContent.Text::class,
+            "fixtures/105-event-flow-input-disabled.json" to RealtimeEvent.Payload.ConversationUpdated::class,
+            "fixtures/106-quick-replies-typing-allowed.json" to MessageContent.QuickReplies::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
             "fixtures/65-invalid-appearance-default-language-off.json" to JsonObject::class,

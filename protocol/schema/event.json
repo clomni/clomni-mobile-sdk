@@ -65,14 +65,15 @@
       }
     },
     "conversation_flow": {
-      "description": "Whether a flow drives the conversation; always sent. The SDK goes by this alone: while active it hides the composer, unless awaiting is text. A flow that ended (with an END step or without), stopped because a person replied, or handed over is active: false, and the change arrives as conversation.updated.",
+      "description": "Whether a flow drives the conversation; always sent. The SDK goes by this alone: while active it hides the composer, unless awaiting is text or the buttons on screen let the user type (quick_replies.input_disabled false, SDK 1.0.4). A flow that ended (with an END step or without), stopped because a person replied, or handed over is active: false, and the change arrives as conversation.updated.",
       "type": "object",
       "required": ["active", "awaiting"],
       "properties": {
         "active": { "type": "boolean" },
         "awaiting": { "enum": ["menu", "text", "form", null], "description": "menu: buttons (a language question too); text: typed text, the composer is shown; form: a form; null: nothing yet, e.g. a wait step, or the flow is inactive." },
         "flow_id": { "type": "string", "pattern": "^flw_.+", "description": "While active." },
-        "node_id": { "type": "string", "description": "While active: the step it stands on." }
+        "node_id": { "type": "string", "description": "While active: the step it stands on." },
+        "input_disabled": { "type": "boolean", "default": false, "description": "true: a flow step turned typing off in this conversation, also after the flow is over. No composer; a closed conversation offers only a new one, without writing into it. Sent only when true; it goes when a step asks for typed text or lets the user type, the conversation is handed over, a person writes, or another flow starts. SDK 1.0.4; earlier SDKs skip it." }
       }
     },
     "unread_changed": {

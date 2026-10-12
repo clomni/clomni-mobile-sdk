@@ -239,6 +239,21 @@ class ChatSnapshotTest {
             .copy(conversation = ChatFixture.conversation("closed")),
     )
 
+    /** CM-170: typing turned off by the flow and the conversation closed: no writing into it, only a new one. */
+    @Test
+    fun inputLocked() = snap(
+        "chat_input_locked",
+        loaded(ChatFixture.message("03-text-user.json"), ChatFixture.message("24-system-conversation-closed.json"))
+            .copy(conversation = ChatFixture.conversation("closed", flow = """{"active":false,"awaiting":null,"input_disabled":true}""")),
+    )
+
+    /** CM-170: buttons whose step lets the user type too: the composer stays under them. */
+    @Test
+    fun typingAllowed() {
+        val step = ChatFixture.message("106-quick-replies-typing-allowed.json")
+        snap("chat_typing_allowed", loaded(step, answerable = setOf(step.id)))
+    }
+
     /** input_disabled: the composer asks for a button, the step's chips with "← Geri". */
     @Test
     fun inputDisabled() {
@@ -409,7 +424,7 @@ class ChatSnapshotTest {
         message("m1", 1, "10:30:00Z", bot, "text", """{"text":"Salam, Clomni-yə xoş gəlmisiniz. Zəhmət olmasa dil seçin."}"""),
         message(
             "m2", 2, "10:30:00Z", bot, "quick_replies",
-            """{"text":"Please choose your language.\nПожалуйста, выберите язык.","layout":"vertical","input_disabled":false,
+            """{"text":"Please choose your language.\nПожалуйста, выберите язык.","layout":"vertical","input_disabled":true,
                "buttons":[{"id":"az","title":"Azərbaycan dili","icon":"🇦🇿","payload":"set_lang:az"},
                           {"id":"en","title":"English","icon":"🇬🇧","payload":"set_lang:en"},
                           {"id":"ru","title":"Русский","icon":"🇷🇺","payload":"set_lang:ru"}]}""",

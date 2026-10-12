@@ -41,7 +41,7 @@
       }
     ],
     "layout": "vertical",
-    "input_disabled": false,
+    "input_disabled": true,
     "allow_back": false
   },
   "fallback_text": "Dil seçin:\nAzərbaycan dili / English / Русский",
