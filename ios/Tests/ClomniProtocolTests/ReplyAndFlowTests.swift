@@ -38,14 +38,22 @@ final class ReplyAndFlowTests: ProtocolTestCase {
 
     func testTheConversationsFlow() throws {
         let flows = try ["71-event-flow-menu.json", "72-event-flow-text.json", "73-event-flow-ended.json",
-                         "74-invalid-flow-awaiting-unknown.json"].map { file -> Conversation.FlowState? in
-            guard case .conversationUpdated(let update) = try Fixtures.event(file).data else { return nil }
-            return update.flow
-        }
+                         "74-invalid-flow-awaiting-unknown.json", "105-event-flow-input-disabled.json"]
+            .map { file -> Conversation.FlowState? in
+                guard case .conversationUpdated(let update) = try Fixtures.event(file).data else { return nil }
+                return update.flow
+            }
         XCTAssertEqual(flows, [.init(active: true, awaiting: "menu", flowId: "flw_example_az", nodeId: "S"),
                                .init(active: true, awaiting: "text", flowId: "flw_example_az", nodeId: "U"),
-                               .init(active: false), .init(active: true, awaiting: "buttons", flowId: "flw_example_az", nodeId: "S")])
-        XCTAssertEqual(flows.map { $0?.holdsTheComposer }, [true, false, false, true],
+                               .init(active: false), .init(active: true, awaiting: "buttons", flowId: "flw_example_az", nodeId: "S"),
+                               .init(active: false, inputDisabled: true)])
+        XCTAssertEqual(flows.map { $0?.holdsTheComposer }, [true, false, false, true, false],
                        "a menu holds the composer, text and an ended flow do not; an unknown value is not text")
+        // Typing turned off by the flow (CM-170) survives the copy on disk.
+        var conversation = try XCTUnwrap(ProtocolJSON.parseConversation(ProtocolJSON.encode([
+            "id": "conv_1", "status": "closed", "created_at": "2026-10-01T10:00:00Z",
+        ])))
+        conversation.flow = .init(active: false, inputDisabled: true)
+        XCTAssertEqual(ProtocolJSON.parseConversation(ProtocolJSON.encode(conversation.json))?.flow, conversation.flow)
     }
 }

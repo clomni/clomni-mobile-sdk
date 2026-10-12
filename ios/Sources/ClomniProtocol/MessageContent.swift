@@ -23,7 +23,8 @@ extension MessageContent {
         package let text: String?
         package let buttons: [Button]
         package let layout: QuickRepliesLayout
-        /// The composer is hidden while this message waits for a button.
+        /// true: the composer is hidden while this message waits for a button. false: while the flow waits on it the
+        /// user may type too (the step's builder switch, SDK 1.0.4).
         package let inputDisabled: Bool
         /// A back button follows the others; it sends `ClientMessage.Content.back(replyTo:)`.
         package let allowBack: Bool

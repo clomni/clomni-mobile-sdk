@@ -278,6 +278,10 @@ package struct ChatComposer: Sendable, Equatable {
         case hidden
         /// "Söhbət bağlanıb · Yeni söhbət başlat"; writing anyway reopens it.
         case closed(text: String, action: String)
+        /// A flow step turned typing off (`conversation.flow.input_disabled`) and the flow is over: only a new
+        /// conversation, "Söhbət bağlanıb · Yeni söhbət başlat" without writing into this one, or the action alone when
+        /// the conversation is not closed.
+        case locked(text: String?, action: String)
     }
 
     package let mode: Mode
@@ -313,6 +317,16 @@ extension ChatSnapshot {
 }
 
 extension ChatSnapshot {
+    /// The live buttons on screen let the user type an answer too (quick_replies.input_disabled false, CM-170).
+    package var typingAllowed: Bool {
+        let live = messages.last { message in
+            if case .quickReplies = message.content { return answerable.contains(message.id) }
+            return false
+        }
+        guard let live, case .quickReplies(let replies) = live.content else { return false }
+        return !replies.inputDisabled
+    }
+
     /// The flow holds the composer for a choice or a form, yet nothing on screen answers it: its choices were taken
     /// and no step came after (a choice that leads nowhere, "next": null, CM-087), and nothing is on its way.
     package var waitsForNothingShown: Bool {

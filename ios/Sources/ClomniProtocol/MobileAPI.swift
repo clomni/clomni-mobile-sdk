@@ -27,19 +27,23 @@ package struct Conversation: Sendable, Equatable, Identifiable {
     package let openedFrom: String?
     package let createdAt: Date
 
-    /// `flow {active, awaiting, flow_id?, node_id?}`, in the conversation and in `conversation.updated`.
+    /// `flow {active, awaiting, flow_id?, node_id?, input_disabled?}`, in the conversation and in `conversation.updated`.
     package struct FlowState: Sendable, Equatable {
         package let active: Bool
         /// "menu", "text", "form"; nil between steps.
         package let awaiting: String?
         package let flowId: String?
         package let nodeId: String?
+        /// A flow step turned typing off in this conversation, also after the flow is over (protocol 1.0.4).
+        package let inputDisabled: Bool
 
-        package init(active: Bool, awaiting: String? = nil, flowId: String? = nil, nodeId: String? = nil) {
+        package init(active: Bool, awaiting: String? = nil, flowId: String? = nil, nodeId: String? = nil,
+                     inputDisabled: Bool = false) {
             self.active = active
             self.awaiting = awaiting
             self.flowId = flowId
             self.nodeId = nodeId
+            self.inputDisabled = inputDisabled
         }
 
         /// While a flow runs and does not wait for words there is no composer.
@@ -159,11 +163,14 @@ extension Conversation.FlowState {
     init?(_ f: JSONFields) {
         guard let active = f.optionalBool("active") else { return nil }
         self.init(active: active, awaiting: f.optionalString("awaiting"), flowId: f.optionalString("flow_id"),
-                  nodeId: f.optionalString("node_id"))
+                  nodeId: f.optionalString("node_id"), inputDisabled: f.optionalBool("input_disabled") == true)
     }
 
     var json: JSONValue {
-        ["active": .bool(active), "awaiting": .orNull(awaiting), "flow_id": .orNull(flowId), "node_id": .orNull(nodeId)]
+        var fields: [String: JSONValue] = ["active": .bool(active), "awaiting": .orNull(awaiting), "flow_id": .orNull(flowId),
+                                           "node_id": .orNull(nodeId)]
+        if inputDisabled { fields["input_disabled"] = .bool(true) }
+        return .object(fields)
     }
 }
 

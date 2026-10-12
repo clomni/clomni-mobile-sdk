@@ -361,7 +361,36 @@ final class ChatPresenterTests: XCTestCase {
             $0.conversation = Fixture.onAMenu
         }
         XCTAssertTrue(bubbles(bareScreen).isEmpty, "no text, no bubble")
-        XCTAssertEqual(bareScreen.composer.mode, .hidden, "the flow's menu hides it even with input_disabled false")
+        XCTAssertEqual(bareScreen.composer.mode, .open, "buttons that let the user type keep the composer (CM-170)")
+    }
+
+    /// CM-170: what the user may type while a flow drives the conversation.
+    func testTheFlowDecidesWhetherTheUserCanType() {
+        let typing = Fixture.message("106-quick-replies-typing-allowed.json")
+        func mode(_ flow: Conversation.FlowState?, status: String = "bot", answerable: Bool = true) -> ChatComposer.Mode {
+            screen([typing]) {
+                var conversation = Fixture.conversation(status: status)
+                conversation.flow = flow
+                $0.conversation = conversation
+                $0.answerable = answerable ? [typing.id] : []
+            }.composer.mode
+        }
+        let menu = Conversation.FlowState(active: true, awaiting: "menu", flowId: "flw_1", nodeId: "Q")
+        XCTAssertEqual(mode(menu), .open, "typing allowed under these buttons")
+        XCTAssertEqual(mode(menu, answerable: false), .hidden, "answered: the next step may come")
+
+        let locked = Conversation.FlowState(active: true, awaiting: "menu", flowId: "flw_1", nodeId: "Q", inputDisabled: true)
+        XCTAssertEqual(mode(locked), .hidden, "typing turned off wins over the step")
+        let lockedText = Conversation.FlowState(active: true, awaiting: "text", flowId: "flw_1", nodeId: "Q", inputDisabled: true)
+        XCTAssertEqual(mode(lockedText), .hidden, "turned off while it waits for words too")
+
+        let over = Conversation.FlowState(active: false, inputDisabled: true)
+        XCTAssertEqual(mode(over, status: "closed", answerable: false),
+                       .locked(text: "Söhbət bağlanıb", action: "Yeni söhbət başlat"), "closed: no writing into it")
+        XCTAssertEqual(mode(over, status: "open", answerable: false), .locked(text: nil, action: "Yeni söhbət başlat"),
+                       "not closed: a new conversation only")
+        XCTAssertEqual(mode(.init(active: false), status: "closed", answerable: false),
+                       .closed(text: "Söhbət bağlanıb", action: "Yeni söhbət başlat"), "without the flag, closed as before")
     }
 
     func testTheFlowsOwnRestartButtonLeavesNoSecondBack() {

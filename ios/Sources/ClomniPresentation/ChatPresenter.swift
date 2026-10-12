@@ -85,16 +85,23 @@ package struct ChatPresenter: Sendable {
     private func composer(_ snapshot: ChatSnapshot, known: Bool) -> ChatComposer {
         let config = snapshot.config
         var mode = ChatComposer.Mode.open
+        let flow = snapshot.conversation?.flow
+        let closed = snapshot.conversation?.status == .closed
         if !known {
             // Not "shown" by default (DESIGN-PASS-3 C5): until the messages and their buttons are known there is none,
             // so a flow's step never finds one to take away.
             mode = .hidden
-        } else if snapshot.conversation?.status == .closed {
+        } else if let flow, flow.inputDisabled {
+            // A flow step turned typing off (CM-170): no field while the flow runs, then only a new conversation.
+            mode = flow.active ? .hidden
+                : .locked(text: closed ? strings[.closed] : nil, action: strings[.startNewConversation])
+        } else if closed {
             mode = .closed(text: strings[.closed], action: strings[.startNewConversation])
-        } else if snapshot.conversation?.flow?.holdsTheComposer == true, !snapshot.flowStalled {
+        } else if flow?.holdsTheComposer == true, !snapshot.flowStalled, !snapshot.typingAllowed {
             // The server says whether a flow drives the conversation (operator, 2026-10-05): while it waits for a
             // button, a form or its next step there is no field; it waits for typed text, or it is over, and the field
-            // is back. So it is when it waits for a choice that is no longer there (`flowStalled`).
+            // is back. So it is when it waits for a choice that is no longer there (`flowStalled`), and while the
+            // buttons on screen let the user type too (input_disabled false, CM-170).
             mode = .hidden
         }
         var composer = ChatComposer(
