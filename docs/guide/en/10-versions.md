@@ -1,5 +1,20 @@
 # Versions
 
+## 1.0.4
+
+All packages are 1.0.4: Android, iOS, React Native, Flutter and Unity (tag `unity-1.0.4`).
+
+- When "Customer can't type" is off on a buttons step, the text box stays under the buttons. The customer can pick a
+  button or type the answer.
+- After a "Turn off typing" step the customer can't write in this conversation. The lock stays after the flow is
+  over: if the conversation is closed, the customer can only start a new one. Typing comes back at a question step, on
+  handover to an agent, or when an agent writes.
+- Flows that don't use these settings work as before. Earlier SDK versions don't see these settings and behave as
+  before.
+
+To update, set the version to 1.0.4: Android `ai.clomni:messenger:1.0.4`, React Native `@clomni/react-native@1.0.4`,
+Flutter `clomni_flutter: ^1.0.4`, Unity `#unity-1.0.4`, iOS `from: "1.0.4"` or `:tag => '1.0.4'`.
+
 ## 1.0.3
 
 All packages are 1.0.3: Android, iOS, React Native, Flutter and Unity (tag `unity-1.0.3`).

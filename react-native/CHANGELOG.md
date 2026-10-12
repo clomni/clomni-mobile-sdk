@@ -1,5 +1,11 @@
 # @clomni/react-native — changelog
 
+## 1.0.4
+
+The native SDKs 1.0.4: a flow decides whether the user can type. Buttons can keep the field under them, and a step
+that turns typing off keeps the conversation locked after the flow is over, offering only a new conversation. With an
+earlier server, and with flows that do not use these settings, nothing changes.
+
 ## 1.0.3
 
 The native SDKs 1.0.3: the microphone answers the moment it is touched, and a press of about a second records instead

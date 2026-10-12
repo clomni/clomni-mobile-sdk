@@ -1,5 +1,19 @@
 # Sürümler
 
+## 1.0.4
+
+Tüm paketler 1.0.4: Android, iOS, React Native, Flutter ve Unity (`unity-1.0.4` etiketi).
+
+- Düğme adımında "Customer can't type" kapalıysa, yazı kutusu düğmelerin altında kalır. Müşteri bir düğme seçebilir
+  veya cevabı yazabilir.
+- "Turn off typing" adımından sonra müşteri bu sohbete yazamaz. Kilit, akış bittikten sonra da kalır: sohbet
+  kapalıysa müşteriye yalnızca "Start a new conversation" kalır. Soru adımında, temsilciye devredildiğinde veya temsilci
+  yazdığında yazı kutusu geri gelir.
+- Bu ayarları kullanmayan akışlar eskisi gibi çalışır. Eski SDK sürümleri bu ayarları görmez ve eskisi gibi davranır.
+
+Güncellemek için sürümü 1.0.4 yapın: Android `ai.clomni:messenger:1.0.4`, React Native `@clomni/react-native@1.0.4`,
+Flutter `clomni_flutter: ^1.0.4`, Unity `#unity-1.0.4`, iOS `from: "1.0.4"` veya `:tag => '1.0.4'`.
+
 ## 1.0.3
 
 Tüm paketler 1.0.3: Android, iOS, React Native, Flutter ve Unity (`unity-1.0.3` etiketi).

@@ -1,5 +1,14 @@
 # ClomniMessenger for iOS — changelog
 
+## 1.0.4
+
+A flow decides whether the user can type, as its steps are set in Clomni. Buttons whose step lets the user type keep
+the field under them, so an answer can be typed as well as tapped. A step that turns typing off hides the field while
+the flow runs, and the lock stays after the flow is over: the bar then offers only a new conversation ("Söhbət
+bağlanıb · Yeni söhbət başlat" without writing into this one). The lock (`conversation.flow.input_disabled`) is kept
+in the copy on disk. With an earlier server, and with flows that do not use these settings, nothing changes: the
+server sends the lock only when it is on.
+
 ## 1.0.3
 
 The microphone answers the moment it is touched: the circle, the haptic and the clock start at once, and the hold that
