@@ -23,3 +23,5 @@ dependencyResolutionManagement {
 rootProject.name = "clomni-messenger"
 
 include(":messenger", ":sample")
+// Build fixtures, never published: apps that build the SDK the way a customer's app does (fixtures/*/build.gradle.kts).
+include(":fixtures:webview-plugin", ":fixtures:provider-collision")
