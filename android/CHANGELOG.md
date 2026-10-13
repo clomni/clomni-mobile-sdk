@@ -1,5 +1,13 @@
 # ai.clomni:messenger (Android) changelog
 
+## 1.0.5
+
+The camera's FileProvider is the SDK's own class (`ai.clomni.messenger.ui.ClomniFileProvider`), so it no longer
+collides with apps or libraries that declare androidx's `FileProvider` themselves, such as unity-webview: their build
+stopped at the manifest merge ("provider#androidx.core.content.FileProvider@authorities … collides with another
+value"). Its authority (`<applicationId>.clomni.camera`) and paths are unchanged. An app that added `tools:replace` to
+get past the merge should remove it. Nothing else changes; iOS stays 1.0.4.
+
 ## 1.0.4
 
 A flow decides whether the user can type, as its steps are set in Clomni. Buttons whose step lets the user type keep
