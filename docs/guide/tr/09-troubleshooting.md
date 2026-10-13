@@ -27,6 +27,7 @@ Sunucunun bazı mesajları Azerbaycancadır; aşağıdaki tabloda tam olarak gö
 | `initialize was called before; the first call stays` | `initialize` iki kez çağrıldı | Bir kez çağırın. Anahtarları değiştirmek için uygulamayı yeniden başlatın |
 | `api_key səhvdir və ya bu platforma üçün deyil` | API anahtarı yanlış, iptal edilmiş, yenisi oluşturulalı 7 günden fazla olmuş ya da diğer platformun anahtarı | Android'de `android_…`, iOS'ta `ios_…` anahtarı. Anahtarı **Installation** bölümünde kontrol edin |
 | Android 1.0.1+: `api_key səhvdir ... Tətbiqin paket adı: …` | Uygulamanın paket adı (`applicationIdSuffix` dahil) gelen kutusunun Android paket adıyla aynı değil | Logdaki paket adını paneldekiyle karşılaştırın, bkz. [Sürümler](10-versions.md) |
+| Android build'i: `provider#androidx.core.content.FileProvider@authorities … collides` | SDK 1.0.4 ve öncesi androidx'in kendi FileProvider sınıfını kullanıyordu; uygulama ya da başka bir kütüphane (örn. unity-webview) da onu tanımlıyor | 1.0.5'e güncelleyin ve bunun için eklediğiniz `tools:replace`'i kaldırın, bkz. [Sürümler](10-versions.md) |
 | `this App SDK inbox is switched off in Clomni` | Gelen kutusu panelde kapatılmış | Açın. O zamana kadar `present()` hiçbir şey yapmaz |
 | Hiçbir şey açılmıyor, logda da bir şey yok | Log düzeyi çok düşük ya da çağrı Unity Editor'de yapılıyor | Debug düzeyini açın; bir cihazda test edin |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Renk biçimi | `#` ile altı hex rakam, örneğin `#0A66C2` |

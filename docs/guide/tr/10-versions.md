@@ -1,5 +1,24 @@
 # Sürümler
 
+## 1.0.5
+
+| Paket | Sürüm |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.5 |
+| React Native `@clomni/react-native` | 1.0.5 |
+| Flutter `clomni_flutter` | 1.0.5 |
+| Unity | `unity-1.0.5` etiketi |
+| iOS `ClomniMessenger` | 1.0.4, değişmedi |
+
+Yalnızca Android değişti. SDK'nın kamerası artık kendi FileProvider sınıfını kullanıyor. Önceden uygulama ya da başka
+bir kütüphane (örneğin bir Unity oyunundaki unity-webview) da androidx FileProvider kullandığında Android build'i
+manifest birleştirmede durabiliyordu: `provider#androidx.core.content.FileProvider@authorities … collides with another
+value`. 1.0.5 onlarla birlikte derlenir. Bu hata yüzünden `tools:replace` eklediyseniz kaldırın. Başka hiçbir şey
+değişmez.
+
+Güncellemek için: Android `ai.clomni:messenger:1.0.5`, React Native `@clomni/react-native@1.0.5`, Flutter
+`clomni_flutter: ^1.0.5`, Unity `#unity-1.0.5` (ardından EDM4U ile resolve). iOS 1.0.4'te kalır.
+
 ## 1.0.4
 
 Tüm paketler 1.0.4: Android, iOS, React Native, Flutter ve Unity (`unity-1.0.4` etiketi).
