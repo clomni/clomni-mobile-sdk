@@ -21,7 +21,7 @@ The Android side brings the Android SDK (`ai.clomni:messenger`, Maven Central). 
   stops and prints this line.
 
   ```ruby
-  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.0'
+  pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.4'
   ```
 
 **Android: the app's `MainActivity` extends `FlutterFragmentActivity`**, not `FlutterActivity`: the messenger's
@@ -50,7 +50,7 @@ To build against a checkout of this repository instead:
 
   ```sh
   cd path/to/clomni-mobile-sdk/android
-  ./gradlew -Pclomni.version=1.0.0 :messenger:publishReleasePublicationToMavenLocal
+  ./gradlew -Pclomni.version=1.0.5 :messenger:publishReleasePublicationToMavenLocal
   ```
 
 ## Use

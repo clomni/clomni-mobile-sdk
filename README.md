@@ -16,6 +16,19 @@ closed.
 
 Both native SDKs render the same `protocol/fixtures`; their tests fail when a fixture no longer parses or renders.
 
+## Current versions
+
+| Platform | Version | Install |
+|---|---|---|
+| Android | 1.0.5 | `implementation("ai.clomni:messenger:1.0.5")` (Maven Central) |
+| React Native | 1.0.5 | `npm install @clomni/react-native@1.0.5` |
+| Flutter | 1.0.5 | `clomni_flutter: ^1.0.5` (pub.dev) |
+| Unity | 1.0.5 | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.5` |
+| iOS | 1.0.4 | Swift Package Manager or CocoaPods from the tag `1.0.4` (below) |
+
+1.0.5 changed Android only (the camera's file provider no longer collides with apps or libraries that declare
+androidx `FileProvider`), so iOS stays at 1.0.4. What each version brought is in each platform's `CHANGELOG.md`.
+
 ## iOS
 
 iOS 15 or later, Xcode 15 or later.
