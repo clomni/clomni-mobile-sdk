@@ -22,10 +22,9 @@
             android:authorities="${applicationId}.clomni.startup"
             android:exported="false" />
 
-        <!-- A photo or video taken for a message: the camera app writes it here (the app's cache), for this one use.
-             Our own subclass, so it never collides with an androidx FileProvider of the app or another library. -->
+        <!-- A photo or video taken for a message: the camera app writes it here (the app's cache), for this one use. -->
         <provider
-            android:name="ai.clomni.messenger.ui.ClomniFileProvider"
+            android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.clomni.camera"
             android:exported="false"
             android:grantUriPermissions="true">
