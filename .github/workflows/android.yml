@@ -35,8 +35,10 @@ jobs:
       # Unit tests against protocol/fixtures, the Paparazzi screenshots against src/test/snapshots (each also checking
       # 48 dp tap targets), Protocol and Store coverage of at least 80% (lines and branches), the public API against
       # messenger/api/messenger.api, the release AAR at most 2 MB, the device tests compiled (they run on an emulator
-      # in android-device.yml), and the sample.
-      - run: ./gradlew --no-daemon :messenger:verifyPaparazziDebug :messenger:koverVerifyDebug :messenger:koverXmlReportDebug :messenger:apiCheck :messenger:checkAarSize :messenger:assembleDebugAndroidTest :sample:assembleDebug
+      # in android-device.yml), and the sample. Then the provider-collision fixture (CM-185): an app whose own manifest,
+      # or a library's, declares androidx's FileProvider under another authority still merges with the SDK, and both
+      # providers hand out their files.
+      - run: ./gradlew --no-daemon :messenger:verifyPaparazziDebug :messenger:koverVerifyDebug :messenger:koverXmlReportDebug :messenger:apiCheck :messenger:checkAarSize :messenger:assembleDebugAndroidTest :sample:assembleDebug :fixtures:provider-collision:testAppDebugUnitTest :fixtures:provider-collision:testLibraryDebugUnitTest
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -46,4 +48,5 @@ jobs:
             android/messenger/build/reports/kover/
             android/messenger/build/reports/paparazzi/
             android/messenger/build/paparazzi/failures/
+            android/fixtures/provider-collision/build/reports/tests/
           if-no-files-found: ignore

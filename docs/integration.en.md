@@ -37,14 +37,14 @@ Later, everything is on the channel page's tabs: Overview, Installation, Securit
 
 ## 2. Install
 
-> All packages are at 1.0.4: Android, iOS, React Native, Flutter and Unity.
+> Android, React Native, Flutter and Unity are at 1.0.5; iOS is at 1.0.4.
 
 **Android** (Maven Central):
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.4")
+    implementation("ai.clomni:messenger:1.0.5")
 }
 ```
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5
+
+Android: the camera's FileProvider is the SDK's own class, so it no longer collides with apps or libraries (e.g.
+unity-webview) that declare androidx FileProvider: a game with unity-webview builds for Android again, with no
+`tools:replace`. The Android SDK is 1.0.5; iOS is unchanged and stays 1.0.4.
+
 ## 1.0.4
 
 The native SDKs 1.0.4: a flow decides whether the user can type. Buttons can keep the field under them, and a step

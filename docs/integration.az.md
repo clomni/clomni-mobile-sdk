@@ -38,14 +38,14 @@ Analitika.
 
 ## 2. Quraşdırma
 
-> Bütün paketlər 1.0.4-dür: Android, iOS, React Native, Flutter və Unity.
+> Android, React Native, Flutter və Unity 1.0.5-dir, iOS 1.0.4-dür.
 
 **Android** (Maven Central):
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.4")
+    implementation("ai.clomni:messenger:1.0.5")
 }
 ```
 

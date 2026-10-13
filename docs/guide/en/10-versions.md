@@ -1,5 +1,23 @@
 # Versions
 
+## 1.0.5
+
+| Package | Version |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.5 |
+| React Native `@clomni/react-native` | 1.0.5 |
+| Flutter `clomni_flutter` | 1.0.5 |
+| Unity | tag `unity-1.0.5` |
+| iOS `ClomniMessenger` | 1.0.4, unchanged |
+
+Only Android changes. The SDK's camera now uses its own FileProvider class. Before, an Android build could stop at the
+manifest merge when the app or another library (for example unity-webview in a Unity game) also used androidx's
+FileProvider: `provider#androidx.core.content.FileProvider@authorities … collides with another value`. 1.0.5 builds
+next to them. If you added `tools:replace` to get past that error, remove it. Nothing else changes.
+
+To update: Android `ai.clomni:messenger:1.0.5`, React Native `@clomni/react-native@1.0.5`, Flutter
+`clomni_flutter: ^1.0.5`, Unity `#unity-1.0.5` (then resolve with EDM4U). iOS stays at 1.0.4.
+
 ## 1.0.4
 
 All packages are 1.0.4: Android, iOS, React Native, Flutter and Unity (tag `unity-1.0.4`).

@@ -64,6 +64,7 @@ jobs:
       - run: >-
           ./gradlew --no-daemon -Pclomni.version=${{ steps.version.outputs.version }}
           :messenger:testDebugUnitTest :messenger:verifyPaparazziDebug :messenger:apiCheck :messenger:checkAarSize
+          :fixtures:provider-collision:testAppDebugUnitTest :fixtures:provider-collision:testLibraryDebugUnitTest
           :messenger:publishReleasePublicationToCentralBundleRepository
       - name: Bundle
         run: |

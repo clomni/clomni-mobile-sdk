@@ -9,7 +9,7 @@ and on other platforms every call does nothing, and the first call says so once 
 - Android: Minimum API Level 23, compileSdk 35 or newer.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 or newer.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). It brings the
-  native SDKs: `ai.clomni:messenger:1.0.4` through Gradle and the `ClomniMessenger` pod through CocoaPods.
+  native SDKs: `ai.clomni:messenger:1.0.5` through Gradle and the `ClomniMessenger` pod through CocoaPods.
 - The App ID and both API keys (`android_…`, `ios_…`) from **Installation** in the inbox's settings column.
 
 ## Install
@@ -18,7 +18,7 @@ and on other platforms every call does nothing, and the first call says so once 
 2. **Window → Package Manager → + → Add package from git URL**, and enter:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.4
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.5
    ```
 
    > **Path:** `Window → Package Manager → + → Add package from git URL → Add`

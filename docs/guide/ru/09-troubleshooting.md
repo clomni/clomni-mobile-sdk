@@ -27,6 +27,7 @@
 | `initialize was called before; the first call stays` | `initialize` вызван дважды | Вызывайте один раз. Чтобы сменить ключи, перезапустите приложение |
 | `api_key səhvdir və ya bu platforma üçün deyil` | API-ключ неверный, отозван, с момента создания нового прошло больше 7 дней или это ключ другой платформы | На Android — ключ `android_…`, на iOS — `ios_…`. Проверьте ключ в разделе **Installation** |
 | Android 1.0.1+: `api_key səhvdir ... Tətbiqin paket adı: …` | Имя пакета приложения (с `applicationIdSuffix`) не совпадает с именем пакета Android в канале | Сравните имя пакета в логе с тем, что в панели, см. [Версии](10-versions.md) |
+| Сборка Android: `provider#androidx.core.content.FileProvider@authorities … collides` | SDK 1.0.4 и раньше использовал класс FileProvider из androidx, который объявляет и приложение или другая библиотека (например, unity-webview) | Обновитесь до 1.0.5 и удалите `tools:replace`, если добавляли его из-за этой ошибки, см. [Версии](10-versions.md) |
 | `this App SDK inbox is switched off in Clomni` | Канал выключен в панели | Включите его. До этого `present()` ничего не делает |
 | Ничего не открывается, в логе пусто | Слишком низкий уровень лога или вызов в Unity Editor | Включите уровень debug; проверяйте на устройстве |
 | `setTheme: primaryColor "…" is not #RRGGBB` | Формат цвета | Шесть hex-цифр с `#`, например `#0A66C2` |

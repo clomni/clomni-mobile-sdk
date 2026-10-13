@@ -1,5 +1,24 @@
 # Версии
 
+## 1.0.5
+
+| Пакет | Версия |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.5 |
+| React Native `@clomni/react-native` | 1.0.5 |
+| Flutter `clomni_flutter` | 1.0.5 |
+| Unity | тег `unity-1.0.5` |
+| iOS `ClomniMessenger` | 1.0.4, без изменений |
+
+Изменился только Android. Камера SDK теперь использует собственный класс FileProvider. Раньше сборка Android могла
+остановиться на слиянии манифестов, если приложение или другая библиотека (например, unity-webview в игре на Unity)
+тоже использовали FileProvider из androidx: `provider#androidx.core.content.FileProvider@authorities … collides with
+another value`. 1.0.5 собирается вместе с ними. Если вы добавили `tools:replace` из-за этой ошибки, удалите его.
+Больше ничего не меняется.
+
+Чтобы обновиться: Android `ai.clomni:messenger:1.0.5`, React Native `@clomni/react-native@1.0.5`, Flutter
+`clomni_flutter: ^1.0.5`, Unity `#unity-1.0.5` (затем resolve в EDM4U). iOS остаётся 1.0.4.
+
 ## 1.0.4
 
 Все пакеты в версии 1.0.4: Android, iOS, React Native, Flutter и Unity (тег `unity-1.0.4`).
