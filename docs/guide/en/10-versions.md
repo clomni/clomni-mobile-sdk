@@ -1,5 +1,24 @@
 # Versions
 
+## 1.0.6
+
+| Package | Version |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.6 |
+| React Native `@clomni/react-native` | 1.0.6 |
+| Flutter `clomni_flutter` | 1.0.6 |
+| Unity | tag `unity-1.0.6` |
+| iOS `ClomniMessenger` | 1.0.4, unchanged |
+
+Only Android changes. A push that arrives while the app is not running starts it with no screen. The SDK took that
+for the app being open and connected, and the server saw the user online: the dashboard no longer said the reply goes
+by push, and the replies after the first got no push. The connection now waits for one of the app's screens. In apps
+that initialize the SDK late (React Native, Flutter, Unity), leaving the app now closes the connection too, so pushes
+arrive in the background. Nothing changes in your code.
+
+To update: Android `ai.clomni:messenger:1.0.6`, React Native `@clomni/react-native@1.0.6`, Flutter
+`clomni_flutter: ^1.0.6`, Unity `#unity-1.0.6` (then resolve with EDM4U). iOS stays at 1.0.4.
+
 ## 1.0.5
 
 | Package | Version |

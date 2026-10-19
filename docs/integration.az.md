@@ -45,7 +45,7 @@ Analitika.
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.5")
+    implementation("ai.clomni:messenger:1.0.6")
 }
 ```
 

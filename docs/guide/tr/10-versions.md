@@ -1,5 +1,24 @@
 # Sürümler
 
+## 1.0.6
+
+| Paket | Sürüm |
+|---|---|
+| Android `ai.clomni:messenger` | 1.0.6 |
+| React Native `@clomni/react-native` | 1.0.6 |
+| Flutter `clomni_flutter` | 1.0.6 |
+| Unity | `unity-1.0.6` etiketi |
+| iOS `ClomniMessenger` | 1.0.4, değişmedi |
+
+Yalnızca Android değişti. Uygulama çalışmıyorken gelen push onu ekransız başlatır. SDK bunu uygulamanın açık olduğu
+sanıp bağlantı kuruyordu, sunucu da kullanıcıyı çevrimiçi görüyordu: panel yanıtın push ile gideceğini yazmıyordu ve
+ilkinden sonraki yanıtlar için push gitmiyordu. Bağlantı artık uygulamanın ekranlarından biri açılınca kuruluyor.
+SDK'yı geç başlatan uygulamalarda (React Native, Flutter, Unity) uygulamadan çıkınca bağlantı kapanıyor, push'lar arka
+planda geliyor. Kodunuzda hiçbir şey değişmez.
+
+Güncellemek için: Android `ai.clomni:messenger:1.0.6`, React Native `@clomni/react-native@1.0.6`, Flutter
+`clomni_flutter: ^1.0.6`, Unity `#unity-1.0.6` (ardından EDM4U ile resolve). iOS 1.0.4'te kalır.
+
 ## 1.0.5
 
 | Paket | Sürüm |
