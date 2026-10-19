@@ -72,11 +72,20 @@ internal class FrontScreens<S : Any>(private val isOwn: (S) -> Boolean) {
 internal object AppActivities : Application.ActivityLifecycleCallbacks {
     val screens = FrontScreens<Activity> { it is ClomniMessengerActivity }
     private var registered = false
+    private var fromProcessStart = false
+    private var startedCount = 0
+
+    /**
+     * How many activities are started now (the messenger's own included), or null when tracking began after some may
+     * have started. Zero in a process a push started: FCM's service runs with no screen (CM-266).
+     */
+    val started: Int? get() = startedCount.takeIf { fromProcessStart }
 
     /** Once per process; the startup provider does it before the app's own code runs, `initialize` again if not. */
-    fun register(app: Application) {
+    fun register(app: Application, atProcessStart: Boolean = false) {
         if (registered) return
         registered = true
+        fromProcessStart = atProcessStart
         app.registerActivityLifecycleCallbacks(this)
     }
 
@@ -88,9 +97,13 @@ internal object AppActivities : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
 
-    override fun onActivityStarted(activity: Activity) = Unit
+    override fun onActivityStarted(activity: Activity) {
+        startedCount++
+    }
 
-    override fun onActivityStopped(activity: Activity) = Unit
+    override fun onActivityStopped(activity: Activity) {
+        if (startedCount > 0) startedCount--
+    }
 
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 }
@@ -102,7 +115,7 @@ internal object AppActivities : Application.ActivityLifecycleCallbacks {
  */
 internal class ClomniStartup : ContentProvider() {
     override fun onCreate(): Boolean {
-        (context?.applicationContext as? Application)?.let(AppActivities::register)
+        (context?.applicationContext as? Application)?.let { AppActivities.register(it, atProcessStart = true) }
         return true
     }
 

@@ -15,12 +15,12 @@ Unity 2021.3, Android API 23 (compileSdk 34+), iOS 15 (Xcode 15+).
 ### Quraşdırma
 
 1. [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U) quraşdırın.
-   Native SDK-ları o gətirir: Android-də Gradle ilə `ai.clomni:messenger:1.0.5`, iOS-da CocoaPods ilə
+   Native SDK-ları o gətirir: Android-də Gradle ilə `ai.clomni:messenger:1.0.6`, iOS-da CocoaPods ilə
    `ClomniMessenger` 1.0.4 (`Editor/ClomniDependencies.xml`).
 2. Window → Package Manager → **+** → Add package from git URL:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.5
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.6
    ```
 
 > Native paketlər Maven Central-a və CocoaPods-a dərc olunandan sonra EDM4U onları tapacaq. O vaxta qədər Android
@@ -105,8 +105,8 @@ every call does nothing, and the first one says so once in the log.
 
 **Installation**: install the [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver)
 (EDM4U), which brings the native SDKs (`Editor/ClomniDependencies.xml`), then Package Manager → **+** → Add package
-from git URL: `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.5`. EDM4U finds
-`ai.clomni:messenger:1.0.5` and the `ClomniMessenger` 1.0.4 pod only once they are published to Maven Central and
+from git URL: `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.6`. EDM4U finds
+`ai.clomni:messenger:1.0.6` and the `ClomniMessenger` 1.0.4 pod only once they are published to Maven Central and
 CocoaPods; until then Android and iOS builds cannot resolve them.
 
 **Usage**: as in the code above, taken from `Samples~/Basic/ClomniBasicSample.cs`. Call from Unity's main thread; events arrive there.

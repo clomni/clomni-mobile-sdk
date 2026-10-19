@@ -44,7 +44,7 @@ Later, everything is on the channel page's tabs: Overview, Installation, Securit
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("ai.clomni:messenger:1.0.5")
+    implementation("ai.clomni:messenger:1.0.6")
 }
 ```
 
