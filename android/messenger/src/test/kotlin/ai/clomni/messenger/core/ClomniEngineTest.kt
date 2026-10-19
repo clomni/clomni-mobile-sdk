@@ -427,6 +427,21 @@ class ClomniEngineTest {
         assertEquals(listOf(conversation), second.engine.conversations().map { it.id })
     }
 
+    /** A push started the process (CM-266): no socket until a screen starts, so the server keeps pushing. */
+    @Test
+    fun inTheBackgroundTheSocketWaitsForTheApp() {
+        val phone = Phone()
+        phone.engine.applicationDidEnterBackground().await()
+        phone.engine.loginUser(aysel, "hash").await()
+        phone.engine.connect().await()
+        phone.engine.awaitIdle()
+        Thread.sleep(200)
+        assertFalse(fake.hasSocket(phone.token))
+
+        phone.engine.applicationWillEnterForeground().await()
+        phone.caughtUp()
+    }
+
     @Test
     fun aDroppedSocketCatchesUpAfterReconnecting() {
         val (phone, conversation) = ready()

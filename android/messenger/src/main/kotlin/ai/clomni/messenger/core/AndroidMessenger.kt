@@ -13,8 +13,10 @@ import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.Scheduler
 import ai.clomni.messenger.protocol.ProtocolJson
 import ai.clomni.messenger.store.MessageStore
+import ai.clomni.messenger.ui.AppActivities
 import ai.clomni.messenger.ui.MessageSounds
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.os.Build
@@ -51,9 +53,12 @@ internal object AndroidMessenger {
             File(noBackup, "cache"),
             lazy(ApiClient::defaultClient),
         ) { deviceId -> deviceInfo(app, deviceId) }
-        ForegroundTracker(app) { foreground ->
+        val tracker = ForegroundTracker(app, startedAtCreate(AppActivities.started, ::processInFront)) { foreground ->
             if (foreground) engine.applicationWillEnterForeground() else engine.applicationDidEnterBackground()
         }
+        // A push can start the process with no screen (CM-266): the socket waits for one, so the server still sees the
+        // user away and keeps sending pushes. Taken for in front, the user missed every reply after the first.
+        if (!tracker.inForeground) engine.applicationDidEnterBackground()
         return engine
     }
 
@@ -162,32 +167,35 @@ internal class SerialExecutor(private val pool: Executor) : Executor {
 }
 
 /**
- * Foreground while at least one activity of the app is started. Plain activity callbacks rather than
- * ProcessLifecycleOwner, which would add androidx.lifecycle to every app's dependencies.
+ * The app's activities started when the engine is built: counted from the process's start ([AppActivities]), or, when
+ * the startup provider did not run (an app removed it from its manifest), one if the process is in front now.
  */
-internal class ForegroundTracker(app: Application, private val onChange: (Boolean) -> Unit) :
-    Application.ActivityLifecycleCallbacks {
-    private var started = 0
+internal fun startedAtCreate(fromProcessStart: Int?, inFront: () -> Boolean): Int = fromProcessStart ?: if (inFront()) 1 else 0
 
-    /** The last started activity stopped only to be recreated (a rotation): its replacement is not a return. */
-    private var recreating = false
+private fun processInFront(): Boolean {
+    val state = ActivityManager.RunningAppProcessInfo().also(ActivityManager::getMyMemoryState)
+    return state.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+}
+
+/**
+ * Foreground while at least one activity of the app is started. Plain activity callbacks rather than
+ * ProcessLifecycleOwner, which would add androidx.lifecycle to every app's dependencies. [started] counts the activities
+ * started before it listened: a late initialize (React Native, Flutter, Unity) comes after MainActivity started, and
+ * without it MainActivity's stop never took the app to the background, so the socket stayed open and pushes stopped.
+ */
+internal class ForegroundTracker(app: Application, started: Int = 0, onChange: (Boolean) -> Unit) :
+    Application.ActivityLifecycleCallbacks {
+    private val count = StartedActivities(started, onChange)
+
+    val inForeground: Boolean get() = count.inForeground
 
     init {
         app.registerActivityLifecycleCallbacks(this)
     }
 
-    override fun onActivityStarted(activity: Activity) {
-        if (started++ == 0 && !recreating) onChange(true)
-        recreating = false
-    }
+    override fun onActivityStarted(activity: Activity) = count.started()
 
-    override fun onActivityStopped(activity: Activity) {
-        // A configuration change stops the activity only to start its replacement: not a trip to the background.
-        if (--started == 0) {
-            if (activity.isChangingConfigurations) recreating = true else onChange(false)
-        }
-        if (started < 0) started = 0
-    }
+    override fun onActivityStopped(activity: Activity) = count.stopped(activity.isChangingConfigurations)
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
 
@@ -198,4 +206,25 @@ internal class ForegroundTracker(app: Application, private val onChange: (Boolea
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
     override fun onActivityDestroyed(activity: Activity) = Unit
+}
+
+/** [ForegroundTracker]'s count, apart from Android so the JVM tests reach it. */
+internal class StartedActivities(private var started: Int, private val onChange: (Boolean) -> Unit) {
+    /** The last started activity stopped only to be recreated (a rotation): its replacement is not a return. */
+    private var recreating = false
+
+    val inForeground: Boolean get() = started > 0
+
+    fun started() {
+        if (started++ == 0 && !recreating) onChange(true)
+        recreating = false
+    }
+
+    /** A configuration change stops the activity only to start its replacement: not a trip to the background. */
+    fun stopped(changingConfigurations: Boolean) {
+        if (--started == 0) {
+            if (changingConfigurations) recreating = true else onChange(false)
+        }
+        if (started < 0) started = 0
+    }
 }
