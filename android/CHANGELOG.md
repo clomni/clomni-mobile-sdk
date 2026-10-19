@@ -1,5 +1,13 @@
 # ai.clomni:messenger (Android) changelog
 
+## 1.0.6
+
+A push that starts the app no longer counts as the app being open. When the app was not running, the push started it
+with no screen, the SDK opened its connection and the server took the user for online: the dashboard stopped saying the
+reply goes by push, and the replies after the first got no push. The connection now waits for one of the app's screens.
+The same fix covers an SDK initialized late (React Native, Flutter, Unity): leaving the app now closes the connection,
+so pushes come while the app is in the background. Nothing to change in the app; iOS stays 1.0.4.
+
 ## 1.0.5
 
 The camera's FileProvider is the SDK's own class (`ai.clomni.messenger.ui.ClomniFileProvider`), so it no longer

@@ -1,3 +1,9 @@
+## 1.0.6
+
+Android: a push that starts the app no longer counts as the app being open, so the replies after the first still come
+as pushes, and leaving the app closes the connection when the SDK was initialized late. The Android SDK is 1.0.6; iOS
+is unchanged and stays 1.0.4.
+
 ## 1.0.5
 
 Android: the camera's FileProvider is the SDK's own class, so it no longer collides with apps or libraries (e.g.
