@@ -20,21 +20,16 @@ struct MessagesView: View {
     var isTab = false
     /// The list has moved up under the bar.
     @State private var scrolled = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: closeLabel, backLabel: backLabel, theme: theme,
                              showsDivider: scrolled, back: isTab ? nil : actions.back, close: actions.close)
                 .offlineCapsule(offline: screen.offline, connected: screen.connected, theme: theme)
-            // The list fades in over the spinner's place once it comes (CM-346); from the cache it is there at once.
-            ZStack {
-                content
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .transition(.opacity)
-                    .id(screen.phase)
-            }
-            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: screen.phase)
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .entryGate(ready: screen.phase != .loading, background: theme.colors.canvas.color, theme: theme,
+                           label: screen.loadingLabel)
         }
         .background(theme.colors.canvas.color.ignoresSafeArea())
         .messengerTabBar(isTab ? screen.tabBar : nil, selected: .messages, theme: theme, select: actions.selectTab)

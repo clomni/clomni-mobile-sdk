@@ -54,6 +54,9 @@ package struct Conversation: Sendable, Equatable, Identifiable {
 package struct ConversationPage: Sendable, Equatable {
     package let conversations: [Conversation]
     package let nextCursor: String?
+    /// `resume_conversation_id` (CM-346 § 5.4): the conversation POST /conversations would answer with, with the inbox's
+    /// one conversation per user; nil for none, and from a server before it.
+    package var resumeConversationId: String?
 }
 
 /// A page of history, sorted by `seq`.
@@ -256,7 +259,10 @@ extension ProtocolJSON {
     package static func parseConversationPage(_ data: Data) -> ConversationPage? {
         decode(data, "conversations") {
             ConversationPage(conversations: try $0.items("conversations") { try Conversation($0) },
-                             nextCursor: $0.optionalString("next_cursor"))
+                             nextCursor: $0.optionalString("next_cursor"),
+                             // Only a conversation's id (fixture 117: "5521" is not one, and is left out).
+                             resumeConversationId: $0.optionalString("resume_conversation_id")
+                                 .flatMap { $0.hasPrefix("conv_") ? $0 : nil })
         }
     }
 

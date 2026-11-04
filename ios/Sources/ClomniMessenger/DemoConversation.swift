@@ -64,12 +64,19 @@ extension Clomni {
 
     /// Debug builds, for UI tests: the messenger with the tab bar (SDK 1.0.7), opened on Home through its own
     /// coordinator and renderer, as `present()` opens it; Home, the conversations (7 unread), the news and the FAQ come
-    /// from memory (`DemoLists`). No server.
+    /// from memory (`DemoLists`). No server. `-ClomniDemoEntrySeconds <s>` holds each screen's spinner that long, for
+    /// a test to see it.
     @_spi(ClomniUITesting) @MainActor
     public static func presentDemoTabs() {
         let coordinator = MessengerCoordinator(session: DemoSession(config: DemoLists.config), language: "az")
+        // The open conversation is the demo conversation; a new one is empty.
         let messenger = UIKitMessenger(engine: ClomniEngine(appId: "app_demo", apiKey: "ios_demo"), coordinator: coordinator,
-                                       lists: DemoLists())
+                                       lists: DemoLists(), chats: { DemoChat(empty: $0 != DemoChat.conversationId) })
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-ClomniDemoEntrySeconds"), arguments.indices.contains(index + 1),
+           let seconds = TimeInterval(arguments[index + 1]) {
+            messenger.entrySeconds = seconds
+        }
         coordinator.onChange = { [weak messenger] in messenger?.render() }
         DemoSession.kept = (coordinator, messenger)
         Task {
@@ -137,6 +144,7 @@ actor DemoSession: MessengerSession {
     func refreshConfig(language: String?) async -> MessengerConfig? { look }
     func connect() async {}
     func draftConversation(openedFrom: String?) async -> String { DemoChat.conversationId }
+    func resumeConversation() async -> String? { nil }
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation? { nil }
     func messages(in conversationId: String) async -> [Message] { [] }
@@ -144,18 +152,20 @@ actor DemoSession: MessengerSession {
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID { UUID() }
 }
 
-/// What the demo tabs' Home and lists read (`Clomni.presentDemoTabs`): a company with the tab bar on, in light mode,
-/// every Home card (taller than the sheet, so Home scrolls), twelve conversations with 7 unread, three news items and
-/// four questions.
+/// What the demo tabs' Home and lists read (`Clomni.presentDemoTabs`): a company with the tab bar on, in light mode
+/// (dark with `-ClomniDemoDark`), every Home card (taller than the sheet, so Home scrolls), twelve conversations with 7
+/// unread, three news items and four questions. One conversation per user (`conversation.single`): the newest, the
+/// demo conversation, is the one the server resumes; a new one would be "conv_demo_new", empty.
 actor DemoLists: MessengerDataSource {
+    private static let mode = ProcessInfo.processInfo.arguments.contains("-ClomniDemoDark") ? "dark" : "light"
     static let config = ProtocolJSON.parseConfig(Data(#"""
     {"version":1,"brand":{"name":"Clomni","primary_color":"#1A2EB8","header_style":"gradient","glow":false},
-     "theme":{"mode":"light","launcher":{"enabled":false}},
+     "theme":{"mode":"\#(DemoLists.mode)","launcher":{"enabled":false}},
      "home":{"cards":["messages","send","recent","news","faq","channels"],"tab_bar":true,"news_on_home":3,
              "channels":[{"type":"instagram","url":"https://instagram.com/example"},
                          {"type":"whatsapp","url":"https://wa.me/994501234567"},
                          {"type":"email","url":"mailto:support@example.com"}]},
-     "faq":{"enabled":true},
+     "faq":{"enabled":true},"conversation":{"single":true},
      "team":{"show":true,"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
      "bot":{"name":"Clomni"},"composer":{},"languages":["az"],"strings":{},"limits":{},"powered_by":true}
     """#.utf8))
@@ -172,7 +182,8 @@ actor DemoLists: MessengerDataSource {
     var unreadTotal: Int { 7 }
     var userName: String? { "Aysel" }
     func refreshConversations() async throws {}
-    func draftConversation(openedFrom: String?) async -> String { DemoChat.conversationId }
+    func resumeConversation() async -> String? { DemoChat.conversationId }
+    func draftConversation(openedFrom: String?) async -> String { "conv_demo_new" }
     func refreshNews() async -> [NewsItem] { news }
     func newsOpened(_ id: String) async {}
     func refreshFaq() async -> [FaqItem] { faq }
@@ -186,10 +197,11 @@ actor DemoLists: MessengerDataSource {
             let sender = index % 3 == 2 ? #"{"type":"bot","name":"Clomni"}"# : #"{"type":"operator","name":"Leyla"}"#
             let at = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-Double(index + 1) * 3_600))
             let unread = index == 0 ? 3 : index == 1 ? 4 : 0
+            let id = index == 0 ? DemoChat.conversationId : "conv_demo_\(index)"
             return ProtocolJSON.parseConversation(Data(#"""
-            {"id":"conv_demo_\#(index)","status":"open","assignee":{"name":"Leyla"},"unread_count":\#(unread),
+            {"id":"\#(id)","status":"open","assignee":{"name":"Leyla"},"unread_count":\#(unread),
              "created_at":"\#(at)",
-             "last_message":{"id":"msg_demo_last_\#(index)","conversation_id":"conv_demo_\#(index)","type":"text",
+             "last_message":{"id":"msg_demo_last_\#(index)","conversation_id":"\#(id)","type":"text",
                "created_at":"\#(at)","sender":\#(sender),"seq":1,"lang":"az","content":{"text":"\#(text)"},
                "fallback_text":"\#(text)"}}
             """#.utf8))
@@ -263,7 +275,8 @@ actor DemoChat: ChatDataSource {
     private var waiting: [PendingMessage] = []
     private var files: [String: URL] = [:]
 
-    init() {
+    /// `empty`: a new conversation, nothing in it yet (`Clomni.presentDemoTabs`).
+    init(empty: Bool = false) {
         let form: JSONValue = .object([
             "text": "Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
             "form_id": "frm_contact",
@@ -347,10 +360,10 @@ actor DemoChat: ChatDataSource {
             : Self.message(seq, from: "bot", type: "form", content: form, fallback: "Ad, telefon və email yazın",
                            minutesAgo: 22, interactive: true)
         if let last { cached.append(last) }
-        stored = cached
-        unloaded = pages.reversed()
-        answerable = ["msg_demo_\(seq)"]
-        readUpTo = seq - 2
+        stored = empty ? [] : cached
+        unloaded = empty ? [] : pages.reversed()
+        answerable = empty ? [] : ["msg_demo_\(seq)"]
+        readUpTo = empty ? 0 : seq - 2
     }
 
     /// A line of the demo's history.

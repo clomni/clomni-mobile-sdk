@@ -79,8 +79,12 @@ struct HomeView: View {
             OfflineCapsule(offline: screen.offline, connected: screen.connected, theme: theme)
                 .padding(.top, CGFloat(ClomniTheme.Size.homeBarTop + ClomniTheme.Size.barRow) + 8)
         }
-        // The page: canvas grey in light mode (the white cards stand on it, the fade ends in it), background in dark.
-        .background((theme.isDark ? theme.colors.background : theme.colors.canvas).color.ignoresSafeArea())
+        .background(Self.page(theme).ignoresSafeArea())
+    }
+
+    /// The page: canvas grey in light mode (the white cards stand on it, the fade ends in it), background in dark.
+    static func page(_ theme: ClomniTheme) -> Color {
+        (theme.isDark ? theme.colors.background : theme.colors.canvas).color
     }
 }
 

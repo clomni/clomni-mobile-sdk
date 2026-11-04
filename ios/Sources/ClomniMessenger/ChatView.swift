@@ -35,11 +35,6 @@ final class ChatModel: ObservableObject {
         NetworkMonitor.shared.follow(controller) { $0.isOffline = $1 }
     }
 
-    convenience init(engine: ClomniEngine, conversationId: String, language: String?, config: MessengerConfig? = nil) {
-        self.init(controller: ChatController(source: engine, conversationId: conversationId, language: language,
-                                             config: config))
-    }
-
     private func sync() {
         screen = controller.screen
         config = controller.config
@@ -129,39 +124,44 @@ struct ChatView: View {
         VStack(spacing: 0) {
             ChatHeaderView(header: model.screen.header, theme: theme, showsDivider: scrolled, back: back, close: close)
                 .offlineCapsule(offline: model.screen.offline, connected: model.screen.connected, theme: theme)
-            // What is not known yet shows nothing; once it is, all of it comes at once, fading in over 200 ms
-            // (DESIGN-PASS-3 C5). From the cache it is there in the first frames.
-            ZStack {
-                transcript
-                    .transition(.opacity)
-                    .id(model.screen.phase)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.screen.phase)
-            // "Mesaj silinsin?" with "Sil" and "Ləğv et" (SDK 1.0.7); here, apart from the refusal's alert.
-            .alert(model.screen.deleting.title,
-                   isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                   presenting: deleting) { id in
-                Button(model.screen.deleting.action, role: .destructive) {
-                    Task { @MainActor in refusal = await model.controller.delete(id) }
+            // Behind the entry's spinner first (CM-346 § 5.1): the transcript and the composer.
+            VStack(spacing: 0) {
+                // What is not known yet shows nothing; once it is, all of it comes at once, fading in over 200 ms
+                // (DESIGN-PASS-3 C5). From the cache it is there in the first frames.
+                ZStack {
+                    transcript
+                        .transition(.opacity)
+                        .id(model.screen.phase)
                 }
-                Button(model.screen.deleting.cancel, role: .cancel) {}
-            } message: { _ in
-                Text(model.screen.deleting.body)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.screen.phase)
+                // "Mesaj silinsin?" with "Sil" and "Ləğv et" (SDK 1.0.7); here, apart from the refusal's alert.
+                .alert(model.screen.deleting.title,
+                       isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                       presenting: deleting) { id in
+                    Button(model.screen.deleting.action, role: .destructive) {
+                        Task { @MainActor in refusal = await model.controller.delete(id) }
+                    }
+                    Button(model.screen.deleting.cancel, role: .cancel) {}
+                } message: { _ in
+                    Text(model.screen.deleting.body)
+                }
+                // While a flow waits for a choice there is no composer at all (operator, 2026-10-04): the choices stand at
+                // the end of the conversation. It comes back, sliding up and fading in over 200 ms, when the flow takes
+                // text, ends, or an operator joins.
+                if composerShown {
+                    ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
+                                 staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew,
+                                 cancelQuote: { model.controller.reply(to: nil) }, recorder: model.recorder,
+                                 playback: model.playback)
+                        // Always as tall as it needs, the transcript giving way: a picked file's strip must not leave it
+                        // overflowing its earlier height, half of it under the keyboard (CM-087).
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
-            // While a flow waits for a choice there is no composer at all (operator, 2026-10-04): the choices stand at
-            // the end of the conversation. It comes back, sliding up and fading in over 200 ms, when the flow takes
-            // text, ends, or an operator joins.
-            if composerShown {
-                ComposerView(composer: model.screen.composer, theme: theme, text: $draft, writeAnyway: $writeAnyway,
-                             staged: $staged, send: send, attach: { choosingAttachment = true }, startNew: startNew,
-                             cancelQuote: { model.controller.reply(to: nil) }, recorder: model.recorder,
-                             playback: model.playback)
-                    // Always as tall as it needs, the transcript giving way: a picked file's strip must not leave it
-                    // overflowing its earlier height, half of it under the keyboard (CM-087).
-                    .fixedSize(horizontal: false, vertical: true)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+            .entryGate(ready: model.screen.phase != .loading, background: theme.colors.background.color, theme: theme,
+                       label: model.screen.loadingLabel)
         }
         // H1: the screen ends on the keyboard, moving with it. SwiftUI's own keyboard avoidance is off for it: in the
         // messenger's page sheet it did not happen on an iPhone, and where it does it would lift the screen twice.

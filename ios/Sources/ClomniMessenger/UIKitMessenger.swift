@@ -17,8 +17,9 @@ import ClomniPresentation
 final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationControllerDelegate,
     UINavigationControllerDelegate {
     private let engine: ClomniEngine
-    /// What Home and the lists read: the engine, or the UI tests' demo (`Clomni.presentDemoTabs`).
+    /// What Home and the lists read, and a conversation: the engine, or the UI tests' demo (`Clomni.presentDemoTabs`).
     private let listSource: MessengerDataSource?
+    private let chatSource: ((String) -> ChatDataSource)?
     private weak var coordinator: MessengerCoordinator?
     private let rootModel = MessengerRootModel()
     private let launcher = LauncherController()
@@ -27,18 +28,22 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     private var shown: [MessengerRoute] = []
     /// Home's state, kept while the messenger is open: going back to Home draws it as it was (DESIGN-PASS-2 9).
     private var home: MessengerModel?
-    /// The tabs' lists, made once per open messenger (`MessengerRoute.keptAlive`, CM-346): another tab and back shows
-    /// the list as it was, loaded and scrolled, in its first frame. Made again each time, Home's 120 ms entrance
-    /// left the sheet blank white for a frame (TestFlight #19).
-    private var tabs: [MessengerRoute: UIViewController] = [:]
+    /// The tabs' lists, made once per open messenger (`MessengerRoute.keptAlive`, CM-346), with their entries: another
+    /// tab and back shows the spinner, then the list as it was, loaded and scrolled. Made again each time, Home lost its
+    /// place and blanked the sheet for a frame (TestFlight #19).
+    private var tabs: [MessengerRoute: (controller: UIViewController, entry: ScreenEntryModel)] = [:]
+    /// How long a screen coming into view shows its spinner at least (CM-346 § 5.1); longer in the UI tests.
+    var entrySeconds = ScreenEntry.minimum
     private var typeface: Typeface?
     private var themeOverride = ThemeOverride()
     /// Waiting for a window to present from (`present`).
     private var windowObservers: [NSObjectProtocol] = []
 
-    init(engine: ClomniEngine, coordinator: MessengerCoordinator, lists: MessengerDataSource? = nil) {
+    init(engine: ClomniEngine, coordinator: MessengerCoordinator, lists: MessengerDataSource? = nil,
+         chats: ((String) -> ChatDataSource)? = nil) {
         self.engine = engine
         listSource = lists
+        chatSource = chats
         self.coordinator = coordinator
         super.init()
         // A launcher with no session yet (no network at launch) tries again when the network is back.
@@ -130,34 +135,33 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         windowObservers = []
     }
 
-    /// Brings the navigation stack to `stack`: a push or a pop when only the top changed, else the whole stack. A new
-    /// screen at the bottom is another tab (SDK 1.0.7): it replaces the list, cross-fading over 200 ms (CM-346); with
-    /// Reduce Motion nothing moves.
+    /// Brings the navigation stack to `stack`: a push or a pop when only the top changed, else the whole stack, at once.
+    /// A new screen at the bottom is another tab (SDK 1.0.7): it replaces the list, with no cross-fade (CM-346 § 5.1).
+    /// Every screen that comes into view shows its spinner first (`ScreenEntry`); a pop shows the one under as it was.
     private func follow(_ stack: [MessengerRoute], animated: Bool = true) {
         guard let navigation, stack != shown else { return }
-        let kept = zip(shown, stack).prefix { $0 == $1 }.count
+        let entering = StackTransition.entering(from: shown, to: stack)
         let transition = animated
             ? StackTransition(from: shown, to: stack, reduceMotion: UIAccessibility.isReduceMotionEnabled) : .none
-        let controllers = Array(navigation.viewControllers.prefix(kept))
-            + stack.enumerated().dropFirst(kept).map { host($0.element, root: $0.offset == 0) }
+        let controllers = Array(navigation.viewControllers.prefix(entering.lowerBound))
+            + entering.map { host(stack[$0], root: $0 == 0) }
         shown = stack
-        switch transition {
-        case .push:
-            navigation.setViewControllers(controllers, animated: true)
-        case .crossfade:
-            UIView.transition(with: navigation.view, duration: StackTransition.crossfadeSeconds,
-                              options: [.transitionCrossDissolve, .curveEaseOut, .allowUserInteraction],
-                              animations: { navigation.setViewControllers(controllers, animated: false) })
-        case .none:
-            navigation.setViewControllers(controllers, animated: false)
-        }
+        navigation.setViewControllers(controllers, animated: transition == .push)
     }
 
+    /// A screen to show, coming into view: a tab's kept list starts its entry again (drawn so before it is on screen,
+    /// with no frame of what it showed last), anything else is made with a new one.
     private func host(_ route: MessengerRoute, root: Bool) -> UIViewController {
         let keep = route.keptAlive(atBottom: root)
-        if keep, let kept = tabs[route] { return kept }
-        let made = Self.host(ScreenRoot(model: rootModel, content: screen(route, root: root)))
-        if keep { tabs[route] = made }
+        if keep, let kept = tabs[route] {
+            kept.entry.restart()
+            kept.controller.view.setNeedsLayout()
+            kept.controller.view.layoutIfNeeded()
+            return kept.controller
+        }
+        let entry = ScreenEntryModel(minimum: entrySeconds)
+        let made = Self.host(ScreenRoot(model: rootModel, content: screen(route, root: root), entry: entry))
+        if keep { tabs[route] = (made, entry) }
         return made
     }
 
@@ -201,7 +205,8 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
             case .news(let id):
                 NewsScreenView(model: lists, id: id, coordinator: coordinator)
             case .conversation(let id):
-                ConversationScreen(engine: engine, conversationId: id, language: coordinator.language,
+                ConversationScreen(source: chatSource?(id) ?? (engine as ChatDataSource), conversationId: id,
+                                   language: coordinator.language,
                                    config: coordinator.config,
                                    back: { [weak coordinator] in coordinator?.back() },
                                    close: { [weak coordinator] in coordinator?.dismiss() })

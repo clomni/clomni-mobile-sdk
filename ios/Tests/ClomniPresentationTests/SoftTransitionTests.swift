@@ -3,9 +3,9 @@ import XCTest
 import ClomniProtocol
 @testable import ClomniPresentation
 
-/// CM-346, TestFlight #19: "keçid sərtdir". The tabs' lists stay as they were and cross-fade; a screen opened over a
-/// list keeps the system's push; with Reduce Motion everything changes at once. Where there is nothing to show yet,
-/// the spinner, not a blank screen.
+/// CM-346, TestFlight #19 and #21: the tabs' lists stay as they were; nothing cross-fades (§ 5.1): another tab
+/// replaces the list at once, a screen opened over a list keeps the system's push, and every screen coming into view
+/// shows its spinner first (`ScreenEntry`). Where there is nothing to show yet, the spinner, not a blank screen.
 @MainActor
 final class SoftTransitionTests: XCTestCase {
     private var tabbed: MessengerConfig { ProtocolJSON.parseConfig(Fixture.data("109-config-tab-bar-faq.json"))! }
@@ -16,9 +16,9 @@ final class SoftTransitionTests: XCTestCase {
         func move(_ shown: [MessengerRoute], _ next: [MessengerRoute]) -> StackTransition {
             StackTransition(from: shown, to: next, reduceMotion: false)
         }
-        XCTAssertEqual(move([.home], [.messages]), .crossfade, "another tab")
-        XCTAssertEqual(move([.messages], [.faq]), .crossfade)
-        XCTAssertEqual(move([.newsList], [.home]), .crossfade, "back to Home")
+        XCTAssertEqual(move([.home], [.messages]), .none, "another tab: at once, no cross-fade")
+        XCTAssertEqual(move([.messages], [.faq]), .none)
+        XCTAssertEqual(move([.newsList], [.home]), .none, "back to Home")
         XCTAssertEqual(move([.home], [.home, .conversation("conv_1")]), .push, "a conversation over the list")
         XCTAssertEqual(move([.messages, .conversation("conv_1")], [.messages]), .push, "and back")
         XCTAssertEqual(move([.home], [.home, .messages]), .push, "the list over Home, without the tab bar")
@@ -26,11 +26,19 @@ final class SoftTransitionTests: XCTestCase {
         XCTAssertEqual(move([], [.home]), .none, "the opening: the sheet's own move")
         XCTAssertEqual(move([.messages, .conversation("conv_1")], [.home, .conversation("conv_2")]), .none,
                        "a whole new stack (a push's conversation)")
+        XCTAssertEqual(StackTransition(from: [.home], to: [.home, .news("news_12")], reduceMotion: true), .none,
+                       "Reduce Motion: at once")
+    }
 
-        XCTAssertEqual(StackTransition(from: [.home], to: [.messages], reduceMotion: true), .none, "Reduce Motion: at once")
-        XCTAssertEqual(StackTransition(from: [.home], to: [.home, .news("news_12")], reduceMotion: true), .none)
-        XCTAssertTrue((0.18...0.22).contains(StackTransition.crossfadeSeconds))
-        XCTAssertTrue((0.15...0.2).contains(StackTransition.fadeInSeconds))
+    /// The screens that show the spinner first: the new ones, a tab chosen again too; a pop shows what was under.
+    func testWhichScreensComeIntoView() {
+        XCTAssertEqual(StackTransition.entering(from: [], to: [.home]), 0..<1, "the opening")
+        XCTAssertEqual(StackTransition.entering(from: [], to: [.home, .conversation("conv_1")]), 0..<2)
+        XCTAssertEqual(StackTransition.entering(from: [.home], to: [.messages]), 0..<1, "another tab")
+        XCTAssertEqual(StackTransition.entering(from: [.messages], to: [.home]), 0..<1, "Home again")
+        XCTAssertEqual(StackTransition.entering(from: [.home], to: [.home, .news("news_12")]), 1..<2, "a push")
+        XCTAssertTrue(StackTransition.entering(from: [.messages, .conversation("conv_1")], to: [.messages]).isEmpty,
+                      "a pop: the list as it was")
     }
 
     func testOnlyTheTabsListsStayAlive() {

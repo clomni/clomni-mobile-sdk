@@ -88,6 +88,8 @@ struct HomeTabView: View {
 
     var body: some View {
         HomeView(screen: model.home, theme: theme, actions: actions)
+            .entryGate(ready: model.home.phase != .loading, background: HomeView.page(theme), theme: theme,
+                       label: model.home.loadingLabel)
             .messengerTabBar(model.home.tabBar, selected: .home, theme: theme, select: actions.selectTab)
             // Text grows with Dynamic Type up to about twice its size.
             .dynamicTypeSize(...DynamicTypeSize.accessibility3)

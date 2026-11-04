@@ -73,10 +73,12 @@ struct QuoteStrip: View {
 /// The reply arrow behind a swiped bubble: it fades and grows in as the drag nears the threshold.
 struct ReplyArrow: View {
     let pulled: CGFloat
+    /// The user's own message (`ReplySwipe`): its shorter threshold.
+    var outgoing = false
     let theme: ClomniTheme
 
     var body: some View {
-        let progress = min(max(pulled / SwipeToReply.threshold, 0), 1)
+        let progress = min(max(pulled / ReplySwipe.threshold(outgoing: outgoing), 0), 1)
         Image(systemName: "arrowshape.turn.up.left.fill")
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(theme.colors.textSecondary.color)
@@ -91,14 +93,13 @@ struct ReplyArrow: View {
 /// A drag to the right answers the message: the row follows the finger (with some resistance), a light tick at the
 /// threshold, and it springs back. A drag that starts vertical stays the list's: on iOS 18+ through UIKit's pan, which
 /// fails at once for it (`SidewaysPan`, CM-342); before that SwiftUI's simultaneous drag leaves the list its scrolling.
+/// The user's own messages (`outgoing`), at the right edge, answer at a shorter drag (`ReplySwipe`, CM-346 § 5.3).
 struct SwipeToReply: ViewModifier {
     let enabled: Bool
+    var outgoing = false
     @Binding var pulled: CGFloat
     let reply: () -> Void
     @State private var horizontal: Bool?
-
-    /// How far a bubble is dragged before letting go answers it.
-    static let threshold: CGFloat = 56
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -135,13 +136,13 @@ struct SwipeToReply: ViewModifier {
 
     /// The row `translation` to the right of where it was, with resistance.
     private func follow(_ translation: CGFloat) {
-        let before = pulled
-        pulled = min(max(translation * 0.7, 0), Self.threshold + 24)
-        if before < Self.threshold, pulled >= Self.threshold { Haptics.light() }
+        let before = pulled, threshold = ReplySwipe.threshold(outgoing: outgoing)
+        pulled = ReplySwipe.pulled(translation, outgoing: outgoing)
+        if before < threshold, pulled >= threshold { Haptics.light() }
     }
 
     private func ended(answers: Bool) {
-        if answers, pulled >= Self.threshold { reply() }
+        if answers, pulled >= ReplySwipe.threshold(outgoing: outgoing) { reply() }
         withAnimation(.spring(response: 0.28, dampingFraction: 0.7)) { pulled = 0 }
     }
 }

@@ -95,29 +95,19 @@ struct NewsListView: View {
     let actions: MessengerActions
     /// The news tab's list: no back, the tab bar under it.
     var isTab = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: screen.closeLabel, backLabel: screen.backLabel,
                              theme: theme, back: isTab ? nil : actions.back, close: actions.close)
-            // Nothing yet: the spinner in the middle; the items fade in over it (CM-346).
-            ZStack {
-                if screen.loading {
-                    LoadingIndicator(loading: true, label: screen.loadingLabel, theme: theme)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
-                } else {
-                    ScrollView {
-                        if !screen.items.isEmpty {
-                            NewsCardView(card: screen.card, theme: theme, open: actions.openNews)
-                                .padding(CGFloat(ClomniTheme.Space.l))
-                        }
-                    }
-                    .transition(.opacity)
+            ScrollView {
+                if !screen.items.isEmpty {
+                    NewsCardView(card: screen.card, theme: theme, open: actions.openNews)
+                        .padding(CGFloat(ClomniTheme.Space.l))
                 }
             }
-            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: screen.loading)
+            .entryGate(ready: !screen.loading, background: theme.colors.canvas.color, theme: theme,
+                       label: screen.loadingLabel)
         }
         .background(theme.colors.canvas.color.ignoresSafeArea())
         .messengerTabBar(isTab ? screen.tabBar : nil, selected: .news, theme: theme, select: actions.selectTab)
@@ -135,7 +125,6 @@ struct NewsScreenView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.clomniThemeOverride) private var themeOverride
     @Environment(\.openURL) private var openURL
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
         ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
@@ -150,7 +139,7 @@ struct NewsScreenView: View {
                 CircleBackButton(label: article?.backLabel ?? "", theme: theme, action: { coordinator.back() })
             }
             .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
-            // Not here yet: the spinner in the middle, and the item fades in over it (CM-346).
+            // Behind the entry's spinner while it is not here yet (CM-346 § 5.1).
             ZStack {
                 if let article {
                     ScrollView {
@@ -161,15 +150,11 @@ struct NewsScreenView: View {
                     .task {
                         if faqAnswer { await model.controller.faqOpened(id) } else { await model.controller.opened(article) }
                     }
-                    .transition(.opacity)
-                } else if loading {
-                    LoadingIndicator(loading: true, label: model.newsList.loadingLabel, theme: theme)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: article == nil)
+            .entryGate(ready: !loading, background: theme.colors.background.color, theme: theme,
+                       label: model.newsList.loadingLabel)
         }
         .background(theme.colors.background.color.ignoresSafeArea())
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)

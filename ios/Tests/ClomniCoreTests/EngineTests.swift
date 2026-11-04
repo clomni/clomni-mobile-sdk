@@ -531,3 +531,23 @@ final class EngineTests: EngineTestCase {
         XCTAssertTrue(loaded, "with nothing cached, the latest page")
     }
 }
+
+/// CM-346 § 5.4: the conversation a new one would be answered with is the server's `resume_conversation_id`, from
+/// GET /conversations (asked for first when no list has come since the launch); none from an older server.
+final class ResumeConversationTests: EngineTestCase {
+    func testTheServersResumeConversation() async throws {
+        let phone = await device()
+        try await phone.engine.loginUnidentifiedUser()
+        server.resumeConversationId = "conv_77"
+        let first = await phone.engine.resumeConversation()
+        XCTAssertEqual(first, "conv_77")
+        XCTAssertEqual(server.requests("GET", "/conversations").count, 1, "no list yet: asked for first")
+        _ = await phone.engine.resumeConversation()
+        XCTAssertEqual(server.requests("GET", "/conversations").count, 1, "then the last list's")
+
+        server.resumeConversationId = nil
+        try await phone.engine.refreshConversations()
+        let none = await phone.engine.resumeConversation()
+        XCTAssertNil(none, "the field left out (an older server, or none to resume): a new one")
+    }
+}

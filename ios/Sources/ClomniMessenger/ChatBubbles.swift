@@ -195,12 +195,13 @@ struct BubbleRow: View {
                 BubbleBody(bubble: bubble, theme: theme, shape: shape, actions: actions)
                     .modifier(MessageMenu(bubble: bubble, actions: actions))
                     .overlay(alignment: .leading) {
-                        if !incoming { ReplyArrow(pulled: pulled, theme: theme).offset(x: -36) }
+                        if !incoming { ReplyArrow(pulled: pulled, outgoing: true, theme: theme).offset(x: -36) }
                     }
                     .frame(maxWidth: maxWidth, alignment: incoming ? .leading : .trailing)
             }
             .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
-            .modifier(SwipeToReply(enabled: bubble.replyable && bubble.messageId != nil, pulled: $pulled) {
+            .modifier(SwipeToReply(enabled: bubble.replyable && bubble.messageId != nil, outgoing: !incoming,
+                                   pulled: $pulled) {
                 if let id = bubble.messageId { actions.reply(id) }
             })
             .background(alignment: .leading) { if incoming { ReplyArrow(pulled: pulled, theme: theme) } }

@@ -21,6 +21,9 @@ package struct MessengerConfig: Sendable, Equatable {
     package let poweredBy: Bool
     /// `conversation.starts_with_flow`: a new conversation starts a flow, so it is created as soon as it opens.
     package let startsWithFlow: Bool
+    /// `conversation.single` (the inbox's lock_to_single_conversation, CM-346 § 5.4): a way to a new conversation opens
+    /// the user's conversation that is not closed instead. Off when absent.
+    package let singleConversation: Bool
     /// Short sounds for a sent and a received message; the app can still turn them off.
     package let sounds: Bool
     /// The questions the panel shares (GET /faq, SDK 1.0.7): the faq tab and Home's faq card. Off when absent.
@@ -324,6 +327,7 @@ extension MessengerConfig {
                              textChars: positive("text_chars", 4000), voiceSeconds: positive("voice_seconds", Limits.defaultVoiceSeconds))
         poweredBy = f.optionalBool("powered_by") ?? true
         startsWithFlow = section(f, "conversation").optionalBool("starts_with_flow") ?? false
+        singleConversation = section(f, "conversation").optionalBool("single") ?? false
         sounds = f.optionalBool("sounds") ?? true
         faqEnabled = section(f, "faq").optionalBool("enabled") ?? false
     }

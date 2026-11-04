@@ -227,6 +227,8 @@ package actor ClomniEngine {
         drafts = [:]
         createdDrafts = [:]
         readSent = [:]
+        resumeId = nil
+        listFetched = false
         save()
         notify(.conversations)
         notify(.unread(total: 0))
@@ -416,8 +418,22 @@ package actor ClomniEngine {
     package func refreshConversations() async throws {
         let page = try await api.conversations()
         page.conversations.forEach { store.upsert($0) }
+        resumeId = page.resumeConversationId
+        listFetched = true
         save()
         notify(.conversations)
+    }
+
+    /// The server's `resume_conversation_id` from the last list, and whether a list came since the launch.
+    private var resumeId: String?
+    private var listFetched = false
+
+    /// The conversation a new one would be answered with (CM-346 § 5.4): the server's `resume_conversation_id`, the
+    /// list asked for first when none has come since the launch; nil for none, an older server, or one closed since.
+    package func resumeConversation() async -> String? {
+        if !listFetched { try? await refreshConversations() }
+        guard let id = resumeId, store.conversations[id]?.status != .closed else { return nil }
+        return id
     }
 
     /// A new conversation that exists only here until its first message: the server creates it then (starting the
