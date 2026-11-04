@@ -112,13 +112,12 @@ private struct Pixels {
     let scale: CGFloat
     private let data: [UInt8]
 
+    @MainActor
     init?(_ screenshot: XCUIScreenshot) {
         let image = screenshot.image
         guard let cgImage = image.cgImage, image.size.width > 0,
               let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
-        width = cgImage.width
-        height = cgImage.height
-        scale = CGFloat(cgImage.width) / image.size.width
+        let (width, height) = (cgImage.width, cgImage.height)
         var buffer = [UInt8](repeating: 0, count: width * height * 4)
         let drawn = buffer.withUnsafeMutableBytes { bytes -> Bool in
             guard let context = CGContext(data: bytes.baseAddress, width: width, height: height, bitsPerComponent: 8,
@@ -128,6 +127,9 @@ private struct Pixels {
             return true
         }
         guard drawn else { return nil }
+        self.width = width
+        self.height = height
+        scale = CGFloat(width) / image.size.width
         data = buffer
     }
 
