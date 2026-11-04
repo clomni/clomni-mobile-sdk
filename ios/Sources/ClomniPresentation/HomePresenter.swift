@@ -366,9 +366,10 @@ package struct HomePresenter: Sendable {
             name = strings[.you]
             other = company
         case .bot:
-            // The bot speaks as the brand, with the brand's logo first, as in the conversation (DESIGN-PASS-3 A2, B2).
-            name = brand ?? message.sender.name ?? botName ?? ""
-            other = (name, config?.brand.logoUrl ?? config?.bot.avatarUrl ?? message.sender.avatarUrl)
+            // As in the conversation.
+            let bot = BotIdentity(message.sender, config: config)
+            name = bot.name
+            other = (name, bot.avatarUrl)
         case .operator:
             name = message.sender.name ?? conversation.assignee?.name ?? brand ?? ""
             other = (name, message.sender.avatarUrl)
@@ -508,6 +509,20 @@ package struct NewsArticle: Sendable, Equatable {
         button = item.button
         backLabel = strings[.goBack]
         closeLabel = strings[.close]
+    }
+}
+
+/// A bot's name and picture wherever it shows (a flow, Clomni AI, an AgentBot; CM-346): what the server sends with the
+/// message, else the panel's bot (`config.bot`), else the brand and its logo. The server already sends the panel's
+/// name; the rest is for a message without one. No picture at all: the initial.
+package struct BotIdentity: Sendable, Equatable {
+    package let name: String
+    package let avatarUrl: URL?
+
+    package init(_ sender: Sender, config: MessengerConfig?) {
+        func given(_ text: String?) -> String? { text?.isEmpty == false ? text : nil }
+        name = given(sender.name) ?? given(config?.bot.name) ?? config?.brand.name ?? ""
+        avatarUrl = sender.avatarUrl ?? config?.bot.avatarUrl ?? config?.brand.logoUrl
     }
 }
 

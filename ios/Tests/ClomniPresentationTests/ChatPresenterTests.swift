@@ -60,13 +60,14 @@ final class ChatPresenterTests: XCTestCase {
         let list = bubbles(screen([first, second, later]))
         XCTAssertEqual(list.map(\.position), [.first, .last, .single], "70 s later starts a new run")
         XCTAssertNil(list[0].avatar)
-        // The bot speaks as the brand over its run, with no "· Bot" (DESIGN-PASS-3 B2); when, in every bubble (G7).
-        XCTAssertEqual(list.map(\.nameLine), ["Example", nil, "Example"])
+        // The bot's name as the server sends it, over its run, with no "· Bot" (DESIGN-PASS-3 B2, CM-346); when, in
+        // every bubble (G7).
+        XCTAssertEqual(list.map(\.nameLine), ["Clomni", nil, "Clomni"])
         XCTAssertEqual(list.map(\.time), ["10:30", "10:31", "10:32"], "the clock, not \"indi\"")
-        XCTAssertEqual(list[1].avatar, ChatAvatar(url: Fixture.exampleConfig.brand.logoUrl, initial: "E", isBot: true),
-                       "the bot is the company: its logo")
+        XCTAssertEqual(list[1].avatar, ChatAvatar(url: URL(string: "https://app.clomni.ai/a/bot.png"), initial: "C", isBot: true),
+                       "the picture it came with")
         XCTAssertEqual(list.map(\.side), [.incoming, .incoming, .incoming])
-        XCTAssertEqual(list[0].accessibilityLabel, "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.")
+        XCTAssertEqual(list[0].accessibilityLabel, "Clomni bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.")
     }
 
     func testTimeSeparators() {
@@ -559,7 +560,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertNil(open.sentAccessibilityLabel)
         let bubble = try XCTUnwrap(bubbles(screen([rating]) { $0.answerable = [rating.id] }).first)
         XCTAssertFalse(bubble.replyable, "answered in its card, not quoted")
-        XCTAssertEqual(bubble.accessibilityLabel, "Example bot, 11:02: Xidmətimizi qiymətləndirin")
+        XCTAssertEqual(bubble.accessibilityLabel, "Clomni bot, 11:02: Xidmətimizi qiymətləndirin")
 
         let answer = PendingMessage(conversationId: "conv_5521",
                                     message: ClientMessage(content: .ratingSubmit(replyTo: rating.id, score: 5,
@@ -658,7 +659,7 @@ final class ChatPresenterTests: XCTestCase {
         XCTAssertEqual(line.accessibilityLabel, "Leyla yazır")
         XCTAssertEqual(line.avatar.initial, "L")
         XCTAssertEqual(operatorTyping.announcement,
-                       Announcement(id: "msg_f01", text: "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."))
+                       Announcement(id: "msg_f01", text: "Clomni bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."))
         XCTAssertNil(screen([Fixture.message("03-text-user.json")]).announcement, "the user's own message is not news")
 
         var loading = ChatSnapshot(config: nil)
