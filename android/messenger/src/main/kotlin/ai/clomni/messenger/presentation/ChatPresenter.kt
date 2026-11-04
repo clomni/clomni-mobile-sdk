@@ -644,9 +644,9 @@ internal class ChatPresenter(
         val brand = config?.brand?.name.orEmpty()
         return when (sender.type) {
             SenderType.BOT -> {
-                // The bot speaks as the brand (DESIGN-PASS-3 B2): its own name in the panel is not shown.
-                val name = brand.ifEmpty { sender.name ?: config?.bot?.name.orEmpty() }
-                name to ChatAvatar(config?.brand?.logoUrl ?: config?.bot?.avatarUrl ?: sender.avatarUrl, initial(name), true)
+                // Its own name and picture as the server sent them, else the panel's bot, else the brand (contract 1.0.7b §1).
+                val name = HomePresenter.botName(sender, config)
+                name to ChatAvatar(HomePresenter.botAvatar(config, sender), initial(name), true)
             }
             SenderType.OPERATOR -> {
                 val assignee = snapshot.conversation?.assignee
