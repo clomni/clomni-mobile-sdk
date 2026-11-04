@@ -70,10 +70,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
 /**
- * Home (DESIGN-PASS-2 1–6): no header block and no tab bar. The brand's colour starts at the top, from the top start
- * corner to a slightly lighter tone, and fades into the page by about 45% of the screen; the logo top start, ✕ top end,
- * the two-line greeting, then the cards on the fade: "Mesajlar" (the list), the latest conversation, "Bizə mesaj
- * göndərin", the channels, in the panel's order.
+ * Home (DESIGN-PASS-2 1–6): no header block; the tab bar under it only when the panel turns it on (WithTabBar, SDK
+ * 1.0.7). The brand's colour starts at the top, from the top start corner to a slightly lighter tone, and fades into the
+ * page by about 45% of the screen; the logo top start, ✕ top end, the two-line greeting, then the cards on the fade:
+ * "Mesajlar" (the list), the latest conversation, "Bizə mesaj göndərin", the news with "Hamısı", the channels, the
+ * questions, in the panel's order.
  */
 @Composable
 internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions) {
@@ -292,8 +293,14 @@ private fun HomeCards(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
                             MessengerConfig.HomeCard.CHANNELS -> screen.channels?.let {
                                 ChannelsCardView(it, theme, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
                             }
-                            MessengerConfig.HomeCard.NEWS -> for (news in screen.news) {
-                                NewsCardView(news, theme, actions.openNews, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                            MessengerConfig.HomeCard.NEWS -> {
+                                for (news in screen.news) {
+                                    NewsCardView(news, theme, actions.openNews, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
+                                }
+                                screen.newsSeeAll?.let { SeeAllLink(it, theme, actions.openNewsList, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++)) }
+                            }
+                            MessengerConfig.HomeCard.FAQ -> screen.faq?.let {
+                                FaqCardView(it, theme, actions, Modifier.entrance(animate, 8f, 1f, 220, 30 * index++))
                             }
                         }
                     }

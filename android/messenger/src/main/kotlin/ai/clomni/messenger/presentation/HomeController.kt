@@ -2,6 +2,7 @@ package ai.clomni.messenger.presentation
 
 import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.speaks
@@ -19,6 +20,14 @@ internal interface MessengerDataSource {
 
     /** news_opened, for the panel's numbers. */
     fun newsOpened(id: String)
+
+    /** The published questions (GET /faq), as kept; [refreshFaq] asks the server. */
+    val faq: List<FaqItem>
+
+    fun refreshFaq(language: String? = null): Future<List<FaqItem>>
+
+    /** faq_opened, for the panel's numbers. */
+    fun faqOpened(id: String)
 
     val config: MessengerConfig?
     val unreadTotal: Int
@@ -89,6 +98,7 @@ internal class HomeController(
             conversations = source.conversations(),
             unreadTotal = source.unreadTotal,
             news = source.news,
+            faq = source.faq,
         )
         val config = snapshot.config
         val presenter = HomePresenter(ClomniStrings.of(config, language), timeZone, now())
@@ -104,6 +114,8 @@ internal class HomeController(
             val config = runCatching { source.refreshConfig(source.config.speaks(language)).get() }.getOrNull()
             val conversations = runCatching { source.refreshConversations().get() }.isSuccess
             runCatching { source.refreshNews(source.config.speaks(language)).get() }
+            // The questions only while the panel shares them.
+            if (source.config?.faqEnabled == true) runCatching { source.refreshFaq(source.config.speaks(language)).get() }
             publish(state()) {
                 snapshot = snapshot.copy(
                     configLoad = if (config != null) MessengerSnapshot.Load.LOADED else MessengerSnapshot.Load.FAILED,
@@ -132,6 +144,20 @@ internal class HomeController(
     /** A news item's screen opened: news_opened. */
     fun newsOpened(id: String) = source.newsOpened(id)
 
+    /** All the news as they are now. */
+    fun newsList(): NewsListScreen = presenter().newsList(snapshot)
+
+    /** The questions matching [query] as they are now. */
+    fun faqScreen(query: String): FaqScreen = presenter().faq(snapshot, query)
+
+    /** A question's answer as it is now; null when it is no longer published. */
+    fun faqItemScreen(id: String): NewsScreen? = presenter().faqItem(snapshot, id)
+
+    /** A question's answer opened: faq_opened. */
+    fun faqOpened(id: String) = source.faqOpened(id)
+
+    private fun presenter() = HomePresenter(ClomniStrings.of(snapshot.config, language), timeZone, now())
+
     /** "Yenidən cəhd et". */
     fun retry() {
         main.execute {
@@ -157,9 +183,15 @@ internal class HomeController(
     }
 
     /** What the engine holds now; read on [worker]. */
-    private class State(val config: MessengerConfig?, val conversations: List<Conversation>, val unreadTotal: Int, val news: List<NewsItem>)
+    private class State(
+        val config: MessengerConfig?,
+        val conversations: List<Conversation>,
+        val unreadTotal: Int,
+        val news: List<NewsItem>,
+        val faq: List<FaqItem>,
+    )
 
-    private fun state() = State(source.config, source.conversations(), source.unreadTotal, source.news)
+    private fun state() = State(source.config, source.conversations(), source.unreadTotal, source.news, source.faq)
 
     /** Hands [state] to the UI thread, applies [update] there, redraws, then runs [after]. */
     private fun publish(state: State, after: () -> Unit = {}, update: () -> Unit = {}) {
@@ -169,6 +201,7 @@ internal class HomeController(
                 conversations = state.conversations,
                 unreadTotal = state.unreadTotal,
                 news = state.news,
+                faq = state.faq,
             )
             update()
             render()

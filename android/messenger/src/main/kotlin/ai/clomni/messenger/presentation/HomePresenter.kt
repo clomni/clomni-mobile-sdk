@@ -2,6 +2,7 @@ package ai.clomni.messenger.presentation
 
 import ai.clomni.messenger.presentation.ClomniStrings.Key
 import ai.clomni.messenger.protocol.Conversation
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
@@ -22,8 +23,14 @@ internal data class HomeScreen(
     /** The cards in the panel's order; one without its card above (no channels, nothing recent) is left out. */
     val order: List<MessengerConfig.HomeCard>,
     val messagesCard: MessagesCard,
-    /** At most three; none: no news card. */
+    /** As many as the panel's news_on_home (1–3, 2 by default); none: no news card. */
     val news: List<NewsCard> = emptyList(),
+    /** "Hamısı" under the news: the news list (the News tab when there is a tab bar); null when all are shown. */
+    val newsSeeAll: String? = null,
+    /** The first questions (FAQ) and "Hamısı"; null without questions or with the FAQ off. */
+    val faq: FaqCard? = null,
+    /** The tabs under the list screens; null without the panel's tab_bar (SDK 1.0.7). */
+    val tabBar: TabBar? = null,
     /** "Powered by", before the Clomni wordmark under the cards (H3); null where the plan turns it off. */
     val poweredBy: String?,
     /** The capsule over the screen while offline (CM-077). */
@@ -81,9 +88,46 @@ internal data class HomeScreen(
     /** "Mesajlar": the list of conversations, with a red dot while something is unread. */
     data class MessagesCard(val title: String, val unread: Boolean, val accessibilityLabel: String)
 
+    /** "Tez-tez verilən suallar": the first [FAQ_ON_HOME] questions, each opening its answer, and "Hamısı". */
+    data class FaqCard(val title: String, val questions: List<FaqRow>, val seeAll: String)
+
     data class ChannelsCard(val label: String, val items: List<ChannelItem>)
 
     data class Failure(val message: String, val retry: String)
+}
+
+/** One question in a list: a tap opens its answer. */
+internal data class FaqRow(val id: String, val question: String)
+
+/** The four tabs, in their order (contract 1.0.7 §3), with the screen each one is. */
+internal enum class MessengerTab(val route: MessengerRoute) {
+    HOME(MessengerRoute.Home),
+    MESSAGES(MessengerRoute.Messages),
+    NEWS(MessengerRoute.NewsList),
+    FAQ(MessengerRoute.Faq),
+    ;
+
+    companion object {
+        /** The tab [route] is, or null for a screen under one (a conversation, a news item, an answer). */
+        fun of(route: MessengerRoute?): MessengerTab? = entries.firstOrNull { it.route == route }
+    }
+}
+
+/**
+ * The tab bar under Home, the conversations, the news and the questions (config home.tab_bar): Home and the
+ * conversations always, the news while there is any, the questions while the FAQ is on and has some. A conversation,
+ * a news item or an answer opens over it, without it.
+ */
+internal data class TabBar(val tabs: List<Tab>) {
+    data class Tab(
+        val kind: MessengerTab,
+        val title: String,
+        /** The conversations' unread count: "3", "99+"; null when nothing is unread. */
+        val badge: String? = null,
+        val accessibilityLabel: String = title,
+    )
+
+    operator fun contains(kind: MessengerTab): Boolean = tabs.any { it.kind == kind }
 }
 
 /** A conversation in a list, and the "Son mesaj" card. */
@@ -119,7 +163,27 @@ internal data class MessagesScreen(
     val failure: HomeScreen.Failure?,
 )
 
-/** A news item's own screen: its picture, title, date, text and button. */
+/** All the news, from Home's "Hamısı" or the News tab. */
+internal data class NewsListScreen(
+    val title: String,
+    val items: List<HomeScreen.NewsCard>,
+    val backLabel: String,
+    val closeLabel: String,
+)
+
+/** The questions (FAQ), filtered by what is typed in the search field. */
+internal data class FaqScreen(
+    val title: String,
+    /** "Sual axtarın": the search field's placeholder and name. */
+    val search: String,
+    val rows: List<FaqRow>,
+    /** "Sual tapılmadı": nothing published, or nothing matches the search. */
+    val empty: String?,
+    val backLabel: String,
+    val closeLabel: String,
+)
+
+/** A news item's own screen: its picture, title, date, text and button. An answer (FAQ) is drawn as one too. */
 internal data class NewsScreen(
     val id: String,
     val title: String,
@@ -145,6 +209,8 @@ internal data class MessengerSnapshot(
     val unreadTotal: Int = 0,
     /** The published news, in the panel's order. */
     val news: List<NewsItem> = emptyList(),
+    /** The published questions (FAQ), in the panel's order. */
+    val faq: List<FaqItem> = emptyList(),
     /** The logged-in user's name, for the greeting. */
     val userName: String? = null,
     val isOffline: Boolean = false,
@@ -173,6 +239,8 @@ internal class HomePresenter(
             emptyList()
         }
         val failed = config == null && snapshot.configLoad == MessengerSnapshot.Load.FAILED
+        val onHome = config?.home?.newsOnHome ?: MessengerConfig.DEFAULT_NEWS_ON_HOME
+        val faq = faqCard(snapshot)
         return HomeScreen(
             loadingLabel = strings[Key.LOADING],
             phase = when {
@@ -190,12 +258,15 @@ internal class HomePresenter(
                     MessengerConfig.HomeCard.NEWS -> snapshot.news.isNotEmpty()
                     MessengerConfig.HomeCard.RECENT -> recent != null
                     MessengerConfig.HomeCard.CHANNELS -> channels.isNotEmpty()
+                    MessengerConfig.HomeCard.FAQ -> faq != null
                 }
             },
             messagesCard = messagesCard(snapshot),
-            news = snapshot.news.take(3).map { item ->
-                HomeScreen.NewsCard(item.id, item.title, item.summary, item.imageUrl, listOfNotNull(item.title, item.summary).joinToString(". "))
-            },
+            news = snapshot.news.take(onHome).map(::newsCard),
+            // Contract 1.0.7 §3: no link while there are fewer news than Home shows.
+            newsSeeAll = strings[Key.SEE_ALL].takeIf { snapshot.news.isNotEmpty() && snapshot.news.size >= onHome },
+            faq = faq,
+            tabBar = tabBar(snapshot),
             poweredBy = if (config?.poweredBy == false) null else POWERED_BY,
             offline = if (snapshot.isOffline) strings[Key.OFFLINE] else null,
             connected = strings[Key.CONNECTED],
@@ -206,7 +277,57 @@ internal class HomePresenter(
     /** The item's screen; null when it is no longer published. */
     fun news(snapshot: MessengerSnapshot, id: String): NewsScreen? {
         val item = snapshot.news.firstOrNull { it.id == id } ?: return null
-        val blocks = item.bodyMarkdown.orEmpty().split(Regex("\\n\\s*\\n")).flatMap { paragraph ->
+        return NewsScreen(
+            id = item.id,
+            title = item.title,
+            date = item.publishedAt?.let { time.day(it, now) },
+            imageUrl = item.imageUrl,
+            blocks = blocks(item.bodyMarkdown.orEmpty()),
+            button = item.button,
+            backLabel = strings[Key.GO_BACK],
+            closeLabel = strings[Key.CLOSE],
+        )
+    }
+
+    /** All the news, as Home's cards draw them. */
+    fun newsList(snapshot: MessengerSnapshot) = NewsListScreen(
+        title = strings[Key.NEWS_TITLE],
+        items = snapshot.news.map(::newsCard),
+        backLabel = strings[Key.GO_BACK],
+        closeLabel = strings[Key.CLOSE],
+    )
+
+    /** The questions whose question or answer has [query] in it (all of them for a blank one). */
+    fun faq(snapshot: MessengerSnapshot, query: String = ""): FaqScreen {
+        val rows = snapshot.faq.filter { matches(it, query) }.map { FaqRow(it.id, it.question) }
+        return FaqScreen(
+            title = strings[Key.FAQ_TITLE],
+            search = strings[Key.FAQ_SEARCH],
+            rows = rows,
+            empty = if (rows.isEmpty()) strings[Key.FAQ_EMPTY] else null,
+            backLabel = strings[Key.GO_BACK],
+            closeLabel = strings[Key.CLOSE],
+        )
+    }
+
+    /** A question with its answer, drawn as a news item is (the same text format); null when it is withdrawn. */
+    fun faqItem(snapshot: MessengerSnapshot, id: String): NewsScreen? {
+        val item = snapshot.faq.firstOrNull { it.id == id } ?: return null
+        return NewsScreen(
+            id = item.id,
+            title = item.question,
+            date = null,
+            imageUrl = null,
+            blocks = blocks(item.answer),
+            button = null,
+            backLabel = strings[Key.GO_BACK],
+            closeLabel = strings[Key.CLOSE],
+        )
+    }
+
+    /** A news item's text or an answer by paragraph; a paragraph of "- " lines is a list. */
+    private fun blocks(markdown: String): List<NewsScreen.Block> =
+        markdown.split(Regex("\\n\\s*\\n")).flatMap { paragraph ->
             val lines = paragraph.trim().lines()
             if (lines.isNotEmpty() && lines.all { it.trimStart().startsWith("- ") || it.trimStart().startsWith("* ") }) {
                 lines.map { NewsScreen.Block(LimitedMarkdown.parse(it.trimStart().drop(2)), bullet = true) }
@@ -214,16 +335,39 @@ internal class HomePresenter(
                 listOf(NewsScreen.Block(LimitedMarkdown.parse(paragraph.trim()), bullet = false))
             }
         }.filter { block -> block.runs.any { it.text.isNotBlank() } }
-        return NewsScreen(
-            id = item.id,
-            title = item.title,
-            date = item.publishedAt?.let { time.day(it, now) },
-            imageUrl = item.imageUrl,
-            blocks = blocks,
-            button = item.button,
-            backLabel = strings[Key.GO_BACK],
-            closeLabel = strings[Key.CLOSE],
+
+    private fun newsCard(item: NewsItem) =
+        HomeScreen.NewsCard(item.id, item.title, item.summary, item.imageUrl, listOfNotNull(item.title, item.summary).joinToString(". "))
+
+    /** Shown only while the FAQ is on, with questions, and the panel put its card on Home. */
+    private fun faqCard(snapshot: MessengerSnapshot): HomeScreen.FaqCard? {
+        if (snapshot.config?.faqEnabled != true || snapshot.faq.isEmpty()) return null
+        val questions = snapshot.faq.take(FAQ_ON_HOME).map { FaqRow(it.id, it.question) }
+        return HomeScreen.FaqCard(strings[Key.FAQ_TITLE], questions, strings[Key.SEE_ALL])
+    }
+
+    /** Contract 1.0.7 §3: the panel's tab_bar, and only the tabs that have something to show. */
+    fun tabBar(snapshot: MessengerSnapshot): TabBar? {
+        val config = snapshot.config ?: return null
+        if (!config.home.tabBar) return null
+        val unread = snapshot.unreadTotal.takeIf { it > 0 } ?: snapshot.conversations.sumOf { it.unreadCount }
+        val messages = strings[Key.TAB_MESSAGES]
+        val tabs = listOfNotNull(
+            TabBar.Tab(MessengerTab.HOME, strings[Key.TAB_HOME]),
+            TabBar.Tab(
+                MessengerTab.MESSAGES,
+                messages,
+                badge = when {
+                    unread > 99 -> "99+"
+                    unread > 0 -> unread.toString()
+                    else -> null
+                },
+                accessibilityLabel = if (unread > 0) "$messages, ${strings[Key.UNREAD_MESSAGES]}" else messages,
+            ),
+            TabBar.Tab(MessengerTab.NEWS, strings[Key.TAB_NEWS]).takeIf { snapshot.news.isNotEmpty() },
+            TabBar.Tab(MessengerTab.FAQ, strings[Key.TAB_FAQ]).takeIf { config.faqEnabled && snapshot.faq.isNotEmpty() },
         )
+        return TabBar(tabs)
     }
 
     fun messages(snapshot: MessengerSnapshot): MessagesScreen {
@@ -280,7 +424,7 @@ internal class HomePresenter(
             message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar
             else -> message.sender.avatarUrl
         }
-        val preview = plainText(message)
+        val preview = if (message.content is MessageContent.Deleted) strings[Key.MESSAGE_DELETED] else plainText(message)
         val ago = time.ago(message.createdAt, now)
         val unread = conversation.unreadCount > 0
         return ConversationRow(
@@ -340,6 +484,23 @@ internal class HomePresenter(
     companion object {
         /** Not translated: the product's name. */
         const val POWERED_BY = "Powered by"
+
+        /** Questions on Home's FAQ card (contract 1.0.7 §3). */
+        const val FAQ_ON_HOME = 3
+
+        /**
+         * The FAQ's search, on this device: [query]'s words each somewhere in the question or the answer's text, case
+         * and the dotted and dotless i aside (İ, I, ı and i are one letter here: people type either).
+         */
+        fun matches(item: FaqItem, query: String): Boolean {
+            val words = searchable(query).split(Regex("\\s+")).filter { it.isNotEmpty() }
+            if (words.isEmpty()) return true
+            val text = searchable(item.question + " " + LimitedMarkdown.plainText(item.answer))
+            return words.all { it in text }
+        }
+
+        private fun searchable(text: String): String =
+            text.lowercase(Locale.ROOT).replace("\u0307", "").replace('ı', 'i')
 
         /** The bot's picture; the brand's logo when the panel set none (the initial when there is no logo either). */
         fun botAvatar(config: MessengerConfig?): String? = config?.bot?.avatarUrl ?: config?.brand?.logoUrl

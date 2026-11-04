@@ -23,6 +23,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -135,6 +136,8 @@ internal class ChatActions(
     val reply: (messageId: String) -> Unit = {},
     /** The ✕ on the quote over the field. */
     val cancelReply: () -> Unit = {},
+    /** «Sil», confirmed: the bubble's id ([Bubble.id]) and the server's id of its message, null while it is pending. */
+    val delete: (key: String, messageId: String?) -> Unit = { _, _ -> },
 )
 
 /** Where a link in a message goes: `Clomni.onLink` first, then the system. The messenger's activity sets it. */
@@ -242,6 +245,7 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
         label = "quoted",
     )
     var menu by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf(false) }
     val swipe = remember { ReplySwipe() }
     val messageId = bubble.messageId
     val replyable = bubble.replyable && messageId != null
@@ -253,10 +257,11 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
     } else {
         null
     }
-    // TalkBack has no long press on a bubble: the menu's two actions are its own.
+    // TalkBack has no long press on a bubble: the menu's actions are its own.
     val a11y = listOfNotNull(
         if (replyable) CustomAccessibilityAction(links.replyLabel) { actions.reply(messageId!!); true } else null,
         bubble.copyText?.let { text -> CustomAccessibilityAction(links.copyLabel) { copyText(context, text); true } },
+        if (bubble.deletable) CustomAccessibilityAction(links.deleteLabel) { confirm = true; true } else null,
     )
     Box(Modifier.fillMaxWidth().padding(top = top).background(glow, RoundedCornerShape(12.dp))) {
         if (incoming && replyable) ReplyArrow(swipe, theme, Modifier.align(Alignment.CenterStart))
@@ -265,8 +270,11 @@ internal fun BubbleRow(bubble: Bubble, theme: ClomniTheme, actions: ChatActions)
             horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
         ) {
             BubbleColumn(bubble, theme, actions, incoming, gutter, maxWidth, swipe.takeIf { replyable }, longPress, a11y)
-            if (menu) MessageMenu(bubble, theme, actions.reply) { menu = false }
+            if (menu) MessageMenu(bubble, theme, actions.reply, delete = { confirm = true }) { menu = false }
         }
+    }
+    if (confirm) {
+        DeleteDialog(links.deleteConfirm, theme, delete = { actions.delete(bubble.id, bubble.messageId) }) { confirm = false }
     }
 }
 
@@ -323,6 +331,18 @@ private fun BubbleBody(bubble: Bubble, theme: ClomniTheme, actions: ChatActions,
     val meta: @Composable (RgbColor?) -> Unit = { over -> BubbleMeta(bubble, over ?: metaInk, over ?: ink) }
     val open = linkOpener()
     when (val body = bubble.body) {
+        // Neutral on either side (contract 1.0.7 §1): the page's colour inside a hairline, the words in italics and
+        // muted, the time where it was; no menu, no swipe.
+        is Bubble.DeletedBody -> Box(
+            Modifier.clip(shape).background(theme.colors.background.color).border(1.dp, theme.colors.border.color, shape)
+                .padding(top = 10.dp, bottom = META_BOTTOM, start = 14.dp, end = 14.dp),
+        ) {
+            TimedText(
+                AnnotatedString(body.text),
+                clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary).copy(fontStyle = FontStyle.Italic),
+                textModifier = Modifier.clearAndSetSemantics { contentDescription = bubble.accessibilityLabel },
+            ) { BubbleMeta(bubble, theme.colors.textSecondary, theme.colors.textSecondary) }
+        }
         // With a quote the bubble is as wide as the wider of the two, and the time goes to its bottom end (as WhatsApp).
         is Bubble.TextBody -> Column(
             Modifier.then(if (quote != null) Modifier.width(IntrinsicSize.Max) else Modifier)

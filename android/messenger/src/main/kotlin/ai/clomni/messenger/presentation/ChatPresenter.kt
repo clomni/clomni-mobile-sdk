@@ -49,6 +49,13 @@ internal class ChatPresenter(
             replyLabel = strings[Key.REPLY],
             copyLabel = strings[Key.COPY],
             newMessageLabel = strings[Key.NEW_MESSAGE],
+            deleteLabel = strings[Key.DELETE],
+            deleteConfirm = DeleteConfirm(
+                strings[Key.DELETE_CONFIRM_TITLE],
+                strings[Key.DELETE_CONFIRM_BODY],
+                strings[Key.DELETE],
+                strings[Key.CANCEL],
+            ),
         )
     }
 
@@ -125,8 +132,10 @@ internal class ChatPresenter(
             cameraLabel = strings[Key.PICK_CAMERA],
             fileLabel = strings[Key.PICK_FILE],
             removeLabel = strings[Key.REMOVE_ATTACHMENT],
+            // A message deleted while it was being answered is no longer quoted.
             quote = snapshot.replyingTo.takeIf { mode == ChatComposer.Mode.Open }
                 ?.let { id -> snapshot.messages.firstOrNull { it.id == id } }
+                ?.takeIf { it.content !is MessageContent.Deleted }
                 ?.let { quote(it, snapshot) },
             cancelQuoteLabel = strings[Key.CLOSE],
             videoLabel = strings[Key.PICK_VIDEO],
@@ -156,6 +165,7 @@ internal class ChatPresenter(
         val copyText: String? = null,
         /** Who wrote it; null for the user's pending messages. */
         val from: Sender? = null,
+        val deletable: Boolean = false,
     )
 
     private sealed interface Entry {
@@ -168,6 +178,8 @@ internal class ChatPresenter(
 
     private fun items(snapshot: ChatSnapshot, canReply: Boolean): List<ChatItem> {
         val entries = mutableListOf<Entry>()
+        // Contract 1.0.7 §1: the user deletes their own messages while the conversation is not closed.
+        val canDelete = snapshot.conversation?.status != ConversationStatus.CLOSED
         var previous: Long? = null
         fun separate(id: String, date: Long) {
             val last = previous
@@ -183,12 +195,14 @@ internal class ChatPresenter(
                 continue
             }
             body(message, snapshot)?.let { body ->
+                val deleted = body is Bubble.DeletedBody
                 entries += Entry.Draw(
                     draft(message, body, snapshot).copy(
-                        quote = message.replyTo?.let { quote(it, snapshot) },
+                        quote = message.replyTo?.takeUnless { deleted }?.let { quote(it, snapshot) },
                         messageId = message.id,
-                        replyable = canReply && body !is FormCard && body !is RatingCard,
+                        replyable = canReply && body !is FormCard && body !is RatingCard && !deleted,
                         copyText = copyText(message.content),
+                        deletable = canDelete && !deleted && message.sender.type == SenderType.USER,
                     ),
                 )
             }
@@ -209,6 +223,8 @@ internal class ChatPresenter(
                             ?: Bubble.Quote(id, "", strings[Key.QUOTE_DELETED])
                     },
                     copyText = (pending.message as? ClientMessage.Text)?.text ?: (pending.message as? ClientMessage.Attachment)?.caption,
+                    // A choice on its way is not: its buttons are already gone, the flow waits for it.
+                    deletable = canDelete && (pending.message is ClientMessage.Text || pending.message is ClientMessage.Attachment),
                 ),
             )
         }
@@ -266,7 +282,7 @@ internal class ChatPresenter(
         val seqs = snapshot.messages.associate { key(it) to it.seq }
         entries.forEachIndexed { index, entry ->
             val draft = (entry as? Entry.Draw)?.draft ?: return@forEachIndexed
-            if (draft.side != Bubble.Side.OUTGOING || draft.status != null) return@forEachIndexed
+            if (draft.side != Bubble.Side.OUTGOING || draft.status != null || draft.body is Bubble.DeletedBody) return@forEachIndexed
             val mark = when {
                 draft.id in pending -> Bubble.Status.Mark.SENDING
                 snapshot.readUpTo?.let { it >= (seqs[draft.id] ?: 0L) } == true -> Bubble.Status.Mark.READ
@@ -319,6 +335,7 @@ internal class ChatPresenter(
                         messageId = draft.messageId,
                         replyable = draft.replyable,
                         copyText = draft.copyText,
+                        deletable = draft.deletable,
                     ),
                 )
             }
@@ -384,6 +401,7 @@ internal class ChatPresenter(
     /** A message here being quoted: over the field, and in the user's bubble until the server's copy comes. */
     private fun quote(message: Message, snapshot: ChatSnapshot): Bubble.Quote {
         val excerpt = when (val content = message.content) {
+            MessageContent.Deleted -> strings[Key.QUOTE_DELETED]
             is MessageContent.Image -> content.caption ?: strings[Key.IMAGE]
             is MessageContent.File -> content.name
             is MessageContent.Audio -> strings[Key.VOICE_MESSAGE]
@@ -419,6 +437,7 @@ internal class ChatPresenter(
         is MessageContent.Form -> content.text?.let(LimitedMarkdown::plainText) ?: message.fallbackText
         is MessageContent.Rating -> content.text
         is MessageContent.Audio -> strings[Key.VOICE_MESSAGE] + (content.durationMs?.let { ", ${VoiceTime.length(it)}" } ?: "")
+        MessageContent.Deleted -> strings[Key.MESSAGE_DELETED]
         else -> message.fallbackText
     }
 
@@ -448,6 +467,7 @@ internal class ChatPresenter(
         is MessageContent.Rating -> rating(message, content, snapshot)
         is MessageContent.Audio -> Bubble.VoiceBody(VoiceNote.of(message.id, content, message.sender.type == SenderType.USER), strings)
         is MessageContent.System -> null
+        MessageContent.Deleted -> Bubble.DeletedBody(strings[Key.MESSAGE_DELETED])
         // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
         is MessageContent.Card, is MessageContent.Unknown -> Bubble.TextBody(LimitedMarkdown.linked(message.fallbackText))
     }

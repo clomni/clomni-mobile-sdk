@@ -2,6 +2,7 @@ package ai.clomni.messenger.store
 
 import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
@@ -49,6 +50,19 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     var newsEtag: String? = null
         private set
 
+    private val faqFile = dir?.let { JsonFile(File(it, "faq.json")) }
+    private var faqBody: String? = null
+    private var faqDirty = false
+
+    /** The published questions, kept like the news. */
+    @get:Synchronized
+    var faq: List<FaqItem> = emptyList()
+        private set
+
+    @get:Synchronized
+    var faqEtag: String? = null
+        private set
+
     private val conversations = LinkedHashMap<String, Conversation>()
     private val messages = HashMap<String, MutableMap<String, Message>>()
     private val synced = HashMap<String, Long>()
@@ -94,6 +108,11 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     @Synchronized
     fun message(id: String): Message? = messages.values.firstNotNullOfOrNull { it[id] }
 
+    /** The server's copy of the user's message sent with [clientId], once it has come. */
+    @Synchronized
+    fun sentMessage(clientId: String): Message? =
+        messages.values.firstNotNullOfOrNull { list -> list.values.firstOrNull { it.clientId == clientId } }
+
     /** The user's messages not yet confirmed by the server, oldest first; shown after [messages]. */
     fun pending(conversationId: String): List<PendingMessage> = outbox.entries(conversationId)
 
@@ -134,8 +153,9 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
     @Synchronized
     fun putConversation(conversation: Conversation) {
         val known = conversations[conversation.id]
-        // A list fetched before a socket message arrived must not take that message back.
-        val last = listOfNotNull(known?.lastMessage, conversation.lastMessage).maxByOrNull { it.seq }
+        // A list fetched before a socket message arrived must not take that message back; a newer copy of the same
+        // message (message.updated: deleted, rated) replaces it, so the list does not keep a deleted message's text.
+        val last = listOfNotNull(conversation.lastMessage, known?.lastMessage).maxByOrNull { it.seq }
         val merged = conversation.copy(lastMessage = last)
         if (merged == known) return
         conversations[conversation.id] = merged
@@ -235,6 +255,15 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         changes += ClomniChange.News
     }
 
+    @Synchronized
+    fun setFaq(items: List<FaqItem>, body: String, etag: String?) {
+        faq = items
+        faqBody = body
+        faqEtag = etag
+        faqDirty = true
+        changes += ClomniChange.Faq
+    }
+
     /** Something outside the store changed for the screens, e.g. the outbox of a conversation. */
     @Synchronized
     fun changed(change: ClomniChange) {
@@ -308,6 +337,15 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
                 }
             }
         }
+        (faqFile?.read() as? JsonObject)?.let { kept ->
+            (kept["body"] as? JsonPrimitive)?.contentOrNull?.let { body ->
+                protocol.parseFaq(body)?.let {
+                    faq = it
+                    faqBody = body
+                    faqEtag = (kept["etag"] as? JsonPrimitive)?.contentOrNull
+                }
+            }
+        }
         outbox.load()
         changes += listOf(ClomniChange.Config, ClomniChange.Conversations, ClomniChange.Unread(unreadTotal))
     }
@@ -329,6 +367,10 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         newsBody = null
         newsEtag = null
         newsDirty = false
+        faq = emptyList()
+        faqBody = null
+        faqEtag = null
+        faqDirty = false
         unreadTotal = 0
         conversationsDirty = false
         configDirty = false
@@ -338,7 +380,8 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         conversationsFile?.delete()
         configFile?.delete()
         newsFile?.delete()
-        changes += listOf(ClomniChange.Config, ClomniChange.News, ClomniChange.Conversations, ClomniChange.Unread(0))
+        faqFile?.delete()
+        changes += listOf(ClomniChange.Config, ClomniChange.News, ClomniChange.Faq, ClomniChange.Conversations, ClomniChange.Unread(0))
     }
 
     private fun insert(message: Message) {
@@ -399,6 +442,10 @@ internal class MessageStore(private val dir: File?, private val protocol: Protoc
         if (newsDirty) {
             newsFile?.write(buildJsonObject { put("etag", newsEtag); put("body", newsBody) })
             newsDirty = false
+        }
+        if (faqDirty) {
+            faqFile?.write(buildJsonObject { put("etag", faqEtag); put("body", faqBody) })
+            faqDirty = false
         }
     }
 

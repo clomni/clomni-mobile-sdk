@@ -223,6 +223,10 @@ internal fun ClomniChat(
         openImage = { fullScreen = it },
         reply = controller::replyTo,
         cancelReply = { controller.replyTo(null) },
+        // 409: "Söhbət bağlanıb, mesaj silinmir.", briefly; the message stays.
+        delete = { key, messageId ->
+            controller.delete(key, messageId) { warning -> if (warning != null) Toast.makeText(context, warning, Toast.LENGTH_SHORT).show() }
+        },
         reachedTop = {
             if (older && !loadingOlder) {
                 loadingOlder = true
@@ -502,7 +506,7 @@ private fun LazyTranscript(
     // A tap on a quote: the quoted message is scrolled to (a third down the screen) and lit for a second.
     val scope = rememberCoroutineScope()
     var lit by remember { mutableStateOf<String?>(null) }
-    val links = TranscriptLinks(screen.replyLabel, screen.copyLabel, lit) { messageId ->
+    val links = TranscriptLinks(screen.replyLabel, screen.copyLabel, screen.deleteLabel, screen.deleteConfirm, lit) { messageId ->
         val index = items.indexOfFirst { (it as? ChatItem.BubbleItem)?.bubble?.messageId == messageId }
         if (index >= 0) {
             scope.launch {

@@ -47,7 +47,7 @@ class MessengerConfigTest {
         )
         assertEquals("no bot picture: the SDK shows the logo", MessengerConfig.Bot("Clomni", null), config.bot)
         assertEquals(
-            MessengerConfig.HomeCard.entries,
+            MessengerConfig.HomeCard.entries - MessengerConfig.HomeCard.FAQ,
             config.home.cards,
         )
         assertEquals(listOf("instagram", "whatsapp", "linkedin", "email"), config.home.channels.map { it.type })

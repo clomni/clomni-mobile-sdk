@@ -3,6 +3,7 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.ImageSizing
+import ai.clomni.messenger.presentation.NewsListScreen
 import ai.clomni.messenger.presentation.NewsScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +69,44 @@ internal fun NewsCardView(card: HomeScreen.NewsCard, theme: ClomniTheme, open: (
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/**
+ * All the news (Home's "Hamısı", the News tab): the list's bar with "Xəbərlər", then every item as Home's card draws it,
+ * 12 apart on the canvas. A tab's own screen ([tab]) has no back arrow.
+ */
+@Composable
+internal fun NewsListView(screen: NewsListScreen, theme: ClomniTheme, actions: MessengerActions, tab: Boolean = false) {
+    Column(Modifier.fillMaxSize().background(theme.colors.canvas.color)) {
+        val scroll = rememberScrollState()
+        TopBar(screen.backLabel, actions.back, screen.closeLabel, actions.close, theme, scrolled = scroll.value > 0, showsBack = !tab) {
+            TopBarTitle(screen.title, theme)
+        }
+        Column(
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(scroll)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(ClomniTheme.Space.l.dp),
+            verticalArrangement = Arrangement.spacedBy(ClomniTheme.Space.m.dp),
+        ) {
+            for (item in screen.items) NewsCardView(item, theme, actions.openNews)
+        }
+    }
+}
+
+/**
+ * "Hamısı" (see_all) under a Home card: the brand colour, 14 medium, at the end; a 48 dp target that lays out like
+ * its line.
+ */
+@Composable
+internal fun SeeAllLink(label: String, theme: ClomniTheme, open: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth(), Alignment.CenterEnd) {
+        BasicText(
+            label,
+            Modifier.bleed(vertical = 14.dp).heightIn(min = 48.dp).button(label, RoundedCornerShape(8.dp), onClick = open)
+                .padding(horizontal = 8.dp, vertical = 14.dp),
+            style = clomniText(ClomniTheme.FontSize.text, theme.colors.primaryText, FontWeight.Medium),
+        )
     }
 }
 

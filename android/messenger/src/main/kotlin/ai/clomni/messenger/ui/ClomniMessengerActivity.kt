@@ -5,6 +5,7 @@ import ai.clomni.messenger.core.AndroidMessenger
 import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.HomePresenter
 import ai.clomni.messenger.presentation.MessengerRoute
+import ai.clomni.messenger.presentation.MessengerTab
 import ai.clomni.messenger.presentation.MessengerSnapshot
 import android.app.Activity
 import android.os.Build
@@ -18,6 +19,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.VisibilityThreshold
@@ -50,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -214,15 +217,25 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     val openLink: (String) -> Unit = remember(runtime, uriHandler) {
         { url -> if (runtime.events.link?.invoke(url) != true) runCatching { uriHandler.openUri(url) } }
     }
+    // With the panel's tab bar a list that is a tab opens as that tab (Home's "Mesajlar" card, "Hamısı"); without it,
+    // over Home as before.
+    val tabs = screens.home.tabBar
+    val openList: (MessengerTab) -> Unit = remember(coordinator, tabs) {
+        { tab -> if (tabs != null && tab in tabs) coordinator.selectTab(tab.route) else coordinator.navigate(tab.route) }
+    }
     val actions = rememberMessengerActions(
         home,
         state.source,
         close,
         back,
-        openMessages = { coordinator.navigate(MessengerRoute.Messages) },
+        openMessages = { openList(MessengerTab.MESSAGES) },
         openConversation = { coordinator.navigate(MessengerRoute.Conversation(it)) },
         openNews = { coordinator.navigate(MessengerRoute.News(it)) },
         openLink = openLink,
+        openNewsList = { openList(MessengerTab.NEWS) },
+        openFaq = { openList(MessengerTab.FAQ) },
+        openFaqItem = { coordinator.navigate(MessengerRoute.FaqItem(it)) },
+        selectTab = { coordinator.selectTab(it.route) },
     )
     val intro = remember { HomeIntro(played = restored) }
     CompositionLocalProvider(LocalHomeIntro provides intro, LocalOpenLink provides openLink) {
@@ -249,19 +262,47 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         AnimatedContent(
             route,
             Modifier.fillMaxSize(),
-            transitionSpec = { pushPop(forward, still) },
+            // One tab to another changes at once, the bar staying where it is (as the platform's tabs do); a screen over
+            // a tab slides in over it, its bar with it.
+            transitionSpec = {
+                if (tabs != null && MessengerTab.of(initialState) != null && MessengerTab.of(targetState) != null) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    pushPop(forward, still)
+                }
+            },
             // A draft that became a conversation is the same screen: no transition for it.
             contentKey = { (it as? MessengerRoute.Conversation)?.let { open -> "chat:" + coordinator.screenKey(open.id) } ?: it },
             label = "screen",
         ) { shown ->
             val screenTheme = rememberTheme(screens.config ?: state.config)
+            val bar = screens.home.tabBar
+            val tab = MessengerTab.of(shown)?.takeIf { bar != null && it in bar }
             when (shown) {
-                MessengerRoute.Home -> HomeView(screens.home, screenTheme, actions)
-                MessengerRoute.Messages -> MessagesView(screens.messages, screenTheme, screens.home.header.closeLabel, actions)
+                MessengerRoute.Home -> WithTabBar(bar, MessengerTab.HOME, screenTheme, actions.selectTab) {
+                    HomeView(screens.home, screenTheme, actions)
+                }
+                MessengerRoute.Messages -> WithTabBar(bar?.takeIf { tab != null }, MessengerTab.MESSAGES, screenTheme, actions.selectTab) {
+                    MessagesView(screens.messages, screenTheme, screens.home.header.closeLabel, actions, tab = tab != null)
+                }
+                MessengerRoute.NewsList -> WithTabBar(bar?.takeIf { tab != null }, MessengerTab.NEWS, screenTheme, actions.selectTab) {
+                    val list = remember(screens.home) { home.newsList() }
+                    NewsListView(list, screenTheme, actions, tab = tab != null)
+                }
+                MessengerRoute.Faq -> WithTabBar(bar?.takeIf { tab != null }, MessengerTab.FAQ, screenTheme, actions.selectTab) {
+                    var query by rememberSaveable { mutableStateOf("") }
+                    val faq = remember(query, screens.home) { home.faqScreen(query) }
+                    FaqListView(faq, query, { query = it }, screenTheme, actions, tab = tab != null)
+                }
                 is MessengerRoute.News -> {
                     // The item as Home has it; withdrawn meanwhile, back to where it was opened from.
                     val news = remember(shown.id, screens.home) { home.newsScreen(shown.id) }
                     if (news != null) NewsView(news, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
+                }
+                is MessengerRoute.FaqItem -> {
+                    // An answer is drawn as a news item is; withdrawn meanwhile, back to where it was opened from.
+                    val answer = remember(shown.id, screens.home) { home.faqItemScreen(shown.id) }
+                    if (answer != null) NewsView(answer, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
                 }
                 is MessengerRoute.Conversation -> key(coordinator.screenKey(shown.id)) {
                     val context = LocalContext.current

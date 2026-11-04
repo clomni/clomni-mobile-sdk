@@ -46,13 +46,15 @@ internal fun TopBar(
     theme: ClomniTheme,
     scrolled: Boolean,
     leading: Boolean = false,
+    /** False on a tab's own screen (SDK 1.0.7): the tab bar takes it elsewhere, the system's back to Home. */
+    showsBack: Boolean = true,
     // Null when the screen has its title in its content (a news item).
     middle: (@Composable () -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxWidth().background(theme.colors.background.color).windowInsetsPadding(WindowInsets.statusBars)) {
         // At the user's larger font sizes the middle may need more than 48: the bar grows instead of cutting it.
         Box(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)) {
-            BackButton(backLabel, theme, back, Modifier.align(Alignment.CenterStart).padding(start = TOP_BAR_EDGE))
+            if (showsBack) BackButton(backLabel, theme, back, Modifier.align(Alignment.CenterStart).padding(start = TOP_BAR_EDGE))
             if (middle != null) {
                 if (leading) {
                     Box(

@@ -32,6 +32,8 @@ internal data class MessengerConfig(
     val startsWithFlow: Boolean = false,
     /** Short sounds for a sent and a received message; the app can still turn them off. */
     val sounds: Boolean = true,
+    /** `faq.enabled`: the questions (GET /faq) are shared on Home and in their own list (SDK 1.0.7). */
+    val faqEnabled: Boolean = false,
     /**
      * The language [strings] are in: the one asked for when the panel has it on, else the panel's default. Null for a
      * config kept by an older SDK, whose strings are taken as they are.
@@ -155,10 +157,14 @@ internal data class MessengerConfig(
         val channels: List<Channel>,
         /** The greeting's size, % of 28 (70–140, the panel's slider); 100 when not set. */
         val titleScale: Int = 100,
+        /** `tab_bar`: Home, the conversations, the news and the questions as tabs under the list screens (SDK 1.0.7). */
+        val tabBar: Boolean = false,
+        /** `news_on_home`: how many news items Home's news shows (1–3); the rest are in the news list. */
+        val newsOnHome: Int = DEFAULT_NEWS_ON_HOME,
     )
 
     /** The default order is [entries]'. */
-    enum class HomeCard { MESSAGES, RECENT, SEND, NEWS, CHANNELS }
+    enum class HomeCard { MESSAGES, RECENT, SEND, NEWS, CHANNELS, FAQ }
 
     /** A social channel icon on Home; [type] is open-ended (instagram, whatsapp, linkedin, email, …). */
     data class Channel(val type: String, val url: String)
@@ -184,6 +190,9 @@ internal data class MessengerConfig(
 
     companion object {
         const val MAX_CHANNELS = 5
+
+        /** News items on Home when the config does not say (protocol config.json home.news_on_home). */
+        const val DEFAULT_NEWS_ON_HOME = 2
 
         /** Five minutes, when the config does not say (protocol config.json limits.voice_seconds). */
         const val DEFAULT_VOICE_SECONDS = 300

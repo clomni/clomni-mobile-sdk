@@ -66,6 +66,12 @@ internal interface ChatDataSource {
 
     fun retry(clientId: String): Future<Unit>
 
+    /** The user's own message, deleted for everyone; fails with `409 conversation_closed` when it is closed. */
+    fun deleteMessage(message: Message): Future<Unit>
+
+    /** The user's message not sent yet, taken out of the outbox (deleted on the server if it got there meanwhile). */
+    fun deletePending(clientId: String): Future<Unit>
+
     /** A new conversation to write in; the server has it only once its first message goes (`ClomniChange.Started`). */
     fun draft(openedFrom: String?): String
 

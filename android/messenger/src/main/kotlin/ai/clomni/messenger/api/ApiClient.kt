@@ -6,6 +6,7 @@ import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.ConversationPage
 import ai.clomni.messenger.protocol.ConversationWithMessages
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.FlowTriggerResult
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessagePage
@@ -63,6 +64,13 @@ internal sealed interface NewsResponse {
     object NotModified : NewsResponse
 
     data class Changed(val items: List<NewsItem>, val body: String, val etag: String?) : NewsResponse
+}
+
+/** GET /faq: changed (with its ETag), or 304. */
+internal sealed interface FaqResponse {
+    object NotModified : FaqResponse
+
+    data class Changed(val items: List<FaqItem>, val body: String, val etag: String?) : FaqResponse
 }
 
 internal sealed interface ConfigResponse {
@@ -159,6 +167,12 @@ internal class ApiClient(
         return NewsResponse.Changed(read(response, protocol::parseNews), response.body, response.etag)
     }
 
+    fun getFaq(lang: String?, etag: String?): FaqResponse {
+        val response = call("GET", "faq", query = mapOf("lang" to lang), headers = mapOf("If-None-Match" to etag))
+        if (response.status == 304) return FaqResponse.NotModified
+        return FaqResponse.Changed(read(response, protocol::parseFaq), response.body, response.etag)
+    }
+
     fun listConversations(limit: Int? = null, cursor: String? = null): ConversationPage = read(
         call("GET", "conversations", query = mapOf("limit" to limit?.toString(), "cursor" to cursor)),
         protocol::parseConversationPage,
@@ -207,6 +221,14 @@ internal class ApiClient(
         call("POST", "conversations", RawJson(protocol.encode(message)), segments = listOf(conversationId, "messages")),
         protocol::parseMessage,
     )
+
+    /**
+     * The user's own message, for everyone (204, also when it was deleted already). `409 conversation_closed`: the
+     * conversation is closed and the message stays; 403 and 404: not the user's to delete.
+     */
+    fun deleteMessage(conversationId: String, messageId: String) {
+        call("DELETE", "conversations", segments = listOf(conversationId, "messages", messageId))
+    }
 
     fun markRead(conversationId: String, upToSeq: Long) {
         val body = buildJsonObject { put("up_to_seq", upToSeq) }

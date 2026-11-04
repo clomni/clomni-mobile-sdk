@@ -3,6 +3,7 @@ package ai.clomni.messenger.presentation
 import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.core.ClomniChange
 import ai.clomni.messenger.protocol.Conversation
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.NewsItem
 import ai.clomni.messenger.protocol.Sender
@@ -46,6 +47,20 @@ private class FakeSource : MessengerDataSource {
 
     override fun newsOpened(id: String) {
         opened += id
+    }
+
+    var faqItems = listOf<FaqItem>()
+    var faqRefreshes = 0
+
+    override val faq: List<FaqItem> get() = faqItems
+
+    override fun refreshFaq(language: String?): Future<List<FaqItem>> {
+        faqRefreshes++
+        return CompletableFuture.completedFuture(faqItems)
+    }
+
+    override fun faqOpened(id: String) {
+        opened += "faq $id"
     }
 
     override fun refreshConversations(): Future<Unit> =
@@ -107,6 +122,28 @@ class HomeControllerTest {
         home.newsOpened("news_1")
         assertEquals(listOf("news_1"), source.opened)
         assertEquals("Yeni zonalar", home.newsScreen("news_1")?.title)
+    }
+
+    /** Contract 1.0.7 §3: the questions are asked for only while the panel shares them; opening one is faq_opened. */
+    @Test
+    fun theQuestionsOnlyWhileTheFaqIsOn() {
+        source.cached = Fixture.exampleConfig
+        source.faqItems = listOf(FaqItem("faq_12", "Balansı necə artırım?", "Kartla.", null))
+        controller().load()
+        assertEquals("the FAQ off: not asked for", 0, source.faqRefreshes)
+
+        source.cached = Fixture.exampleConfig.copy(faqEnabled = true, home = Fixture.exampleConfig.home.copy(tabBar = true))
+        val home = controller()
+        home.load()
+        assertEquals(1, source.faqRefreshes)
+        assertEquals(listOf(MessengerTab.HOME, MessengerTab.MESSAGES, MessengerTab.FAQ), home.home.tabBar?.tabs?.map { it.kind })
+        assertEquals(listOf("faq_12"), home.faqScreen("").rows.map { it.id })
+        assertEquals(emptyList<FaqRow>(), home.faqScreen("kredit").rows)
+        assertEquals("Balansı necə artırım?", home.faqItemScreen("faq_12")?.title)
+        assertNull(home.faqItemScreen("faq_1"))
+        home.faqOpened("faq_12")
+        assertEquals(listOf("faq faq_12"), source.opened)
+        assertEquals(emptyList<String>(), home.newsList().items.map { it.id })
     }
 
     @Test

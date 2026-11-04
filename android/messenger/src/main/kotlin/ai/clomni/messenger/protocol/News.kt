@@ -16,3 +16,13 @@ internal data class NewsItem(
     /** A link button under the text: a web address or the app's own deep link. */
     data class Button(val text: String, val url: String)
 }
+
+/** GET /faq: a published question and its answer, in the panel's order, in one language. */
+internal data class FaqItem(
+    val id: String,
+    val question: String,
+    /** The same light format as a news item's text: bold, links, line breaks. */
+    val answer: String,
+    /** Epoch ms. */
+    val updatedAt: Long?,
+)

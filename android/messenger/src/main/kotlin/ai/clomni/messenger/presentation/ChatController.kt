@@ -302,6 +302,32 @@ internal class ChatController(
         }
     }
 
+    /**
+     * «Sil», confirmed: the user's own message deleted for everyone, or one not sent yet taken out of the outbox (no
+     * request). [key] is the bubble's ([Bubble.id]), [messageId] the server's id once it has one. [done] hears the
+     * warning to show: "Söhbət bağlanıb, mesaj silinmir." for `409 conversation_closed` (the message stays), or null.
+     */
+    fun delete(key: String, messageId: String?, done: (String?) -> Unit = {}) {
+        val message = messageId?.let { id -> snapshot.messages.firstOrNull { it.id == id } }
+        if (messageId != null && message == null) return done(null)
+        if (snapshot.replyingTo != null && snapshot.replyingTo == messageId) replyTo(null)
+        val id = conversationId
+        worker.execute {
+            val failure = runCatching { (if (message != null) source.deleteMessage(message) else source.deletePending(key)).get() }
+                .exceptionOrNull()?.let { (it as? ExecutionException)?.cause ?: it }
+            publish(read(id), after = {
+                done(
+                    when {
+                        failure == null -> null
+                        (failure as? ClomniError)?.code == CONVERSATION_CLOSED || (failure as? ClomniError.Server)?.status == 409 ->
+                            strings[Key.DELETE_CLOSED]
+                        else -> strings[Key.ERROR]
+                    },
+                )
+            })
+        }
+    }
+
     /** "Göndərilmədi · Yenidən cəhd et". */
     fun retrySending(clientId: String) {
         worker.execute { runCatching { source.retry(clientId).get() } }
@@ -434,7 +460,7 @@ internal class ChatController(
             }
             is ClomniChange.Read -> if (change.conversationId == id) worker.execute { publish(read(id)) }
             ClomniChange.Conversations, ClomniChange.Config, ClomniChange.Session -> worker.execute { publish(read(id)) }
-            ClomniChange.News -> Unit
+            ClomniChange.News, ClomniChange.Faq -> Unit
             is ClomniChange.Unread -> Unit
             // The offline capsule's business, which the runtime hands in (isOffline).
             is ClomniChange.Connection -> Unit
@@ -527,6 +553,9 @@ internal class ChatController(
     private companion object {
         /** The id [QuickReplyBlock.back] carries. */
         const val BACK = "back"
+
+        /** DELETE …/messages/{id} in a closed conversation (contract 1.0.7 §1). */
+        const val CONVERSATION_CLOSED = "conversation_closed"
 
         /** How often the messages are asked for while the socket is not connected. */
         const val POLL_MS = 5_000L

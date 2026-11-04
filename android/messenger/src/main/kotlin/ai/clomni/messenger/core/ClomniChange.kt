@@ -11,6 +11,9 @@ internal sealed interface ClomniChange {
     /** The published news. */
     data object News : ClomniChange
 
+    /** The published questions (FAQ). */
+    data object Faq : ClomniChange
+
     data object Conversations : ClomniChange
 
     /** Messages or pending messages of one conversation. */

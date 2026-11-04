@@ -4,6 +4,7 @@ import ai.clomni.messenger.api.ApiClient
 import ai.clomni.messenger.api.ClomniError
 import ai.clomni.messenger.api.ConfigResponse
 import ai.clomni.messenger.api.Credentials
+import ai.clomni.messenger.api.FaqResponse
 import ai.clomni.messenger.api.NewsResponse
 import ai.clomni.messenger.api.PushRegistration
 import ai.clomni.messenger.api.SessionIdentity
@@ -11,11 +12,13 @@ import ai.clomni.messenger.api.UserIdentity
 import ai.clomni.messenger.api.samePerson
 import ai.clomni.messenger.log.ClomniLog
 import ai.clomni.messenger.presentation.ChatDataSource
+import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.MessengerDataSource
 import ai.clomni.messenger.presentation.MessengerSession
 import ai.clomni.messenger.protocol.ClientMessage
 import ai.clomni.messenger.protocol.Conversation
 import ai.clomni.messenger.protocol.ConversationWithMessages
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
@@ -443,6 +446,30 @@ internal class ClomniEngine(
         store.outbox.remove(clientId)?.let { store.changed(ClomniChange.Messages(it.conversationId)) }
     }
 
+    /**
+     * The user's own [message], deleted for everyone (DELETE …/messages/{id}): the copy here reads as deleted as soon as
+     * the server agrees, without waiting for the socket's `message.updated`, which may not come (no socket: a message
+     * changed in place has no new `seq` to fetch). Fails with the server's answer, `409 conversation_closed` when the
+     * conversation is closed; the message then stays as it is.
+     */
+    override fun deleteMessage(message: Message): Future<Unit> = submit { deleteOnServer(message) }
+
+    /**
+     * A message of the user's not sent yet: it leaves the outbox and nothing goes to the server. One whose attempt was
+     * already on its way and reached the server meanwhile is deleted there instead.
+     */
+    override fun deletePending(clientId: String): Future<Unit> = submit {
+        val removed = store.outbox.remove(clientId)
+        if (removed != null) return@submit store.changed(ClomniChange.Messages(removed.conversationId))
+        store.sentMessage(clientId)?.let(::deleteOnServer)
+    }
+
+    private fun deleteOnServer(message: Message) {
+        authed { api.deleteMessage(message.conversationId, message.id) }
+        val text = ClomniStrings.of(store.config, configLanguage)[ClomniStrings.Key.MESSAGE_DELETED]
+        store.putMessage(message.copy(content = MessageContent.Deleted, replyTo = null, fallbackText = text))
+    }
+
     // User, push, flows
 
     /** Only the fields given change; `custom_attributes` are merged on the server. */
@@ -653,6 +680,29 @@ internal class ClomniEngine(
     }
 
     override val news: List<NewsItem> get() = store.news
+
+    /** The published questions (FAQ), in the config's language; kept with their ETag, as the news. */
+    override fun refreshFaq(language: String?): Future<List<FaqItem>> = submit {
+        try {
+            when (val response = authed { api.getFaq(language ?: configLanguage ?: store.config.speaks(null), store.faqEtag) }) {
+                FaqResponse.NotModified -> Unit
+                is FaqResponse.Changed -> store.setFaq(response.items, response.body, response.etag)
+            }
+        } catch (e: ClomniError) {
+            ClomniLog.info { "faq not refreshed: ${e.message}" }
+        }
+        store.faq
+    }
+
+    override val faq: List<FaqItem> get() = store.faq
+
+    /** A question opened: the app event faq_opened, with its id. */
+    override fun faqOpened(id: String) {
+        submit {
+            runCatching { authed { api.trackEvent("faq_opened", buildJsonObject { put("faq_id", id) }) } }
+                .onFailure { ClomniLog.info { "faq_opened not sent: ${it.message}" } }
+        }
+    }
 
     /** A news item opened: the app event news_opened, with its id. */
     override fun newsOpened(id: String) {

@@ -3,6 +3,7 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.R
 import ai.clomni.messenger.presentation.Bubble
 import ai.clomni.messenger.presentation.ClomniTheme
+import ai.clomni.messenger.presentation.DeleteConfirm
 import ai.clomni.messenger.presentation.RgbColor
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -13,6 +14,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,7 +49,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -59,6 +63,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -67,6 +72,9 @@ import androidx.compose.ui.window.PopupProperties
 internal class TranscriptLinks(
     val replyLabel: String = "",
     val copyLabel: String = "",
+    /** «Sil» and its question (SDK 1.0.7). */
+    val deleteLabel: String = "",
+    val deleteConfirm: DeleteConfirm = DeleteConfirm(),
     /** The bubble a quote has just led to, lit for a second. */
     val highlighted: String? = null,
     /** A tap on a quote: scroll to the quoted message. */
@@ -194,50 +202,114 @@ internal fun ReplyArrow(swipe: ReplySwipe, theme: ClomniTheme, modifier: Modifie
     )
 }
 
-/** A long press: "Cavabla" (while there is a composer) and "Kopyala" (when there is text), over the bubble. */
+/**
+ * A long press: "Cavabla" (while there is a composer), "Kopyala" (when there is text) and, on the user's own message
+ * while the conversation is open, «Sil» in the error colour, which asks first ([delete] opens the question); over the
+ * bubble.
+ */
 @Composable
-internal fun MessageMenu(bubble: Bubble, theme: ClomniTheme, reply: (String) -> Unit, dismiss: () -> Unit) {
-    val links = LocalTranscript.current
-    val context = LocalContext.current
+internal fun MessageMenu(bubble: Bubble, theme: ClomniTheme, reply: (String) -> Unit, delete: () -> Unit, dismiss: () -> Unit) {
     val gap = with(LocalDensity.current) { 6.dp.roundToPx() }
     Popup(
         popupPositionProvider = AboveOrBelow(gap, bubble.side == Bubble.Side.OUTGOING),
         onDismissRequest = dismiss,
         properties = PopupProperties(focusable = true),
     ) {
-        val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
-        Column(
-            Modifier.padding(8.dp).shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.12f))
-                .clip(shape).background(theme.colors.background.color),
-        ) {
-            val messageId = bubble.messageId
-            if (bubble.replyable && messageId != null) {
-                MenuRow(links.replyLabel, theme) {
-                    dismiss()
-                    reply(messageId)
-                }
+        MessageMenuContent(bubble, theme, reply, delete, dismiss)
+    }
+}
+
+/** The menu's card, apart from its popup so a screenshot can draw it. */
+@Composable
+internal fun MessageMenuContent(bubble: Bubble, theme: ClomniTheme, reply: (String) -> Unit, delete: () -> Unit, dismiss: () -> Unit) {
+    val links = LocalTranscript.current
+    val context = LocalContext.current
+    val shape = RoundedCornerShape(ClomniTheme.Radius.card.dp)
+    Column(
+        Modifier.padding(8.dp).shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .clip(shape).background(theme.colors.background.color),
+    ) {
+        val messageId = bubble.messageId
+        if (bubble.replyable && messageId != null) {
+            MenuRow(links.replyLabel, theme) {
+                dismiss()
+                reply(messageId)
             }
-            bubble.copyText?.let { text ->
-                MenuRow(links.copyLabel, theme) {
-                    dismiss()
-                    copyText(context, text)
-                }
+        }
+        bubble.copyText?.let { text ->
+            MenuRow(links.copyLabel, theme) {
+                dismiss()
+                copyText(context, text)
+            }
+        }
+        if (bubble.deletable) {
+            MenuRow(links.deleteLabel, theme, theme.colors.errorText) {
+                dismiss()
+                delete()
             }
         }
     }
 }
 
 @Composable
-private fun MenuRow(label: String, theme: ClomniTheme, onClick: () -> Unit) {
+private fun MenuRow(label: String, theme: ClomniTheme, ink: RgbColor = theme.colors.textPrimary, onClick: () -> Unit) {
     BasicText(
         label,
         Modifier.widthIn(min = 160.dp).heightIn(min = 48.dp).button(label, onClick = onClick).padding(horizontal = 16.dp, vertical = 13.dp),
-        style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary),
+        style = clomniText(ClomniTheme.FontSize.text, ink),
     )
 }
 
 /** Whether a bubble has a menu at all. */
-internal val Bubble.hasMenu: Boolean get() = (replyable && messageId != null) || copyText != null
+internal val Bubble.hasMenu: Boolean get() = (replyable && messageId != null) || copyText != null || deletable
+
+/**
+ * "Mesaj silinsin?" before the user's message goes for everyone: the title, the line under it, then «Ləğv et» and «Sil»
+ * (the error colour) at the end, as the platform's dialogs are. [delete] runs once confirmed; either button closes it.
+ */
+@Composable
+internal fun DeleteDialog(texts: DeleteConfirm, theme: ClomniTheme, delete: () -> Unit, dismiss: () -> Unit) {
+    Dialog(dismiss) { DeleteDialogContent(texts, theme, delete, dismiss) }
+}
+
+/** The dialog's card, apart from its window so a screenshot can draw it: 24 inside, radius 28, as Material 3's. */
+@Composable
+internal fun DeleteDialogContent(texts: DeleteConfirm, theme: ClomniTheme, delete: () -> Unit, dismiss: () -> Unit) {
+    val shape = RoundedCornerShape(28.dp)
+    Column(
+        Modifier.widthIn(min = 280.dp, max = 560.dp).clip(shape)
+            .background((if (theme.isDark) theme.colors.surface else theme.colors.background).color)
+            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
+    ) {
+        BasicText(
+            texts.title,
+            Modifier.semantics { heading() },
+            style = clomniText(20f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.3f),
+        )
+        BasicText(
+            texts.body,
+            Modifier.padding(top = 12.dp),
+            style = clomniText(ClomniTheme.FontSize.text, theme.colors.textSecondary, lineHeight = 1.45f),
+        )
+        Row(Modifier.align(Alignment.End).padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DialogButton(texts.cancel, theme.colors.primaryText, dismiss)
+            DialogButton(texts.delete, theme.colors.errorText) {
+                dismiss()
+                delete()
+            }
+        }
+    }
+}
+
+@Composable
+private fun DialogButton(label: String, ink: RgbColor, onClick: () -> Unit) {
+    BasicText(
+        label,
+        Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).button(label, RoundedCornerShape(20.dp), onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        style = clomniText(ClomniTheme.FontSize.text, ink, FontWeight.Medium),
+    )
+}
 
 internal fun copyText(context: Context, text: String) {
     runCatching { context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(null, text)) }

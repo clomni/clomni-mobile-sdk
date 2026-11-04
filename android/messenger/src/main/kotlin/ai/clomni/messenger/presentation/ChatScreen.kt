@@ -30,6 +30,18 @@ internal data class ChatScreen(
     val copyLabel: String = "",
     /** H2: "Yeni mesaj", the capsule that takes a user reading further up to the end. */
     val newMessageLabel: String = "",
+    /** «Sil» in the long-press menu, and its confirmation (SDK 1.0.7). */
+    val deleteLabel: String = "",
+    val deleteConfirm: DeleteConfirm = DeleteConfirm(),
+)
+
+/** "Mesaj silinsin?": the question before the user's message is deleted for everyone. */
+internal data class DeleteConfirm(
+    val title: String = "",
+    val body: String = "",
+    /** In the destructive colour. */
+    val delete: String = "",
+    val cancel: String = "",
 )
 
 internal data class Announcement(val id: String, val text: String)
@@ -107,6 +119,8 @@ internal data class Bubble(
     val replyable: Boolean = false,
     /** What "Kopyala" copies: the text or the caption; null when there is nothing to copy. */
     val copyText: String? = null,
+    /** The user's own message, while the conversation is not closed: «Sil» in its menu (SDK 1.0.7). */
+    val deletable: Boolean = false,
 ) {
     /** Who wrote the quoted message ("Siz", "Leyla", the brand) and one line of it, or "Mesaj silinib". */
     data class Quote(val messageId: String, val author: String, val excerpt: String)
@@ -119,6 +133,9 @@ internal data class Bubble(
     sealed interface Body
 
     data class TextBody(val runs: List<TextRun>) : Body
+
+    /** "Bu mesaj silindi", in italics and muted, in a neutral bubble on either side: nothing can be done with it. */
+    data class DeletedBody(val text: String) : Body
 
     data class ImageBody(
         /** The thumbnail if there is one. */

@@ -387,6 +387,105 @@ class ClomniEngineTest {
         assertEquals(listOf(1L, 2L, 3L), phone.engine.messages(conversation).map { it.seq })
     }
 
+    /** Contract 1.0.7 §1: the user's own message, deleted for everyone; it reads as deleted here at once. */
+    @Test
+    fun anOwnMessageIsDeletedForEveryone() {
+        val (phone, conversation) = ready()
+        phone.engine.sendText("Səhv yazdım", conversation).await()
+        eventually("the server's copy") { phone.engine.messages(conversation).any { it.sender.type == SenderType.USER } }
+        val mine = phone.engine.messages(conversation).first { it.sender.type == SenderType.USER }
+        // No socket to bring message.updated: the answer alone is enough (an edit in place has no new seq to fetch).
+        fake.deliver = { _, _ -> false }
+        phone.engine.deleteMessage(mine).await()
+        assertEquals(1, fake.count("DELETE /v1/conversations/$conversation/messages/${mine.id}"))
+        val deleted = phone.engine.messages(conversation).first { it.id == mine.id }
+        assertEquals(MessageContent.Deleted, deleted.content)
+        assertEquals(mine.seq, deleted.seq)
+        assertEquals("the list's last message too", MessageContent.Deleted, phone.engine.conversations().single().lastMessage?.content)
+        assertNotEquals("its text is not kept for the preview", "Səhv yazdım", phone.engine.conversations().single().lastMessage?.fallbackText)
+        // The server's own message.updated, when it comes, changes nothing more.
+        fake.deliver = { _, _ -> true }
+        assertEquals(MessageContent.Deleted, phone.engine.messages(conversation).first { it.id == mine.id }.content)
+    }
+
+    /** 409 conversation_closed: refused, and the message stays as it was. */
+    @Test
+    fun aClosedConversationKeepsItsMessages() {
+        val (phone, conversation) = ready()
+        phone.engine.sendText("Salam", conversation).await()
+        eventually("the server's copy") { phone.engine.messages(conversation).any { it.sender.type == SenderType.USER } }
+        val mine = phone.engine.messages(conversation).first { it.sender.type == SenderType.USER }
+        fake.closeConversation(conversation)
+        try {
+            phone.engine.deleteMessage(mine).await()
+            fail("expected 409")
+        } catch (e: ExecutionException) {
+            val error = e.cause as ClomniError.Server
+            assertEquals(409, error.status)
+            assertEquals("conversation_closed", error.code)
+        }
+        assertEquals(MessageContent.Text("Salam"), phone.engine.messages(conversation).first { it.id == mine.id }.content)
+    }
+
+    /** A message still in the outbox leaves it, and nothing goes to the server. */
+    @Test
+    fun aMessageNotSentYetIsDeletedHere() {
+        val (phone, conversation) = ready(Phone(retryMs = 60_000))
+        fake.offline = true
+        val waiting = phone.engine.sendText("Hələ getməyib", conversation).await()
+        eventually("its first attempt") { sends(conversation) == 1 }
+        phone.engine.deletePending(waiting.id).await()
+        assertEquals(emptyList<PendingMessage>(), phone.engine.pending(conversation))
+        fake.offline = false
+        phone.engine.networkAvailable().await()
+        phone.engine.awaitIdle()
+        assertEquals("never sent", 0, fake.userMessages(conversation).size)
+        assertEquals(0, fake.count("DELETE "))
+    }
+
+    /** Its attempt reached the server before «Sil» did: the server's copy is deleted instead. */
+    @Test
+    fun aMessageThatWentMeanwhileIsDeletedOnTheServer() {
+        val (phone, conversation) = ready()
+        val sent = phone.engine.sendText("Getdi", conversation).await()
+        eventually("the server's copy") { phone.engine.pending(conversation).isEmpty() }
+        phone.engine.deletePending(sent.id).await()
+        val copy = phone.engine.messages(conversation).first { it.clientId == sent.id }
+        assertEquals(MessageContent.Deleted, copy.content)
+        assertEquals(1, fake.count("DELETE /v1/conversations/$conversation/messages/${copy.id}"))
+    }
+
+    /** GET /faq (contract 1.0.7 §3): kept on disk with its ETag, as the news; faq_opened for the panel. */
+    @Test
+    fun theQuestionsAreKeptWithTheirEtag() {
+        val vault = MemorySecureStore()
+        val dir = folder.newFolder()
+        val (first, _) = ready(Phone(vault, dir))
+        assertEquals(listOf("faq_12"), first.engine.refreshFaq("az").await().map { it.id })
+        assertTrue(first.changes.toString(), ClomniChange.Faq in first.changes)
+        assertEquals("Kartla.", first.engine.faq.single().answer)
+        fake.faq = """{"items":[]}"""
+        assertEquals("304: the kept ones", listOf("faq_12"), first.engine.refreshFaq("az").await().map { it.id })
+        first.engine.faqOpened("faq_12")
+        eventually("faq_opened") { fake.eventBodies.any { it["event"]?.jsonPrimitive?.content == "faq_opened" } }
+        val event = fake.eventBodies.first { it["event"]?.jsonPrimitive?.content == "faq_opened" }
+        assertEquals("faq_12", event["data"]?.jsonObject?.get("faq_id")?.jsonPrimitive?.content)
+        first.engine.shutdown()
+
+        // The next run has them before the network answers; a new ETag brings the change.
+        fake.offline = true
+        val second = Phone(vault, dir)
+        second.engine.awaitIdle()
+        assertEquals(listOf("faq_12"), second.engine.faq.map { it.id })
+        second.engine.loginUnidentifiedUser().await()
+        assertEquals("offline: kept", listOf("faq_12"), second.engine.refreshFaq("az").await().map { it.id })
+        fake.offline = false
+        fake.faqEtag = "W/\"faq2\""
+        assertEquals(emptyList<String>(), second.engine.refreshFaq("az").await().map { it.id })
+        second.engine.logout().await()
+        assertEquals("nothing of the user stays", emptyList<String>(), second.engine.faq.map { it.id })
+    }
+
     @Test
     fun theOutboxSurvivesTheProcess() {
         val vault = MemorySecureStore()

@@ -68,6 +68,17 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         }
     }
 
+    /** GET /faq. A question without an id or its text is left out, and logged; an answer it lacks reads as empty. */
+    fun parseFaq(json: String): List<FaqItem>? = guard("faq") {
+        (json.toJsonObject()["items"] as? JsonArray).orEmpty().mapNotNull { element ->
+            val o = element as? JsonObject ?: return@mapNotNull null
+            val id = o.string("id") ?: return@mapNotNull null.also { logger("faq item without an id dropped") }
+            val question = o.string("question")?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null.also { logger("faq $id without a question dropped") }
+            FaqItem(id, question, o.string("answer").orEmpty(), o.string("updated_at")?.let(Iso8601::parseMillis))
+        }
+    }
+
     /** Null when the payload is not a Clomni push (`"clomni": "1"`) or lacks a required key. */
     fun parsePush(json: String): PushPayload? = guard("push") { push(json.toJsonObject()) }
 
@@ -274,6 +285,8 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
 
     private fun content(type: String, content: JsonElement, messageId: String?): MessageContent {
         val prefix = messageId?.let { "$it: " }.orEmpty()
+        // Deleted, whatever type it had: the server keeps the type or sends "deleted" (an older SDK shows fallback_text).
+        if (type == DELETED || (content as? JsonObject)?.string("type") == DELETED) return MessageContent.Deleted
         val parse: ((JsonObject) -> MessageContent)? = when (type) {
             "text" -> { o -> MessageContent.Text(o.requireString("text")) }
             "quick_replies" -> ::quickReplies
@@ -596,6 +609,8 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                     val type = channel.string("type") ?: return@mapNotNull null
                     channel.string("url")?.let { MessengerConfig.Channel(type, it) }
                 }.take(MessengerConfig.MAX_CHANNELS),
+                tabBar = home.boolean("tab_bar") ?: false,
+                newsOnHome = home.int("news_on_home")?.coerceIn(1, 3) ?: MessengerConfig.DEFAULT_NEWS_ON_HOME,
                 // title_scale; a draft from before it has title_size, which the server maps the same way.
                 titleScale = home.int("title_scale")?.coerceIn(70, 140) ?: when (home.string("title_size")) {
                     "s" -> 85
@@ -636,6 +651,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
             poweredBy = o.boolean("powered_by") ?: true,
             startsWithFlow = o.section("conversation").boolean("starts_with_flow") ?: false,
             sounds = o.boolean("sounds") ?: true,
+            faqEnabled = o.section("faq").boolean("enabled") ?: false,
         )
     }
 
@@ -648,6 +664,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
                 "send" -> MessengerConfig.HomeCard.SEND
                 "recent" -> MessengerConfig.HomeCard.RECENT
                 "channels" -> MessengerConfig.HomeCard.CHANNELS
+                "faq" -> MessengerConfig.HomeCard.FAQ
                 else -> null
             }
         }?.distinct() ?: return MessengerConfig.HomeCard.entries
@@ -734,6 +751,9 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
 
     private companion object {
         val hexColor = Regex("#[0-9A-Fa-f]{6}")
+
+        /** message.json `$defs/deleted`: `content.type`, and the type a deleted message may have. */
+        const val DELETED = "deleted"
 
         /** protocol/schema/message.json audio.waveform. */
         const val MAX_WAVEFORM = 128

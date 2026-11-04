@@ -54,6 +54,15 @@ internal sealed interface MessengerRoute {
     /** A news item's own screen. */
     data class News(val id: String) : MessengerRoute
 
+    /** All the news: Home's "Hamısı", or the News tab. */
+    data object NewsList : MessengerRoute
+
+    /** The questions (FAQ) with their search: the FAQ card's "Hamısı", or the FAQ tab. */
+    data object Faq : MessengerRoute
+
+    /** One question's answer. */
+    data class FaqItem(val id: String) : MessengerRoute
+
     /** A conversation, or a new one not yet on the server ([MessengerSession.draft]). */
     data class Conversation(val id: String) : MessengerRoute
 }
@@ -424,6 +433,20 @@ internal class MessengerCoordinator(
         val from = route ?: return
         if (from == to) return
         backStack.addLast(from)
+        forward = true
+        route = to
+        changed()
+    }
+
+    /**
+     * A tab of the tab bar (contract 1.0.7 §3): its screen in place of the one shown, with Home under it, so back from
+     * any other tab goes to Home and back from Home closes the messenger.
+     */
+    fun selectTab(to: MessengerRoute) {
+        val from = route ?: return
+        if (from == to) return
+        backStack.clear()
+        if (to != MessengerRoute.Home) backStack.addLast(MessengerRoute.Home)
         forward = true
         route = to
         changed()

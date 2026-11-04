@@ -28,16 +28,16 @@ import androidx.compose.ui.unit.dp
  * says "Hələ söhbət yoxdur".
  */
 @Composable
-internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions) {
-    WithOfflineCapsule(screen.offline, screen.connected, theme) { bar -> MessagesBody(screen, theme, closeLabel, actions, bar) }
+internal fun MessagesView(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions, tab: Boolean = false) {
+    WithOfflineCapsule(screen.offline, screen.connected, theme) { bar -> MessagesBody(screen, theme, closeLabel, actions, bar, tab) }
 }
 
 @Composable
-private fun MessagesBody(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions, bar: Modifier) {
+private fun MessagesBody(screen: MessagesScreen, theme: ClomniTheme, closeLabel: String, actions: MessengerActions, bar: Modifier, tab: Boolean) {
     Column(Modifier.fillMaxSize().background(theme.colors.canvas.color)) {
         val scroll = rememberScrollState()
         Box(bar) {
-            TopBar(screen.backLabel, actions.back, closeLabel, actions.close, theme, scrolled = scroll.value > 0) {
+            TopBar(screen.backLabel, actions.back, closeLabel, actions.close, theme, scrolled = scroll.value > 0, showsBack = !tab) {
                 TopBarTitle(screen.title, theme)
             }
         }

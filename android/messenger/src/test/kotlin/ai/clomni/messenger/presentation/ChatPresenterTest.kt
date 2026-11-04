@@ -12,6 +12,7 @@ import ai.clomni.messenger.store.PendingMessage
 import ai.clomni.messenger.store.PendingUpload
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -713,6 +714,70 @@ class ChatPresenterTest {
         assertNull(menu.composer.quote)
         assertFalse(bubbles(menu).single().replyable)
         assertNotNull(bubbles(menu).single().copyText)
+    }
+
+    /**
+     * Contract 1.0.7 §1: «Sil» only on the user's own message and only while the conversation is not closed (a pending
+     * text or file too, a choice on its way not); a deleted message reads "Bu mesaj silindi" and offers nothing.
+     */
+    @Test
+    fun deleting() {
+        val mine = ChatFixture.message("03-text-user.json")
+        val operator = ChatFixture.message("02-text-operator-markdown.json")
+        fun deletable(status: String, vararg messages: Message) =
+            bubbles(screen(messages.toList()) { it.copy(conversation = ChatFixture.conversation(status)) }).map { it.deletable }
+        assertEquals(listOf(false, true), deletable("open", operator, mine))
+        assertEquals(listOf(true), deletable("bot", mine))
+        assertEquals(listOf(true), deletable("queued", mine))
+        assertEquals("closed: nothing", listOf(false, false), deletable("closed", operator, mine))
+        val open = screen(listOf(mine)) { it.copy(conversation = ChatFixture.conversation("open")) }
+        assertEquals("Sil", open.deleteLabel)
+        assertEquals(DeleteConfirm("Mesaj silinsin?", "Mesaj hər kəs üçün silinəcək.", "Sil", "Ləğv et"), open.deleteConfirm)
+
+        // On its way: a text or a file can be taken back, a choice cannot.
+        val waiting = screen(emptyList()) {
+            it.copy(
+                pending = listOf(
+                    pending(ClientMessage.Text("Salam"), "Salam"),
+                    pending(ClientMessage.ButtonReply("msg_f07", "az", "lang:az"), "Azərbaycan dili"),
+                ),
+            )
+        }
+        assertEquals(listOf(true, false), bubbles(waiting).map { it.deletable })
+        assertEquals("a pending one has no server id", listOf(null, null), bubbles(waiting).map { it.messageId })
+
+        // Deleted (by the user or in the panel): a neutral bubble with its time, nothing to do with it.
+        val deleted = ChatFixture.message("66-reply-user-to-operator.json", "content" to mapOf("type" to "deleted"), "reply_to" to JsonNull)
+        val bubble = bubbles(screen(listOf(deleted)) { it.copy(conversation = ChatFixture.conversation("open")) }).single()
+        assertEquals(Bubble.DeletedBody("Bu mesaj silindi"), bubble.body)
+        assertEquals(Bubble.Side.OUTGOING, bubble.side)
+        assertNotNull(bubble.time)
+        assertNull("no mark", bubble.status)
+        assertNull(bubble.quote)
+        assertFalse(bubble.replyable)
+        assertFalse(bubble.deletable)
+        assertNull(bubble.copyText)
+        assertTrue(bubble.accessibilityLabel, bubble.accessibilityLabel.endsWith("Bu mesaj silindi"))
+        // The operator's deleted message too, on its own side.
+        val gone = ChatFixture.message("02-text-operator-markdown.json", "content" to mapOf("type" to "deleted"))
+        assertEquals(Bubble.Side.INCOMING, bubbles(screen(listOf(gone))).single().side)
+        assertEquals(Bubble.DeletedBody("Bu mesaj silindi"), bubbles(screen(listOf(gone))).single().body)
+
+        // Being answered when it went: the quote over the field goes with it; one quoted in a pending message says so.
+        val answering = screen(listOf(gone)) { it.copy(conversation = ChatFixture.conversation("open"), replyingTo = gone.id) }
+        assertNull(answering.composer.quote)
+        val quoting = screen(listOf(gone)) {
+            it.copy(conversation = ChatFixture.conversation("open"), pending = listOf(pending(ClientMessage.Text("Bəli", replyTo = gone.id), "Bəli")))
+        }
+        assertEquals("Mesaj silinib", bubbles(quoting).last().quote?.excerpt)
+    }
+
+    /** Contract 1.0.7 §2: an operator's answer to a message carries its quote on the operator's side too. */
+    @Test
+    fun anOperatorsAnswerQuotesOverItsBubble() {
+        val answer = bubbles(screen(listOf(ChatFixture.message("67-reply-operator-to-image.json")))).single()
+        assertEquals(Bubble.Side.INCOMING, answer.side)
+        assertEquals(Bubble.Quote("msg_f62", "Siz", "qebz.jpg"), answer.quote)
     }
 
     @Test

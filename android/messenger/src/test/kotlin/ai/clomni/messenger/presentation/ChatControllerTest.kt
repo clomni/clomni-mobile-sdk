@@ -9,6 +9,7 @@ import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
+import ai.clomni.messenger.protocol.ServerError
 import ai.clomni.messenger.store.PendingMessage
 import ai.clomni.messenger.store.PendingUpload
 import kotlinx.serialization.json.JsonElement
@@ -158,6 +159,23 @@ private class FakeChat : ChatDataSource {
         return done(Unit)
     }
 
+    /** What DELETE answers: null for 204, else the error. */
+    var deleteFails: Throwable? = null
+
+    override fun deleteMessage(message: Message): Future<Unit> {
+        calls += "delete ${message.id}"
+        deleteFails?.let { return failed(it) }
+        stored[message.conversationId] = stored[message.conversationId].orEmpty()
+            .map { if (it.id == message.id) it.copy(content = MessageContent.Deleted, replyTo = null) else it }
+        return done(Unit)
+    }
+
+    override fun deletePending(clientId: String): Future<Unit> {
+        calls += "delete pending $clientId"
+        outbox.removeAll { it.id == clientId }
+        return done(Unit)
+    }
+
     override fun draft(openedFrom: String?): String {
         calls += "draft"
         return "draft_new"
@@ -223,6 +241,54 @@ class ChatControllerTest {
         chat.load()
         assertEquals("loading again does not listen twice", 1, source.observers.size)
         assertEquals("the conversation is known now", 1, source.calls.count { it.startsWith("refreshConversation") })
+    }
+
+    /**
+     * Contract 1.0.7 §1: «Sil» confirmed deletes the user's own message on the server; refused with 409 it stays and the
+     * user hears "Söhbət bağlanıb, mesaj silinmir."; one not sent yet only leaves the outbox. A message deleted in the
+     * panel arrives as message.updated and turns into the deleted bubble.
+     */
+    @Test
+    fun deletingOnesOwnMessage() {
+        val mine = ChatFixture.message("03-text-user.json")
+        val operator = ChatFixture.message("02-text-operator-markdown.json", "seq" to 2)
+        source.set(listOf(mine, operator))
+        val chat = controller()
+        chat.load()
+        val warnings = mutableListOf<String?>()
+
+        source.deleteFails = ClomniError.Server(409, ServerError("conversation_closed", "closed", null, emptyMap()))
+        chat.delete(mine.clientId ?: mine.id, mine.id) { warnings += it }
+        assertEquals(listOf("Söhbət bağlanıb, mesaj silinmir."), warnings)
+        assertTrue("it stays", chat.screen.items.filterIsInstance<ChatItem.BubbleItem>().none { it.bubble.body is Bubble.DeletedBody })
+
+        source.deleteFails = ClomniError.Network("offline")
+        chat.delete(mine.clientId ?: mine.id, mine.id) { warnings += it }
+        assertEquals("Nəsə səhv getdi", warnings.last())
+
+        source.deleteFails = null
+        chat.delete(mine.clientId ?: mine.id, mine.id) { warnings += it }
+        assertEquals(null, warnings.last())
+        assertEquals(3, source.calls.count { it == "delete ${mine.id}" })
+        val bubbles = chat.screen.items.filterIsInstance<ChatItem.BubbleItem>().map { it.bubble }
+        assertEquals(Bubble.DeletedBody("Bu mesaj silindi"), bubbles.first().body)
+        assertTrue("the operator's stays", bubbles.last().body is Bubble.TextBody)
+
+        // Pending: only the outbox.
+        chat.send("Hələ getməyib")
+        val waiting = source.outbox.single()
+        chat.delete(waiting.id, null) { warnings += it }
+        assertEquals("delete pending ${waiting.id}", source.calls.last())
+        assertTrue(source.outbox.isEmpty())
+        assertTrue("Hələ getməyib" !in bubbleTexts(chat))
+
+        // Deleted in the panel: message.updated, the same message with the deleted content.
+        source.set(listOf(mine, operator.copy(content = MessageContent.Deleted)))
+        source.push(ClomniChange.Messages("conv_5521"))
+        assertEquals(Bubble.DeletedBody("Bu mesaj silindi"), chat.screen.items.filterIsInstance<ChatItem.BubbleItem>().last().bubble.body)
+        // A message no longer here: nothing happens.
+        chat.delete("msg_gone", "msg_gone") { warnings += it }
+        assertTrue(source.calls.none { it == "delete msg_gone" })
     }
 
     @Test

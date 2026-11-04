@@ -85,6 +85,12 @@ internal sealed interface MessageContent {
     ) : MessageContent
 
     /**
+     * A message deleted by the user or an operator (`content: {"type": "deleted"}`, SDK 1.0.7): its bubble says so, and
+     * nothing can be done with it. The text and files are gone from the server too.
+     */
+    data object Deleted : MessageContent
+
+    /**
      * A type this SDK does not know, or a known type whose content is broken. Shown with [Message.fallbackText];
      * [raw] is the `content` as received.
      */

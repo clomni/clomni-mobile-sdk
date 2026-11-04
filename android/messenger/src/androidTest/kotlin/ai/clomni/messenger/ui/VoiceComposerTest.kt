@@ -162,6 +162,8 @@ class VoiceComposerTest {
         }
 
         override fun retry(clientId: String) = done(Unit)
+        override fun deleteMessage(message: Message) = done(Unit)
+        override fun deletePending(clientId: String) = done(Unit)
         override fun draft(openedFrom: String?) = "conv_1"
 
         override fun observe(handler: (ClomniChange) -> Unit): UUID {

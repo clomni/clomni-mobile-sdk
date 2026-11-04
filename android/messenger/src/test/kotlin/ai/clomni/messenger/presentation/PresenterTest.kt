@@ -1,6 +1,7 @@
 package ai.clomni.messenger.presentation
 
 import ai.clomni.messenger.protocol.Conversation
+import ai.clomni.messenger.protocol.FaqItem
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
@@ -174,13 +175,13 @@ class PresenterTest {
         assertEquals("the message's own", "https://app.clomni.ai/a/bot.png", presenter(config = none).home(snapshot(none, bot)).recent?.row?.avatarUrl)
     }
 
-    /** CM-114: at most three news cards, in the panel's order; none without news; the item's screen. */
+    /** CM-114: news_on_home cards (2 unless the panel says), in the panel's order; none without news; the item's screen. */
     @Test
     fun news() {
         val items = ProtocolJson().parseNews(ProtocolFiles.read("fixtures/61-news.json"))!!
         assertEquals(listOf("news_12", "news_9"), items.map { it.id })
         val home = presenter().home(snapshot(Fixture.exampleConfig).copy(news = items + items + items))
-        assertEquals(3, home.news.size)
+        assertEquals(2, home.news.size)
         assertTrue(MessengerConfig.HomeCard.NEWS in home.order)
         assertFalse("no news, no card", MessengerConfig.HomeCard.NEWS in presenter().home(snapshot(Fixture.exampleConfig)).order)
         val screen = presenter().news(snapshot(Fixture.exampleConfig).copy(news = items), "news_12")!!
@@ -190,6 +191,132 @@ class PresenterTest {
         assertEquals("40 yeni zona", screen.blocks.first().runs.single { it.bold }.text)
         assertEquals("2 oktyabr 09:00", screen.date)
         assertNull("withdrawn", presenter().news(snapshot(Fixture.exampleConfig), "news_12"))
+    }
+
+    private val news = ProtocolJson().parseNews(ProtocolFiles.read("fixtures/61-news.json"))!!
+
+    private fun config(home: String, faq: Boolean = false) = Fixture.exampleConfig.let {
+        it.copy(home = ProtocolJson().parseConfig("""{"home":$home}""")!!.home.copy(channels = it.home.channels), faqEnabled = faq)
+    }
+
+    private fun item(n: Int) = news.first().copy(id = "news_$n", title = "Xəbər $n")
+
+    private fun faq(n: Int, question: String = "Sual $n", answer: String = "Cavab $n") = FaqItem("faq_$n", question, answer, null)
+
+    /**
+     * Contract 1.0.7 §3: Home shows news_on_home items (1–3, 2 by default) and "Hamısı" under them; with fewer news than
+     * that, no link.
+     */
+    @Test
+    fun newsOnHomeAndSeeAll() {
+        fun home(onHome: Int?, count: Int) = presenter().home(
+            snapshot(config(onHome?.let { """{"news_on_home":$it}""" } ?: "{}")).copy(news = (1..count).map(::item)),
+        )
+        assertEquals(listOf("news_1", "news_2"), home(null, 5).news.map { it.id })
+        assertEquals("Hamısı", home(null, 5).newsSeeAll)
+        assertEquals(1, home(1, 5).news.size)
+        assertEquals(3, home(3, 5).news.size)
+        assertEquals("2 of 2: the link stays (the contract hides it only under news_on_home)", "Hamısı", home(null, 2).newsSeeAll)
+        assertNull("fewer than news_on_home", home(3, 2).newsSeeAll)
+        assertEquals(2, home(3, 2).news.size)
+        assertNull("no news", home(null, 0).newsSeeAll)
+        val list = presenter().newsList(snapshot().copy(news = (1..5).map(::item)))
+        assertEquals("Xəbərlər", list.title)
+        assertEquals((1..5).map { "news_$it" }, list.items.map { it.id })
+    }
+
+    /** Contract 1.0.7 §3: the tab bar only with the panel's tab_bar; news and FAQ tabs only with something in them. */
+    @Test
+    fun tabBarShowsOnlyWhatThereIs() {
+        val faq = listOf(faq(1))
+        fun kinds(config: MessengerConfig?, news: List<NewsItem> = emptyList(), questions: List<FaqItem> = emptyList()) =
+            presenter().home(snapshot(config).copy(news = news, faq = questions)).tabBar?.tabs?.map { it.kind }
+        assertNull("tab_bar off: as before", kinds(Fixture.exampleConfig, news, faq))
+        assertNull("no config yet", kinds(null))
+        val on = config("""{"tab_bar":true}""")
+        assertEquals(listOf(MessengerTab.HOME, MessengerTab.MESSAGES), kinds(on))
+        assertEquals(listOf(MessengerTab.HOME, MessengerTab.MESSAGES, MessengerTab.NEWS), kinds(on, news))
+        assertEquals("questions but the FAQ off", listOf(MessengerTab.HOME, MessengerTab.MESSAGES), kinds(on, questions = faq))
+        val faqOn = config("""{"tab_bar":true}""", faq = true)
+        assertEquals("the FAQ on but empty", listOf(MessengerTab.HOME, MessengerTab.MESSAGES), kinds(faqOn))
+        assertEquals(MessengerTab.entries, kinds(faqOn, news, faq))
+
+        val bar = presenter().home(snapshot(faqOn).copy(news = news, faq = faq)).tabBar!!
+        assertEquals(listOf("Əsas səhifə", "Söhbətlər", "Xəbərlər", "Suallar"), bar.tabs.map { it.title })
+        assertNull("nothing unread", bar.tabs[1].badge)
+        assertTrue(MessengerTab.NEWS in bar)
+        fun badge(unread: Int, conversations: List<Conversation> = emptyList()) =
+            presenter().home(snapshot(faqOn, conversations).copy(unreadTotal = unread)).tabBar!!.tabs[1]
+        assertEquals("3", badge(3).badge)
+        assertEquals("Söhbətlər, Oxunmamış mesaj var", badge(3).accessibilityLabel)
+        assertEquals("99+", badge(120).badge)
+        assertEquals("the conversations' own counts before the total comes", "2", badge(0, listOf(Fixture.conversation("c", "01-text-bot.json", unread = 2))).badge)
+        // Which screens are tabs.
+        assertEquals(MessengerTab.FAQ, MessengerTab.of(MessengerRoute.Faq))
+        assertEquals(MessengerTab.NEWS, MessengerTab.of(MessengerRoute.NewsList))
+        assertNull(MessengerTab.of(MessengerRoute.Conversation("conv_1")))
+        assertNull(MessengerTab.of(MessengerRoute.News("news_12")))
+        assertNull(MessengerTab.of(MessengerRoute.FaqItem("faq_1")))
+    }
+
+    /** Contract 1.0.7 §3: the FAQ card (first three and "Hamısı") only with the FAQ on, questions, and its place in cards. */
+    @Test
+    fun theQuestions() {
+        val questions = (1..5).map { faq(it) }
+        val withCard = config("""{"cards":["send","faq"]}""", faq = true)
+        val home = presenter().home(snapshot(withCard).copy(faq = questions))
+        assertEquals(listOf(MessengerConfig.HomeCard.MESSAGES, MessengerConfig.HomeCard.SEND, MessengerConfig.HomeCard.FAQ), home.order)
+        val card = home.faq!!
+        assertEquals("Tez-tez verilən suallar", card.title)
+        assertEquals(listOf("faq_1", "faq_2", "faq_3"), card.questions.map { it.id })
+        assertEquals("Hamısı", card.seeAll)
+        assertNull("FAQ off", presenter().home(snapshot(config("""{"cards":["send","faq"]}""")).copy(faq = questions)).faq)
+        assertFalse("no questions", MessengerConfig.HomeCard.FAQ in presenter().home(snapshot(withCard)).order)
+        assertFalse(
+            "not among the panel's cards",
+            MessengerConfig.HomeCard.FAQ in presenter().home(snapshot(config("""{"cards":["send"]}""", faq = true)).copy(faq = questions)).order,
+        )
+
+        // The list and its search: in the question and the answer's text, any case, the dotted and dotless i as one.
+        val list = listOf(
+            faq(1, "Balansı necə artırım?", "**Kartla** və ya [terminalla](https://example.com)."),
+            faq(2, "İstifadəçi adını necə dəyişim?", "Profil bölməsində."),
+            faq(3, "Kart necə silinir?", "Kartlar siyahısında sola sürüşdürün."),
+        )
+        val state = snapshot(withCard).copy(faq = list)
+        val all = presenter().faq(state)
+        assertEquals("Tez-tez verilən suallar", all.title)
+        assertEquals("Sual axtarın", all.search)
+        assertEquals(listOf("faq_1", "faq_2", "faq_3"), all.rows.map { it.id })
+        assertNull(all.empty)
+        fun found(query: String) = presenter().faq(state, query).rows.map { it.id }
+        assertEquals(listOf("faq_1", "faq_3"), found("kart"))
+        assertEquals("in the answer, without its marks", listOf("faq_1"), found("terminalla"))
+        assertEquals(listOf("faq_2"), found("istifadəçi"))
+        assertEquals("ı and i alike", listOf("faq_2"), found("ISTIFADƏÇI"))
+        assertEquals("every word", listOf("faq_3"), found("  kart   silinir "))
+        assertEquals(list.map { it.id }, found("   "))
+        val none = presenter().faq(state, "kredit")
+        assertEquals(emptyList<FaqRow>(), none.rows)
+        assertEquals("Sual tapılmadı", none.empty)
+        assertEquals("nothing published", "Sual tapılmadı", presenter().faq(snapshot()).empty)
+
+        // An answer: the question as its title, the text as a news item's.
+        val answer = presenter().faqItem(state, "faq_1")!!
+        assertEquals("Balansı necə artırım?", answer.title)
+        assertEquals("Kartla", answer.blocks.single().runs.first { it.bold }.text)
+        assertEquals("https://example.com", answer.blocks.single().runs.first { it.link != null }.link)
+        assertNull(answer.date)
+        assertNull(answer.button)
+        assertNull("withdrawn", presenter().faqItem(state, "faq_9"))
+    }
+
+    /** A conversation whose last message was deleted says so in the list, not its old text. */
+    @Test
+    fun aDeletedLastMessage() {
+        val conversation = Fixture.conversation("conv_1", "03-text-user.json")
+        val deleted = conversation.copy(lastMessage = conversation.lastMessage!!.copy(content = MessageContent.Deleted, fallbackText = "This message was deleted"))
+        assertEquals("Bu mesaj silindi", presenter().row(deleted, Fixture.exampleConfig)!!.preview)
     }
 
     @Test

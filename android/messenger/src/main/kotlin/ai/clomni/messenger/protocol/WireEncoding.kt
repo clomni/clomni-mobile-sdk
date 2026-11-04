@@ -155,6 +155,7 @@ private fun MessageContent.toJson(): JsonElement = when (this) {
         put("comment", comment.wire)
         put("submitted", submitted?.let(::JsonObject) ?: JsonNull)
     }
+    MessageContent.Deleted -> buildJsonObject { put("type", "deleted") }
     is MessageContent.Unknown -> raw
 }
 

@@ -5,6 +5,7 @@ import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.MessagesScreen
+import ai.clomni.messenger.presentation.MessengerTab
 import ai.clomni.messenger.protocol.MessengerConfig
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -63,6 +64,14 @@ internal class MessengerActions(
     val openMessages: () -> Unit = {},
     /** A news card: the item's screen. */
     val openNews: (String) -> Unit = {},
+    /** "Hamısı" under Home's news: the News tab, or the news list without a tab bar. */
+    val openNewsList: () -> Unit = {},
+    /** "Hamısı" on the FAQ card: the FAQ tab, or the questions' list without a tab bar. */
+    val openFaq: () -> Unit = {},
+    /** A question: its answer. */
+    val openFaqItem: (String) -> Unit = {},
+    /** A tab of the tab bar. */
+    val selectTab: (MessengerTab) -> Unit = {},
     val newConversation: () -> Unit = {},
     val openConversation: (String) -> Unit = {},
     val retry: () -> Unit = {},
@@ -120,7 +129,11 @@ internal fun rememberMessengerActions(
     openConversation: (String) -> Unit,
     openNews: (String) -> Unit,
     openLink: (String) -> Unit,
-): MessengerActions = remember(controller, openedFrom, close, back, openMessages, openConversation, openNews, openLink) {
+    openNewsList: () -> Unit = {},
+    openFaq: () -> Unit = {},
+    openFaqItem: (String) -> Unit = {},
+    selectTab: (MessengerTab) -> Unit = {},
+): MessengerActions = remember(controller, openedFrom, close, back, openMessages, openConversation, openNews, openLink, openNewsList, openFaq, openFaqItem, selectTab) {
     MessengerActions(
         close = close,
         back = back,
@@ -129,6 +142,13 @@ internal fun rememberMessengerActions(
             controller.newsOpened(id)
             openNews(id)
         },
+        openNewsList = openNewsList,
+        openFaq = openFaq,
+        openFaqItem = { id ->
+            controller.faqOpened(id)
+            openFaqItem(id)
+        },
+        selectTab = selectTab,
         newConversation = { openConversation(controller.newConversation(openedFrom)) },
         openConversation = openConversation,
         retry = controller::retry,

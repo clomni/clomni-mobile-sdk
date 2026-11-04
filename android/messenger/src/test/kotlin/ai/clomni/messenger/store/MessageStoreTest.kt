@@ -59,6 +59,21 @@ class MessageStoreTest {
 
     private fun seqs(conversationId: String = "conv_1") = store.messages(conversationId).map { it.seq }
 
+    /** message.updated of a conversation's last message (deleted, SDK 1.0.7): the list's preview follows it. */
+    @Test
+    fun aNewerCopyOfTheLastMessageIsTheLastMessage() {
+        store.putConversation(conversation(last = message(2, clientId = "c2", text = "Səhv yazdım")))
+        store.putMessages("conv_1", listOf(message(1), message(2, clientId = "c2", text = "Səhv yazdım")), syncedThrough = 2)
+        store.putMessage(message(2, clientId = "c2").copy(content = MessageContent.Deleted, fallbackText = "Bu mesaj silindi"))
+        assertEquals(MessageContent.Deleted, store.conversation("conv_1")?.lastMessage?.content)
+        assertEquals(MessageContent.Deleted, store.sentMessage("c2")?.content)
+        assertNull(store.sentMessage("c9"))
+        // A list fetched before still does not take a newer message back.
+        store.putMessage(message(3))
+        store.putConversation(conversation(last = message(2, clientId = "c2", text = "Səhv yazdım")))
+        assertEquals(3L, store.conversation("conv_1")?.lastMessage?.seq)
+    }
+
     @Test
     fun oneCopyPerIdOrderedBySeq() {
         store.putMessages("conv_1", listOf(message(3), message(1)), syncedThrough = 3)

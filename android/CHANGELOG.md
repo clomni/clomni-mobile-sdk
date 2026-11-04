@@ -1,5 +1,21 @@
 # ai.clomni:messenger (Android) changelog
 
+## Unreleased
+
+- A drag up or down that starts on a voice message scrolls the conversation: the waveform takes a drag only once it
+  goes sideways (it took every touch before). Other bubbles already scrolled.
+- The user can delete their own message while the conversation is not closed: «Sil» in the long-press menu, then
+  "Mesaj silinsin?". A message not sent yet only leaves the queue. A closed conversation answers 409 and the message
+  stays, with a short notice. A message deleted by the user or in the panel shows as a muted "Bu mesaj silindi" with
+  its time, and nothing can be done with it; the conversation list says so too.
+- With `home.tab_bar` on in the panel, Home, the conversations (with the unread count), the news and the questions
+  are tabs under the list screens; a conversation, a news item or an answer opens over them, without the bar. Off,
+  nothing changes.
+- Home shows `home.news_on_home` news items (2 by default) and "Hamısı", which opens the News tab or the news list.
+- The questions (FAQ, `GET /faq`, kept like the news): Home's card with the first three and "Hamısı", the list with
+  a search on the device, and each answer on its own screen (`faq_opened`).
+- The new texts come from `config.strings`, with az, en and ru in the SDK.
+
 ## 1.0.6
 
 A push that starts the app no longer counts as the app being open. When the app was not running, the push started it

@@ -429,6 +429,35 @@ class MessengerCoordinatorTest {
         assertEquals(MessengerRoute.Home, messenger.route)
     }
 
+    /**
+     * Contract 1.0.7 §3: a tab takes the place of the screen shown with Home under it; what opens over a tab goes back
+     * to it, back from a tab goes to Home, and back from Home closes.
+     */
+    @Test
+    fun tabsKeepHomeUnderThem() {
+        session.loggedIn = true
+        val messenger = coordinator()
+        messenger.present()
+        messenger.selectTab(MessengerRoute.Faq)
+        messenger.selectTab(MessengerRoute.NewsList)
+        messenger.selectTab(MessengerRoute.Messages)
+        assertEquals(MessengerRoute.Messages, messenger.route)
+        messenger.navigate(MessengerRoute.Conversation("conv_1"))
+        messenger.back()
+        assertEquals("back to the tab it was opened from", MessengerRoute.Messages, messenger.route)
+        messenger.back()
+        assertEquals("tabs do not stack: Home", MessengerRoute.Home, messenger.route)
+        messenger.selectTab(MessengerRoute.Faq)
+        messenger.navigate(MessengerRoute.FaqItem("faq_12"))
+        messenger.selectTab(MessengerRoute.Home)
+        assertEquals(MessengerRoute.Home, messenger.route)
+        messenger.selectTab(MessengerRoute.Home)
+        messenger.back()
+        assertNull("from Home, back closes", messenger.route)
+        messenger.selectTab(MessengerRoute.Faq)
+        assertNull("closed: nothing to select", messenger.route)
+    }
+
     @Test
     fun startingAFlow() {
         session.loggedIn = true

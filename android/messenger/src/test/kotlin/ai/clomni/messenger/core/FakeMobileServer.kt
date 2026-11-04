@@ -104,7 +104,21 @@ internal class FakeMobileServer : Dispatcher() {
         val messages = mutableListOf<JsonObject>()
         val answered = mutableSetOf<String>()
         var seq = 0L
+        var closed = false
     }
+
+    /** The conversation is closed: its messages can no longer be deleted (409 conversation_closed). */
+    @Synchronized
+    fun closeConversation(conversationId: String) {
+        conversations.getValue(conversationId).closed = true
+    }
+
+    /** GET /faq's body (protocol 1.0.7), answered with [faqEtag]; the same ETag back is a 304. */
+    @Volatile var faq = """{"items":[{"id":"faq_12","question":"Balansı necə artırım?","answer":"Kartla.","updated_at":"2026-11-01T09:00:00Z"}]}"""
+    @Volatile var faqEtag = "W/\"faq1\""
+
+    /** The body of every POST /events, in order. */
+    val eventBodies: MutableList<JsonObject> = Collections.synchronizedList(mutableListOf())
 
     private val users = mutableListOf<User>()
     private val sessions = mutableMapOf<String, Session>()
@@ -269,7 +283,15 @@ internal class FakeMobileServer : Dispatcher() {
             )
             path == "flows/trigger" -> json(buildJsonObject { put("started", false); put("conversation", JsonNull) })
             path == "users/me" -> json(buildJsonObject { put("id", session.userId); put("anonymous", false); put("name", "Aysel") })
-            path == "events" -> MockResponse().setResponseCode(202)
+            path == "events" -> {
+                eventBodies += Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                MockResponse().setResponseCode(202)
+            }
+            path == "faq" -> if (request.getHeader("If-None-Match") == faqEtag) {
+                MockResponse().setResponseCode(304)
+            } else {
+                MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setHeader("ETag", faqEtag).setBody(faq)
+            }
             path == "devices" && method == "POST" -> {
                 val text = request.body.readUtf8()
                 sentDeviceBodies += text
@@ -282,7 +304,11 @@ internal class FakeMobileServer : Dispatcher() {
                     ?: return error(404, "conversation_not_found")
                 when (parts.getOrNull(2)) {
                     null -> json(conversation(conv))
-                    "messages" -> if (method == "GET") page(conv, request) else send(session, conv, request)
+                    "messages" -> when (method) {
+                        "GET" -> page(conv, request)
+                        "DELETE" -> delete(conv, parts.getOrNull(3))
+                        else -> send(session, conv, request)
+                    }
                     else -> MockResponse().setResponseCode(204)
                 }
             }
@@ -529,6 +555,26 @@ internal class FakeMobileServer : Dispatcher() {
         return message
     }
 
+    /**
+     * DELETE …/messages/{id} (contract 1.0.7 §1): the user's own message becomes `{"type":"deleted"}` for everyone,
+     * over the socket as message.updated; 204 again for one deleted already.
+     */
+    private fun delete(conv: Conv, messageId: String?): MockResponse {
+        val message = conv.messages.firstOrNull { it.id == messageId } ?: return error(404, "not_found")
+        if (message.getValue("sender").jsonObject["type"]?.jsonPrimitive?.content != "user") return error(403, "forbidden")
+        if (conv.closed) return error(409, "conversation_closed")
+        val deleted = JsonObject(
+            message + mapOf(
+                "content" to buildJsonObject { put("type", "deleted") },
+                "fallback_text" to JsonPrimitive("Bu mesaj silindi"),
+                "reply_to" to JsonNull,
+            ),
+        )
+        replace(conv, deleted)
+        broadcast(conv.userId, "message.updated", deleted)
+        return MockResponse().setResponseCode(204)
+    }
+
     private fun replace(conv: Conv, message: JsonObject) {
         val index = conv.messages.indexOfFirst { it.id == message.id }
         conv.messages[index] = message
@@ -536,7 +582,7 @@ internal class FakeMobileServer : Dispatcher() {
 
     private fun conversation(conv: Conv) = buildJsonObject {
         put("id", conv.id)
-        put("status", "bot")
+        put("status", if (conv.closed) "closed" else "bot")
         put("assignee", JsonNull)
         put("unread_count", 0)
         put("last_message", conv.messages.lastOrNull() ?: JsonNull)
