@@ -22,8 +22,29 @@ package struct ChatScreen: Sendable, Equatable {
     /// A message's long-press menu: "Cavabla", "Kopyala".
     package let replyLabel: String
     package let copyLabel: String
+    /// "Sil" in the menu, and its confirmation (SDK 1.0.7).
+    package let deleting: DeleteTexts
     /// "Yeni mesaj": the capsule that leads down to a message that came while the user read further up (H2).
     package let newMessageLabel: String
+}
+
+/// Deleting the user's own message: the menu's item and the question before it goes.
+package struct DeleteTexts: Sendable, Equatable {
+    /// "Sil", in the destructive colour.
+    package let action: String
+    /// "Mesaj silinsin?"
+    package let title: String
+    /// "Mesaj hər kəs üçün silinəcək."
+    package let body: String
+    /// "Ləğv et"
+    package let cancel: String
+
+    package init(_ strings: ClomniStrings) {
+        action = strings[.delete]
+        title = strings[.deleteConfirmTitle]
+        body = strings[.deleteConfirmBody]
+        cancel = strings[.cancel]
+    }
 }
 
 package struct Announcement: Sendable, Equatable {
@@ -93,6 +114,8 @@ package struct Bubble: Sendable, Equatable, Identifiable {
         case voice(VoiceNote, ClomniStrings)
         case form(FormCard)
         case rating(RatingCard)
+        /// A deleted message (SDK 1.0.7): "Bu mesaj silindi" in italics on a muted bubble, its time kept.
+        case deleted(String)
     }
 
     package struct ImageBody: Sendable, Equatable {
@@ -164,6 +187,9 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     package let replyable: Bool
     /// What "Kopyala" copies: the text or the caption; nil when there is nothing to copy.
     package let copyText: String?
+    /// "Sil" deletes it (SDK 1.0.7): the user's own message while the conversation is not closed, by the server's id,
+    /// or by its client id while it is still in the outbox; nil for everything else.
+    package let deleteId: String?
 
     /// Who wrote the quoted message ("Siz", "Leyla", the brand) and one line of it, or "Mesaj silinib".
     package struct Quote: Sendable, Equatable {

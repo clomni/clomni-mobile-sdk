@@ -89,7 +89,8 @@ struct ReplyArrow: View {
 }
 
 /// A drag to the right answers the message: the row follows the finger (with some resistance), a light tick at the
-/// threshold, and it springs back. A drag that starts vertical stays the list's.
+/// threshold, and it springs back. A drag that starts vertical stays the list's: on iOS 18+ through UIKit's pan, which
+/// fails at once for it (`SidewaysPan`, CM-342); before that SwiftUI's simultaneous drag leaves the list its scrolling.
 struct SwipeToReply: ViewModifier {
     let enabled: Bool
     @Binding var pulled: CGFloat
@@ -99,31 +100,55 @@ struct SwipeToReply: ViewModifier {
     /// How far a bubble is dragged before letting go answers it.
     static let threshold: CGFloat = 56
 
+    @ViewBuilder
     func body(content: Content) -> some View {
+        #if compiler(>=6.0)
+        if #available(iOS 18.0, *) {
+            content
+                .offset(x: pulled)
+                .gesture(SidewaysPan(rightOnly: true, enabled: enabled,
+                                     changed: { translation, _ in follow(translation) },
+                                     ended: { finished in ended(answers: finished) }))
+        } else {
+            legacy(content)
+        }
+        #else
+        legacy(content)
+        #endif
+    }
+
+    private func legacy(_ content: Content) -> some View {
         content
             .offset(x: pulled)
-            .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged(changed).onEnded { _ in ended() },
-                                 including: enabled ? .all : .subviews)
+            .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged(changed).onEnded { _ in
+                ended(answers: horizontal == true)
+                horizontal = nil
+            }, including: enabled ? .all : .subviews)
     }
 
     private func changed(_ value: DragGesture.Value) {
         let move = value.translation
         if horizontal == nil { horizontal = move.width > abs(move.height) }
         guard horizontal == true else { return }
+        follow(move.width)
+    }
+
+    /// The row `translation` to the right of where it was, with resistance.
+    private func follow(_ translation: CGFloat) {
         let before = pulled
-        pulled = min(max(move.width * 0.7, 0), Self.threshold + 24)
+        pulled = min(max(translation * 0.7, 0), Self.threshold + 24)
         if before < Self.threshold, pulled >= Self.threshold { Haptics.light() }
     }
 
-    private func ended() {
-        if horizontal == true, pulled >= Self.threshold { reply() }
-        horizontal = nil
+    private func ended(answers: Bool) {
+        if answers, pulled >= Self.threshold { reply() }
         withAnimation(.spring(response: 0.28, dampingFraction: 0.7)) { pulled = 0 }
     }
 }
 
-/// A long press: "Cavabla" (while there is a composer) and "Kopyala" (when there is text). VoiceOver has the same
-/// two as actions of the bubble.
+/// A long press: "Cavabla" (while there is a composer), "Kopyala" (when there is text) and "Sil" (the user's own message
+/// while the conversation is open, SDK 1.0.7), which asks first. VoiceOver has the same as actions of the bubble. A
+/// deleted message has none of them.
 struct MessageMenu: ViewModifier {
     let bubble: Bubble
     let actions: ChatActions
@@ -132,17 +157,21 @@ struct MessageMenu: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if replyId == nil && bubble.copyText == nil {
+        if replyId == nil && bubble.copyText == nil && bubble.deleteId == nil {
             content
         } else {
             content
                 .contextMenu {
                     if let replyId { Button(actions.replyLabel) { actions.reply(replyId) } }
                     if let text = bubble.copyText { Button(actions.copyLabel) { UIPasteboard.general.string = text } }
+                    if let deleteId = bubble.deleteId {
+                        Button(role: .destructive) { actions.delete(deleteId) } label: { Text(actions.deleteLabel) }
+                    }
                 }
                 .modifier(NamedAction(name: actions.replyLabel, run: replyId.map { id in { actions.reply(id) } }))
                 .modifier(NamedAction(name: actions.copyLabel,
                                       run: bubble.copyText.map { text in { UIPasteboard.general.string = text } }))
+                .modifier(NamedAction(name: actions.deleteLabel, run: bubble.deleteId.map { id in { actions.delete(id) } }))
         }
     }
 }

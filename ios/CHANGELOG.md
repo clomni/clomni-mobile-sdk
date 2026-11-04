@@ -6,6 +6,22 @@ Send empties the field on the tap, as on Android, and puts the text (or the pick
 used to empty only when the send returned, which for a new conversation's first message is after the server has created
 the conversation; a second tap in that time sent the message twice.
 
+A drag that starts on a message bubble scrolls the conversation again (iOS 18 and later). The swipe to answer and the
+voice message's waveform now use a pan that starts only sideways, so a drag up or down from a bubble or a waveform is
+the list's; a drag to the right still answers, and a drag along the waveform still moves the playhead.
+
+The user can delete their own message while the conversation is not closed: "Sil" in the long-press menu, after a
+question. It goes for everyone and shows as "Bu mesaj silindi" in a muted bubble, its time kept; a message not sent
+yet only leaves the queue. If the conversation was closed meanwhile, the message stays and the app says so. A message
+an operator deletes in Clomni shows the same, and a quote of a deleted message reads "Mesaj silinib". A deleted
+message has no menu.
+
+With `home.tab_bar` on in Clomni, tabs under the list screens: Home, the conversations with the unread count, the
+news while there is some, the FAQ while it is on and has a question; a conversation, a news item and an answer hide
+them. Without it nothing changes. Home's news card shows `home.news_on_home` items (two by default) and "Hamısı" when
+there are more, to the news tab or the news list. The FAQ: Home's card with the first three questions, the list with
+a search on the device, each answer on the news item's screen; opening one is reported as `faq_opened`.
+
 ## 1.0.4
 
 A flow decides whether the user can type, as its steps are set in Clomni. Buttons whose step lets the user type keep

@@ -29,12 +29,39 @@ extension ClomniEngine: MessengerSession {}
 /// A screen of the open messenger.
 package enum MessengerRoute: Sendable, Equatable, Hashable {
     case home
-    /// The conversations, from Home's "Mesajlar" card.
+    /// The conversations, from Home's "Mesajlar" card or their tab.
     case messages
     /// A conversation, or a new one's draft (`ClomniEngine.draftConversation`) until its first message.
     case conversation(String)
-    /// A news item, from Home's news card.
+    /// A news item, from Home's news card or the news list.
     case news(String)
+    /// Every news item (SDK 1.0.7): Home's "Hamısı", or the news tab.
+    case newsList
+    /// The FAQ's questions (SDK 1.0.7), from Home's FAQ card or its tab.
+    case faq
+    /// A question's answer, from the FAQ or Home's FAQ card.
+    case faqAnswer(String)
+
+    /// The list a tab shows, at the bottom of the stack.
+    package init(_ tab: TabBar.Tab) {
+        switch tab {
+        case .home: self = .home
+        case .messages: self = .messages
+        case .news: self = .newsList
+        case .faq: self = .faq
+        }
+    }
+
+    /// The tab this screen is, when it is a list a tab shows.
+    package var tab: TabBar.Tab? {
+        switch self {
+        case .home: return .home
+        case .messages: return .messages
+        case .newsList: return .news
+        case .faq: return .faq
+        case .conversation, .news, .faqAnswer: return nil
+        }
+    }
 }
 
 /// The optional floating button (brief 8 · 7.2): off unless the app or the panel turns it on.
@@ -329,6 +356,27 @@ package final class MessengerCoordinator {
         } else if stack.last != route {
             stack.append(route)
         }
+        changed()
+    }
+
+    /// A list from Home (the conversations, every news item, the FAQ): with the tab bar it is that tab, the list alone
+    /// at the bottom of the stack; without, it is pushed over Home.
+    package func show(_ list: MessengerRoute) {
+        if config?.home.tabBar == true, list.tab != nil {
+            showAlone(list)
+        } else {
+            navigate(to: list)
+        }
+    }
+
+    /// A tab tapped: its list, alone (nothing to go back to). The same tab again is left as it is.
+    package func select(_ tab: TabBar.Tab) {
+        showAlone(MessengerRoute(tab))
+    }
+
+    private func showAlone(_ list: MessengerRoute) {
+        guard !stack.isEmpty, stack != [list] else { return }
+        stack = [list]
         changed()
     }
 

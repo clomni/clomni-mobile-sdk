@@ -155,8 +155,8 @@ struct VoiceMessageContent<Meta: View>: View {
 }
 
 /// `waveform`'s bars (2.5 pt, 2 apart, rounded), those already heard in `played`, and with `playhead` the dot where it
-/// is. A tap or a drag moves it there (`seek`); VoiceOver reads `label` and `value` and moves it by tenths. Shared by
-/// the bubble and the recorder's preview.
+/// is. A tap or a drag along it moves it there (`seek`); a drag up or down is the list's (CM-342). VoiceOver reads
+/// `label` and `value` and moves it by tenths. Shared by the bubble and the recorder's preview.
 struct WaveformBar: View {
     let waveform: [Int]?
     let progress: Double
@@ -166,29 +166,30 @@ struct WaveformBar: View {
     let label: String
     let value: String
     let seek: (Double) -> Void
+    /// Where the finger moves the playhead to, while it does (iOS 18+).
     @State private var dragged: Double? = nil
+    /// The same before iOS 18, from SwiftUI's drag.
+    @GestureState private var scrub = Scrub.none
+
+    private enum Scrub: Equatable {
+        case none, along(Double), across
+    }
 
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let heights = Waveform.bars(waveform, count: WaveformBars.count(width))
-            let shown = dragged ?? progress
+            let shown = scrubbed ?? progress
             let heard = heights.indices.filter { (Double($0) + 0.5) / Double(heights.count) <= shown }.count
-            ZStack(alignment: .topLeading) {
+            seeking(ZStack(alignment: .topLeading) {
                 WaveformBars(heights: heights, range: 0..<heard).fill(played)
                 WaveformBars(heights: heights, range: heard..<heights.count).fill(unplayed)
-                if playhead || dragged != nil {
+                if playhead || scrubbed != nil {
                     Circle().fill(played).frame(width: 10, height: 10)
                         .position(x: (width - WaveformBars.gap) * shown, y: geometry.size.height / 2)
                 }
             }
-            .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { dragged = min(1, max(0, $0.location.x / max(1, width))) }
-                .onEnded { _ in
-                    if let dragged { seek(dragged) }
-                    dragged = nil
-                })
+            .contentShape(Rectangle()), width: width)
         }
         .accessibilityElement()
         .accessibilityLabel(Text(label))
@@ -200,6 +201,47 @@ struct WaveformBar: View {
             @unknown default: break
             }
         }
+    }
+
+    private var scrubbed: Double? {
+        if case .along(let at) = scrub { return at }
+        return dragged
+    }
+
+    private nonisolated static func fraction(_ x: CGFloat, _ width: CGFloat) -> Double {
+        min(1, max(0, Double(x / max(1, width))))
+    }
+
+    /// iOS 18+: a tap, and UIKit's sideways pan, which leaves a vertical drag to the list. Before: SwiftUI's drag from
+    /// the first touch, alongside the list's scrolling, and nothing for a drag that goes up or down.
+    @ViewBuilder
+    private func seeking<Content: View>(_ content: Content, width: CGFloat) -> some View {
+        #if compiler(>=6.0)
+        if #available(iOS 18.0, *) {
+            content
+                .gesture(SpatialTapGesture().onEnded { seek(Self.fraction($0.location.x, width)) })
+                .gesture(SidewaysPan(changed: { _, location in dragged = Self.fraction(location.x, width) },
+                                     ended: { finished in
+                                         if finished, let dragged { seek(dragged) }
+                                         dragged = nil
+                                     }))
+        } else {
+            legacySeeking(content, width: width)
+        }
+        #else
+        legacySeeking(content, width: width)
+        #endif
+    }
+
+    private func legacySeeking<Content: View>(_ content: Content, width: CGFloat) -> some View {
+        content.simultaneousGesture(DragGesture(minimumDistance: 0)
+            .updating($scrub) { drag, scrub, _ in
+                guard scrub != .across else { return }
+                scrub = DragDirection.vertical(drag.translation) ? .across : .along(Self.fraction(drag.location.x, width))
+            }
+            .onEnded { drag in
+                if !DragDirection.vertical(drag.translation) { seek(Self.fraction(drag.location.x, width)) }
+            })
     }
 }
 

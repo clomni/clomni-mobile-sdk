@@ -121,19 +121,20 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         windowObservers = []
     }
 
-    /// Brings the navigation stack to `stack`: a push or a pop when only the top changed, else the whole stack.
+    /// Brings the navigation stack to `stack`: a push or a pop when only the top changed, else the whole stack. A new
+    /// screen at the bottom is another tab (SDK 1.0.7): it replaces the list without a push.
     private func follow(_ stack: [MessengerRoute], animated: Bool = true) {
         guard let navigation, stack != shown else { return }
-        let animate = animated && !UIAccessibility.isReduceMotionEnabled
         let kept = zip(shown, stack).prefix { $0 == $1 }.count
+        let animate = animated && kept > 0 && !UIAccessibility.isReduceMotionEnabled
         var controllers = Array(navigation.viewControllers.prefix(kept))
-        for route in stack.dropFirst(kept) { controllers.append(host(route)) }
+        for (index, route) in stack.enumerated().dropFirst(kept) { controllers.append(host(route, root: index == 0)) }
         shown = stack
         navigation.setViewControllers(controllers, animated: animate)
     }
 
-    private func host(_ route: MessengerRoute) -> UIViewController {
-        Self.host(ScreenRoot(model: rootModel, content: screen(route)))
+    private func host(_ route: MessengerRoute, root: Bool) -> UIViewController {
+        Self.host(ScreenRoot(model: rootModel, content: screen(route, root: root)))
     }
 
     /// The messenger's sheet: a card over the app, which stays visible behind it; swiping it down closes the messenger.
@@ -157,19 +158,24 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         return host
     }
 
+    /// A list at the bottom of the stack (`root`) is a tab's: no back, and the tab bar when the panel has it on.
     @ViewBuilder
-    private func screen(_ route: MessengerRoute) -> some View {
+    private func screen(_ route: MessengerRoute, root: Bool) -> some View {
         if let coordinator {
+            let lists = home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil)
             switch route {
             case .home:
-                HomeScreenRoot(model: rootModel, home: home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil),
-                               coordinator: coordinator)
+                HomeScreenRoot(model: rootModel, home: lists, coordinator: coordinator)
             case .messages:
-                MessagesScreenRoot(home: home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil),
-                                   coordinator: coordinator)
+                MessagesTabView(model: lists, coordinator: coordinator, isTab: root)
+            case .newsList:
+                NewsListTabView(model: lists, coordinator: coordinator, isTab: root)
+            case .faq:
+                FaqTabView(model: lists, coordinator: coordinator, isTab: root)
+            case .faqAnswer(let id):
+                NewsScreenView(model: lists, id: id, coordinator: coordinator, faqAnswer: true)
             case .news(let id):
-                NewsScreenView(model: home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil), id: id,
-                               coordinator: coordinator)
+                NewsScreenView(model: lists, id: id, coordinator: coordinator)
             case .conversation(let id):
                 ConversationScreen(engine: engine, conversationId: id, language: coordinator.language,
                                    config: coordinator.config,

@@ -29,6 +29,8 @@ package protocol ChatDataSource: Sendable {
     func sendFile(_ data: Data, fileName: String, mime: String, caption: String?,
                   in conversationId: String, replyTo: String?, voice: ClientMessage.Voice?) async throws -> PendingMessage
     func retry(_ clientId: String) async throws
+    /// The user's own message, by its id or (still in the outbox) its client id (SDK 1.0.7).
+    func deleteMessage(_ id: String, in conversationId: String) async -> DeleteOutcome
     func draftConversation(openedFrom: String?) async -> String
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
     func stopObserving(_ token: UUID) async
@@ -296,6 +298,24 @@ package final class ChatController {
     /// "Göndərilmədi · Yenidən cəhd et".
     package func retrySending(_ clientId: String) async {
         try? await source.retry(clientId)
+    }
+
+    /// "Sil", confirmed (SDK 1.0.7): the bubble's `deleteId`. Returns the text to show when the message stays: the
+    /// conversation was closed meanwhile ("Söhbət bağlanıb, mesaj silinmir."), or it could not be reached.
+    package func delete(_ id: String) async -> String? {
+        if snapshot.replyingTo == id { reply(to: nil) }
+        switch await source.deleteMessage(id, in: conversationId) {
+        case .deleted:
+            return nil
+        case .closed:
+            // The composer follows the conversation's status.
+            try? await source.refreshConversation(conversationId)
+            await read()
+            render()
+            return strings[.deleteClosed]
+        case .failed:
+            return strings[.error]
+        }
     }
 
     /// An image (already scaled, see `Media.uploadSize`) or a file; returns the text to show when it is refused.

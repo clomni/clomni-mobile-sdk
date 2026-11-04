@@ -8,6 +8,8 @@ package enum ClomniChange: Sendable, Equatable {
     case session
     case config
     case news
+    /// The questions of the FAQ (SDK 1.0.7).
+    case faq
     case conversations
     /// Messages or pending messages of one conversation.
     case messages(conversationId: String)
@@ -18,6 +20,16 @@ package enum ClomniChange: Sendable, Equatable {
     case read(conversationId: String, upToSeq: Int)
     /// A new conversation's first message made the server create it: the draft's id is `conversationId` from now on.
     case conversationCreated(draft: String, conversationId: String)
+}
+
+/// What became of `ClomniEngine.deleteMessage`.
+package enum DeleteOutcome: Sendable, Equatable {
+    /// Gone for everyone; a message still in the outbox never left the device.
+    case deleted
+    /// The conversation is closed (409 conversation_closed): the message stays.
+    case closed
+    /// No answer, or another refusal: the message stays.
+    case failed
 }
 
 /// The SDK below the screens: the session, the socket, the cache and the outbox (brief 8 · 9: Api, Realtime, Store).
@@ -43,6 +55,8 @@ package actor ClomniEngine {
     package private(set) lazy var config: MessengerConfig? = cache.read(Files.config).flatMap(ProtocolJSON.parseConfig)
     /// The last news the server sent, from disk until it is asked.
     package private(set) lazy var news: [NewsItem] = cache.read(Files.news).flatMap(ProtocolJSON.parseNews) ?? []
+    /// The last questions the server sent (SDK 1.0.7), from disk until it is asked.
+    package private(set) lazy var faq: [FaqItem] = cache.read(Files.faq).flatMap(ProtocolJSON.parseFaq) ?? []
     private lazy var configETag: String? = cache.read(Files.configETag).map { String(decoding: $0, as: UTF8.self) }
     /// The inbox is switched off in Clomni: the messenger must not open.
     package private(set) var isAppDisabled = false
@@ -70,6 +84,9 @@ package actor ClomniEngine {
     private var drafts: [String: String?] = [:]
     /// Drafts the server has created, to their ids.
     private var createdDrafts: [String: String] = [:]
+    /// The outbox entry whose POST is on its way, and those of them the user deleted meanwhile (SDK 1.0.7).
+    private var sendingNow: String?
+    private var deletedWhileSending: Set<String> = []
     /// Drafts whose POST /conversations is on its way (opened with a flow, or the first message): one request each.
     private var creating: [String: Task<Void, Error>] = [:]
 
@@ -107,6 +124,8 @@ package actor ClomniEngine {
         static let configETag = "config.etag"
         static let news = "news.json"
         static let newsETag = "news.etag"
+        static let faq = "faq.json"
+        static let faqETag = "faq.etag"
         /// Kept in the vault, next to the session it was registered for (the system may purge the cache).
         static let push = "push_registration"
     }
@@ -196,6 +215,7 @@ package actor ClomniEngine {
         clearLocalData()
         config = nil
         news = []
+        faq = []
         configETag = nil
         cache.clear()
         notify(.session)
@@ -367,6 +387,30 @@ package actor ClomniEngine {
     /// Opening a news item, for the panel's analytics: the app event news_opened {news_id}.
     package func newsOpened(_ id: String) async {
         try? await track("news_opened", data: ["news_id": .string(id)])
+    }
+
+    /// The published questions (SDK 1.0.7), as the news: in the language of the config's texts; the cached ones when
+    /// the server has nothing newer or cannot be reached.
+    @discardableResult
+    package func refreshFaq() async -> [FaqItem] {
+        do {
+            let etag = cache.read(Files.faqETag).map { String(decoding: $0, as: UTF8.self) }
+            if case .changed(let items, let body, let etag) = try await api.faq(language: configLanguage, etag: etag) {
+                faq = items
+                cache.write(body, Files.faq)
+                cache.write(etag.map { Data($0.utf8) }, Files.faqETag)
+                notify(.faq)
+            }
+        } catch {
+            noteDisabled(error)
+            ClomniLog.warning("faq not refreshed: \(error)")
+        }
+        return faq
+    }
+
+    /// Opening a question: the app event faq_opened {faq_id}.
+    package func faqOpened(_ id: String) async {
+        try? await track("faq_opened", data: ["faq_id": .string(id)])
     }
 
     package func refreshConversations() async throws {
@@ -585,6 +629,31 @@ package actor ClomniEngine {
         changed(removePending(clientId)?.conversationId)
     }
 
+    /// The user's own message, deleted for everyone (SDK 1.0.7): `id` is the server's id, or the client id of one still
+    /// in the outbox, which is then only taken off it. The deleted copy shows at once; the server's `message.updated`
+    /// follows. A message that was on its way when it was taken off is deleted on the server once it lands (`attempt`).
+    package func deleteMessage(_ id: String, in conversationId: String) async -> DeleteOutcome {
+        if let pending = removePending(id) {
+            if sendingNow == id { deletedWhileSending.insert(id) }
+            changed(pending.conversationId)
+            return .deleted
+        }
+        let conversationId = resolved(conversationId)
+        guard let message = store.message(id, in: conversationId) else { return .failed }
+        do {
+            try await api.deleteMessage(id, in: conversationId)
+        } catch ClomniError.server(409, _) {
+            return .closed
+        } catch {
+            ClomniLog.warning("\(id) not deleted: \(error)")
+            return .failed
+        }
+        // The socket's copy may have come meanwhile; either way the message is now the deleted one.
+        store.insert((store.message(id, in: conversationId) ?? message).deleted())
+        changed(conversationId)
+        return .deleted
+    }
+
     /// Takes a message out of the outbox, with its staged file.
     @discardableResult
     private func removePending(_ clientId: String) -> PendingMessage? {
@@ -681,8 +750,16 @@ package actor ClomniEngine {
                 guard let updated = outbox.entry(entry.id) else { return }
                 entry = updated
             }
+            sendingNow = entry.id
+            defer { sendingNow = nil }
             let message = try await api.send(entry.message, to: entry.conversationId)
             unanswered = 0
+            // Deleted while it was on its way: it reached the server all the same, so it goes there too.
+            if deletedWhileSending.remove(entry.id) != nil {
+                receive(message)
+                _ = await deleteMessage(message.id, in: message.conversationId)
+                return
+            }
             removePending(entry.id)
             receive(message)
             ClomniLog.debug("sent \(entry.id) as \(message.id)")

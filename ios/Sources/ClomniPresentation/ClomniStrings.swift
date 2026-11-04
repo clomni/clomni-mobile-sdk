@@ -80,6 +80,21 @@ package struct ClomniStrings: Sendable, Equatable {
         case voiceOpenSettings = "voice_open_settings"
         case voiceUnavailable = "voice_unavailable"
         case voiceMaxLength = "voice_max_length"
+        // SDK 1.0.7: deleting a message, the tab bar, Home's "see all", the FAQ.
+        case delete, cancel
+        case deleteConfirmTitle = "delete_confirm_title"
+        case deleteConfirmBody = "delete_confirm_body"
+        case deleteClosed = "delete_closed"
+        case messageDeleted = "message_deleted"
+        case tabHome = "tab_home"
+        case tabMessages = "tab_messages"
+        case tabNews = "tab_news"
+        case tabFaq = "tab_faq"
+        case seeAll = "see_all"
+        case faqTitle = "faq_title"
+        case faqSearch = "faq_search"
+        case faqEmpty = "faq_empty"
+        case faqNoResults = "faq_no_results"
     }
 
     /// az, en or ru; anything else reads as az.
@@ -182,6 +197,21 @@ package struct ClomniStrings: Sendable, Equatable {
             .voiceOpenSettings: "Ayarlara keç",
             .voiceUnavailable: "Səsi oynatmaq olmadı",
             .voiceMaxLength: "Ən çox %d dəqiqə",
+            .delete: "Sil",
+            .cancel: "Ləğv et",
+            .deleteConfirmTitle: "Mesaj silinsin?",
+            .deleteConfirmBody: "Mesaj hər kəs üçün silinəcək.",
+            .deleteClosed: "Söhbət bağlanıb, mesaj silinmir.",
+            .messageDeleted: "Bu mesaj silindi",
+            .tabHome: "Əsas səhifə",
+            .tabMessages: "Söhbətlər",
+            .tabNews: "Xəbərlər",
+            .tabFaq: "Suallar",
+            .seeAll: "Hamısı",
+            .faqTitle: "Tez-tez verilən suallar",
+            .faqSearch: "Sual axtarın",
+            .faqEmpty: "Hələ sual yoxdur",
+            .faqNoResults: "Heç nə tapılmadı",
         ],
         "en": [
             .today: "Today", .yesterday: "Yesterday", .tomorrow: "tomorrow", .send: "Send", .sendCardTitle: "Send us a message",
@@ -223,6 +253,21 @@ package struct ClomniStrings: Sendable, Equatable {
             .voiceOpenSettings: "Open Settings",
             .voiceUnavailable: "Couldn't play this audio",
             .voiceMaxLength: "Up to %d min",
+            .delete: "Delete",
+            .cancel: "Cancel",
+            .deleteConfirmTitle: "Delete message?",
+            .deleteConfirmBody: "The message will be deleted for everyone.",
+            .deleteClosed: "The conversation is closed, the message cannot be deleted.",
+            .messageDeleted: "This message was deleted",
+            .tabHome: "Home",
+            .tabMessages: "Chats",
+            .tabNews: "News",
+            .tabFaq: "FAQ",
+            .seeAll: "See all",
+            .faqTitle: "Frequently asked questions",
+            .faqSearch: "Search questions",
+            .faqEmpty: "No questions yet",
+            .faqNoResults: "Nothing found",
         ],
         "ru": [
             .today: "Сегодня", .yesterday: "Вчера", .tomorrow: "завтра", .send: "Отправить", .sendCardTitle: "Напишите нам",
@@ -264,6 +309,21 @@ package struct ClomniStrings: Sendable, Equatable {
             .voiceOpenSettings: "Открыть настройки",
             .voiceUnavailable: "Не удалось воспроизвести",
             .voiceMaxLength: "Не больше %d мин",
+            .delete: "Удалить",
+            .cancel: "Отмена",
+            .deleteConfirmTitle: "Удалить сообщение?",
+            .deleteConfirmBody: "Сообщение будет удалено для всех.",
+            .deleteClosed: "Диалог закрыт, сообщение нельзя удалить.",
+            .messageDeleted: "Сообщение удалено",
+            .tabHome: "Главная",
+            .tabMessages: "Чаты",
+            .tabNews: "Новости",
+            .tabFaq: "Вопросы",
+            .seeAll: "Все",
+            .faqTitle: "Частые вопросы",
+            .faqSearch: "Поиск по вопросам",
+            .faqEmpty: "Пока нет вопросов",
+            .faqNoResults: "Ничего не найдено",
         ],
     ]
 }

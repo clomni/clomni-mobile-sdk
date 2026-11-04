@@ -17,18 +17,24 @@ package protocol MessengerDataSource: Sendable {
     var news: [NewsItem] { get async }
     func refreshNews() async -> [NewsItem]
     func newsOpened(_ id: String) async
+    /// The FAQ (SDK 1.0.7), cached and asked for like the news.
+    var faq: [FaqItem] { get async }
+    func refreshFaq() async -> [FaqItem]
+    func faqOpened(_ id: String) async
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID
     func stopObserving(_ token: UUID) async
 }
 
 extension ClomniEngine: MessengerDataSource {}
 
-/// Keeps the Home and Messages screens current: what is cached at once, then the server's answer, then every change
+/// Keeps the Home, Messages, news and FAQ screens current: what is cached at once, then the server's answer, then every change
 /// the engine reports. The SwiftUI views observe it through `onChange`.
 @MainActor
 package final class HomeController {
     package private(set) var home: HomeScreen
     package private(set) var messages: MessagesScreen
+    package private(set) var newsList: NewsListScreen
+    package private(set) var faq: FaqScreen
     /// Called after `home` or `messages` changed.
     package var onChange: (() -> Void)?
 
@@ -76,6 +82,8 @@ package final class HomeController {
                                       timeZone: timeZone, now: now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)
+        newsList = presenter.newsList(snapshot)
+        faq = presenter.faq(snapshot)
     }
 
     /// Shows the cache at once, then asks the server for the config and the conversations.
@@ -89,6 +97,8 @@ package final class HomeController {
         let config = await source.refreshConfig(language: snapshot.config.speaks(language))
         snapshot.configLoad = config == nil ? .failed : .loaded
         _ = await source.refreshNews()
+        // The questions only while the panel shares them: GET /faq is empty otherwise.
+        if (config ?? snapshot.config)?.faqEnabled == true { _ = await source.refreshFaq() }
         do {
             try await source.refreshConversations()
             snapshot.conversationsLoad = .loaded
@@ -126,6 +136,18 @@ package final class HomeController {
         await source.newsOpened(article.id)
     }
 
+    /// A question's answer, on the news item's screen.
+    package func faqAnswer(_ id: String) -> NewsArticle? {
+        guard let item = snapshot.faq.first(where: { $0.id == id }) else { return nil }
+        return NewsArticle(item, strings: ClomniStrings(language: snapshot.config.speaks(language),
+                                                        overrides: snapshot.config?.strings ?? [:]))
+    }
+
+    /// A question opened in the FAQ: faq_opened.
+    package func faqOpened(_ id: String) async {
+        await source.faqOpened(id)
+    }
+
     /// "Bizə mesaj göndərin": a draft's id. The server creates the conversation with its first message.
     package func startConversation(openedFrom: String?) async -> String {
         await source.draftConversation(openedFrom: openedFrom)
@@ -147,6 +169,7 @@ package final class HomeController {
         snapshot.conversations = await source.conversations()
         snapshot.unreadTotal = await source.unreadTotal
         snapshot.news = await source.news
+        snapshot.faq = await source.faq
         loggedInName = await source.userName
     }
 
@@ -158,6 +181,8 @@ package final class HomeController {
         let presenter = HomePresenter(strings: strings, timeZone: timeZone, now: now())
         home = presenter.home(snapshot)
         messages = presenter.messages(snapshot)
+        newsList = presenter.newsList(snapshot)
+        faq = presenter.faq(snapshot)
         onChange?()
     }
 }

@@ -23,6 +23,8 @@ package struct MessengerConfig: Sendable, Equatable {
     package let startsWithFlow: Bool
     /// Short sounds for a sent and a received message; the app can still turn them off.
     package let sounds: Bool
+    /// The questions the panel shares (GET /faq, SDK 1.0.7): the faq tab and Home's faq card. Off when absent.
+    package let faqEnabled: Bool
 
     package struct Brand: Sendable, Equatable {
         package let name: String
@@ -115,15 +117,24 @@ package struct MessengerConfig: Sendable, Equatable {
         package let channels: [Channel]
         /// The greeting's size in percent of 28: 70 to 140, 100 when absent.
         package let titleScale: Int
+        /// Tabs at the bottom of the list screens (SDK 1.0.7): Home, the conversations, the news and the FAQ while
+        /// there are some. Off when absent.
+        package let tabBar: Bool
+        /// How many news items Home's card shows: 1 to 3, 2 when absent or out of range.
+        package let newsOnHome: Int
+
+        package static let defaultNewsOnHome = 2
     }
 
     package enum HomeCard: String, Sendable, Equatable, CaseIterable {
-        /// Opens the conversation list (there is no tab bar).
+        /// Opens the conversation list (with a tab bar too).
         case messages
         case recent, send
-        /// The published news; not drawn when there is none.
+        /// The first `newsOnHome` published news; not drawn when there is none.
         case news
         case channels
+        /// The first three questions (SDK 1.0.7); drawn only while the FAQ is on and has a question.
+        case faq
     }
 
     /// A social channel icon on Home; `type` is open-ended (instagram, whatsapp, linkedin, email, …).
@@ -286,7 +297,10 @@ extension MessengerConfig {
                 else { return nil }
                 return Channel(type: type, url: url)
             }.prefix(Self.maxChannels)),
-            titleScale: Self.percent(home.optionalInt("title_scale"), in: 70...140))
+            titleScale: Self.percent(home.optionalInt("title_scale"), in: 70...140),
+            tabBar: home.optionalBool("tab_bar") ?? false,
+            newsOnHome: home.optionalInt("news_on_home").flatMap { (1...3).contains($0) ? $0 : nil }
+                ?? Home.defaultNewsOnHome)
 
         let theme = section(f, "theme")
         let launcher = section(theme, "launcher")
@@ -311,6 +325,7 @@ extension MessengerConfig {
         poweredBy = f.optionalBool("powered_by") ?? true
         startsWithFlow = section(f, "conversation").optionalBool("starts_with_flow") ?? false
         sounds = f.optionalBool("sounds") ?? true
+        faqEnabled = section(f, "faq").optionalBool("enabled") ?? false
     }
 
     /// The six colours (and header_text when there), or nil.

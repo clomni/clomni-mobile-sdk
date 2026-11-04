@@ -95,7 +95,7 @@ package struct HomeScreen: Sendable, Equatable {
         }
     }
 
-    /// The first three published news, in the panel's order.
+    /// The first `news_on_home` published news (2 unless the panel says), in the panel's order.
     package struct NewsCard: Sendable, Equatable {
         package struct Item: Sendable, Equatable, Identifiable {
             package let id: String
@@ -106,11 +106,28 @@ package struct HomeScreen: Sendable, Equatable {
             package let accessibilityLabel: String
         }
 
-        package static let maxItems = 3
         package let items: [Item]
+        /// "Hamısı" under them, to the news tab or the news list, while there are more news than the card holds.
+        package let seeAll: String?
     }
 
-    /// "Mesajlar" with its icon: the way to the conversations, always on Home (there is no tab bar).
+    /// The first three questions of the FAQ, and "Hamısı" while there are more (SDK 1.0.7); a question opens its
+    /// answer.
+    package struct FaqCard: Sendable, Equatable {
+        package static let maxItems = 3
+
+        package struct Item: Sendable, Equatable, Identifiable {
+            package let id: String
+            package let question: String
+        }
+
+        /// "Tez-tez verilən suallar", over the questions.
+        package let title: String
+        package let items: [Item]
+        package let seeAll: String?
+    }
+
+    /// "Mesajlar" with its icon: the way to the conversations, always on Home (with a tab bar too).
     package struct MessagesCard: Sendable, Equatable {
         package let title: String
         /// The red dot next to the icon.
@@ -131,6 +148,9 @@ package struct HomeScreen: Sendable, Equatable {
     package let channels: ChannelsCard?
     package let messagesCard: MessagesCard
     package let news: NewsCard?
+    package let faq: FaqCard?
+    /// The tabs under the screen (config home.tab_bar); nil without them.
+    package let tabBar: TabBar?
     /// The capsule over the screen while offline (CM-077).
     package let offline: String?
     /// "Qoşuldu": the capsule's word for a second once the connection is back.
@@ -172,6 +192,8 @@ package struct MessagesScreen: Sendable, Equatable {
     package let loadingLabel: String
     /// VoiceOver's name for the back button.
     package let backLabel: String
+    /// The tabs under the screen (config home.tab_bar); nil without them.
+    package let tabBar: TabBar?
 }
 
 /// What the screens are built from.
@@ -184,8 +206,10 @@ package struct MessengerSnapshot: Sendable, Equatable {
     package var conversations: [Conversation] = []
     package var conversationsLoad = Load.loading
     package var unreadTotal = 0
-    /// The published news (GET /news), the first three on Home.
+    /// The published news (GET /news), the first `news_on_home` on Home.
     package var news: [NewsItem] = []
+    /// The published questions (GET /faq, SDK 1.0.7); shown only while the config has the FAQ on.
+    package var faq: [FaqItem] = []
     /// The logged-in user's name, for the greeting.
     package var userName: String?
     package var isOffline = false
@@ -218,11 +242,19 @@ package struct HomePresenter: Sendable {
         let channels = cards.contains(.channels) && !items.isEmpty
             ? HomeScreen.ChannelsCard(label: strings[.followUs], items: items) : nil
         let failed = config == nil && snapshot.configLoad == .failed
-        let newsItems = snapshot.news.prefix(HomeScreen.NewsCard.maxItems).map {
-            HomeScreen.NewsCard.Item(id: $0.id, title: $0.title, summary: $0.summary, imageUrl: $0.imageUrl,
-                                     accessibilityLabel: [$0.title, $0.summary].compactMap { $0 }.joined(separator: ". "))
-        }
-        let news = cards.contains(.news) && !newsItems.isEmpty ? HomeScreen.NewsCard(items: newsItems) : nil
+        let onHome = config?.home.newsOnHome ?? MessengerConfig.Home.defaultNewsOnHome
+        let newsItems = snapshot.news.prefix(onHome).map(Self.newsItem)
+        let news = cards.contains(.news) && !newsItems.isEmpty
+            ? HomeScreen.NewsCard(items: Array(newsItems), seeAll: snapshot.news.count > onHome ? strings[.seeAll] : nil)
+            : nil
+        let questions = Self.questions(snapshot)
+        let faq = cards.contains(.faq) && !questions.isEmpty
+            ? HomeScreen.FaqCard(title: strings[.faqTitle],
+                                 items: questions.prefix(HomeScreen.FaqCard.maxItems).map {
+                                     HomeScreen.FaqCard.Item(id: $0.id, question: $0.question)
+                                 },
+                                 seeAll: questions.count > HomeScreen.FaqCard.maxItems ? strings[.seeAll] : nil)
+            : nil
         return HomeScreen(
             phase: config != nil ? .ready : failed ? .failed : .loading,
             header: header(snapshot),
@@ -231,6 +263,8 @@ package struct HomePresenter: Sendable {
             channels: channels,
             messagesCard: messagesCard(snapshot),
             news: news,
+            faq: faq,
+            tabBar: tabBar(snapshot),
             offline: snapshot.isOffline ? strings[.offline] : nil,
             connected: strings[.connected],
             failure: failed ? failure : nil,
@@ -241,6 +275,7 @@ package struct HomePresenter: Sendable {
                 case .recent: return recent != nil
                 case .channels: return channels != nil
                 case .news: return news != nil
+                case .faq: return faq != nil
                 }
             },
             poweredBy: config?.poweredBy == false ? nil : "Powered by")
@@ -267,7 +302,52 @@ package struct HomePresenter: Sendable {
             connected: strings[.connected],
             failure: failed ? failure : nil,
             loadingLabel: strings[.loading],
-            backLabel: strings[.goBack])
+            backLabel: strings[.goBack],
+            tabBar: tabBar(snapshot))
+    }
+
+    /// A news item on Home's card and in the news list.
+    static func newsItem(_ item: NewsItem) -> HomeScreen.NewsCard.Item {
+        HomeScreen.NewsCard.Item(id: item.id, title: item.title, summary: item.summary, imageUrl: item.imageUrl,
+                                 accessibilityLabel: [item.title, item.summary].compactMap { $0 }.joined(separator: ". "))
+    }
+
+    /// The FAQ's questions while the panel has it on; none otherwise.
+    static func questions(_ snapshot: MessengerSnapshot) -> [FaqItem] {
+        snapshot.config?.faqEnabled == true ? snapshot.faq : []
+    }
+
+    /// Home and the conversations, then the news while there are some and the FAQ while it is on and has a question;
+    /// nil unless the panel turned the tab bar on.
+    package func tabBar(_ snapshot: MessengerSnapshot) -> TabBar? {
+        guard snapshot.config?.home.tabBar == true else { return nil }
+        let unread = max(snapshot.unreadTotal, snapshot.conversations.reduce(0) { $0 + max(0, $1.unreadCount) })
+        var tabs: [TabBar.Item] = [
+            TabBar.Item(tab: .home, title: strings[.tabHome], badge: nil, accessibilityLabel: strings[.tabHome]),
+            TabBar.Item(tab: .messages, title: strings[.tabMessages], badge: TabBar.badge(unread),
+                        accessibilityLabel: unread > 0 ? "\(strings[.tabMessages]), \(strings[.unreadMessages])"
+                            : strings[.tabMessages]),
+        ]
+        if !snapshot.news.isEmpty {
+            tabs.append(TabBar.Item(tab: .news, title: strings[.tabNews], badge: nil, accessibilityLabel: strings[.tabNews]))
+        }
+        if !Self.questions(snapshot).isEmpty {
+            tabs.append(TabBar.Item(tab: .faq, title: strings[.tabFaq], badge: nil, accessibilityLabel: strings[.tabFaq]))
+        }
+        return TabBar(items: tabs)
+    }
+
+    /// All the published news, from Home's "Hamısı" or the news tab.
+    package func newsList(_ snapshot: MessengerSnapshot) -> NewsListScreen {
+        NewsListScreen(title: strings[.newsTitle], items: snapshot.news.map(Self.newsItem),
+                       backLabel: strings[.goBack], closeLabel: strings[.close], tabBar: tabBar(snapshot))
+    }
+
+    /// The FAQ: the questions with their answers, searched on the device.
+    package func faq(_ snapshot: MessengerSnapshot) -> FaqScreen {
+        FaqScreen(title: strings[.faqTitle], searchPlaceholder: strings[.faqSearch], empty: strings[.faqEmpty],
+                  noResults: strings[.faqNoResults], entries: Self.questions(snapshot).map(FaqScreen.Entry.init),
+                  backLabel: strings[.goBack], closeLabel: strings[.close], tabBar: tabBar(snapshot))
     }
 
     /// A conversation with a last message; one without has nothing to show yet.
@@ -296,7 +376,7 @@ package struct HomePresenter: Sendable {
             name = brand ?? ""
             other = company
         }
-        let preview = Self.plainText(message)
+        let preview = message.isDeleted ? strings[.messageDeleted] : Self.plainText(message)
         let ago = time.ago(message.createdAt, now: now)
         let unread = conversation.unreadCount > 0
         return ConversationRow(
@@ -383,7 +463,7 @@ package struct NewsArticle: Sendable, Equatable {
     package let id: String
     package let imageUrl: URL?
     package let title: String
-    /// "2 okt", or with the year when it is not this one.
+    /// "2 okt", or with the year when it is not this one; empty for an FAQ answer.
     package let date: String
     /// Paragraphs; a "- " line is a list item.
     package let blocks: [Block]
@@ -396,17 +476,35 @@ package struct NewsArticle: Sendable, Equatable {
         case listItem([TextRun])
     }
 
-    package init(_ item: NewsItem, strings: ClomniStrings, time: TimeText, now: Date) {
-        id = item.id
-        imageUrl = item.imageUrl
-        title = item.title
-        date = time.day(item.publishedAt, now: now)
-        blocks = (item.bodyMarkdown ?? "").components(separatedBy: "\n").compactMap { line in
+    /// A news item's text, or an FAQ answer: each line a paragraph, a "- " line a list item.
+    package static func blocks(_ markdown: String) -> [Block] {
+        markdown.components(separatedBy: "\n").compactMap { line in
             let text = line.trimmingCharacters(in: .whitespaces)
             guard !text.isEmpty else { return nil }
             if text.hasPrefix("- ") { return .listItem(LimitedMarkdown.parse(String(text.dropFirst(2)))) }
             return .paragraph(LimitedMarkdown.parse(text))
         }
+    }
+
+    /// A question of the FAQ on the news item's screen (SDK 1.0.7): the question as the title, the answer as the text;
+    /// no cover, date or button.
+    package init(_ item: FaqItem, strings: ClomniStrings) {
+        id = item.id
+        imageUrl = nil
+        title = item.question
+        date = ""
+        blocks = Self.blocks(item.answer)
+        button = nil
+        backLabel = strings[.goBack]
+        closeLabel = strings[.close]
+    }
+
+    package init(_ item: NewsItem, strings: ClomniStrings, time: TimeText, now: Date) {
+        id = item.id
+        imageUrl = item.imageUrl
+        title = item.title
+        date = time.day(item.publishedAt, now: now)
+        blocks = Self.blocks(item.bodyMarkdown ?? "")
         button = item.button
         backLabel = strings[.goBack]
         closeLabel = strings[.close]

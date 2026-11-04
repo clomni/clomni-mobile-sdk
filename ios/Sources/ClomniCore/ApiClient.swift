@@ -96,6 +96,11 @@ enum NewsResult: Equatable {
     case changed([NewsItem], body: Data, etag: String?)
 }
 
+enum FaqResult: Equatable {
+    case notModified
+    case changed([FaqItem], body: Data, etag: String?)
+}
+
 /// The Mobile API (protocol/openapi.yaml). Session endpoints authenticate with the app's public keys, the rest with
 /// the session token. A `401` renews the session once and repeats the request; `429` waits `Retry-After`; a `5xx`
 /// is retried with 1, 2, 4 s waits. Anything else is thrown as `ClomniError`.
@@ -252,6 +257,14 @@ actor ApiClient {
         return .changed(try read(response, ProtocolJSON.parseNews), body: response.body, etag: response.header("ETag"))
     }
 
+    /// GET /faq (SDK 1.0.7), cached like the news.
+    func faq(language: String?, etag: String?) async throws -> FaqResult {
+        let response = try await request("GET", "/faq", query: ["lang": language],
+                                         headers: etag.map { ["If-None-Match": $0] } ?? [:])
+        if response.status == 304 { return .notModified }
+        return .changed(try read(response, ProtocolJSON.parseFaq), body: response.body, etag: response.header("ETag"))
+    }
+
     func conversations(cursor: String? = nil, limit: Int = 20) async throws -> ConversationPage {
         try read(try await request("GET", "/conversations", query: ["cursor": cursor, "limit": String(limit)]),
                  ProtocolJSON.parseConversationPage)
@@ -283,6 +296,12 @@ actor ApiClient {
         let response = try await request("POST", "/conversations/\(escape(id))/messages",
                                          body: ProtocolJSON.encode(message), contentType: "application/json")
         return try read(response, ProtocolJSON.parseMessage)
+    }
+
+    /// The user's own message, deleted for everyone (SDK 1.0.7): 204, also when it was deleted already; 409
+    /// `conversation_closed` once the conversation is closed.
+    func deleteMessage(_ messageId: String, in id: String) async throws {
+        _ = try await request("DELETE", "/conversations/\(escape(id))/messages/\(escape(messageId))")
     }
 
     func markRead(_ id: String, upToSeq: Int) async throws {

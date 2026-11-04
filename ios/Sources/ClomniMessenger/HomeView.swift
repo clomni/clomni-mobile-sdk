@@ -18,13 +18,20 @@ struct MessengerActions {
     var openMessages: () -> Void = {}
     /// An item of Home's news card.
     var openNews: (String) -> Void = { _ in }
+    /// "Hamısı" under the news card (SDK 1.0.7): the news tab, or the news list.
+    var openNewsList: () -> Void = {}
+    /// The FAQ (SDK 1.0.7): a question's answer, or the questions (nil, "Hamısı").
+    var openFaq: (String?) -> Void = { _ in }
+    /// A tab under a list screen (SDK 1.0.7).
+    var selectTab: (TabBar.Tab) -> Void = { _ in }
     var back: () -> Void = {}
     var retry: () -> Void = {}
 }
 
 /// Home (DESIGN-PASS-2, Intercom's layout): no header block. The brand's colour runs full under the logo and the
 /// greeting and 16 pt past them, then fades into the page over 160 pt, where the cards start; text never stands in
-/// the fade. The logo top left and ✕ top right. No tab bar: the "Mesajlar" card leads to the conversations.
+/// the fade. The logo top left and ✕ top right. The "Mesajlar" card leads to the conversations; with the tab bar
+/// (SDK 1.0.7) so does its tab.
 struct HomeView: View {
     let screen: HomeScreen
     let theme: ClomniTheme
@@ -366,7 +373,12 @@ struct HomeCardsView: View {
                             MessagesCardView(card: screen.messagesCard, theme: theme, action: actions.openMessages)
                         case .news:
                             if let news = screen.news {
-                                NewsCardView(card: news, theme: theme, open: actions.openNews)
+                                NewsCardView(card: news, theme: theme, open: actions.openNews,
+                                             seeAll: actions.openNewsList)
+                            }
+                        case .faq:
+                            if let faq = screen.faq {
+                                FaqCardView(card: faq, theme: theme, open: actions.openFaq)
                             }
                         case .send:
                             if let send = screen.newConversation {

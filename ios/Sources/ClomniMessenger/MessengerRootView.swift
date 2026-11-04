@@ -66,16 +66,6 @@ struct HomeScreenRoot: View {
     }
 }
 
-/// The conversations, pushed from Home's "Mesajlar" card.
-struct MessagesScreenRoot: View {
-    @ObservedObject var home: MessengerModel
-    let coordinator: MessengerCoordinator
-
-    var body: some View {
-        MessagesTabView(model: home, coordinator: coordinator)
-    }
-}
-
 /// One conversation with its own model, made once per conversation id.
 struct ConversationScreen: View {
     @StateObject private var model: ChatModel

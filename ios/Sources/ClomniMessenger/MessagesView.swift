@@ -16,18 +16,21 @@ struct MessagesView: View {
     let closeLabel: String
     let backLabel: String
     let actions: MessengerActions
+    /// A tab's list (SDK 1.0.7): no back, the tab bar under it instead.
+    var isTab = false
     /// The list has moved up under the bar.
     @State private var scrolled = false
 
     var body: some View {
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: closeLabel, backLabel: backLabel, theme: theme,
-                             showsDivider: scrolled, back: actions.back, close: actions.close)
+                             showsDivider: scrolled, back: isTab ? nil : actions.back, close: actions.close)
                 .offlineCapsule(offline: screen.offline, connected: screen.connected, theme: theme)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .background(theme.colors.canvas.color.ignoresSafeArea())
+        .messengerTabBar(isTab ? screen.tabBar : nil, selected: .messages, theme: theme, select: actions.selectTab)
     }
 
     @ViewBuilder
@@ -72,20 +75,25 @@ struct MessagesView: View {
 }
 
 /// The bar: the title 17 semibold in the screen's centre, back and ✕ in equal slots on either side (both the 40 pt
-/// circle), the same edges as every screen's bar; the 1 pt line under it once the list has scrolled.
+/// circle), the same edges as every screen's bar; the 1 pt line under it once the list has scrolled. A tab's list has
+/// no back (`back` nil); its slot stays, so the title keeps the centre.
 struct MessagesTitleBar: View {
     let title: String
     let closeLabel: String
     let backLabel: String
     let theme: ClomniTheme
     var showsDivider = false
-    let back: () -> Void
+    let back: (() -> Void)?
     let close: () -> Void
 
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
-                CircleBackButton(label: backLabel, theme: theme, action: back)
+                if let back {
+                    CircleBackButton(label: backLabel, theme: theme, action: back)
+                } else {
+                    Color.clear.frame(width: CGFloat(ClomniTheme.Size.touchTarget), height: 1)
+                }
                 Spacer(minLength: 0)
                 CloseButton(label: closeLabel, theme: theme, action: close)
             }
