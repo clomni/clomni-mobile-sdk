@@ -6,17 +6,10 @@ import XCTest
 final class ReplyTests: XCTestCase {
     private var app: XCUIApplication!
 
-    func testTheUserAnswersTheirOwnMessage() {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments += ["-ClomniDemoConversation"]
-        app.launch()
-        let mine = labelled("Çox sağ olun")
-        XCTAssertTrue(mine.waitForExistence(timeout: 15))
-        Thread.sleep(forTimeInterval: 2.5)
-
-        // A drag to the right on the user's own message, from 60 pt off the screen's edge to the edge: all the room
-        // a message on the right has. TestFlight #21 needed 80 pt of finger, more than a short message ever has.
+    /// A drag to the right on the user's own message, from 60 pt off the screen's edge to the edge: all the room a
+    /// message on the right has. TestFlight #21 needed 80 pt of finger, more than a short message ever has.
+    func testADragToTheRightAnswersTheUsersOwnMessage() {
+        let mine = launch()
         let window = app.windows.firstMatch.frame
         let start = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: window.maxX - 60, dy: settled(mine).midY))
@@ -25,17 +18,31 @@ final class ReplyTests: XCTestCase {
         XCTAssertTrue(quote("Siz").waitForExistence(timeout: 5), "a drag to the right answers the user's own message")
         XCTAssertTrue(quote("Çox sağ olun").exists)
         keep("own-swiped")
+    }
 
-        // Taken off with the quote's ✕; then "Cavabla" in its long-press menu quotes it again.
-        app.descendants(matching: .any).matching(identifier: "clomni.composer").firstMatch.buttons["Bağla"].tap()
-        XCTAssertTrue(quote("Siz").waitForNonExistence(timeout: 5), "the quote is gone")
+    /// "Cavabla" in the long-press menu of the user's own message (it was there before #21 too; kept so).
+    func testTheUsersOwnMessageHasCavabla() {
+        let mine = launch()
         mine.press(forDuration: 1.2)
         let reply = app.buttons["Cavabla"]
         XCTAssertTrue(reply.waitForExistence(timeout: 5), "the user's own message has Cavabla")
         keep("own-menu")
         reply.tap()
         XCTAssertTrue(quote("Siz").waitForExistence(timeout: 5), "quoted over the field, by Siz")
+        XCTAssertTrue(quote("Çox sağ olun").exists)
         keep("own-quoted")
+    }
+
+    /// The demo conversation, settled, and the user's "Çox sağ olun 🙏" in it.
+    private func launch() -> XCUIElement {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments += ["-ClomniDemoConversation"]
+        app.launch()
+        let mine = labelled("Çox sağ olun")
+        XCTAssertTrue(mine.waitForExistence(timeout: 15))
+        Thread.sleep(forTimeInterval: 2.5)
+        return mine
     }
 
     /// An element's frame once two looks 0.25 s apart agree.

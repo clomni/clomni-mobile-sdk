@@ -7,12 +7,13 @@ import XCTest
 final class TabTests: XCTestCase {
     /// TestFlight #21 (CM-346 § 5.1): the operator wants no cross-fade, where the old screen and the new one showed
     /// through each other, but the new screen's own background with the spinner in its middle, then its content. The
-    /// spinner is held for 1.5 s here (`-ClomniDemoEntrySeconds`, 0.35 s in the app) so the test sees it. A tab keeps
+    /// spinner is held for 4 s here (`-ClomniDemoEntrySeconds`, 0.35 s in the app): the test's queries take a while,
+    /// and at 1.5 s it had gone before they were done (CI 41844153479). A tab keeps
     /// its place: back on Home after the spinner, it is scrolled where it was left. A pushed screen (a news item)
     /// opens the same way.
     func testANewScreenShowsTheSpinnerAloneThenItsContent() throws {
         continueAfterFailure = false
-        let app = launch(["-ClomniDemoEntrySeconds", "1.5"])
+        let app = launch(["-ClomniDemoEntrySeconds", "4"])
         let greeting = labelled(app, "Salam")
         XCTAssertTrue(greeting.waitForExistence(timeout: 20), "Home opened")
         let home = tab(app, "home"), messages = tab(app, "messages")
@@ -69,17 +70,16 @@ final class TabTests: XCTestCase {
         let shot = app.screenshot()
         let loading = spinner(app)
         XCTAssertTrue(loading.exists, "\(what): the spinner first", file: file, line: line)
+        let centre = loading.frame
         for element in gone {
             XCTAssertFalse(element.exists, "\(what): no content yet, of either screen", file: file, line: line)
         }
         let window = app.windows.firstMatch.frame
-        let centre = loading.frame
         XCTAssertEqual(centre.midX, window.midX, accuracy: 2, "\(what): in the middle", file: file, line: line)
         keep(shot, "entry-spinner")
-        // Between the screen's bar and the tab bar (or the bottom), away from the spinner: one colour.
-        let bottom = tab(app, "home").exists ? tab(app, "home").frame.minY - 4 : window.maxY - 40
-        let area = CGRect(x: window.minX + 16, y: window.minY + window.height * 0.22, width: window.width - 32,
-                          height: bottom - (window.minY + window.height * 0.22))
+        // Under the screen's bar and over the tab bar (or the home indicator), away from the spinner: one colour.
+        let top = window.minY + window.height * 0.22
+        let area = CGRect(x: window.minX + 16, y: top, width: window.width - 32, height: window.maxY - 120 - top)
         let pixels = try XCTUnwrap(Pixels(shot))
         let page = pixels.rgb(CGPoint(x: area.minX + 2, y: area.minY + 2))
         let around = centre.insetBy(dx: -24, dy: -24)
