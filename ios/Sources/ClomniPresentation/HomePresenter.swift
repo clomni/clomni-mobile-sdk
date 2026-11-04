@@ -324,8 +324,9 @@ package struct HomePresenter: Sendable {
         let unread = max(snapshot.unreadTotal, snapshot.conversations.reduce(0) { $0 + max(0, $1.unreadCount) })
         var tabs: [TabBar.Item] = [
             TabBar.Item(tab: .home, title: strings[.tabHome], badge: nil, accessibilityLabel: strings[.tabHome]),
+            // VoiceOver reads the count, not the badge's "99+": "Söhbətlər, 120 oxunmamış".
             TabBar.Item(tab: .messages, title: strings[.tabMessages], badge: TabBar.badge(unread),
-                        accessibilityLabel: unread > 0 ? "\(strings[.tabMessages]), \(strings[.unreadMessages])"
+                        accessibilityLabel: unread > 0 ? "\(strings[.tabMessages]), \(unread) \(strings[.unread].lowercased())"
                             : strings[.tabMessages]),
         ]
         if !snapshot.news.isEmpty {
