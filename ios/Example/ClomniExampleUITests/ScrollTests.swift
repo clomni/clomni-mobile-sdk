@@ -47,23 +47,23 @@ final class ScrollTests: XCTestCase {
         XCTAssertEqual(settled(composer).minY, bar.minY, accuracy: 1, "the sheet stayed where it was")
     }
 
-    /// A drag to the right on a bubble quotes it over the field (its words are then on screen twice); the list stays.
+    /// A drag to the right on a bubble quotes it over the field: "Leyla" and the message's words in the composer.
+    /// (The field takes the focus with it, and the keyboard moves the list up.)
     func testADragToTheRightOnABubbleAnswersIt() {
         launch()
         let text = "Başqa sualınız olsa, yazın"
         let bubble = labelled(text)
         XCTAssertTrue(bubble.waitForExistence(timeout: 15))
         Thread.sleep(forTimeInterval: 2.5)
-        let before = settled(bubble)
-        XCTAssertEqual(count(text), 1)
+        let quote = element("clomni.composer").descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        XCTAssertFalse(quote.exists, "nothing is quoted yet")
         let start = bubble.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 130, dy: 0)), withVelocity: .default,
                     thenHoldForDuration: 0.1)
-        let answered = eventually { count(text) == 2 }
+        let answered = quote.waitForExistence(timeout: 5)
         keep("swiped-to-answer")
-        let after = settled(bubble)
-        XCTAssertTrue(answered, "the quote stands over the field (the bubble \(before), then \(after))")
-        XCTAssertEqual(after.minY, before.minY, accuracy: 2, "the list did not move")
+        XCTAssertTrue(answered, "the quote stands over the field")
     }
 
     /// A voice message just sent (the demo's microphone, held for three seconds) stands at the end: a drag down from
