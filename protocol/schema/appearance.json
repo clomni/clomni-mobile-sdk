@@ -61,7 +61,7 @@
       "additionalProperties": false,
       "required": ["name"],
       "properties": {
-        "name": { "type": "string", "maxLength": 24, "description": "Empty: the inbox's business name." },
+        "name": { "type": "string", "maxLength": 24, "description": "Empty: a bot's own name (Clomni AI, an agent bot), else brand.name; never the inbox's." },
         "avatar": { "$ref": "#/$defs/image" }
       }
     },

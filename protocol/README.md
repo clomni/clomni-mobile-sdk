@@ -99,6 +99,12 @@ the first login instead of leaving users unverified.
 - `GET /faq` gives the published questions (empty while FAQ is off); the `faq` card shows the first three, `see_all`
   only when there are more. Opening one is the app event `faq_opened {faq_id}`.
 
+## One open conversation (SDK 1.0.7)
+
+- `config.conversation.single` (absent: false) is the inbox's "lock to single conversation". `GET /conversations` then
+  carries `resume_conversation_id`, the conversation `POST /conversations` would answer: every way of starting a new
+  one opens it instead of an empty new one. null, or `single` false: a new conversation. The SDK goes by this id alone.
+
 ## Flow and the composer
 
 - A conversation (REST) and every `conversation.updated` carry `flow {active, awaiting}`, plus `flow_id` and
@@ -134,6 +140,7 @@ saying what the screen must show.
 | `90`–`98` | must fail: they prove the schema refuses what it should |
 | `107`–`108`, `114`–`115` | deleted messages (SDK 1.0.7): the user's own, an operator's over the socket; two that must fail |
 | `109`–`113` | tab bar, news on Home and FAQ (SDK 1.0.7): the config, the questions, none; two that must fail |
+| `116`–`117` | the conversation list with `resume_conversation_id` (SDK 1.0.7); one that must fail |
 
 Each file stands alone: the fixtures are cases, not one recorded conversation, so their `seq` and
 `created_at` are not meant to be read in sequence.

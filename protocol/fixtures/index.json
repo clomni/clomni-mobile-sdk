@@ -554,5 +554,16 @@
     "schema": "message.json",
     "note": "Səhv: silinmiş mesajda reply_to null olur",
     "valid": false
+  },
+  {
+    "file": "116-conversation-list-resume.json",
+    "schema": "conversation-list.json",
+    "note": "Söhbətlər siyahısı, SDK 1.0.7: resume_conversation_id = conv_5521. «Bizə mesaj göndərin», siyahıdakı yeni söhbət düyməsi və Clomni.present boş yeni söhbət yox, conv_5521-i tarixçəsi ilə açır; bağlı conv_5530 siyahıda adi qalır"
+  },
+  {
+    "file": "117-invalid-conversation-list-resume-id.json",
+    "schema": "conversation-list.json",
+    "note": "Səhv: resume_conversation_id conv_ ilə başlamalıdır",
+    "valid": false
   }
 ]

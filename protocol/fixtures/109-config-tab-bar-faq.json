@@ -100,7 +100,8 @@
     "emoji": true
   },
   "conversation": {
-    "starts_with_flow": true
+    "starts_with_flow": true,
+    "single": true
   },
   "sounds": true,
   "languages": {

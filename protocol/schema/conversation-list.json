@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/conversation-list.json",
+  "title": "Conversation list",
+  "description": "GET /v1/conversations: one page of the user's conversations, newest activity first. Each conversation is the Conversation of openapi.yaml (components/schemas/Conversation); this schema checks the page around them.",
+  "type": "object",
+  "required": ["conversations", "next_cursor"],
+  "properties": {
+    "conversations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^conv_.+" }
+        }
+      }
+    },
+    "next_cursor": {
+      "type": ["string", "null"],
+      "description": "Passed as cursor for the next page; null on the last one."
+    },
+    "resume_conversation_id": {
+      "type": ["string", "null"],
+      "pattern": "^conv_.+",
+      "description": "The conversation POST /conversations would answer instead of starting a new one, while config.conversation.single is true (SDK 1.0.7). Every way of starting a new conversation (the send card, the new conversation button in the list, Clomni.present) opens this one with its history; null: a new conversation as usual. The server decides which conversation it is, and the SDK applies no rule of its own: it need not be on this page, so the SDK opens it by id (GET /conversations/{id}). The same on every page of one listing. Absent (a server before SDK 1.0.7) means null."
+    }
+  }
+}

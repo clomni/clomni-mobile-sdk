@@ -554,6 +554,14 @@ paths:
                       $ref: '#/components/schemas/Conversation'
                   next_cursor:
                     type: [string, 'null']
+                  resume_conversation_id:
+                    type: [string, 'null']
+                    pattern: '^conv_.+'
+                    description: The conversation `POST /conversations` would answer instead of starting a new one
+                      (an inbox that keeps a user to one conversation, `config.conversation.single`); null otherwise.
+                      Every "new conversation" in the app opens this one; the server decides which it is and the SDK
+                      adds no rule of its own. Not necessarily on this page; the same on every page. SDK 1.0.7,
+                      described in `schema/conversation-list.json`.
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
@@ -576,7 +584,8 @@ paths:
         last active, with 200 and its latest messages, as for a repeated `client_id`. The app shows the conversation it
         is answered; the user's first message goes there. A conversation whose flow turned typing off and ended
         (`flow.input_disabled` and not `flow.active`) does not count: the app offers only a new conversation there.
-        `POST /flows/trigger` is not affected.
+        `POST /flows/trigger` is not affected. `GET /conversations` names that conversation as
+        `resume_conversation_id`, so the app opens it before the user writes (SDK 1.0.7).
       parameters:
         - $ref: '#/components/parameters/Sdk'
       requestBody:

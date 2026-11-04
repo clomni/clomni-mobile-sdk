@@ -1,0 +1,42 @@
+{
+  "conversations": [
+    {
+      "id": "conv_5530",
+      "status": "closed",
+      "assignee": {
+        "name": "Leyla",
+        "avatar_url": null,
+        "online": false
+      },
+      "unread_count": 0,
+      "last_message": null,
+      "flow": {
+        "active": false,
+        "awaiting": null
+      },
+      "opened_from": "profile_support",
+      "created_at": "2026-11-03T09:12:00Z",
+      "updated_at": "2026-11-04T08:40:11.204Z"
+    },
+    {
+      "id": "conv_5521",
+      "status": "open",
+      "assignee": {
+        "name": "Rauf",
+        "avatar_url": null,
+        "online": true
+      },
+      "unread_count": 1,
+      "last_message": null,
+      "flow": {
+        "active": false,
+        "awaiting": null
+      },
+      "opened_from": "home_banner",
+      "created_at": "2026-11-02T14:05:00Z",
+      "updated_at": "2026-11-03T17:22:45.031Z"
+    }
+  ],
+  "next_cursor": null,
+  "resume_conversation_id": "conv_5521"
+}

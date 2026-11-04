@@ -70,7 +70,7 @@
       "type": "object",
       "required": ["name"],
       "properties": {
-        "name": { "type": "string" },
+        "name": { "type": "string", "description": "The panel's bot name, else brand.name. A message's bot sender is named by the same rule, its own name (Clomni AI, an agent bot) coming before brand.name." },
         "avatar_url": { "$ref": "#/$defs/image_url", "description": "null: the brand logo, and without one the name's first letter." }
       }
     },
@@ -139,6 +139,10 @@
         "starts_with_flow": {
           "type": "boolean",
           "description": "true when the inbox has a live, published flow for new conversations that reaches this platform. The SDK then creates the conversation (POST /conversations with a client_id) as soon as the user opens a new one, without waiting for a first message, and shows the flow's first messages from the response. Absent means false."
+        },
+        "single": {
+          "type": "boolean",
+          "description": "The inbox keeps a user to one conversation at a time (its \"lock to single conversation\" setting; SDK 1.0.7). While true, every way of starting a new conversation (the send card, the new conversation button in the list, Clomni.present) opens GET /conversations' resume_conversation_id with its history instead of an empty new one, and a new conversation when that is null. The SDK goes by that id alone and applies no rule of its own: the server decides which conversation it is, by the same rule POST /conversations answers with. Before deciding, the SDK waits for the conversations list. An SDK answered an id other than the one it opened moves its screen there, which stays the fallback for a race. false: a new conversation as before. Absent means false."
         }
       }
     },
