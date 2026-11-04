@@ -378,14 +378,14 @@ class ChatSnapshotTest {
             assertEquals("the transcript held: no message of the user's yet", 1, found.size)
         }
         frame("choice_2_sent", present(loaded(greeting, menu).copy(pending = listOf(chosen), typing = typing))) { found ->
-            assertEquals("bot, user, clock, typing: $found", listOf("Example bot", "Siz", "Göndərilir", "Example yazır"), found.map { it.label.substringBefore(",") })
+            assertEquals("bot, user, clock, typing: $found", listOf("Clomni bot", "Siz", "Göndərilir", "Clomni yazır"), found.map { it.label.substringBefore(",") })
         }
         val sent = message("m3", 3, "10:31:40Z", user, "text", """{"text":"Texniki problem"}""")
         val answered = present(loaded(greeting, menu, sent, answer).copy(typing = typing))
         val answerBubble = answered.items.filterIsInstance<ChatItem.BubbleItem>().last().bubble
         assertEquals("the typing row has the run's avatar", null, answerBubble.avatar)
         frame("choice_3_answered", answered) { found ->
-            assertEquals("bot, user, ✓, bot, typing: $found", listOf("Example bot", "Siz", "Göndərildi", "Example bot", "Example yazır"), found.map { it.label.substringBefore(",") })
+            assertEquals("bot, user, ✓, bot, typing: $found", listOf("Clomni bot", "Siz", "Göndərildi", "Clomni bot", "Clomni yazır"), found.map { it.label.substringBefore(",") })
         }
     }
 

@@ -7,6 +7,7 @@ import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.MessageContent
 import ai.clomni.messenger.protocol.MessengerConfig
 import ai.clomni.messenger.protocol.NewsItem
+import ai.clomni.messenger.protocol.Sender
 import ai.clomni.messenger.protocol.SenderType
 import java.util.Locale
 import java.util.TimeZone
@@ -372,7 +373,8 @@ internal class HomePresenter(
                     unread > 0 -> unread.toString()
                     else -> null
                 },
-                accessibilityLabel = if (unread > 0) "$messages, ${strings[Key.UNREAD_MESSAGES]}" else messages,
+                // "Söhbətlər, 42 oxunmamış": the number itself, in the texts there are (contract 1.0.7b §2).
+                accessibilityLabel = if (unread > 0) "$messages, $unread ${strings[Key.UNREAD].lowercase(Locale.ROOT)}" else messages,
             ),
             TabBar.Tab(MessengerTab.NEWS, strings[Key.TAB_NEWS]).takeIf { snapshot.news.isNotEmpty() },
             TabBar.Tab(MessengerTab.FAQ, strings[Key.TAB_FAQ]).takeIf { config.faqEnabled && snapshot.faq.isNotEmpty() },
@@ -405,33 +407,30 @@ internal class HomePresenter(
     /**
      * A conversation with a last message; one without has nothing to show yet. Next to the user's own message ("Siz")
      * the conversation's own face, the company's, as a chat list shows it; never the operator's (test report), the same
-     * as iOS.
+     * as iOS. A bot is named and pictured as in the conversation ([botName], [botAvatar]).
      */
     fun row(conversation: Conversation, config: MessengerConfig?): ConversationRow? {
         val message = conversation.lastMessage ?: return null
         val brand = config?.brand?.name.orEmpty()
-        val botName = config?.bot?.name?.takeIf { it.isNotEmpty() }
         val name = when (message.sender.type) {
             SenderType.USER -> strings[Key.YOU]
-            SenderType.BOT -> message.sender.name ?: botName ?: brand
+            SenderType.BOT -> botName(message.sender, config)
             SenderType.OPERATOR -> message.sender.name ?: conversation.assignee?.name ?: brand
             SenderType.SYSTEM, SenderType.UNKNOWN -> brand
         }
-        val botAvatar = botAvatar(config)
         val fromUser = message.sender.type == SenderType.USER
         val system = message.sender.type == SenderType.SYSTEM
         // A system line ("Leyla söhbətə qoşuldu") shows who answers: the assignee, else the bot.
         val faceName = when {
-            fromUser -> brand.ifEmpty { botName.orEmpty() }
-            system -> conversation.assignee?.name ?: botName ?: brand
+            fromUser -> brand.ifEmpty { config?.bot?.name.orEmpty() }
+            system -> conversation.assignee?.name ?: botName(null, config)
             else -> name
         }
         val face = when {
             // The company: its logo, else the panel's bot picture, else its initial.
             fromUser -> config?.brand?.logoUrl ?: config?.bot?.avatarUrl
-            system -> conversation.assignee?.avatarUrl ?: botAvatar
-            // The panel's bot picture, as in the conversation.
-            message.sender.type == SenderType.BOT -> config?.bot?.avatarUrl ?: message.sender.avatarUrl ?: botAvatar
+            system -> conversation.assignee?.avatarUrl ?: botAvatar(config)
+            message.sender.type == SenderType.BOT -> botAvatar(config, message.sender)
             else -> message.sender.avatarUrl
         }
         val preview = if (message.content is MessageContent.Deleted) strings[Key.MESSAGE_DELETED] else plainText(message)
@@ -512,8 +511,24 @@ internal class HomePresenter(
         private fun searchable(text: String): String =
             text.lowercase(Locale.ROOT).replace("\u0307", "").replace('ı', 'i')
 
-        /** The bot's picture; the brand's logo when the panel set none (the initial when there is no logo either). */
-        fun botAvatar(config: MessengerConfig?): String? = config?.bot?.avatarUrl ?: config?.brand?.logoUrl
+        /**
+         * A bot's name, the same on every screen (contract 1.0.7b §1): what the server sent as the message's sender,
+         * else the panel's bot name, else the brand's. The server decides which; the inbox's name is never one.
+         */
+        fun botName(sender: Sender?, config: MessengerConfig?): String =
+            sender?.name?.takeIf { it.isNotBlank() } ?: config?.bot?.name?.takeIf { it.isNotBlank() } ?: config?.brand?.name.orEmpty()
+
+        /**
+         * Contract 1.0.7b §5.4: with the panel's single conversation on, a new conversation is the one the server
+         * names ([resume], `resume_conversation_id`: the one POST /conversations would answer with), opened with its
+         * history; null (the switch off, or none named): a new one. The server, not the SDK, knows which still count
+         * (a bot conversation idle for 30 minutes or one its flow ended does not, CM-291).
+         */
+        fun openConversation(config: MessengerConfig?, resume: String?): String? = resume?.takeIf { config?.singleConversation == true }
+
+        /** A bot's picture: the sender's, else the panel's bot picture, else the brand's logo (the initial without one). */
+        fun botAvatar(config: MessengerConfig?, sender: Sender? = null): String? =
+            sender?.avatarUrl?.takeIf { it.isNotBlank() } ?: config?.bot?.avatarUrl ?: config?.brand?.logoUrl
 
         private val LINK = Regex("\\[([^\\]]*)\\]\\([^)]*\\)")
 

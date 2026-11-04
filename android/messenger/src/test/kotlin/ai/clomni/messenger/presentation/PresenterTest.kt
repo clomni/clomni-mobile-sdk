@@ -165,14 +165,35 @@ class PresenterTest {
         assertEquals(MessengerConfig.HeaderStyle.SOLID, presenter(config = solid).home(snapshot(solid)).header.style)
     }
 
-    /** A bot's message on Home shows the panel's bot picture, as the conversation does. */
+    /**
+     * Contract 1.0.7b §1: a bot's line in the list and on Home's card is named as in the conversation: the server's
+     * sender, else the panel's bot name, else the brand; its picture the sender's, else the panel's bot picture, else
+     * the logo. Operator 2026-11-04: the panel said «qweq», the app said «Clomni».
+     */
     @Test
-    fun theBotsPictureIsThePanels() {
-        val bot = listOf(Fixture.conversation("conv_1", "01-text-bot.json"))
-        val panel = Fixture.exampleConfig.let { it.copy(bot = it.bot.copy(avatarUrl = "https://app.clomni.ai/v1/images/bot")) }
-        assertEquals("https://app.clomni.ai/v1/images/bot", presenter(config = panel).home(snapshot(panel, bot)).recent?.row?.avatarUrl)
-        val none = ProtocolJson().parseConfig("""{"brand":{"name":"Example","logo_url":"https://app.clomni.ai/v1/images/logo"}}""")!!
-        assertEquals("the message's own", "https://app.clomni.ai/a/bot.png", presenter(config = none).home(snapshot(none, bot)).recent?.row?.avatarUrl)
+    fun aBotsRowIsNamedBySenderThenPanelThenBrand() {
+        fun conversation(sender: Sender) = Fixture.conversation("conv_1", "01-text-bot.json").let {
+            it.copy(lastMessage = it.lastMessage!!.copy(sender = sender))
+        }
+        val panel = Fixture.exampleConfig.let { it.copy(bot = MessengerConfig.Bot("qweq", "https://app.clomni.ai/v1/images/bot")) }
+        fun row(config: MessengerConfig, sender: Sender) = presenter(config = config).home(snapshot(config, listOf(conversation(sender)))).recent!!.row
+
+        val named = row(panel, Sender(SenderType.BOT, "bot_9", "Clomni AI", "https://app.clomni.ai/a/captain.png"))
+        assertEquals("the sender's own name", "Clomni AI", named.name)
+        assertEquals("https://app.clomni.ai/a/captain.png", named.avatarUrl)
+        assertEquals("C", named.initial)
+
+        val unnamed = row(panel, Sender(SenderType.BOT))
+        assertEquals("no name from the server: the panel's bot name", "qweq", unnamed.name)
+        assertEquals("qweq · 2 dəq", unnamed.detail)
+        assertEquals("https://app.clomni.ai/v1/images/bot", unnamed.avatarUrl)
+        assertEquals("Q", unnamed.initial)
+
+        val noBot = Fixture.exampleConfig.copy(bot = MessengerConfig.Bot("", null))
+        val brand = row(noBot, Sender(SenderType.BOT, name = ""))
+        assertEquals("no bot name either: the brand", "Example", brand.name)
+        assertEquals("the brand's logo", Fixture.exampleConfig.brand.logoUrl, brand.avatarUrl)
+        assertEquals("E", brand.initial)
     }
 
     /** CM-114: news_on_home cards (2 unless the panel says), in the panel's order; none without news; the item's screen. */
@@ -227,6 +248,43 @@ class PresenterTest {
         assertEquals((1..5).map { "news_$it" }, list.items.map { it.id })
     }
 
+    /**
+     * Contract 1.0.7b §5.4, the choice behind "Bizə mesaj göndərin" and every other way to a new conversation: with
+     * config.conversation.single, the conversation the server's list names (resume_conversation_id); none named (only
+     * closed ones), the switch off, or a server from before the field: a new one (null).
+     */
+    @Test
+    fun aNewConversationWithThePanelsSingleConversation() {
+        val single = Fixture.exampleConfig.copy(singleConversation = true)
+        assertEquals("single and an open one named: that one", "conv_open", HomePresenter.openConversation(single, "conv_open"))
+        assertNull("single, only closed ones: none named, a new one", HomePresenter.openConversation(single, null))
+        assertNull("the switch off: a new one", HomePresenter.openConversation(Fixture.exampleConfig, "conv_open"))
+        assertNull("no config: a new one", HomePresenter.openConversation(null, "conv_open"))
+        // From the server: conversation.single in the config, resume_conversation_id over the list; absent, off and null.
+        assertTrue(ProtocolJson().parseConfig("""{"conversation":{"single":true}}""")!!.singleConversation)
+        assertFalse(ProtocolJson().parseConfig("""{"conversation":{}}""")!!.singleConversation)
+        val page = """{"conversations":[],"next_cursor":null"""
+        assertEquals("conv_9", ProtocolJson().parseConversationPage("""$page,"resume_conversation_id":"conv_9"}""")!!.resumeConversationId)
+        assertNull(ProtocolJson().parseConversationPage("""$page,"resume_conversation_id":null}""")!!.resumeConversationId)
+        assertNull("an older server", ProtocolJson().parseConversationPage("""$page}""")!!.resumeConversationId)
+    }
+
+    /**
+     * Contract 1.0.7b §2: the conversations' badge is the server's count, none at 0, "99+" over 99; TalkBack reads the
+     * tab with the number, in the texts the SDK already has ("Söhbətlər, 7 oxunmamış").
+     */
+    @Test
+    fun tabBadge() {
+        val on = config("""{"tab_bar":true}""")
+        fun tab(unread: Int, language: String = "az", config: MessengerConfig = on) =
+            presenter(language, config).home(snapshot(config).copy(unreadTotal = unread)).tabBar!!.tabs.single { it.kind == MessengerTab.MESSAGES }
+        assertEquals(listOf(null, "7", "99", "99+"), listOf(0, 7, 99, 100).map { tab(it).badge })
+        assertEquals("Söhbətlər", tab(0).accessibilityLabel)
+        assertEquals("Söhbətlər, 7 oxunmamış", tab(7).accessibilityLabel)
+        assertEquals("the number itself, not 99+", "Söhbətlər, 120 oxunmamış", tab(120).accessibilityLabel)
+        assertEquals("Chats, 42 unread", tab(42, "en", on.copy(strings = emptyMap())).accessibilityLabel)
+    }
+
     /** Contract 1.0.7 §3: the tab bar only with the panel's tab_bar; news and FAQ tabs only with something in them. */
     @Test
     fun tabBarShowsOnlyWhatThereIs() {
@@ -251,7 +309,6 @@ class PresenterTest {
         fun badge(unread: Int, conversations: List<Conversation> = emptyList()) =
             presenter().home(snapshot(faqOn, conversations).copy(unreadTotal = unread)).tabBar!!.tabs[1]
         assertEquals("3", badge(3).badge)
-        assertEquals("Söhbətlər, Oxunmamış mesaj var", badge(3).accessibilityLabel)
         assertEquals("99+", badge(120).badge)
         assertEquals("the conversations' own counts before the total comes", "2", badge(0, listOf(Fixture.conversation("c", "01-text-bot.json", unread = 2))).badge)
         // Which screens are tabs.

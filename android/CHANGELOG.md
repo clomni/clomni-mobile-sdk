@@ -17,6 +17,24 @@
   more), the list with a search on the device ("Heç nə tapılmadı" when nothing matches), and each answer on its own
   screen (`faq_opened`).
 - The new texts come from `config.strings`, with az, en and ru in the SDK.
+- A bot is named the same everywhere (its bubbles, the typing row, a quote of it, Home's latest message and the
+  conversation list): the name the server sends with the message, else the panel's bot name, else the brand's. Its
+  picture: the sender's, else the panel's bot picture, else the logo. It no longer always speaks as the brand.
+- The unread badge on the conversations' tab is 16 dp high, ringed in the bar's colour and placed on the icon's top
+  end, wholly inside the bar (4 dp under its top line); "99+" over 99. TalkBack reads the tab with the number
+  ("Söhbətlər, 7 oxunmamış").
+- How a screen opens: a new tab, or a screen pushed (the conversations, a conversation, a news item, an answer,
+  "Hamısı"), shows its own background and the brand's spinner in the middle for at least 350 ms, and until its data
+  is there; then it fades in over 150 ms. The screen before goes at once, and pushes slide with no fade, so two
+  screens are never seen through each other. A screen gone back to is there at once. A tab keeps its state (scroll,
+  search, pictures). With the system's animations off there is no fade, the spinner still comes first.
+- The user can answer their own sent messages (swipe or «Cavabla»); the quote says "Siz". It already worked on
+  Android and is now tested.
+- With `config.conversation.single` on (the inbox keeps one conversation per user), every way to a new conversation
+  ("Bizə mesaj göndərin", the list's card, `presentNewConversation`, "Yeni söhbət başlat") first asks for the list,
+  under the spinner, and opens the conversation the server names in it (`resume_conversation_id`) with its history,
+  instead of an empty one that jumped to it after the first message. None named, the switch off, offline, or a server
+  without the field: a new conversation, as before.
 
 ## 1.0.6
 

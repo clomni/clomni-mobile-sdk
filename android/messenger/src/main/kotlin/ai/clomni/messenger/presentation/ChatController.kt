@@ -141,6 +141,19 @@ internal class ChatController(
         worker.execute {
             publish(read(id))
             if (observation == null) observation = source.observe(::changed)
+            // Contract 1.0.7b §5.4: a new conversation where the panel keeps one per user is the one the server's list
+            // names now (resume_conversation_id), with its history; the screen loads (its spinner) meanwhile.
+            // Offline the list cannot say: a new one, as the server's answer to its first message decides then.
+            if (Drafts.isDraft(id) && source.config?.singleConversation == true && runCatching { source.refreshConversations().get() }.isSuccess) {
+                HomePresenter.openConversation(source.config, source.resumeConversationId)?.let { open ->
+                    return@execute main.execute {
+                        if (conversationId == id) {
+                            conversationId = open
+                            load()
+                        }
+                    }
+                }
+            }
             if (source.conversation(id) == null) runCatching { source.refreshConversation(id).get() }
             val loaded = runCatching { source.loadMessages(id).get() }.isSuccess
             publish(read(id)) {
@@ -406,6 +419,12 @@ internal class ChatController(
         hideTyping = null
         val draft = source.draft(null)
         conversationId = draft
+        // §5.4: with the panel's single conversation on, the server's list says first whether one goes on instead.
+        if (source.config?.singleConversation == true) {
+            snapshot = ChatSnapshot(config = snapshot.config, known = snapshot.known)
+            render()
+            return load()
+        }
         val load = if (awaitsFlow(draft)) MessengerSnapshot.Load.LOADING else MessengerSnapshot.Load.LOADED
         snapshot = ChatSnapshot(config = snapshot.config, known = snapshot.known, load = load)
         expectStep()

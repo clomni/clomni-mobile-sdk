@@ -19,6 +19,7 @@ import ai.clomni.messenger.protocol.MessengerConfig.HomeCard as Card
 import ai.clomni.messenger.protocol.ProtocolFiles
 import ai.clomni.messenger.protocol.ProtocolJson
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -151,6 +154,59 @@ class Sdk107SnapshotTest {
         snap("tab_bar_two_tabs") { theme -> WithTabBar(home.tabBar, MessengerTab.HOME, theme, {}) { HomeView(home, theme, MessengerActions()) } }
     }
 
+    /**
+     * Contract 1.0.7b §2, close up: the conversations' badge with nothing unread, 7, and 120 ("99+"), then 7 right to
+     * left. 16 high, ringed in the bar's colour, its start just past the icon's middle, its middle on the icon's top edge.
+     */
+    @Test
+    fun tabBadgeLight() = badges(dark = false)
+
+    @Test
+    fun tabBadgeDark() = badges(dark = true)
+
+    private fun badges(dark: Boolean) {
+        paparazzi.unsafeUpdateConfig(
+            deviceConfig = DeviceConfig.PIXEL_5.copy(screenHeight = 980, nightMode = if (dark) NightMode.NIGHT else NightMode.NOTNIGHT),
+        )
+        val bars = listOf(0, 7, 120).map { unread ->
+            val state = state(unread = unread).copy(conversations = emptyList())
+            presenter(state).home(state).tabBar!!
+        }
+        val theme = ClomniTheme.make(config.brand, dark)
+        val name = "tab_badge_${if (dark) "dark" else "light"}"
+        paparazzi.snapshot(name) {
+            CompositionLocalProvider(LocalInspectionMode provides true) {
+                Column(Modifier.fillMaxSize().background(theme.colors.canvas.color).padding(vertical = 24.dp), Arrangement.spacedBy(24.dp)) {
+                    for (bar in bars) MessengerTabBar(bar, MessengerTab.HOME, theme) {}
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        MessengerTabBar(bars[1], MessengerTab.HOME, theme) {}
+                    }
+                }
+            }
+        }
+        semantics.assertTouchTargets(name)
+    }
+
+    /**
+     * Contract 1.0.7b §5.1: a tab (or a screen pushed) opening: the screen before gone, this one's background and the
+     * brand's spinner in the middle, nothing else; the bar stays. Light and dark.
+     */
+    @Test
+    fun opening() {
+        val state = state()
+        val presenter = presenter(state)
+        val home = presenter.home(state)
+        for (dark in listOf(false, true)) {
+            snap("opening_${if (dark) "dark" else "light"}", dark) { theme ->
+                WithTabBar(home.tabBar, MessengerTab.MESSAGES, theme, {}) {
+                    OpeningPages(ONE_PAGE, Unit, ready = true, enter = true, theme.colors.canvas.color, theme, home.loadingLabel) {
+                        MessagesView(presenter.messages(state), theme, home.header.closeLabel, MessengerActions(), tab = true)
+                    }
+                }
+            }
+        }
+    }
+
     /** The questions as a tab: the search field, then the questions in one card. */
     @Test
     fun faqList() {
@@ -230,6 +286,17 @@ class Sdk107SnapshotTest {
                 }
             }
         }
+    }
+
+    /**
+     * Contract 1.0.7b §5.3: the user answers their own message: its quote over the field says "Siz". (Its «Cavabla» is in
+     * the menu of chat_delete_menu.)
+     */
+    @Test
+    fun replyToOwnMessage() {
+        val mine = ChatFixture.message("03-text-user.json")
+        val screen = chat(conversation(mine).copy(replyingTo = mine.id))
+        snap("chat_reply_own") { theme -> WithVoice { ChatScreenView(screen, theme, ChatActions(), draft = "Hələ də davam edir") } }
     }
 
     /** "Mesaj silinsin?" over the dimmed conversation. */

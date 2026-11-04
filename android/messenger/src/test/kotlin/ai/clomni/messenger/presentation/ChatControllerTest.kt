@@ -76,6 +76,17 @@ private class FakeChat : ChatDataSource {
         return done(Unit)
     }
 
+    override var resumeConversationId: String? = null
+
+    /** The resume_conversation_id of the server's next list. */
+    var serverResume: String? = null
+
+    override fun refreshConversations(): Future<Unit> {
+        calls += "conversations"
+        resumeConversationId = serverResume
+        return done(Unit)
+    }
+
     override fun messages(conversationId: String): List<Message> = stored[conversationId].orEmpty()
 
     override fun pending(conversationId: String): List<PendingMessage> = outbox.filter { it.conversationId == conversationId }
@@ -599,6 +610,54 @@ class ChatControllerTest {
         assertEquals("conv_new", chat.conversationId)
         assertTrue("load conv_new" in source.calls)
         assertEquals(listOf("Gedişim bitmədi, pul çıxılmağa davam edir"), bubbleTexts(chat))
+    }
+
+    /**
+     * Contract 1.0.7b §5.4: with the panel's single conversation on, "Bizə mesaj göndərin" (a draft) opens the
+     * conversation the server's list names (resume_conversation_id) with its history, never an empty new one that later
+     * jumps to it: the list is asked for while the screen loads (its spinner), and a remembered answer is not trusted.
+     */
+    @Test
+    fun aNewConversationIsTheOneTheServerNames() {
+        source.cachedConfig = Fixture.exampleConfig.copy(singleConversation = true)
+        source.set(listOf(ChatFixture.message("03-text-user.json")))
+        source.serverResume = "conv_5521"
+        val worker = Queue()
+        val chat = controller(worker = worker, id = "draft_new")
+        chat.load()
+        assertEquals("waiting for the list: loading, nothing shown", HomeScreen.Phase.LOADING, chat.screen.phase)
+        assertTrue(chat.screen.items.isEmpty())
+        worker.drain()
+        assertTrue("conversations" in source.calls)
+        assertEquals("conv_5521", chat.conversationId)
+        assertTrue("load conv_5521" in source.calls)
+        assertEquals(listOf("Gedişim bitmədi, pul çıxılmağa davam edir"), bubbleTexts(chat))
+
+        // "Yeni söhbət başlat" in a closed one: the list again; it names another one, which opens.
+        source.set(listOf(ChatFixture.message("02-text-operator-markdown.json")), id = "conv_other")
+        source.serverResume = "conv_other"
+        chat.startNewConversation()
+        worker.drain()
+        assertEquals("conv_other", chat.conversationId)
+    }
+
+    /** §5.4: the server names none (only closed ones, or a bot one gone idle), or the switch is off: a new one, as before. */
+    @Test
+    fun aNewConversationStaysNewWhenTheServerNamesNoneOrTheSwitchIsOff() {
+        source.cachedConfig = Fixture.exampleConfig.copy(singleConversation = true)
+        source.resumeConversationId = "conv_5521"
+        val none = controller(id = "draft_new")
+        none.load()
+        assertTrue("the list was asked for", "conversations" in source.calls)
+        assertEquals("the remembered answer is stale: the server now names none", "draft_new", none.conversationId)
+
+        source.calls.clear()
+        source.cachedConfig = Fixture.exampleConfig
+        source.serverResume = "conv_5521"
+        val off = controller(id = "draft_new")
+        off.load()
+        assertEquals("draft_new", off.conversationId)
+        assertFalse("the list is not asked for", "conversations" in source.calls)
     }
 
     /** DESIGN-PASS-3 C5: from the first screen to the last, a conversation waiting for a choice has no composer. */

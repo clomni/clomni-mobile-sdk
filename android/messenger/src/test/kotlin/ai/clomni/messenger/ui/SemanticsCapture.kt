@@ -59,6 +59,8 @@ class SemanticsCapture : RenderExtension {
         fun visit(node: SemanticsNode) {
             val config = node.config
             if (config.getOrNull(SemanticsProperties.InvisibleToUser) != null) return
+            // Not placed (a tab kept for later, a screen behind its opening spinner): not on screen, as TalkBack has it.
+            if (!node.layoutInfo.isPlaced) return
             val description = config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString(" ")
             val text = (config.getOrNull(SemanticsProperties.Text).orEmpty() + listOfNotNull(config.getOrNull(SemanticsProperties.EditableText)))
                 .joinToString(" ") { it.text }

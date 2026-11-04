@@ -30,6 +30,11 @@ internal data class MessengerConfig(
     val poweredBy: Boolean,
     /** `conversation.starts_with_flow`: a new conversation starts a flow, so it is created as soon as it opens. */
     val startsWithFlow: Boolean = false,
+    /**
+     * `conversation.single` (the inbox's lock to one conversation, contract 1.0.7b §5.4): a new conversation is the
+     * user's open one, while there is one.
+     */
+    val singleConversation: Boolean = false,
     /** Short sounds for a sent and a received message; the app can still turn them off. */
     val sounds: Boolean = true,
     /** `faq.enabled`: the questions (GET /faq) are shared on Home and in their own list (SDK 1.0.7). */

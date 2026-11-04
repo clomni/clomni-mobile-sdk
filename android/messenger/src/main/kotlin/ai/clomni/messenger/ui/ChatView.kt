@@ -119,6 +119,8 @@ internal fun ClomniChat(
     controller: ChatController,
     back: () -> Unit,
     close: () -> Unit,
+    /** Opened just now (pushed): the spinner first, until the messages are known (contract 1.0.7b §5.1). */
+    enter: Boolean = false,
 ) {
     var screen by remember { mutableStateOf(controller.screen) }
     var config by remember { mutableStateOf(controller.config) }
@@ -240,6 +242,7 @@ internal fun ClomniChat(
     // Voice messages (CM-130): one player for the screen, and the recorder when the app declares the microphone.
     val playback = rememberVoicePlayback()
     val recorder = rememberVoiceRecorder(screen.composer.voiceSeconds) { clip -> controller.sendVoice(clip, refused) }
+    OpeningPages(ONE_PAGE, Unit, screen.phase != HomeScreen.Phase.LOADING, enter, theme.colors.background.color, theme, screen.loadingLabel) {
     CompositionLocalProvider(LocalVoicePlayback provides playback, LocalVoiceRecorder provides recorder) {
         ChatScreenView(
             screen,
@@ -255,6 +258,7 @@ internal fun ClomniChat(
             loadingOlder = loadingOlder,
             picked = preview,
         )
+    }
     }
     fullScreen?.let { url -> FullScreenImage(url, screen.header.closeLabel) { fullScreen = null } }
 }
@@ -318,11 +322,11 @@ internal fun ChatScreenView(
             Box(bar) { ChatHeaderView(screen.header, theme, actions, scrolled) }
             val body = if (lazy) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth()
             val inner = if (lazy) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
-            // What is not known yet shows nothing; once it is, all of it comes in one frame, fading in over 200 ms
-            // (DESIGN-PASS-3 C5). From the cache it is there in the first frame.
-            Crossfade(screen.phase, body, tween(200), label = "chat") { phase ->
-                when (phase) {
-                    // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
+            // What is not known yet shows the indicator; once it is, all of it comes in one frame. Opened just now, the
+            // screen's own opening covers both and fades it in (contract 1.0.7b §5.1); from the cache it is there at once.
+            Box(body) {
+                when (screen.phase) {
+                    // Nothing cached: the indicator in the middle (after 150 ms); cached messages show at once instead.
                     HomeScreen.Phase.LOADING -> Box(inner, Alignment.Center) {
                         LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
                     }

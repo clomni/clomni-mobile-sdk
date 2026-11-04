@@ -43,8 +43,9 @@ private fun MessagesBody(screen: MessagesScreen, theme: ClomniTheme, closeLabel:
         }
         val padding = Modifier.padding(ClomniTheme.Space.l.dp)
         val spacing = Arrangement.spacedBy(ClomniTheme.Space.m.dp)
+        // Not loaded yet: the indicator in the middle. Opened just now, the screen's own opening waits for the list
+        // instead and fades it in (contract 1.0.7b §5.1).
         when (screen.phase) {
-            // The first time: the indicator in the middle (after 300 ms); afterwards the cached list at once.
             HomeScreen.Phase.LOADING -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
             }

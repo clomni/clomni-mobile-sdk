@@ -127,6 +127,8 @@ class VoiceComposerTest {
         override val isLive = true
         override fun conversation(id: String): Conversation? = null
         override fun refreshConversation(id: String) = done(Unit)
+        override val resumeConversationId: String? = null
+        override fun refreshConversations() = done(Unit)
         override fun messages(conversationId: String): List<Message> = emptyList()
         override fun pending(conversationId: String): List<PendingMessage> = sent.toList()
         override fun canAnswer(message: Message) = false

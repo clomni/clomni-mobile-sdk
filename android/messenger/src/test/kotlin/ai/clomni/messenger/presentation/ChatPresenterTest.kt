@@ -107,12 +107,53 @@ class ChatPresenterTest {
             list.map { it.position },
         )
         assertNull(list[0].avatar)
-        assertEquals("the author over the first of the run: the bot speaks as the brand", "Example", list[0].author)
+        assertEquals("the author over the first of the run: the bot by its own name", "Clomni", list[0].author)
         assertNull(list[1].author)
         assertEquals("each bubble has its own clock inside it, no line under the run (G7)", listOf("10:30", "10:31", "10:32"), list.map { it.time })
-        assertEquals("the bot is the company: its logo", ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "E", true), list[1].avatar)
+        assertEquals("the bot's own picture", ChatAvatar("https://app.clomni.ai/a/bot.png", "C", true), list[1].avatar)
         assertEquals(List(3) { Bubble.Side.INCOMING }, list.map { it.side })
-        assertEquals("Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
+        assertEquals("Clomni bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz.", list[0].accessibilityLabel)
+    }
+
+    /**
+     * Contract 1.0.7b §1, one rule everywhere a bot shows (its bubble, its picture, the typing row, a quote of it, what
+     * TalkBack reads): the server's sender name, else the panel's bot name, else the brand; the picture the sender's,
+     * else the panel's bot picture, else the logo. Operator 2026-11-04: the panel said «qweq», the bubbles «Clomni».
+     */
+    @Test
+    fun aBotIsNamedBySenderThenPanelThenBrand() {
+        val panel = Fixture.exampleConfig.copy(bot = ai.clomni.messenger.protocol.MessengerConfig.Bot("qweq", "https://app.clomni.ai/v1/images/bot"))
+        val noBot = Fixture.exampleConfig.copy(bot = ai.clomni.messenger.protocol.MessengerConfig.Bot("", null))
+        fun bot(sender: Map<String, String>) = ChatFixture.message("01-text-bot.json", "sender" to sender)
+        fun show(config: ai.clomni.messenger.protocol.MessengerConfig, message: Message, typing: Sender? = null) = screen(listOf(message)) {
+            it.copy(config = config, typing = typing, replyingTo = message.id, conversation = ChatFixture.conversation("open"))
+        }
+
+        val captain = mapOf("type" to "bot", "name" to "Clomni AI", "avatar_url" to "https://app.clomni.ai/a/captain.png")
+        val named = show(panel, bot(captain), typing = Sender(SenderType.BOT, name = "Clomni AI"))
+        val namedBubble = bubbles(named).single()
+        assertEquals("the sender's own name", "Clomni AI", namedBubble.author)
+        assertEquals("Clomni AI", named.composer.quote?.author)
+        assertEquals("Clomni AI yazır", (named.items.last() as ChatItem.TypingItem).line.accessibilityLabel)
+        assertTrue(namedBubble.accessibilityLabel.startsWith("Clomni AI bot, 10:30: "))
+
+        val unnamed = show(panel, bot(mapOf("type" to "bot")), typing = Sender(SenderType.BOT))
+        val unnamedBubble = bubbles(unnamed).single()
+        assertEquals("no name from the server: the panel's bot name", "qweq", unnamedBubble.author)
+        assertEquals("qweq", unnamed.composer.quote?.author)
+        assertEquals("qweq yazır", (unnamed.items.last() as ChatItem.TypingItem).line.accessibilityLabel)
+
+        val brand = show(noBot, bot(mapOf("type" to "bot", "name" to "")), typing = Sender(SenderType.BOT))
+        assertEquals("no bot name either: the brand", "Example", bubbles(brand).single().author)
+        assertEquals("Example", brand.composer.quote?.author)
+        assertEquals("Example yazır", (brand.items.last() as ChatItem.TypingItem).line.accessibilityLabel)
+
+        // The picture, on a bubble that is not continued by the typing row.
+        fun avatar(config: ai.clomni.messenger.protocol.MessengerConfig, sender: Map<String, String>) =
+            bubbles(screen(listOf(bot(sender))) { it.copy(config = config) }).single().avatar
+        assertEquals(ChatAvatar("https://app.clomni.ai/a/captain.png", "C", true), avatar(panel, captain))
+        assertEquals(ChatAvatar("https://app.clomni.ai/v1/images/bot", "Q", true), avatar(panel, mapOf("type" to "bot")))
+        assertEquals(ChatAvatar(Fixture.exampleConfig.brand.logoUrl, "E", true), avatar(noBot, mapOf("type" to "bot")))
     }
 
     @Test
@@ -493,7 +534,7 @@ class ChatPresenterTest {
         assertNull(card.sentLabel)
         assertEquals("Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.text?.first()?.text)
         // TalkBack: who asks and when, then each field once, "*" said as a word.
-        assertEquals("Example bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
+        assertEquals("Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.", card.textAccessibilityLabel)
         assertEquals(listOf("Ad, soyad, məcburi", "Telefon, məcburi", "Email"), card.fields.map { it.accessibilityLabel })
 
         val sent = bubbles(screen(listOf(ChatFixture.message("21-form-submitted.json")))).first().body as FormCard
@@ -504,7 +545,7 @@ class ChatPresenterTest {
         val stale = bubbles(screen(listOf(contact))).first().body as FormCard
         assertTrue("no longer the live step", stale.readOnly)
         assertEquals(
-            "Example bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
+            "Clomni bot, 10:30: Sizə geri dönə bilməyimiz üçün məlumatlarınızı qeyd edin.",
             bubbles(screen(listOf(contact))).first().accessibilityLabel,
         )
     }
@@ -655,12 +696,12 @@ class ChatPresenterTest {
         assertEquals("Leyla yazır", line.accessibilityLabel)
         assertEquals("L", line.avatar.initial)
         assertEquals(
-            Announcement("msg_f01", "Example bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."),
+            Announcement("msg_f01", "Clomni bot, 10:30: Salam! Siz Example şirkətinin dəstək bölməsi ilə əlaqəyə keçmisiniz."),
             operatorTyping.announcement,
         )
         assertNull("the user's own message is not news", screen(listOf(ChatFixture.message("03-text-user.json"))).announcement)
         val botTyping = screen(emptyList()) { it.copy(typing = Sender(SenderType.BOT)) }
-        assertEquals("Example yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
+        assertEquals("the panel's bot name", "Clomni yazır", (botTyping.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
         val someone = screen(emptyList()) { it.copy(typing = Sender(SenderType.UNKNOWN)) }
         assertEquals("Example yazır", (someone.items.single() as ChatItem.TypingItem).line.accessibilityLabel)
 
@@ -675,6 +716,26 @@ class ChatPresenterTest {
     }
 
     /** Every message fixture, valid or not, reaches the screen as something. */
+    /**
+     * Contract 1.0.7b §5.3: the user answers their own message (the swipe and «Cavabla» go by [Bubble.replyable]) once
+     * the server has it, quoted as "Siz"; not one deleted, nor one still on its way. The server takes such a reply_to.
+     */
+    @Test
+    fun theUserAnswersTheirOwnMessage() {
+        val mine = ChatFixture.message("03-text-user.json")
+        val open: (ChatSnapshot) -> ChatSnapshot = { it.copy(conversation = ChatFixture.conversation("open")) }
+        val bubble = bubbles(screen(listOf(mine), open)).single()
+        assertEquals(Bubble.Side.OUTGOING, bubble.side)
+        assertTrue("sent: it can be answered", bubble.replyable)
+        val answering = screen(listOf(mine)) { open(it).copy(replyingTo = mine.id) }
+        assertEquals(Bubble.Quote(mine.id, "Siz", "Gedişim bitmədi, pul çıxılmağa davam edir"), answering.composer.quote)
+        val answer = screen(listOf(mine)) { open(it).copy(pending = listOf(pending(ClientMessage.Text("Hələ də", replyTo = mine.id), "Hələ də"))) }
+        assertEquals("the answer on its way quotes it", "Siz", bubbles(answer).last().quote?.author)
+        assertFalse("still on its way: nothing to answer yet", bubbles(answer).last().replyable)
+        val deleted = ChatFixture.message("03-text-user.json", "content" to mapOf("type" to "deleted"))
+        assertFalse("deleted: nothing to answer", bubbles(screen(listOf(deleted), open)).single().replyable)
+    }
+
     /** DESIGN-PASS-3 F2: the quote in the bubble, over the field, and who may be answered. */
     @Test
     fun replies() {
@@ -798,7 +859,7 @@ class ChatPresenterTest {
         assertNull(open.score)
         assertEquals(listOf("Çox pis", "Pis", "Orta", "Yaxşı", "Əla"), open.labels)
         assertEquals("Şərh (istəyə görə)", open.commentField.shownLabel)
-        assertEquals("Example bot, 11:02: Xidmətimizi qiymətləndirin", open.textAccessibilityLabel)
+        assertEquals("Clomni bot, 11:02: Xidmətimizi qiymətləndirin", open.textAccessibilityLabel)
         assertFalse("no quoting a rating", bubbles(screen(listOf(rating))).single().replyable)
 
         val sending = pending(ClientMessage.RatingSubmit(rating.id, 4, "Tez"), null)
