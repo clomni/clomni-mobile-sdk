@@ -16,7 +16,7 @@ struct MessengerTabBarView: View {
     static let iconSize: CGFloat = 22
     static let labelSize = 11.0
     /// Over the icon, inside the tab: room for the badge, which stands half above the icon (CM-346).
-    static let topInset: CGFloat = 7
+    static let topInset: CGFloat = 8
 
     var body: some View {
         HStack(spacing: 0) {
@@ -36,7 +36,7 @@ struct MessengerTabBarView: View {
                             .lineLimit(1)
                     }
                     .padding(.top, Self.topInset)
-                    .padding(.bottom, 2)
+                    .padding(.bottom, 1)
                     .foregroundStyle((current ? theme.colors.textPrimary : theme.colors.textSecondary).color)
                     .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.touchTarget + 5), alignment: .top)
                     .contentShape(Rectangle())

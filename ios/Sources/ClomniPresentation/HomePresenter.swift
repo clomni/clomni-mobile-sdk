@@ -210,6 +210,8 @@ package struct MessengerSnapshot: Sendable, Equatable {
     package var news: [NewsItem] = []
     /// The published questions (GET /faq, SDK 1.0.7); shown only while the config has the FAQ on.
     package var faq: [FaqItem] = []
+    /// The news and the FAQ: loaded once the server has answered for both, whatever it said.
+    package var listsLoad = Load.loading
     /// The logged-in user's name, for the greeting.
     package var userName: String?
     package var isOffline = false
@@ -341,14 +343,17 @@ package struct HomePresenter: Sendable {
     /// All the published news, from Home's "Hamısı" or the news tab.
     package func newsList(_ snapshot: MessengerSnapshot) -> NewsListScreen {
         NewsListScreen(title: strings[.newsTitle], items: snapshot.news.map(Self.newsItem),
-                       backLabel: strings[.goBack], closeLabel: strings[.close], tabBar: tabBar(snapshot))
+                       backLabel: strings[.goBack], closeLabel: strings[.close], tabBar: tabBar(snapshot),
+                       loading: snapshot.news.isEmpty && snapshot.listsLoad == .loading, loadingLabel: strings[.loading])
     }
 
     /// The FAQ: the questions with their answers, searched on the device.
     package func faq(_ snapshot: MessengerSnapshot) -> FaqScreen {
-        FaqScreen(title: strings[.faqTitle], searchPlaceholder: strings[.faqSearch], empty: strings[.faqEmpty],
-                  noResults: strings[.faqNoResults], entries: Self.questions(snapshot).map(FaqScreen.Entry.init),
-                  backLabel: strings[.goBack], closeLabel: strings[.close], tabBar: tabBar(snapshot))
+        let entries = Self.questions(snapshot).map(FaqScreen.Entry.init)
+        return FaqScreen(title: strings[.faqTitle], searchPlaceholder: strings[.faqSearch], empty: strings[.faqEmpty],
+                         noResults: strings[.faqNoResults], entries: entries,
+                         backLabel: strings[.goBack], closeLabel: strings[.close], tabBar: tabBar(snapshot),
+                         loading: entries.isEmpty && snapshot.listsLoad == .loading, loadingLabel: strings[.loading])
     }
 
     /// A conversation with a last message; one without has nothing to show yet.

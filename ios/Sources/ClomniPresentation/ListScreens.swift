@@ -40,6 +40,10 @@ package struct NewsListScreen: Sendable, Equatable {
     package let backLabel: String
     package let closeLabel: String
     package let tabBar: TabBar?
+    /// Nothing cached and the server has not answered yet: the spinner, not an empty page.
+    package let loading: Bool
+    /// What VoiceOver reads over the spinner: "Yüklənir".
+    package let loadingLabel: String
 
     /// The items as Home's news card draws them, all of them and no "Hamısı".
     package var card: HomeScreen.NewsCard { HomeScreen.NewsCard(items: items, seeAll: nil) }
@@ -72,6 +76,9 @@ package struct FaqScreen: Sendable, Equatable {
     package let backLabel: String
     package let closeLabel: String
     package let tabBar: TabBar?
+    /// Nothing cached and the server has not answered yet: the spinner, not "Hələ sual yoxdur".
+    package let loading: Bool
+    package let loadingLabel: String
 
     /// The questions whose text or answer has every word of `query`, ignoring case and marks ("ödəniş" finds
     /// "Ödənişi"); all of them for an empty query.

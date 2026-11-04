@@ -99,6 +99,7 @@ package final class HomeController {
         _ = await source.refreshNews()
         // The questions only while the panel shares them: GET /faq is empty otherwise.
         if (config ?? snapshot.config)?.faqEnabled == true { _ = await source.refreshFaq() }
+        snapshot.listsLoad = .loaded
         do {
             try await source.refreshConversations()
             snapshot.conversationsLoad = .loaded

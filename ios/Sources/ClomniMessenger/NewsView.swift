@@ -95,17 +95,29 @@ struct NewsListView: View {
     let actions: MessengerActions
     /// The news tab's list: no back, the tab bar under it.
     var isTab = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: screen.closeLabel, backLabel: screen.backLabel,
                              theme: theme, back: isTab ? nil : actions.back, close: actions.close)
-            ScrollView {
-                if !screen.items.isEmpty {
-                    NewsCardView(card: screen.card, theme: theme, open: actions.openNews)
-                        .padding(CGFloat(ClomniTheme.Space.l))
+            // Nothing yet: the spinner in the middle; the items fade in over it (CM-346).
+            ZStack {
+                if screen.loading {
+                    LoadingIndicator(loading: true, label: screen.loadingLabel, theme: theme)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity)
+                } else {
+                    ScrollView {
+                        if !screen.items.isEmpty {
+                            NewsCardView(card: screen.card, theme: theme, open: actions.openNews)
+                                .padding(CGFloat(ClomniTheme.Space.l))
+                        }
+                    }
+                    .transition(.opacity)
                 }
             }
+            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: screen.loading)
         }
         .background(theme.colors.canvas.color.ignoresSafeArea())
         .messengerTabBar(isTab ? screen.tabBar : nil, selected: .news, theme: theme, select: actions.selectTab)
@@ -123,6 +135,7 @@ struct NewsScreenView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.clomniThemeOverride) private var themeOverride
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var theme: ClomniTheme {
         ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
@@ -130,23 +143,33 @@ struct NewsScreenView: View {
 
     var body: some View {
         let article = faqAnswer ? model.controller.faqAnswer(id) : model.controller.article(id)
+        let loading = article == nil && (faqAnswer ? model.faq.loading : model.newsList.loading)
         VStack(spacing: 0) {
             ScreenBar(closeLabel: article?.closeLabel ?? model.home.header.closeLabel, theme: theme,
                       close: { coordinator.dismiss() }) {
                 CircleBackButton(label: article?.backLabel ?? "", theme: theme, action: { coordinator.back() })
             }
             .background(theme.colors.background.color.ignoresSafeArea(edges: .top))
-            if let article {
-                ScrollView {
-                    content(article)
-                        .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
-                        .padding(.bottom, CGFloat(ClomniTheme.Space.xxxl))
-                }
-                .task {
-                    if faqAnswer { await model.controller.faqOpened(id) } else { await model.controller.opened(article) }
+            // Not here yet: the spinner in the middle, and the item fades in over it (CM-346).
+            ZStack {
+                if let article {
+                    ScrollView {
+                        content(article)
+                            .padding(.horizontal, CGFloat(ClomniTheme.Size.barEdge))
+                            .padding(.bottom, CGFloat(ClomniTheme.Space.xxxl))
+                    }
+                    .task {
+                        if faqAnswer { await model.controller.faqOpened(id) } else { await model.controller.opened(article) }
+                    }
+                    .transition(.opacity)
+                } else if loading {
+                    LoadingIndicator(loading: true, label: model.newsList.loadingLabel, theme: theme)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: article == nil)
         }
         .background(theme.colors.background.color.ignoresSafeArea())
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)

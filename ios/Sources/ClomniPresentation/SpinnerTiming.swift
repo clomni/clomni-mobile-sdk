@@ -1,11 +1,11 @@
 import Foundation
 
-/// When the loading indicator shows (DESIGN-PASS 5): only once loading has lasted 300 ms, so a quick load does not
-/// flash it; once shown, for at least 400 ms, so it does not blink away. Time is measured by `sleep`, which tests
+/// When the loading indicator shows (DESIGN-PASS 5, CM-346): only once loading has lasted 150 ms, so a quick load does
+/// not flash it; once shown, for at least 400 ms, so it does not blink away. Time is measured by `sleep`, which tests
 /// replace with a clock of their own.
 @MainActor
 package final class SpinnerTiming {
-    package static let delay: TimeInterval = 0.3
+    package static let delay: TimeInterval = 0.15
     package static let minimum: TimeInterval = 0.4
 
     package private(set) var visible = false

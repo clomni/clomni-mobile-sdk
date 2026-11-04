@@ -348,6 +348,7 @@ struct HomeCardsView: View {
     let screen: HomeScreen
     let theme: ClomniTheme
     let actions: MessengerActions
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
@@ -403,8 +404,8 @@ struct HomeCardsView: View {
                 }
             }
         }
-        // Fades only, so Reduce Motion needs nothing else.
-        .animation(.easeOut(duration: 0.2), value: screen.phase)
+        // A fade, and with Reduce Motion not even that (CM-346).
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: screen.phase)
     }
 }
 

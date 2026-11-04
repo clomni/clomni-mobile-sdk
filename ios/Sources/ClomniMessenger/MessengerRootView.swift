@@ -32,12 +32,13 @@ struct ScreenRoot<Content: View>: View {
 }
 
 /// Home: the brand's grey blocks with the loading indicator until the SDK is ready ("Yenidən cəhd et" when getting
-/// ready failed), then Home itself, fading in over 200 ms.
+/// ready failed), then Home itself, fading in over 200 ms; at once with Reduce Motion (CM-346).
 struct HomeScreenRoot: View {
     @ObservedObject var model: MessengerRootModel
     @ObservedObject var home: MessengerModel
     let coordinator: MessengerCoordinator
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// setTheme from the first frame: the model's, which this view's own environment does not have yet.
     private var theme: ClomniTheme {
@@ -59,7 +60,7 @@ struct HomeScreenRoot: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: 0.2), value: model.ready)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.ready)
         // M1: the sheet itself is the system's (pageSheet, on its spring); its content fades in 120 ms after it.
         .entrance(rise: 0, delay: 0.12)
         .task { await coordinator.prepare() }

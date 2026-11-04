@@ -18,7 +18,8 @@ final class MessengerModel: ObservableObject {
     @Published private(set) var faq: FaqScreen
     @Published private(set) var config: MessengerConfig?
     let controller: HomeController
-    private var loaded = false
+    /// The first load, in a task of its own: a tab left while it runs (its view's task cancelled) does not cut it short.
+    private var loading: Task<Void, Never>?
 
     init(controller: HomeController) {
         self.controller = controller
@@ -35,11 +36,13 @@ final class MessengerModel: ObservableObject {
         self.init(controller: HomeController(source: engine, language: language, userName: userName, config: config))
     }
 
-    /// The cache, then the server: once per open messenger, not each time Home comes back into view.
+    /// The cache, then the server: once per open messenger, not each time a tab comes back into view.
     func load() async {
-        guard !loaded else { return }
-        loaded = true
-        await controller.load()
+        if loading == nil {
+            let controller = controller
+            loading = Task { @MainActor in await controller.load() }
+        }
+        await loading?.value
     }
 
     private func sync() {
