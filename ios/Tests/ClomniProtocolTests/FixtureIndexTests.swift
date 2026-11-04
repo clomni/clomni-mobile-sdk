@@ -96,6 +96,11 @@ final class FixtureIndexTests: ProtocolTestCase {
             let faq = ProtocolJSON.parseFaq(data)
             XCTAssertNotNil(faq, label)
             if entry.isValid { XCTAssertEqual(faq?.count, ProtocolJSON.decode(data)?["items"]?.arrayValue?.count, label) }
+        case ("conversation-list.json", nil):
+            // GET /conversations (1.0.7b § 5.4): the conversation to resume only when it is a conversation's id.
+            let page = ProtocolJSON.parseConversationPage(data)
+            XCTAssertNotNil(page, label)
+            XCTAssertEqual(page?.resumeConversationId != nil, entry.isValid, label)
         case ("appearance.json", nil):
             // The panel's document; the SDK reads only what the server makes of it, config.json.
             XCTAssertNotNil(ProtocolJSON.decode(data), label)

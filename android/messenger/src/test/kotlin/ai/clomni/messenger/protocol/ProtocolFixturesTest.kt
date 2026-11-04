@@ -51,6 +51,10 @@ class ProtocolFixturesTest(path: String) {
             schema == "news.json" -> protocol.json.parseNews(json)
             // The questions (FAQ, 1.0.7): a list, a question without its answer left out.
             schema == "faq.json" -> protocol.json.parseFaq(json)
+            // The conversations' list (1.0.7b §5.4): the conversation to resume only when it is a conversation's id.
+            schema == "conversation-list.json" -> protocol.json.parseConversationPage(json)?.also { page ->
+                assertEquals("${entry.path} resume", entry.valid, page.resumeConversationId != null)
+            }
             // What the app says over the socket: only the pong (RealtimeClient); typing goes over REST.
             schema == "realtime-client.json" -> Json.parseToJsonElement(json)
             schema == "client-message.json" -> {
@@ -159,6 +163,7 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/109-config-tab-bar-faq.json" to MessengerConfig::class,
             "fixtures/110-faq.json" to java.util.ArrayList::class,
             "fixtures/111-faq-empty.json" to java.util.ArrayList::class,
+            "fixtures/116-conversation-list-resume.json" to ConversationPage::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
             "fixtures/65-invalid-appearance-default-language-off.json" to JsonObject::class,
@@ -186,6 +191,8 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/113-invalid-config-news-on-home.json" to MessengerConfig::class,
             "fixtures/114-invalid-deleted-with-text.json" to MessageContent.Deleted::class,
             "fixtures/115-invalid-deleted-with-reply-to.json" to MessageContent.Deleted::class,
+            // A resume id without conv_ is dropped: the page stays, a new conversation is what opens.
+            "fixtures/117-invalid-conversation-list-resume-id.json" to ConversationPage::class,
             "examples/brief/s5-language-select.json" to MessageContent.QuickReplies::class,
             "examples/brief/s5-button-reply.json" to ClientMessage.ButtonReply::class,
             "examples/brief/s5.1-envelope.json" to MessageContent.Text::class,

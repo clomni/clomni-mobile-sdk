@@ -98,10 +98,11 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
     fun parseConversation(json: String): Conversation? =
         guard("conversation") { conversation(json.toJsonObject()) }
 
-    /** GET /conversations. */
+    /** GET /conversations. A resume id that is not a conversation's (`conv_…`) is none, as on iOS: a new conversation. */
     fun parseConversationPage(json: String): ConversationPage? = guard("conversations") {
         val o = json.toJsonObject()
-        ConversationPage(o.items("conversations", ::conversation), o.string("next_cursor"), o.string("resume_conversation_id"))
+        val resume = o.string("resume_conversation_id")?.takeIf { it.startsWith("conv_") }
+        ConversationPage(o.items("conversations", ::conversation), o.string("next_cursor"), resume)
     }
 
     /** GET /conversations/{id}/messages. */
