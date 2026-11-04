@@ -3,6 +3,7 @@ package ai.clomni.messenger.ui
 import ai.clomni.messenger.R
 import ai.clomni.messenger.core.AndroidMessenger
 import ai.clomni.messenger.presentation.ClomniStrings
+import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.HomePresenter
 import ai.clomni.messenger.presentation.MessengerRoute
 import ai.clomni.messenger.presentation.MessengerTab
@@ -19,11 +20,12 @@ import androidx.activity.OnBackPressedCallback
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -53,6 +55,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -184,9 +187,9 @@ internal fun Window.barIcons(darkStatus: Boolean, darkNavigation: Boolean) {
 
 /**
  * The open messenger: a sheet over the app (DESIGN-PASS-2 7), then grey skeletons with the indicator until the SDK is
- * ready ("Yenidən cəhd et" when nothing could be reached), then the screen the coordinator's route names: Home, the
- * list, a conversation. Screens change with Material's shared-axis X (300 ms): deeper slides in from the end, back
- * from the start.
+ * ready ("Yenidən cəhd et" when nothing could be reached), fading into the screen the coordinator's route names: Home,
+ * the list, a conversation. Screens change with Material's shared-axis X (300 ms): deeper slides in from the end, back
+ * from the start. The panel's tabs are one screen, Home's: they fade from one to another and keep their state.
  */
 @Composable
 internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, restored: Boolean = false, closed: () -> Unit = {}) {
@@ -238,9 +241,19 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         selectTab = { coordinator.selectTab(it.route) },
     )
     val intro = remember { HomeIntro(played = restored) }
+    // The tabs opened while the messenger is open, and the saveable state of the screen back leads to.
+    val stack = remember { TabStack() }
+    val saved = rememberSaveableStateHolder()
+    // Home, with the panel's bar every tab of it, is one screen: the tabs change inside it (TabPages), not by a push,
+    // and the bar coming or going does not move it.
+    val tabRoute = MessengerTab.of(route)?.takeIf { tabs != null && it in tabs }
+    tabRoute?.let(stack::show)
+    val still = reduceMotion()
     CompositionLocalProvider(LocalHomeIntro provides intro, LocalOpenLink provides openLink) {
     MessengerSheet(theme, closing, closed, dismiss = close, restored = restored) {
-        if (!state.ready || route == null) {
+        // Contract 1.0.7b §3: what comes once the SDK is ready fades in over the skeleton, never after an empty frame.
+        Crossfade(state.ready && route != null, animationSpec = if (still) snap() else tween(200), label = "ready") { ready ->
+        if (!ready || route == null) {
             // Not ready yet: the grey skeleton, the indicator in the middle while there is no look kept, ✕ working.
             val snapshot = if (state.failed) {
                 MessengerSnapshot(configLoad = MessengerSnapshot.Load.FAILED, isOffline = state.offline)
@@ -255,45 +268,32 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
                     LoadingSpinner(!state.failed, theme.colors.primary, skeleton.loadingLabel)
                 }
             }
-            return@MessengerSheet
+            return@Crossfade
         }
-        val still = reduceMotion()
         val forward = coordinator.forward
         AnimatedContent(
-            route,
+            if (tabRoute != null || route == MessengerRoute.Home) RootScreen else route,
             Modifier.fillMaxSize(),
-            // One tab to another changes at once, the bar staying where it is (as the platform's tabs do); a screen over
-            // a tab slides in over it, its bar with it.
-            transitionSpec = {
-                if (tabs != null && MessengerTab.of(initialState) != null && MessengerTab.of(targetState) != null) {
-                    EnterTransition.None togetherWith ExitTransition.None
-                } else {
-                    pushPop(forward, still)
-                }
-            },
+            // A screen over the tabs slides in over them, their bar with it.
+            transitionSpec = { pushPop(forward, still) },
             // A draft that became a conversation is the same screen: no transition for it.
             contentKey = { (it as? MessengerRoute.Conversation)?.let { open -> "chat:" + coordinator.screenKey(open.id) } ?: it },
             label = "screen",
         ) { shown ->
             val screenTheme = rememberTheme(screens.config ?: state.config)
-            val bar = screens.home.tabBar
-            val tab = MessengerTab.of(shown)?.takeIf { bar != null && it in bar }
             when (shown) {
-                MessengerRoute.Home -> WithTabBar(bar, MessengerTab.HOME, screenTheme, actions.selectTab) {
-                    HomeView(screens.home, screenTheme, actions)
+                RootScreen -> saved.SaveableStateProvider("root") {
+                    val bar = screens.home.tabBar
+                    if (bar != null && stack.selected != null) {
+                        TabPages(bar, stack, screenTheme, actions.selectTab) { tab -> TabScreen(tab, screens, home, screenTheme, actions) }
+                    } else {
+                        HomeView(screens.home, screenTheme, actions)
+                    }
                 }
-                MessengerRoute.Messages -> WithTabBar(bar?.takeIf { tab != null }, MessengerTab.MESSAGES, screenTheme, actions.selectTab) {
-                    MessagesView(screens.messages, screenTheme, screens.home.header.closeLabel, actions, tab = tab != null)
-                }
-                MessengerRoute.NewsList -> WithTabBar(bar?.takeIf { tab != null }, MessengerTab.NEWS, screenTheme, actions.selectTab) {
-                    val list = remember(screens.home) { home.newsList() }
-                    NewsListView(list, screenTheme, actions, tab = tab != null)
-                }
-                MessengerRoute.Faq -> WithTabBar(bar?.takeIf { tab != null }, MessengerTab.FAQ, screenTheme, actions.selectTab) {
-                    var query by rememberSaveable { mutableStateOf("") }
-                    val faq = remember(query, screens.home) { home.faqScreen(query) }
-                    FaqListView(faq, query, { query = it }, screenTheme, actions, tab = tab != null)
-                }
+                // Without the panel's bar the lists are pushed over Home.
+                MessengerRoute.Messages -> TabScreen(MessengerTab.MESSAGES, screens, home, screenTheme, actions, tab = false)
+                MessengerRoute.NewsList -> TabScreen(MessengerTab.NEWS, screens, home, screenTheme, actions, tab = false)
+                MessengerRoute.Faq -> TabScreen(MessengerTab.FAQ, screens, home, screenTheme, actions, tab = false)
                 is MessengerRoute.News -> {
                     // The item as Home has it; withdrawn meanwhile, back to where it was opened from.
                     val news = remember(shown.id, screens.home) { home.newsScreen(shown.id) }
@@ -315,7 +315,39 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
                 }
             }
         }
+        }
     }
+    }
+}
+
+/** Home, or with the panel's bar the tabs (the one shown is [TabStack]'s): the screen under all others. */
+private data object RootScreen
+
+/**
+ * A list a tab shows: the conversations, the news, the questions; [tab] false is the same list pushed over Home (no
+ * tab bar: a back arrow). Home is [HomeView].
+ */
+@Composable
+private fun TabScreen(
+    kind: MessengerTab,
+    screens: MessengerScreens,
+    home: HomeController,
+    theme: ai.clomni.messenger.presentation.ClomniTheme,
+    actions: MessengerActions,
+    tab: Boolean = true,
+) {
+    when (kind) {
+        MessengerTab.HOME -> HomeView(screens.home, theme, actions)
+        MessengerTab.MESSAGES -> MessagesView(screens.messages, theme, screens.home.header.closeLabel, actions, tab = tab)
+        MessengerTab.NEWS -> {
+            val list = remember(screens.home) { home.newsList() }
+            NewsListView(list, theme, actions, tab = tab)
+        }
+        MessengerTab.FAQ -> {
+            var query by rememberSaveable { mutableStateOf("") }
+            val faq = remember(query, screens.home) { home.faqScreen(query) }
+            FaqListView(faq, query, { query = it }, theme, actions, tab = tab)
+        }
     }
 }
 

@@ -53,7 +53,7 @@ internal fun Spinner(color: RgbColor, label: String, modifier: Modifier = Modifi
     }
 }
 
-/** [Spinner] while [loading], through [LoadingGate]: after 300 ms, for at least 400. Previews show it at once. */
+/** [Spinner] while [loading], through [LoadingGate]: after 150 ms, for at least 400. Previews show it at once. */
 @Composable
 internal fun LoadingSpinner(loading: Boolean, color: RgbColor, label: String, modifier: Modifier = Modifier, size: Dp = 24.dp) {
     if (LocalInspectionMode.current) {

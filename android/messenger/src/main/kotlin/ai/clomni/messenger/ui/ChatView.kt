@@ -322,7 +322,7 @@ internal fun ChatScreenView(
             // (DESIGN-PASS-3 C5). From the cache it is there in the first frame.
             Crossfade(screen.phase, body, tween(200), label = "chat") { phase ->
                 when (phase) {
-                    // Nothing cached: the indicator in the middle (after 300 ms); cached messages show at once instead.
+                    // Nothing cached: the indicator in the middle (after 150 ms); cached messages show at once instead.
                     HomeScreen.Phase.LOADING -> Box(inner, Alignment.Center) {
                         LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
                     }

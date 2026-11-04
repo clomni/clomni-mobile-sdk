@@ -1,10 +1,11 @@
 package ai.clomni.messenger.presentation
 
 /**
- * When the loading indicator shows (DESIGN-PASS 5): only once a load has lasted [delayMs] (300), so a quick one never
- * flashes it, and then for at least [minimumMs] (400), so it never blinks. Times are a monotonic clock's, ms.
+ * When the loading indicator shows (DESIGN-PASS 5): only once a load has lasted [delayMs] (150, contract 1.0.7b §3),
+ * so a quick one never flashes it, and then for at least [minimumMs] (400), so it never blinks. Times are a monotonic
+ * clock's, ms.
  */
-internal class LoadingGate(private val delayMs: Long = 300, private val minimumMs: Long = 400) {
+internal class LoadingGate(private val delayMs: Long = 150, private val minimumMs: Long = 400) {
     private var loadingSince: Long? = null
     private var shownAt: Long? = null
 

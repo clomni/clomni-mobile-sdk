@@ -19,6 +19,7 @@ import ai.clomni.messenger.protocol.MessengerConfig.HomeCard as Card
 import ai.clomni.messenger.protocol.ProtocolFiles
 import ai.clomni.messenger.protocol.ProtocolJson
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -149,6 +152,39 @@ class Sdk107SnapshotTest {
         val state = state(config.copy(faqEnabled = false), unread = 120).copy(news = emptyList())
         val home = presenter(state).home(state)
         snap("tab_bar_two_tabs") { theme -> WithTabBar(home.tabBar, MessengerTab.HOME, theme, {}) { HomeView(home, theme, MessengerActions()) } }
+    }
+
+    /**
+     * Contract 1.0.7b §2, close up: the conversations' badge with nothing unread, 7, and 120 ("99+"), then 7 right to
+     * left. 16 high, ringed in the bar's colour, its start just past the icon's middle, its middle on the icon's top edge.
+     */
+    @Test
+    fun tabBadgeLight() = badges(dark = false)
+
+    @Test
+    fun tabBadgeDark() = badges(dark = true)
+
+    private fun badges(dark: Boolean) {
+        paparazzi.unsafeUpdateConfig(
+            deviceConfig = DeviceConfig.PIXEL_5.copy(screenHeight = 980, nightMode = if (dark) NightMode.NIGHT else NightMode.NOTNIGHT),
+        )
+        val bars = listOf(0, 7, 120).map { unread ->
+            val state = state(unread = unread).copy(conversations = emptyList())
+            presenter(state).home(state).tabBar!!
+        }
+        val theme = ClomniTheme.make(config.brand, dark)
+        val name = "tab_badge_${if (dark) "dark" else "light"}"
+        paparazzi.snapshot(name) {
+            CompositionLocalProvider(LocalInspectionMode provides true) {
+                Column(Modifier.fillMaxSize().background(theme.colors.canvas.color).padding(vertical = 24.dp), Arrangement.spacedBy(24.dp)) {
+                    for (bar in bars) MessengerTabBar(bar, MessengerTab.HOME, theme) {}
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        MessengerTabBar(bars[1], MessengerTab.HOME, theme) {}
+                    }
+                }
+            }
+        }
+        semantics.assertTouchTargets(name)
     }
 
     /** The questions as a tab: the search field, then the questions in one card. */

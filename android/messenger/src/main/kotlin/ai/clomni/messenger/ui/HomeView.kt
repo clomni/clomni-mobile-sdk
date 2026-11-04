@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,16 +81,18 @@ import coil.compose.AsyncImage
 internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: MessengerActions) {
     Box(Modifier.fillMaxSize().background(homePage(theme).color)) {
         // The full brand colour reaches 16 dp under the greeting, then fades into the page over 160 dp: the text
-        // always stands on the full colour, and a larger title_scale takes the colour further down with it.
-        var greetingBottom by remember { mutableStateOf(0f) }
+        // always stands on the full colour, and a larger title_scale takes the colour further down with it. Read when
+        // drawing: the greeting is placed before the first frame is drawn, so Home built again (back from a
+        // conversation) never shows a frame with only 16 dp of colour under a white greeting.
+        val greetingBottom = remember { mutableFloatStateOf(0f) }
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .homeBackdrop(screen.header, theme, greetingBottom)
+                .homeBackdrop(screen.header, theme) { greetingBottom.floatValue }
                 .windowInsetsPadding(WindowInsets.statusBars),
         ) {
             HomeTop(screen.header, theme, actions.close)
-            Greeting(screen.header, theme, Modifier.onGloballyPositioned { greetingBottom = it.boundsInParent().bottom })
+            Greeting(screen.header, theme, Modifier.onGloballyPositioned { greetingBottom.floatValue = it.boundsInParent().bottom })
             HomeCards(
                 screen,
                 theme,
@@ -117,7 +120,7 @@ private fun lighter(color: RgbColor): RgbColor = RgbColor.WHITE.over(color, 0.25
  * greeting ([greetingBottom], px); then the page's own colour rising over it for 160 dp, so it fades with no edge.
  */
 @Composable
-private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme, greetingBottom: Float): Modifier {
+private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme, greetingBottom: () -> Float): Modifier {
     val picture = header.imageUrl.takeIf { header.style == MessengerConfig.HeaderStyle.IMAGE }
     val bitmap = picture?.let { LocalPreviewImages.current[it] }
     val painter = if (picture != null && bitmap == null && !LocalInspectionMode.current) {
@@ -132,7 +135,7 @@ private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme,
     val light = lighter(theme.colors.headerFrom).color
     val page = homePage(theme).color
     return drawBehind {
-        val fadeStart = greetingBottom + 16.dp.toPx()
+        val fadeStart = greetingBottom() + 16.dp.toPx()
         val end = fadeStart + 160.dp.toPx()
         val area = Size(size.width, end)
         when {

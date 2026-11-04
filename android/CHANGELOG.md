@@ -17,6 +17,15 @@
   more), the list with a search on the device ("Heç nə tapılmadı" when nothing matches), and each answer on its own
   screen (`faq_opened`).
 - The new texts come from `config.strings`, with az, en and ru in the SDK.
+- A bot is named the same everywhere (its bubbles, the typing row, a quote of it, Home's latest message and the
+  conversation list): the name the server sends with the message, else the panel's bot name, else the brand's. Its
+  picture: the sender's, else the panel's bot picture, else the logo. It no longer always speaks as the brand.
+- The unread badge on the conversations' tab is 16 dp high, ringed in the bar's colour and placed on the icon's top
+  end instead of over it; "99+" over 99. TalkBack reads the tab with the number ("Söhbətlər, 7 oxunmamış").
+- A tab keeps its state: going back to Home or the list finds it as it was (scroll, search, pictures), with no frame
+  of an empty page; the new tab fades in over 200 ms. Screens still push. A list that is still loading shows the
+  spinner after 150 ms and fades in when it comes; the messenger fades from its skeleton to the first screen. With the
+  system's animations off nothing animates.
 
 ## 1.0.6
 
