@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.clomni.ai/protocol/v1/faq.json",
+  "title": "FAQ",
+  "description": "GET /v1/faq (SDK 1.0.7): the questions the panel shares, published ones only, in the panel's order and in one language (a question without that language comes in the inbox's default language, else in another it has). Empty while config.faq.enabled is false. Cached with If-None-Match like the news. The SDK searches question and answer on the device; opening a question is reported as the app event faq_opened ({faq_id}).",
+  "type": "object",
+  "required": ["items"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["id", "question", "answer", "updated_at"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^faq_[0-9]+$" },
+        "question": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "answer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000,
+          "description": "The same light markdown as a news item's body_markdown: **bold**, *italic*, [links](https://…), - lists and line breaks."
+        },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

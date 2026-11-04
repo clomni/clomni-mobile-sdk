@@ -400,6 +400,7 @@ class ClomniEngineTest {
         assertEquals(1, fake.count("DELETE /v1/conversations/$conversation/messages/${mine.id}"))
         val deleted = phone.engine.messages(conversation).first { it.id == mine.id }
         assertEquals(MessageContent.Deleted, deleted.content)
+        assertEquals("deleted", deleted.type)
         assertEquals(mine.seq, deleted.seq)
         assertEquals("the list's last message too", MessageContent.Deleted, phone.engine.conversations().single().lastMessage?.content)
         assertNotEquals("its text is not kept for the preview", "Səhv yazdım", phone.engine.conversations().single().lastMessage?.fallbackText)

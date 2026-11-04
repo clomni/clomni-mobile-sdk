@@ -396,8 +396,9 @@ paths:
       summary: Published news
       description: |
         The channel's published news in the panel's order, in one language; an item without that language comes in
-        az. Home shows the first three as the news card, and no card when there are none. Cached like the config:
-        keep the answer, send `If-None-Match`. Opening an item is recorded with `POST /events`
+        az. Home's news card shows the first `config.home.news_on_home` (2 when absent), and no card when there are
+        none; with `config.home.tab_bar` they are also the news tab. Cached like the config: keep the answer, send
+        `If-None-Match`. Opening an item is recorded with `POST /events`
         (`{"event": "news_opened", "data": {"news_id": "news_12"}}`).
       parameters:
         - $ref: '#/components/parameters/Sdk'
@@ -421,6 +422,49 @@ paths:
             application/json:
               schema:
                 $ref: './schema/news.json'
+        '304':
+          description: Unchanged since the given ETag
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /faq:
+    get:
+      tags: [Config]
+      operationId: getFaq
+      summary: Frequently asked questions
+      description: |
+        SDK 1.0.7. The questions the panel published, in the panel's order and in one language; a question without
+        that language comes in the inbox's default language, else in another it has. Empty while
+        `config.faq.enabled` is false. The faq tab and Home's faq card (the first three) are shown only when there is
+        at least one. `answer` is the light markdown of a news item's body. The app searches question and answer
+        itself. Cached like the news: keep the answer, send `If-None-Match`. Opening a question is recorded with
+        `POST /events` (`{"event": "faq_opened", "data": {"faq_id": "faq_12"}}`).
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - name: lang
+          in: query
+          description: Language of the texts. Defaults to the user's language.
+          schema:
+            $ref: '#/components/schemas/Language'
+        - name: If-None-Match
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Published questions
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schema/faq.json'
         '304':
           description: Unchanged since the given ETag
         '400':
@@ -526,6 +570,13 @@ paths:
         message): the same session (its chain, which a refresh keeps) and the same `client_id` again - a retry after a
         lost answer, or two requests at once - start nothing new and answer the conversation the first one made, with
         200. Without a `client_id` every request starts a new conversation.
+
+        An inbox may keep a user to one conversation at a time ("lock to single conversation", on for new inboxes):
+        while the user has a conversation that is not resolved, the request starts nothing and answers that one, the
+        last active, with 200 and its latest messages, as for a repeated `client_id`. The app shows the conversation it
+        is answered; the user's first message goes there. A conversation whose flow turned typing off and ended
+        (`flow.input_disabled` and not `flow.active`) does not count: the app offers only a new conversation there.
+        `POST /flows/trigger` is not affected.
       parameters:
         - $ref: '#/components/parameters/Sdk'
       requestBody:
@@ -552,7 +603,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConversationWithMessages'
         '200':
-          description: This session's client_id already started a conversation; it is answered again, nothing new is made
+          description: |
+            Nothing new is made: this session's client_id already started a conversation, or the inbox keeps the user
+            to one conversation and theirs is not finished. That conversation is answered.
           content:
             application/json:
               schema:
@@ -643,6 +696,10 @@ paths:
         connection answers with the message already created. The response is the user's own message (for a
         `button_reply` its text is the button's title); the flow's next messages arrive over the socket.
 
+        A `text` the same user sent in the same conversation at most 2 s before, with the same text and no file, is a
+        double tap: it is answered, with 201, with that first message, its own `client_id` included, and nothing new
+        is made. The client drops its pending copy as it does after any 201.
+
         A `button_reply` or `form_submit` is checked against the conversation: an answer to a message that is no
         longer the latest interactive one is `409 stale_interaction`, a second answer to the same message is
         `409 already_answered`. On a 409 the client disables the buttons and reloads the message.
@@ -699,6 +756,64 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+
+  /conversations/{conversation_id}/messages/{message_id}:
+    delete:
+      tags: [Messages]
+      operationId: deleteMessage
+      summary: Delete the user's own message
+      description: |
+        SDK 1.0.7. The user deletes a message they sent, while the conversation is not `closed` (`bot`, `queued` and
+        `open` allow it). The message is then deleted for everyone: the panel shows that the customer deleted it,
+        and every copy in the app becomes `type: deleted` with `content {"type": "deleted"}`, `fallback_text`
+        `strings.message_deleted`, `reply_to: null` and no files; `id`, `sender`, `created_at` and `seq` stay. It
+        arrives as `message.updated` and `GET .../messages` returns it so. A message an operator deletes in the panel
+        becomes the same. A message with several files is deleted whole, by any of its ids.
+
+        A message not sent yet (still in the app's own queue) is taken off the queue and never reaches this endpoint.
+      parameters:
+        - $ref: '#/components/parameters/Sdk'
+        - $ref: '#/components/parameters/ConversationId'
+        - $ref: '#/components/parameters/MessageId'
+      responses:
+        '204':
+          description: Deleted, or it was deleted already
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden`: the user did not send this message (an operator''s, a bot''s or a system message)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: forbidden
+                  message: only the user's own messages can be deleted
+                  request_id: req_5f32
+        '404':
+          description: '`conversation_not_found`: not this user''s conversation; `not_found`: no such message in it'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: not_found
+                  message: message not found
+                  request_id: req_5f33
+        '409':
+          description: '`conversation_closed`: the conversation is closed; the message stays and the app says
+            `strings.delete_closed`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: conversation_closed
+                  message: the conversation is closed, its messages cannot be deleted
+                  request_id: req_5f34
 
   /conversations/{conversation_id}/read:
     post:
@@ -975,7 +1090,11 @@ paths:
       tags: [Flows and events]
       operationId: trackEvent
       summary: Record an app event for audiences
-      description: Stored for audience conditions and analytics. It never starts a flow; that is `/flows/trigger`.
+      description: |
+        Stored for audience conditions and analytics. It never starts a flow; that is `/flows/trigger`.
+
+        The SDK itself sends `news_opened` (`{"news_id": "news_12"}`) when the user opens a news item and, since
+        1.0.7, `faq_opened` (`{"faq_id": "faq_12"}`) when they open a question.
       parameters:
         - $ref: '#/components/parameters/Sdk'
       requestBody:
@@ -1040,6 +1159,15 @@ components:
         type: string
         pattern: '^conv_.+'
       example: conv_5521
+    MessageId:
+      name: message_id
+      in: path
+      required: true
+      description: A message's `id` (`msg_812`, or `msg_812_2` for one of its files).
+      schema:
+        type: string
+        pattern: '^msg_.+'
+      example: msg_812
 
   schemas:
     PanelPushState:
@@ -1366,6 +1494,8 @@ components:
                 - not_found
                 - method_not_allowed
                 - payload_too_large
+                - forbidden
+                - conversation_closed
               description: New codes may be added within v1; a client treats an unknown code by its HTTP status.
             message:
               type: string

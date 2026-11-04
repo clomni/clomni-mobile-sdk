@@ -565,6 +565,7 @@ internal class FakeMobileServer : Dispatcher() {
         if (conv.closed) return error(409, "conversation_closed")
         val deleted = JsonObject(
             message + mapOf(
+                "type" to JsonPrimitive("deleted"),
                 "content" to buildJsonObject { put("type", "deleted") },
                 "fallback_text" to JsonPrimitive("Bu mesaj silindi"),
                 "reply_to" to JsonNull,

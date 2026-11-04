@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://app.clomni.ai/protocol/v1/news.json",
   "title": "News",
-  "description": "GET /v1/news: the channel's published news in the panel's order, in one language (an item without that language comes in az). Home shows the first three as the news card; with no items the card is not shown. Cached with If-None-Match like the config. Opening an item is reported as the app event news_opened ({news_id}).",
+  "description": "GET /v1/news: the channel's published news in the panel's order, in one language (an item without that language comes in az). Home's news card shows the first config.home.news_on_home (2 when absent; three before SDK 1.0.7), and with no items the card is not shown. Cached with If-None-Match like the config. Opening an item is reported as the app event news_opened ({news_id}).",
   "type": "object",
   "required": ["items"],
   "properties": {

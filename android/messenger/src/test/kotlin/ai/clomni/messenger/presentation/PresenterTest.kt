@@ -243,6 +243,7 @@ class PresenterTest {
 
         val bar = presenter().home(snapshot(faqOn).copy(news = news, faq = faq)).tabBar!!
         assertEquals(listOf("Əsas səhifə", "Söhbətlər", "Xəbərlər", "Suallar"), bar.tabs.map { it.title })
+        assertEquals(listOf("Home", "Chats", "News", "FAQ"), presenter("en").home(snapshot(faqOn).copy(news = news, faq = faq)).tabBar!!.tabs.map { it.title })
         assertNull("nothing unread", bar.tabs[1].badge)
         assertTrue(MessengerTab.NEWS in bar)
         fun badge(unread: Int, conversations: List<Conversation> = emptyList()) =
@@ -298,8 +299,8 @@ class PresenterTest {
         assertEquals(list.map { it.id }, found("   "))
         val none = presenter().faq(state, "kredit")
         assertEquals(emptyList<FaqRow>(), none.rows)
-        assertEquals("Sual tapılmadı", none.empty)
-        assertEquals("nothing published", "Sual tapılmadı", presenter().faq(snapshot()).empty)
+        assertNull("the protocol has no words for nothing found", none.empty)
+        assertEquals("nothing published", "Hələ sual yoxdur", presenter().faq(snapshot()).empty)
 
         // An answer: the question as its title, the text as a news item's.
         val answer = presenter().faqItem(state, "faq_1")!!

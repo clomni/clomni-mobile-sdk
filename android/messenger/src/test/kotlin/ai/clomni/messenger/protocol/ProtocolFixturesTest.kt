@@ -49,6 +49,8 @@ class ProtocolFixturesTest(path: String) {
             schema == "conversation-start.json" -> Json.parseToJsonElement(json)
             // The news: kept items as a list (a broken one comes out repaired, and logged).
             schema == "news.json" -> protocol.json.parseNews(json)
+            // The questions (FAQ, 1.0.7): a list, a question without its answer left out.
+            schema == "faq.json" -> protocol.json.parseFaq(json)
             // What the app says over the socket: only the pong (RealtimeClient); typing goes over REST.
             schema == "realtime-client.json" -> Json.parseToJsonElement(json)
             schema == "client-message.json" -> {
@@ -152,6 +154,11 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/104-reply-operator-to-voice.json" to MessageContent.Text::class,
             "fixtures/105-event-flow-input-disabled.json" to RealtimeEvent.Payload.ConversationUpdated::class,
             "fixtures/106-quick-replies-typing-allowed.json" to MessageContent.QuickReplies::class,
+            "fixtures/107-deleted-user-message.json" to MessageContent.Deleted::class,
+            "fixtures/108-event-message-deleted-by-operator.json" to RealtimeEvent.Payload.MessageUpdated::class,
+            "fixtures/109-config-tab-bar-faq.json" to MessengerConfig::class,
+            "fixtures/110-faq.json" to java.util.ArrayList::class,
+            "fixtures/111-faq-empty.json" to java.util.ArrayList::class,
             // "valid": false: none of these may crash; this is what the SDK makes of each (the same as iOS).
             "fixtures/85-invalid-appearance-text-too-long.json" to JsonObject::class,
             "fixtures/65-invalid-appearance-default-language-off.json" to JsonObject::class,
@@ -173,6 +180,12 @@ class ProtocolFixturesTest(path: String) {
             "fixtures/98-invalid-card-button-both.json" to MessageContent.Card::class,
             // The voice message without its waveform: plain bars.
             "fixtures/103-invalid-audio-waveform-level.json" to MessageContent.Audio::class,
+            // 1.0.7: a question without its answer is left out; news_on_home is brought into 1–3; a deleted message
+            // is deleted whatever else it carries.
+            "fixtures/112-invalid-faq-empty-answer.json" to java.util.ArrayList::class,
+            "fixtures/113-invalid-config-news-on-home.json" to MessengerConfig::class,
+            "fixtures/114-invalid-deleted-with-text.json" to MessageContent.Deleted::class,
+            "fixtures/115-invalid-deleted-with-reply-to.json" to MessageContent.Deleted::class,
             "examples/brief/s5-language-select.json" to MessageContent.QuickReplies::class,
             "examples/brief/s5-button-reply.json" to ClientMessage.ButtonReply::class,
             "examples/brief/s5.1-envelope.json" to MessageContent.Text::class,

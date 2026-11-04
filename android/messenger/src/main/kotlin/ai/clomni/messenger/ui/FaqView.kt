@@ -44,7 +44,8 @@ import androidx.compose.ui.unit.dp
 /**
  * The questions (FAQ, contract 1.0.7 §3): the list's bar with "Tez-tez verilən suallar", the search field (searched on
  * this device, in the questions and their answers), then the questions in one card, hairlines between them; a tap
- * opens the answer. Nothing found, or nothing published: "Sual tapılmadı". A tab's own screen ([tab]) has no back.
+ * opens the answer. Nothing published: "Hələ sual yoxdur"; a search that finds nothing leaves the field alone. A tab's
+ * own screen ([tab]) has no back.
  */
 @Composable
 internal fun FaqListView(
@@ -74,7 +75,7 @@ internal fun FaqListView(
                     Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.xxl.dp),
                     style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary, FontWeight.SemiBold).copy(textAlign = TextAlign.Center),
                 )
-            } else {
+            } else if (screen.rows.isNotEmpty()) {
                 Column(Modifier.fillMaxWidth().clomniCard(theme)) { FaqRows(screen.rows, theme, actions.openFaqItem) }
             }
         }

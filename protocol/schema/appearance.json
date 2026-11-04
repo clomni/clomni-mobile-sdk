@@ -101,12 +101,14 @@
         },
         "cards": {
           "type": "array",
-          "description": "In the order shown; send is always there. messages (the card that opens the conversation list) is always shown too: the server puts it first when a draft leaves it out. news shows the published news, and nothing when there is none.",
+          "description": "In the order shown; send is always there. messages (the card that opens the conversation list) is always shown too: the server puts it first when a draft leaves it out. news shows the published news, and nothing when there is none; faq the first questions while faq.enabled.",
           "uniqueItems": true,
           "minItems": 1,
-          "items": { "enum": ["messages", "recent", "send", "news", "channels"] },
+          "items": { "enum": ["messages", "recent", "send", "news", "channels", "faq"] },
           "contains": { "const": "send" }
         },
+        "tab_bar": { "type": "boolean", "description": "Tabs at the bottom of the Messenger (config home.tab_bar). Absent: false." },
+        "news_on_home": { "type": "integer", "minimum": 1, "maximum": 3, "description": "News items on Home's news card. Absent: 2." },
         "channels": {
           "type": "array",
           "maxItems": 8,
@@ -148,7 +150,14 @@
         { "if": { "properties": { "default": { "const": "ru" } } }, "then": { "properties": { "enabled": { "type": "array", "contains": { "const": "ru" } } } } }
       ]
     },
-    "powered_by": { "type": "boolean", "description": "false only counts on a plan that allows it (app_sdk_white_label)." }
+    "powered_by": { "type": "boolean", "description": "false only counts on a plan that allows it (app_sdk_white_label)." },
+    "faq": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "description": "Whether the app shows the FAQ (config faq). The questions themselves are edited apart from this document. Absent: off.",
+      "properties": { "enabled": { "type": "boolean" } }
+    }
   },
   "$defs": {
     "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },

@@ -391,12 +391,18 @@ internal class ChatPresenter(
 
     // Replies
 
-    /** The server's description of the quoted message. */
-    private fun quote(ref: ReplyRef, snapshot: ChatSnapshot): Bubble.Quote = Bubble.Quote(
-        ref.id,
-        ref.sender?.let { author(it, snapshot) }.orEmpty(),
-        ref.excerpt?.let(::oneLine)?.takeIf { it.isNotEmpty() } ?: strings[Key.QUOTE_DELETED],
-    )
+    /**
+     * The server's description of the quoted message; "Mesaj silinib" once it was deleted (the server's copy here says
+     * so before any quote of it is sent again, protocol fixture 108).
+     */
+    private fun quote(ref: ReplyRef, snapshot: ChatSnapshot): Bubble.Quote {
+        val deleted = snapshot.messages.any { it.id == ref.id && it.content is MessageContent.Deleted }
+        return Bubble.Quote(
+            ref.id,
+            ref.sender?.let { author(it, snapshot) }.orEmpty(),
+            ref.excerpt?.takeUnless { deleted }?.let(::oneLine)?.takeIf { it.isNotEmpty() } ?: strings[Key.QUOTE_DELETED],
+        )
+    }
 
     /** A message here being quoted: over the field, and in the user's bubble until the server's copy comes. */
     private fun quote(message: Message, snapshot: ChatSnapshot): Bubble.Quote {

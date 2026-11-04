@@ -70,8 +70,9 @@ class Protocol107Test {
         val faq = protocol.json.parseFaq(
             """{"items":[
                  {"id":"faq_12","question":"Balansı necə artırım?","answer":"**Kartla** və ya terminalla.","updated_at":"2026-11-01T09:00:00Z"},
-                 {"id":"faq_13","question":"Kart necə silinir?"},
-                 {"id":"faq_14","question":"  "},
+                 {"id":"faq_13","question":"Kart necə silinir?","answer":"Sola sürüşdürün."},
+                 {"id":"faq_14","question":"  ","answer":"x"},
+                 {"id":"faq_15","question":"Cavabsız","answer":""},
                  {"question":"Id yoxdur"},
                  "broken"
                ]}""",
@@ -79,15 +80,40 @@ class Protocol107Test {
         assertEquals(
             listOf(
                 FaqItem("faq_12", "Balansı necə artırım?", "**Kartla** və ya terminalla.", Instant.parse("2026-11-01T09:00:00Z").toEpochMilli()),
-                FaqItem("faq_13", "Kart necə silinir?", "", null),
+                FaqItem("faq_13", "Kart necə silinir?", "Sola sürüşdürün.", null),
             ),
             faq,
         )
         assertTrue(protocol.warnings.toString(), protocol.warnings.any { "faq_14 without a question" in it })
         assertTrue(protocol.warnings.any { "faq item without an id" in it })
+        assertTrue(protocol.warnings.any { "faq_15 without an answer" in it })
+        // The server's fixtures: four questions in the panel's order, and none.
+        assertEquals(listOf("faq_12", "faq_9", "faq_15", "faq_16"), protocol.json.parseFaq(ProtocolFiles.read("fixtures/110-faq.json"))!!.map { it.id })
+        assertEquals(emptyList<FaqItem>(), protocol.json.parseFaq(ProtocolFiles.read("fixtures/111-faq-empty.json")))
         assertEquals(emptyList<FaqItem>(), protocol.json.parseFaq("""{"items":[]}"""))
         assertEquals(emptyList<FaqItem>(), protocol.json.parseFaq("{}"))
         assertNull("not JSON", protocol.json.parseFaq("<html>"))
+    }
+
+    /** The server's fixtures 107–109, 113–115 (protocol 1.0.7). */
+    @Test
+    fun theServersFixtures() {
+        val user = protocol.json.parseMessage(ProtocolFiles.read("fixtures/107-deleted-user-message.json"))!!
+        assertEquals(MessageContent.Deleted, user.content)
+        assertEquals(SenderType.USER, user.sender.type)
+        val event = protocol.json.parseEvent(ProtocolFiles.read("fixtures/108-event-message-deleted-by-operator.json"))!!
+        val operator = (event.data as RealtimeEvent.Payload.MessageUpdated).message
+        assertEquals(MessageContent.Deleted, operator.content)
+        assertEquals(SenderType.OPERATOR, operator.sender.type)
+        val config = config(ProtocolFiles.read("fixtures/109-config-tab-bar-faq.json"))
+        assertTrue(config.home.tabBar)
+        assertEquals(1, config.home.newsOnHome)
+        assertTrue(config.faqEnabled)
+        assertTrue(MessengerConfig.HomeCard.FAQ in config.home.cards)
+        assertEquals("4 is brought into 1–3", 3, config(ProtocolFiles.read("fixtures/113-invalid-config-news-on-home.json")).home.newsOnHome)
+        // Broken deleted messages are still deleted: the extra text is not shown; the quote is the presenter's to drop.
+        assertEquals(MessageContent.Deleted, protocol.json.parseMessage(ProtocolFiles.read("fixtures/114-invalid-deleted-with-text.json"))!!.content)
+        assertEquals(MessageContent.Deleted, protocol.json.parseMessage(ProtocolFiles.read("fixtures/115-invalid-deleted-with-reply-to.json"))!!.content)
     }
 
     @Test

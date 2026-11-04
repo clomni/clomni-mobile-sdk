@@ -11,6 +11,7 @@ is [docs/audit.md](../docs/audit.md) (§15 maps Clomni messages to these types).
 | [schema/event.json](schema/event.json) | WebSocket frame `{event, data, ts}` |
 | [schema/config.json](schema/config.json) | `GET /v1/mobile/config` |
 | [schema/news.json](schema/news.json) | `GET /v1/news` |
+| [schema/faq.json](schema/faq.json) | `GET /v1/faq` (SDK 1.0.7) |
 | [schema/push.json](schema/push.json) | Clomni keys of an FCM / APNs push |
 | [openapi.yaml](openapi.yaml) | Mobile API v1 (REST), OpenAPI 3.1; the realtime socket is described in its `info` |
 | [strings.json](strings.json) | the SDKs' UI texts in az, en and ru (see below) |
@@ -78,6 +79,26 @@ the first login instead of leaving users unverified.
   also has `sender: null`. The SDK shows `strings.quote_deleted` for either. A quote is not re-sent when the quoted
   message is deleted later: the app applies the deletion's `message.updated` to quotes of that id itself.
 
+## Deleting a message (SDK 1.0.7)
+
+- `DELETE /conversations/{id}/messages/{message_id}` deletes the user's own message while the conversation is not
+  `closed`: `204` (also when it was deleted already), `403 forbidden` for a message the user did not send, `404` for
+  one that is not there, `409 conversation_closed` once the conversation is closed.
+- A deleted message is the same whoever deleted it (the user in the app, an operator in the panel): `type` and
+  `content.type` are `deleted`, `fallback_text` is `strings.message_deleted` in the message's language, `reply_to` is
+  null and the files are gone; `id`, `sender`, `created_at` and `seq` stay. It comes as `message.updated` and so in
+  `GET .../messages`. A deleted message offers no reply, copy or delete.
+
+## Tab bar, news on Home and FAQ (SDK 1.0.7)
+
+- `config.home.tab_bar` (absent: false) puts tabs under the list screens: Home, the conversations (with the unread
+  count), News while there is a news item, FAQ while `config.faq.enabled` and there is a question. A conversation
+  hides them.
+- `config.home.news_on_home` (1–3, absent: 2) is how many news items Home's card shows; `see_all` under it unless
+  there are fewer.
+- `GET /faq` gives the published questions (empty while FAQ is off); the `faq` card shows the first three. Opening
+  one is the app event `faq_opened {faq_id}`.
+
 ## Flow and the composer
 
 - A conversation (REST) and every `conversation.updated` carry `flow {active, awaiting}`, plus `flow_id` and
@@ -111,6 +132,8 @@ saying what the screen must show.
 | `66`–`70` | replies: the user to an operator, an operator (panel) to an image, to a deleted message, the client's `reply_to`, one that must fail |
 | `71`–`74` | `conversation.flow`: waiting on buttons, on text, ended; one that must fail |
 | `90`–`98` | must fail: they prove the schema refuses what it should |
+| `107`–`108`, `114`–`115` | deleted messages (SDK 1.0.7): the user's own, an operator's over the socket; two that must fail |
+| `109`–`113` | tab bar, news on Home and FAQ (SDK 1.0.7): the config, the questions, none; two that must fail |
 
 Each file stands alone: the fixtures are cases, not one recorded conversation, so their `seq` and
 `created_at` are not meant to be read in sequence.

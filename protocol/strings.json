@@ -1,5 +1,5 @@
 {
-  "$comment": "UI texts of the App SDKs (Android, iOS) with their az, en and ru defaults. GET /mobile/config sends the user language's set, with the inbox's own overrides on top (the panel can change greeting_line1, greeting_line1_anonymous, greeting_line2, send_card_title, composer_placeholder, header_subtitle, empty_list, closed and offline); an SDK uses its built-in copy of this file until it has a config. %d stands for a number, %@ for a text. Every language must have the same keys (npm run validate). {name} and {first_name} are the user's name; greeting_line1_anonymous is shown when there is none. header_subtitle, under the name in the conversation's header, is the reply time the panel chose unless the panel wrote its own; the default here is the minutes reply time. loading is the accessibility label of the loading indicator. messages_title names the Home card that opens the conversation list and that list; news_title the news; pick_media, pick_camera and pick_file are the attachment sheet's rows and remove_attachment the label of the x on a picked file. There is no tab bar, so tab_home and tab_messages are gone. reply and copy are the long-press menu of a message; quote_deleted stands in a quote whose excerpt is null. connected is what the offline strip says when the connection is back.",
+  "$comment": "UI texts of the App SDKs (Android, iOS) with their az, en and ru defaults. GET /mobile/config sends the user language's set, with the inbox's own overrides on top (the panel can change greeting_line1, greeting_line1_anonymous, greeting_line2, send_card_title, composer_placeholder, header_subtitle, empty_list, closed and offline); an SDK uses its built-in copy of this file until it has a config. %d stands for a number, %@ for a text. Every language must have the same keys (npm run validate). {name} and {first_name} are the user's name; greeting_line1_anonymous is shown when there is none. header_subtitle, under the name in the conversation's header, is the reply time the panel chose unless the panel wrote its own; the default here is the minutes reply time. loading is the accessibility label of the loading indicator. messages_title names the Home card that opens the conversation list and that list; news_title the news; pick_media, pick_camera and pick_file are the attachment sheet's rows and remove_attachment the label of the x on a picked file. tab_home, tab_messages, tab_news and tab_faq name the tab bar's tabs (config home.tab_bar, SDK 1.0.7); see_all is the link under Home's news and FAQ cards; faq_title, faq_search and faq_empty are the FAQ list's title, search field and empty state. reply and copy are the long-press menu of a message; quote_deleted stands in a quote whose excerpt is null. delete, cancel, delete_confirm_title and delete_confirm_body are the delete menu item and its confirmation, delete_closed the notice when the conversation was closed meanwhile (409), message_deleted the deleted message's bubble (also its fallback_text). connected is what the offline strip says when the connection is back.",
   "az": {
     "today": "Bu gün",
     "yesterday": "Dünən",
@@ -80,7 +80,21 @@
     "voice_mic_denied": "Səsli mesaj üçün mikrofona icazə verin",
     "voice_open_settings": "Ayarlara keç",
     "voice_unavailable": "Səsi oynatmaq olmadı",
-    "voice_max_length": "Ən çox %d dəqiqə"
+    "voice_max_length": "Ən çox %d dəqiqə",
+    "delete": "Sil",
+    "cancel": "Ləğv et",
+    "delete_confirm_title": "Mesaj silinsin?",
+    "delete_confirm_body": "Mesaj hər kəs üçün silinəcək.",
+    "delete_closed": "Söhbət bağlanıb, mesaj silinmir.",
+    "message_deleted": "Bu mesaj silindi",
+    "tab_home": "Əsas səhifə",
+    "tab_messages": "Söhbətlər",
+    "tab_news": "Xəbərlər",
+    "tab_faq": "Suallar",
+    "see_all": "Hamısı",
+    "faq_title": "Tez-tez verilən suallar",
+    "faq_search": "Sual axtarın",
+    "faq_empty": "Hələ sual yoxdur"
   },
   "en": {
     "today": "Today",
@@ -162,7 +176,21 @@
     "voice_mic_denied": "Allow microphone access to send voice messages",
     "voice_open_settings": "Open Settings",
     "voice_unavailable": "Couldn't play this audio",
-    "voice_max_length": "Up to %d min"
+    "voice_max_length": "Up to %d min",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "delete_confirm_title": "Delete message?",
+    "delete_confirm_body": "The message will be deleted for everyone.",
+    "delete_closed": "The conversation is closed, the message cannot be deleted.",
+    "message_deleted": "This message was deleted",
+    "tab_home": "Home",
+    "tab_messages": "Chats",
+    "tab_news": "News",
+    "tab_faq": "FAQ",
+    "see_all": "See all",
+    "faq_title": "Frequently asked questions",
+    "faq_search": "Search questions",
+    "faq_empty": "No questions yet"
   },
   "ru": {
     "today": "Сегодня",
@@ -244,6 +272,20 @@
     "voice_mic_denied": "Разрешите доступ к микрофону, чтобы отправлять голосовые сообщения",
     "voice_open_settings": "Открыть настройки",
     "voice_unavailable": "Не удалось воспроизвести",
-    "voice_max_length": "Не больше %d мин"
+    "voice_max_length": "Не больше %d мин",
+    "delete": "Удалить",
+    "cancel": "Отмена",
+    "delete_confirm_title": "Удалить сообщение?",
+    "delete_confirm_body": "Сообщение будет удалено для всех.",
+    "delete_closed": "Диалог закрыт, сообщение нельзя удалить.",
+    "message_deleted": "Сообщение удалено",
+    "tab_home": "Главная",
+    "tab_messages": "Чаты",
+    "tab_news": "Новости",
+    "tab_faq": "Вопросы",
+    "see_all": "Все",
+    "faq_title": "Частые вопросы",
+    "faq_search": "Поиск по вопросам",
+    "faq_empty": "Пока нет вопросов"
   }
 }

@@ -467,7 +467,8 @@ internal class ClomniEngine(
     private fun deleteOnServer(message: Message) {
         authed { api.deleteMessage(message.conversationId, message.id) }
         val text = ClomniStrings.of(store.config, configLanguage)[ClomniStrings.Key.MESSAGE_DELETED]
-        store.putMessage(message.copy(content = MessageContent.Deleted, replyTo = null, fallbackText = text))
+        // As the server's own copy has it (protocol fixture 107): type and content deleted, no quote, no flow.
+        store.putMessage(message.copy(type = "deleted", content = MessageContent.Deleted, replyTo = null, flow = null, fallbackText = text))
     }
 
     // User, push, flows

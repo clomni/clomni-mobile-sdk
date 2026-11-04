@@ -770,6 +770,13 @@ class ChatPresenterTest {
             it.copy(conversation = ChatFixture.conversation("open"), pending = listOf(pending(ClientMessage.Text("Bəli", replyTo = gone.id), "Bəli")))
         }
         assertEquals("Mesaj silinib", bubbles(quoting).last().quote?.excerpt)
+        // Protocol fixture 108: the operator's message deleted in the panel; a message quoting it says so at once.
+        val answered = ChatFixture.message("68-reply-to-deleted.json")
+        val quoted = answered.replyTo!!
+        val original = ChatFixture.message("02-text-operator-markdown.json", "id" to quoted.id, "content" to mapOf("type" to "deleted"))
+        val answer = ChatFixture.message("66-reply-user-to-operator.json", "reply_to" to mapOf("id" to quoted.id, "sender" to mapOf("type" to "operator", "name" to "Leyla"), "excerpt" to "Köhnə mətn", "kind" to "text"))
+        assertEquals("Köhnə mətn", bubbles(screen(listOf(answer))).single().quote?.excerpt)
+        assertEquals("Mesaj silinib", bubbles(screen(listOf(original, answer))).last().quote?.excerpt)
     }
 
     /** Contract 1.0.7 §2: an operator's answer to a message carries its quote on the operator's side too. */

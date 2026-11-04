@@ -177,7 +177,7 @@ internal data class FaqScreen(
     /** "Sual axtarın": the search field's placeholder and name. */
     val search: String,
     val rows: List<FaqRow>,
-    /** "Sual tapılmadı": nothing published, or nothing matches the search. */
+    /** "Hələ sual yoxdur": nothing published. */
     val empty: String?,
     val backLabel: String,
     val closeLabel: String,
@@ -297,14 +297,17 @@ internal class HomePresenter(
         closeLabel = strings[Key.CLOSE],
     )
 
-    /** The questions whose question or answer has [query] in it (all of them for a blank one). */
+    /**
+     * The questions whose question or answer has [query] in it (all of them for a blank one). "Hələ sual yoxdur" only
+     * when nothing is published: the protocol has no words for a search that finds nothing, which shows no list.
+     */
     fun faq(snapshot: MessengerSnapshot, query: String = ""): FaqScreen {
         val rows = snapshot.faq.filter { matches(it, query) }.map { FaqRow(it.id, it.question) }
         return FaqScreen(
             title = strings[Key.FAQ_TITLE],
             search = strings[Key.FAQ_SEARCH],
             rows = rows,
-            empty = if (rows.isEmpty()) strings[Key.FAQ_EMPTY] else null,
+            empty = if (snapshot.faq.isEmpty()) strings[Key.FAQ_EMPTY] else null,
             backLabel = strings[Key.GO_BACK],
             closeLabel = strings[Key.CLOSE],
         )

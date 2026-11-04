@@ -68,14 +68,16 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
         }
     }
 
-    /** GET /faq. A question without an id or its text is left out, and logged; an answer it lacks reads as empty. */
+    /** GET /faq. A question without an id, its text or an answer is left out, and logged (protocol fixture 112). */
     fun parseFaq(json: String): List<FaqItem>? = guard("faq") {
         (json.toJsonObject()["items"] as? JsonArray).orEmpty().mapNotNull { element ->
             val o = element as? JsonObject ?: return@mapNotNull null
             val id = o.string("id") ?: return@mapNotNull null.also { logger("faq item without an id dropped") }
             val question = o.string("question")?.takeIf { it.isNotBlank() }
                 ?: return@mapNotNull null.also { logger("faq $id without a question dropped") }
-            FaqItem(id, question, o.string("answer").orEmpty(), o.string("updated_at")?.let(Iso8601::parseMillis))
+            val answer = o.string("answer")?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null.also { logger("faq $id without an answer dropped") }
+            FaqItem(id, question, answer, o.string("updated_at")?.let(Iso8601::parseMillis))
         }
     }
 
