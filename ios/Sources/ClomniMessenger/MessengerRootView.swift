@@ -13,9 +13,12 @@ import ClomniPresentation
 struct ScreenRoot<Content: View>: View {
     @ObservedObject var model: MessengerRootModel
     let content: Content
+    /// How the screen comes into view (CM-346 § 5.1); none for the UI tests' demo screens.
+    var entry: ScreenEntryModel?
 
     var body: some View {
         content
+            .environment(\.clomniScreenEntry, entry)
             .environment(\.clomniTypeface, model.typeface)
             .environment(\.clomniThemeOverride, model.themeOverride)
             .preferredColorScheme(Self.colorScheme(model.themeOverride.mode ?? model.config?.theme.mode))
@@ -31,8 +34,8 @@ struct ScreenRoot<Content: View>: View {
     }
 }
 
-/// Home: the brand's grey blocks with the loading indicator until the SDK is ready ("Yenidən cəhd et" when getting
-/// ready failed), then Home itself, fading in over 200 ms; at once with Reduce Motion (CM-346).
+/// Home: the spinner on the page until the SDK is ready and the entry's minimum has passed ("Yenidən cəhd et" when
+/// getting ready failed), then Home itself (CM-346 § 5.1).
 struct HomeScreenRoot: View {
     @ObservedObject var model: MessengerRootModel
     @ObservedObject var home: MessengerModel
@@ -57,12 +60,13 @@ struct HomeScreenRoot: View {
                          theme: theme,
                          actions: MessengerActions(close: { coordinator.dismiss() },
                                                    retry: { Task { await coordinator.prepare() } }))
+                    .entryGate(ready: model.preparationFailed, background: HomeView.page(theme), theme: theme,
+                               label: ClomniStrings(language: model.config.speaks(model.language),
+                                                    overrides: model.config?.strings ?? [:])[.loading])
                     .transition(.opacity)
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.ready)
-        // M1: the sheet itself is the system's (pageSheet, on its spring); its content fades in 120 ms after it.
-        .entrance(rise: 0, delay: 0.12)
         .task { await coordinator.prepare() }
     }
 }
@@ -73,10 +77,10 @@ struct ConversationScreen: View {
     let back: () -> Void
     let close: () -> Void
 
-    init(engine: ClomniEngine, conversationId: String, language: String?, config: MessengerConfig?,
+    init(source: ChatDataSource, conversationId: String, language: String?, config: MessengerConfig?,
          back: @escaping () -> Void, close: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: ChatModel(engine: engine, conversationId: conversationId, language: language,
-                                                     config: config))
+        _model = StateObject(wrappedValue: ChatModel(controller: ChatController(
+            source: source, conversationId: conversationId, language: language, config: config)))
         self.back = back
         self.close = close
     }

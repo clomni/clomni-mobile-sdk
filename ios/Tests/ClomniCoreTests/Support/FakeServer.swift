@@ -50,6 +50,8 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     var enforceHash = false
     /// The config's `conversation.starts_with_flow`.
     var startsWithFlow = false
+    /// GET /conversations' `resume_conversation_id` (CM-346 § 5.4); left out while nil, as an older server does.
+    var resumeConversationId: String?
     let configETag = "W/\"c1\""
     let newsETag = "W/\"n1\""
     /// GET /news's body: fixture 61 unless a test sets another.
@@ -264,7 +266,9 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
             return delete(path[3], in: path[1], user: user, frames: &frames)
         case ("GET", ["conversations"]):
             let list = conversations.values.filter { $0.user == user }.sorted { $0.id > $1.id }
-            return Self.json(200, ["conversations": .array(list.map(conversationJSON)), "next_cursor": nil])
+            var page: [String: JSONValue] = ["conversations": .array(list.map(conversationJSON)), "next_cursor": nil]
+            if let resume = resumeConversationId { page["resume_conversation_id"] = .string(resume) }
+            return Self.json(200, .object(page))
         case ("POST", ["conversations"]):
             let clientId = body["client_id"]?.stringValue
             if let clientId, let id = starts["\(user) \(clientId)"], let started = conversations[id] {

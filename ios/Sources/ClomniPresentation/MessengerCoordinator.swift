@@ -16,6 +16,8 @@ package protocol MessengerSession: Sendable {
     func refreshConfig(language: String?) async -> MessengerConfig?
     func connect() async
     func draftConversation(openedFrom: String?) async -> String
+    /// The server's `resume_conversation_id` (CM-346 § 5.4), the list asked for first when it has not come yet.
+    func resumeConversation() async -> String?
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation?
     func messages(in conversationId: String) async -> [Message]
@@ -70,30 +72,24 @@ package enum MessengerRoute: Sendable, Equatable, Hashable {
     }
 }
 
-/// How the messenger's navigation goes from one stack of screens to the next (CM-346).
+/// How the messenger's navigation goes from one stack of screens to the next (CM-346). No cross-fade (§ 5.1,
+/// TestFlight #21): another tab replaces the list at once, and the screens coming into view show the spinner first
+/// (`ScreenEntry`).
 package enum StackTransition: Sendable, Equatable {
     /// The system's push or pop: the list under it stays.
     case push
-    /// Another tab: the lists cross-fade, nothing slides.
-    case crossfade
-    /// At once: the opening (the sheet has its own move), a whole new stack, or Reduce Motion.
+    /// At once: another tab, the opening (the sheet has its own move), a whole new stack, or Reduce Motion.
     case none
 
-    /// The tabs' cross-fade, ease-out.
-    package static let crossfadeSeconds = 0.2
-    /// Content that was not there yet (the spinner's place) fades in, ease-out.
-    package static let fadeInSeconds = 0.18
-
     package init(from shown: [MessengerRoute], to stack: [MessengerRoute], reduceMotion: Bool) {
-        if reduceMotion || shown.isEmpty || stack.isEmpty {
-            self = .none
-        } else if shown[0] == stack[0] {
-            self = .push
-        } else if shown.count == 1, stack.count == 1, shown[0].tab != nil, stack[0].tab != nil {
-            self = .crossfade
-        } else {
-            self = .none
-        }
+        self = !reduceMotion && !shown.isEmpty && !stack.isEmpty && shown[0] == stack[0] ? .push : .none
+    }
+
+    /// The screens of `stack` that come into view, by their place in it: those that were not there before (a tab,
+    /// a push); none for a pop, which shows the screen under it as it was.
+    package static func entering(from shown: [MessengerRoute], to stack: [MessengerRoute]) -> Range<Int> {
+        let kept = zip(shown, stack).prefix { $0 == $1 }.count
+        return kept..<stack.count
     }
 }
 
@@ -348,7 +344,8 @@ package final class MessengerCoordinator {
     }
 
     /// Shows a new conversation; the server creates it (and its flow starts) with the user's first message, so
-    /// opening and closing asks the server for nothing. The draft's id, or nil when nothing opens.
+    /// opening and closing asks the server for nothing. With `conversation.single`, the conversation the server would
+    /// resume instead (`SingleConversation`). The id shown, or nil when nothing opens.
     @discardableResult
     package func presentNewConversation(source: String? = nil) async -> String? {
         guard readiness != .disabled else { return nil }

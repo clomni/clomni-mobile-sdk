@@ -10,6 +10,8 @@ package protocol MessengerDataSource: Sendable {
     func refreshConfig(language: String?) async -> MessengerConfig?
     func conversations() async -> [Conversation]
     func refreshConversations() async throws
+    /// The server's `resume_conversation_id` (CM-346 § 5.4), the list asked for first when it has not come yet.
+    func resumeConversation() async -> String?
     var unreadTotal: Int { get async }
     /// The logged-in user's name, for the greeting.
     var userName: String? { get async }
@@ -149,9 +151,10 @@ package final class HomeController {
         await source.faqOpened(id)
     }
 
-    /// "Bizə mesaj göndərin": a draft's id. The server creates the conversation with its first message.
+    /// "Bizə mesaj göndərin": a draft's id; the server creates the conversation with its first message. With
+    /// `conversation.single`, the conversation the server would resume instead (`SingleConversation`).
     package func startConversation(openedFrom: String?) async -> String {
-        await source.draftConversation(openedFrom: openedFrom)
+        return await source.draftConversation(openedFrom: openedFrom)
     }
 
     func changed(_ change: ClomniChange) async {

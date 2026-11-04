@@ -77,6 +77,13 @@ actor FakeSession: MessengerSession {
         return "draft_\(calls.count)"
     }
 
+    var resume: String?
+    func set(resume: String?) { self.resume = resume }
+    func resumeConversation() async -> String? {
+        calls.append("resume")
+        return resume
+    }
+
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation? {
         calls.append("flow \(event) \(openMessenger) \(openedFrom ?? "-")")

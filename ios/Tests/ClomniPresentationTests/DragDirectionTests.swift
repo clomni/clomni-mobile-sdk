@@ -19,3 +19,18 @@ final class DragDirectionTests: XCTestCase {
         XCTAssertFalse(DragDirection.vertical(CGSize(width: 30, height: 5)))
     }
 }
+
+/// CM-346 § 5.3 (TestFlight #21: «öz mesajına yanıt vermək olmur»): the user's own messages stand at the right edge,
+/// where a drag to the right has little room; theirs answer at 40 pt of finger, an operator's at 80 as before.
+final class ReplySwipeTests: XCTestCase {
+    func testTheUsersOwnMessageAnswersAtAShorterDrag() {
+        XCTAssertTrue(ReplySwipe.answers(56, outgoing: true), "60 pt from the edge, dragged to it: answered")
+        XCTAssertFalse(ReplySwipe.answers(56, outgoing: false), "an operator's needs more")
+        XCTAssertTrue(ReplySwipe.answers(80, outgoing: false))
+        XCTAssertFalse(ReplySwipe.answers(38, outgoing: true), "a little: not yet")
+        XCTAssertTrue(ReplySwipe.answers(40, outgoing: true))
+        XCTAssertFalse(ReplySwipe.answers(-80, outgoing: true), "to the left: never")
+        XCTAssertEqual(ReplySwipe.pulled(40, outgoing: true), 28, accuracy: 0.001, "the bubble follows at 70%")
+        XCTAssertEqual(ReplySwipe.pulled(500, outgoing: true), ReplySwipe.threshold(outgoing: true) + 24, "and stops")
+    }
+}

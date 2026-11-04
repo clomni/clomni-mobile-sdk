@@ -72,23 +72,15 @@ struct FaqListView: View {
     /// The FAQ tab's list: no back, the tab bar under it.
     var isTab = false
     @State private var query = ""
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: screen.closeLabel, backLabel: screen.backLabel,
                              theme: theme, back: isTab ? nil : actions.back, close: actions.close)
-            // Nothing yet: the spinner in the middle, not "Hələ sual yoxdur"; the questions fade in over it (CM-346).
-            ZStack {
-                if screen.loading {
-                    LoadingIndicator(loading: true, label: screen.loadingLabel, theme: theme)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
-                } else {
-                    questions.transition(.opacity)
-                }
-            }
-            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: screen.loading)
+            // Behind the entry's spinner until the questions are here, not "Hələ sual yoxdur" (CM-346 § 5.1).
+            questions
+                .entryGate(ready: !screen.loading, background: theme.colors.canvas.color, theme: theme,
+                           label: screen.loadingLabel)
         }
         .background(theme.colors.canvas.color.ignoresSafeArea())
         .messengerTabBar(isTab ? screen.tabBar : nil, selected: .faq, theme: theme, select: actions.selectTab)

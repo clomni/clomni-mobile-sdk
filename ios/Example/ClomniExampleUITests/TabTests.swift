@@ -49,6 +49,19 @@ final class TabTests: XCTestCase {
         keep(app, "entry-news")
     }
 
+    /// § 5.4 (TestFlight #21, 17:18): with one conversation per user (`conversation.single`) and one the server
+    /// resumes, "Bizə mesaj göndərin" opens it with its history; not an empty new one that jumps to it at the first
+    /// message.
+    func testSendUsOpensTheConversationTheServerResumes() {
+        continueAfterFailure = false
+        let app = launch()
+        let send = labelled(app, "Bizə mesaj göndərin")
+        XCTAssertTrue(send.waitForExistence(timeout: 20), "Home opened")
+        send.tap()
+        XCTAssertTrue(labelled(app, "Çox sağ olun").waitForExistence(timeout: 10), "the conversation, with its history")
+        keep(app, "single-conversation")
+    }
+
     /// Right after a tap: the spinner in the middle of the new screen, nothing of the screen left nor of the one coming
     /// (`gone`), and around the spinner the page's own colour only, so two screens never show through each other.
     private func assertSpinnerAlone(_ app: XCUIApplication, gone: [XCUIElement], _ what: String,

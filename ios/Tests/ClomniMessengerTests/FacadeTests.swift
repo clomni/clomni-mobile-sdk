@@ -75,6 +75,8 @@ actor FakeBackend: ClomniBackend {
         return "draft_new"
     }
 
+    func resumeConversation() async -> String? { nil }
+
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
                    openedFrom: String?) async throws -> Conversation? {
         calls.append("startFlow \(event) \(String(decoding: ProtocolJSON.encode(.object(data)), as: UTF8.self))")

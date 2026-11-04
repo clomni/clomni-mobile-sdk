@@ -29,6 +29,14 @@ actor FakeSource: MessengerDataSource {
         if conversationsFail { throw ClomniError.network("offline") }
     }
 
+    var resume: String?
+    var resumeAsks = 0
+    func set(resume: String?) { self.resume = resume }
+    func resumeConversation() async -> String? {
+        resumeAsks += 1
+        return resume
+    }
+
     func draftConversation(openedFrom: String?) async -> String {
         starts += 1
         return "draft_\(starts)"

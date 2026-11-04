@@ -15,8 +15,9 @@ struct MessengerTabBarView: View {
 
     static let iconSize: CGFloat = 22
     static let labelSize = 11.0
-    /// Over the icon, inside the tab: room for the badge, which stands half above the icon (CM-346).
-    static let topInset: CGFloat = 8
+    /// Over the icon's 26 pt frame, inside the tab: room for the badge, whose top stands 4 over that frame and so
+    /// 6 under the bar's line (CM-346 § 5.2: at least 4; TestFlight #21 had it under the line).
+    static let topInset: CGFloat = 10
 
     var body: some View {
         HStack(spacing: 0) {
@@ -26,11 +27,12 @@ struct MessengerTabBarView: View {
                     VStack(spacing: 3) {
                         Image(systemName: Self.symbol(item.tab, filled: current))
                             .font(.system(size: Self.iconSize))
-                            // On the glyph itself, so it is placed by the icon and not by the row.
+                            .frame(height: Self.iconSize + 4)
+                            // On the icon's frame, as wide as the glyph: placed by the icon, not by the row, and by a
+                            // height that does not depend on the symbol's own.
                             .overlay(alignment: .top) {
                                 if let badge = item.badge { TabBadge(text: badge, theme: theme) }
                             }
-                            .frame(height: Self.iconSize + 4)
                         Text(item.title)
                             .clomniFont(Self.labelSize, current ? .semibold : .regular, relativeTo: .caption2)
                             .lineLimit(1)
@@ -67,14 +69,17 @@ struct MessengerTabBarView: View {
     }
 }
 
-/// The unread count on the conversations' icon (CM-346; TestFlight #19 had it 18 pt and over the icon): white 11
-/// semibold on the unread red, 16 high and at least a circle, 4 either side of the number; ringed 1.5 in the bar's
-/// colour, which sets it off the icon in light and dark mode. Its left edge 4 right of the icon's centre and its middle
-/// on the icon's top edge, so it covers less than half of the icon and stays inside its tab.
+/// The unread count on the conversations' icon (CM-346; TestFlight #19 had it 18 pt and over the icon, #21 its top
+/// under the bar's line): white 11 semibold on the unread red, 16 high and at least a circle, 4 either side of the
+/// number; ringed 1.5 in the bar's colour, which sets it off the icon in light and dark mode. Its left edge 4 right of
+/// the icon's centre, its top 4 over the icon's frame (its middle by the glyph's top edge, in its corner), so it covers
+/// less than half of the icon and stays inside the bar, clear of its line.
 private struct TabBadge: View {
     static let height: CGFloat = 16
     static let ring: CGFloat = 1.5
     static let fromCentre: CGFloat = 4
+    /// The red's top over the icon frame's top.
+    static let lift: CGFloat = 4
 
     let text: String
     let theme: ClomniTheme
@@ -92,10 +97,10 @@ private struct TabBadge: View {
             .background(Capsule().fill(theme.colors.background.color))
             .fixedSize()
             .accessibilityHidden(true)
-            // Its top left corner on a point, the middle of the icon's top edge (the overlay's .top), then moved: the
-            // ring's left edge 2.5 right of it, so the red one is 4 right; its middle on the edge. Alignment guides
-            // for the same were not honoured here (CI 41828351378: the badge stood centred on the icon).
-            .offset(x: Self.fromCentre - Self.ring, y: -(Self.height / 2 + Self.ring))
+            // Its top left corner on a point, the middle of the icon frame's top edge (the overlay's .top), then moved:
+            // the ring's left edge 2.5 right of it, so the red one is 4 right; the red's top `lift` over it. Alignment
+            // guides for the same were not honoured here (CI 41828351378: the badge stood centred on the icon).
+            .offset(x: Self.fromCentre - Self.ring, y: -(Self.lift + Self.ring))
             .frame(width: 0, height: 0, alignment: .topLeading)
     }
 }

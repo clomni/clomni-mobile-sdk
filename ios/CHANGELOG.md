@@ -28,13 +28,18 @@ every bot message. The same in the conversation, in quotes, while it types, on H
 conversations' list. Operators and the user show as before.
 
 The unread count on the conversations' tab is 16 pt high, ringed in the bar's colour, at the icon's top right corner,
-and stays inside its tab; "99+" over 99. VoiceOver reads the tab with the count ("Söhbətlər, 7 oxunmamış").
+and stands wholly inside the tab bar, 6 pt under its top line; "99+" over 99. VoiceOver reads the tab with the count
+("Söhbətlər, 7 oxunmamış").
 
-The tabs keep their lists while the messenger is open: back on a tab, its list is there at once, scrolled where it was
-left. Before, Home was made again each time and the sheet was blank white for a moment. Tabs cross-fade over 200 ms;
-a conversation, a news item and an answer still open with the system's push. A list with nothing to show yet has the
-spinner in the brand's colour in the middle (after 150 ms rather than 300, so a quick load shows none), and its
-content fades in. With Reduce Motion the tabs and the content that comes change at once.
+A screen coming into view, a tab or a pushed one (the conversations, a conversation, a news item, an answer, "Hamısı"),
+shows only its own background with the system's spinner in the brand's colour in the middle, for at least 350 ms and
+until its data is there, then its content fades in over 150 ms. The screen before it is gone at once: nothing
+cross-fades, two screens never show through each other. Pushed screens keep the system's push, and going back shows
+the screen under as it was. The tabs keep their lists while the messenger is open: after the spinner a tab's list is
+scrolled where it was left. With Reduce Motion the content comes without the fade, after the spinner all the same.
+
+The user can answer their own message too: a drag to the right or "Cavabla" in its long-press menu; the quote over the
+field says "Siz". Not a deleted message, nor one still on its way.
 
 ## 1.0.4
 
