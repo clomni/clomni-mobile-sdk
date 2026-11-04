@@ -130,11 +130,14 @@ internal fun TabPages(bar: TabBar, stack: TabStack, theme: ClomniTheme, select: 
                 }
             },
         ) { measurables, constraints ->
-            // A tab its parent does not place is not drawn, hit or in the accessibility tree; it keeps its state.
-            val shown = measurables.filter { it.layoutId == selected || it.layoutId == under }
+            // Read here, not captured: a change of tab, or the end of its fade, lays the tabs out again by itself. A tab
+            // its parent does not place is not drawn, hit or in the accessibility tree; it keeps its state.
+            val top = stack.selected ?: MessengerTab.HOME
+            val below = stack.under
+            val shown = measurables.filter { it.layoutId == top || (below != null && it.layoutId == below) }
                 .map { it.layoutId to it.measure(constraints) }
             layout(constraints.maxWidth, constraints.maxHeight) {
-                for ((tab, placeable) in shown) placeable.place(0, 0, if (tab == selected) 1f else 0f)
+                for ((tab, placeable) in shown) placeable.place(0, 0, if (tab == top) 1f else 0f)
             }
         }
     }
