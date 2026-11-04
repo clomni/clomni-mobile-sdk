@@ -118,13 +118,14 @@ class Sdk107SnapshotTest {
     }
 
     /**
-     * Home's news with news_on_home at its default (2 of fixture 61's two, "Hamısı" under them) and the FAQ card (the
-     * first three questions, "Hamısı"); without a tab bar. On a tall screen, so the whole page shows.
+     * Home's news card with news_on_home at its default: two of three news, "Hamısı" under them; the FAQ card: the
+     * first three of four questions, "Hamısı"; without a tab bar. On a tall screen, so the whole page shows.
      */
     @Test
     fun homeNewsAndFaq() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(screenHeight = 3900))
-        val state = state(config.copy(home = config.home.copy(tabBar = false))).copy(conversations = emptyList())
+        val third = news.last().copy(id = "news_3", title = "Yeni tarif")
+        val state = state(config.copy(home = config.home.copy(tabBar = false))).copy(conversations = emptyList(), news = news + third)
         val home = presenter(state).home(state)
         snap("home_news_faq") { theme -> HomeView(home, theme, MessengerActions()) }
     }

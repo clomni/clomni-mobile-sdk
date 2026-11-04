@@ -225,14 +225,15 @@ class ClomniEngineTest {
         phone.engine.loginUnidentifiedUser().await()
         phone.engine.connect().await()
         phone.caughtUp()
-        fun creates() = fake.log.count { it == "POST /v1/conversations" }
+        // The server's thread adds to the log meanwhile: read it under its lock.
+        fun creates() = synchronized(fake.log) { fake.log.count { it == "POST /v1/conversations" } }
         val left = phone.engine.draft("profile_support")
         phone.engine.loadMessages(left).await()
         phone.engine.refreshConversation(left).await()
         phone.engine.setTyping(true, left).await()
         phone.engine.markRead(left).await()
         assertEquals("opened and left: nothing", 0, creates())
-        assertTrue(fake.log.toString(), fake.log.none { "draft_" in it })
+        assertTrue(fake.log.toString(), synchronized(fake.log) { fake.log.none { "draft_" in it } })
 
         val draft = phone.engine.draft("profile_support")
         phone.changes.clear()

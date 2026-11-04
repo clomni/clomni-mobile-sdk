@@ -11,9 +11,11 @@
 - With `home.tab_bar` on in the panel, Home, the conversations (with the unread count), the news and the questions
   are tabs under the list screens; a conversation, a news item or an answer opens over them, without the bar. Off,
   nothing changes.
-- Home shows `home.news_on_home` news items (2 by default) and "Hamısı", which opens the News tab or the news list.
-- The questions (FAQ, `GET /faq`, kept like the news): Home's card with the first three and "Hamısı", the list with
-  a search on the device, and each answer on its own screen (`faq_opened`).
+- Home shows `home.news_on_home` news items (2 by default), and "Hamısı" when there are more; it opens the News tab
+  or the news list.
+- The questions (FAQ, `GET /faq`, kept like the news): Home's card with the first three ("Hamısı" when there are
+  more), the list with a search on the device ("Heç nə tapılmadı" when nothing matches), and each answer on its own
+  screen (`faq_opened`).
 - The new texts come from `config.strings`, with az, en and ru in the SDK.
 
 ## 1.0.6

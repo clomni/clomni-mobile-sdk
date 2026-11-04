@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 /**
  * The questions (FAQ, contract 1.0.7 §3): the list's bar with "Tez-tez verilən suallar", the search field (searched on
  * this device, in the questions and their answers), then the questions in one card, hairlines between them; a tap
- * opens the answer. Nothing published: "Hələ sual yoxdur"; a search that finds nothing leaves the field alone. A tab's
+ * opens the answer. Nothing published: "Hələ sual yoxdur"; a search that finds nothing: "Heç nə tapılmadı". A tab's
  * own screen ([tab]) has no back.
  */
 @Composable
@@ -75,7 +75,7 @@ internal fun FaqListView(
                     Modifier.fillMaxWidth().padding(top = ClomniTheme.Space.xxl.dp),
                     style = clomniText(ClomniTheme.FontSize.text, theme.colors.textPrimary, FontWeight.SemiBold).copy(textAlign = TextAlign.Center),
                 )
-            } else if (screen.rows.isNotEmpty()) {
+            } else {
                 Column(Modifier.fillMaxWidth().clomniCard(theme)) { FaqRows(screen.rows, theme, actions.openFaqItem) }
             }
         }
@@ -84,7 +84,7 @@ internal fun FaqListView(
 
 /**
  * Home's FAQ card: its title, the first three questions with hairlines between them, then "Hamısı" in the brand
- * colour. A question opens its answer; "Hamısı" the list (the FAQ tab with a tab bar).
+ * colour when there are more. A question opens its answer; "Hamısı" the list (the FAQ tab with a tab bar).
  */
 @Composable
 internal fun FaqCardView(card: HomeScreen.FaqCard, theme: ClomniTheme, actions: MessengerActions, modifier: Modifier = Modifier) {
@@ -95,14 +95,15 @@ internal fun FaqCardView(card: HomeScreen.FaqCard, theme: ClomniTheme, actions: 
             style = clomniText(17f, theme.colors.textPrimary, FontWeight.SemiBold, lineHeight = 1.3f),
         )
         FaqRows(card.questions, theme, actions.openFaqItem)
+        val seeAll = card.seeAll ?: return@Column
         Box(Modifier.fillMaxWidth().height(1.dp).background(theme.colors.border.color))
         // The row reaches 12 into the card's bottom padding, so the link sits as close to the edge as the rows above.
         Box(
             Modifier.fillMaxWidth().bleed(0.dp, 0.dp, 0.dp, 12.dp).heightIn(min = ClomniTheme.Size.touchTarget.dp)
-                .button(card.seeAll, onClick = actions.openFaq),
+                .button(seeAll, onClick = actions.openFaq),
             Alignment.CenterStart,
         ) {
-            BasicText(card.seeAll, style = clomniText(ClomniTheme.FontSize.text, theme.colors.primaryText, FontWeight.Medium))
+            BasicText(seeAll, style = clomniText(ClomniTheme.FontSize.text, theme.colors.primaryText, FontWeight.Medium))
         }
     }
 }

@@ -204,8 +204,8 @@ class PresenterTest {
     private fun faq(n: Int, question: String = "Sual $n", answer: String = "Cavab $n") = FaqItem("faq_$n", question, answer, null)
 
     /**
-     * Contract 1.0.7 §3: Home shows news_on_home items (1–3, 2 by default) and "Hamısı" under them; with fewer news than
-     * that, no link.
+     * Contract 1.0.7 §3: Home shows news_on_home items (1–3, 2 by default) and "Hamısı" under them only when there are
+     * more news than that (coordinator, 2026-11-04).
      */
     @Test
     fun newsOnHomeAndSeeAll() {
@@ -216,8 +216,10 @@ class PresenterTest {
         assertEquals("Hamısı", home(null, 5).newsSeeAll)
         assertEquals(1, home(1, 5).news.size)
         assertEquals(3, home(3, 5).news.size)
-        assertEquals("2 of 2: the link stays (the contract hides it only under news_on_home)", "Hamısı", home(null, 2).newsSeeAll)
+        assertNull("2 of 2: all shown, no link", home(null, 2).newsSeeAll)
         assertNull("fewer than news_on_home", home(3, 2).newsSeeAll)
+        assertEquals("one more than Home shows", "Hamısı", home(1, 2).newsSeeAll)
+        assertEquals("Hamısı", home(null, 3).newsSeeAll)
         assertEquals(2, home(3, 2).news.size)
         assertNull("no news", home(null, 0).newsSeeAll)
         val list = presenter().newsList(snapshot().copy(news = (1..5).map(::item)))
@@ -260,7 +262,10 @@ class PresenterTest {
         assertNull(MessengerTab.of(MessengerRoute.FaqItem("faq_1")))
     }
 
-    /** Contract 1.0.7 §3: the FAQ card (first three and "Hamısı") only with the FAQ on, questions, and its place in cards. */
+    /**
+     * Contract 1.0.7 §3: the FAQ card (the first three, "Hamısı" when there are more) only with the FAQ on, questions,
+     * and its place in cards.
+     */
     @Test
     fun theQuestions() {
         val questions = (1..5).map { faq(it) }
@@ -271,6 +276,8 @@ class PresenterTest {
         assertEquals("Tez-tez verilən suallar", card.title)
         assertEquals(listOf("faq_1", "faq_2", "faq_3"), card.questions.map { it.id })
         assertEquals("Hamısı", card.seeAll)
+        assertNull("three: all shown, no link", presenter().home(snapshot(withCard).copy(faq = questions.take(3))).faq!!.seeAll)
+        assertEquals(2, presenter().home(snapshot(withCard).copy(faq = questions.take(2))).faq!!.questions.size)
         assertNull("FAQ off", presenter().home(snapshot(config("""{"cards":["send","faq"]}""")).copy(faq = questions)).faq)
         assertFalse("no questions", MessengerConfig.HomeCard.FAQ in presenter().home(snapshot(withCard)).order)
         assertFalse(
@@ -299,7 +306,7 @@ class PresenterTest {
         assertEquals(list.map { it.id }, found("   "))
         val none = presenter().faq(state, "kredit")
         assertEquals(emptyList<FaqRow>(), none.rows)
-        assertNull("the protocol has no words for nothing found", none.empty)
+        assertEquals("Heç nə tapılmadı", none.empty)
         assertEquals("nothing published", "Hələ sual yoxdur", presenter().faq(snapshot()).empty)
 
         // An answer: the question as its title, the text as a news item's.

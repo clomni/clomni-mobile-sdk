@@ -25,7 +25,7 @@ internal data class HomeScreen(
     val messagesCard: MessagesCard,
     /** As many as the panel's news_on_home (1–3, 2 by default); none: no news card. */
     val news: List<NewsCard> = emptyList(),
-    /** "Hamısı" under the news: the news list (the News tab when there is a tab bar); null when all are shown. */
+    /** "Hamısı" under the news: the news list (the News tab when there is a tab bar); null when Home shows them all. */
     val newsSeeAll: String? = null,
     /** The first questions (FAQ) and "Hamısı"; null without questions or with the FAQ off. */
     val faq: FaqCard? = null,
@@ -88,8 +88,11 @@ internal data class HomeScreen(
     /** "Mesajlar": the list of conversations, with a red dot while something is unread. */
     data class MessagesCard(val title: String, val unread: Boolean, val accessibilityLabel: String)
 
-    /** "Tez-tez verilən suallar": the first [FAQ_ON_HOME] questions, each opening its answer, and "Hamısı". */
-    data class FaqCard(val title: String, val questions: List<FaqRow>, val seeAll: String)
+    /**
+     * "Tez-tez verilən suallar": the first [HomePresenter.FAQ_ON_HOME] questions, each opening its answer, and "Hamısı"
+     * when there are more (null otherwise).
+     */
+    data class FaqCard(val title: String, val questions: List<FaqRow>, val seeAll: String?)
 
     data class ChannelsCard(val label: String, val items: List<ChannelItem>)
 
@@ -177,7 +180,7 @@ internal data class FaqScreen(
     /** "Sual axtarın": the search field's placeholder and name. */
     val search: String,
     val rows: List<FaqRow>,
-    /** "Hələ sual yoxdur": nothing published. */
+    /** "Hələ sual yoxdur": nothing published; "Heç nə tapılmadı": nothing matches the search. */
     val empty: String?,
     val backLabel: String,
     val closeLabel: String,
@@ -263,8 +266,8 @@ internal class HomePresenter(
             },
             messagesCard = messagesCard(snapshot),
             news = snapshot.news.take(onHome).map(::newsCard),
-            // Contract 1.0.7 §3: no link while there are fewer news than Home shows.
-            newsSeeAll = strings[Key.SEE_ALL].takeIf { snapshot.news.isNotEmpty() && snapshot.news.size >= onHome },
+            // Coordinator, 2026-11-04: the link only when there are more news than Home shows.
+            newsSeeAll = strings[Key.SEE_ALL].takeIf { snapshot.news.size > onHome },
             faq = faq,
             tabBar = tabBar(snapshot),
             poweredBy = if (config?.poweredBy == false) null else POWERED_BY,
@@ -298,8 +301,8 @@ internal class HomePresenter(
     )
 
     /**
-     * The questions whose question or answer has [query] in it (all of them for a blank one). "Hələ sual yoxdur" only
-     * when nothing is published: the protocol has no words for a search that finds nothing, which shows no list.
+     * The questions whose question or answer has [query] in it (all of them for a blank one). "Hələ sual yoxdur" when
+     * nothing is published, "Heç nə tapılmadı" when the search finds nothing.
      */
     fun faq(snapshot: MessengerSnapshot, query: String = ""): FaqScreen {
         val rows = snapshot.faq.filter { matches(it, query) }.map { FaqRow(it.id, it.question) }
@@ -307,7 +310,11 @@ internal class HomePresenter(
             title = strings[Key.FAQ_TITLE],
             search = strings[Key.FAQ_SEARCH],
             rows = rows,
-            empty = if (snapshot.faq.isEmpty()) strings[Key.FAQ_EMPTY] else null,
+            empty = when {
+                snapshot.faq.isEmpty() -> strings[Key.FAQ_EMPTY]
+                rows.isEmpty() -> strings[Key.FAQ_NO_RESULTS]
+                else -> null
+            },
             backLabel = strings[Key.GO_BACK],
             closeLabel = strings[Key.CLOSE],
         )
@@ -346,7 +353,7 @@ internal class HomePresenter(
     private fun faqCard(snapshot: MessengerSnapshot): HomeScreen.FaqCard? {
         if (snapshot.config?.faqEnabled != true || snapshot.faq.isEmpty()) return null
         val questions = snapshot.faq.take(FAQ_ON_HOME).map { FaqRow(it.id, it.question) }
-        return HomeScreen.FaqCard(strings[Key.FAQ_TITLE], questions, strings[Key.SEE_ALL])
+        return HomeScreen.FaqCard(strings[Key.FAQ_TITLE], questions, strings[Key.SEE_ALL].takeIf { snapshot.faq.size > FAQ_ON_HOME })
     }
 
     /** Contract 1.0.7 §3: the panel's tab_bar, and only the tabs that have something to show. */

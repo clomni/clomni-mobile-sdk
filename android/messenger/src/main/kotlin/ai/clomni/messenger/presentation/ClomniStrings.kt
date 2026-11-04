@@ -140,6 +140,9 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
         FAQ_TITLE("faq_title"),
         FAQ_SEARCH("faq_search"),
         FAQ_EMPTY("faq_empty"),
+
+        /** A FAQ search that finds nothing. */
+        FAQ_NO_RESULTS("faq_no_results"),
     }
 
     /** az, en or ru; anything else reads as az. */
@@ -272,6 +275,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FAQ_TITLE to "Tez-tez verilən suallar",
                 Key.FAQ_SEARCH to "Sual axtarın",
                 Key.FAQ_EMPTY to "Hələ sual yoxdur",
+                Key.FAQ_NO_RESULTS to "Heç nə tapılmadı",
             ),
             "en" to mapOf(
                 Key.TODAY to "Today", Key.YESTERDAY to "Yesterday", Key.TOMORROW to "tomorrow", Key.SEND to "Send",
@@ -332,6 +336,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FAQ_TITLE to "Frequently asked questions",
                 Key.FAQ_SEARCH to "Search questions",
                 Key.FAQ_EMPTY to "No questions yet",
+                Key.FAQ_NO_RESULTS to "Nothing found",
             ),
             "ru" to mapOf(
                 Key.TODAY to "Сегодня", Key.YESTERDAY to "Вчера", Key.TOMORROW to "завтра", Key.SEND to "Отправить",
@@ -390,6 +395,7 @@ internal class ClomniStrings(language: String?, private val overrides: Map<Strin
                 Key.FAQ_TITLE to "Частые вопросы",
                 Key.FAQ_SEARCH to "Поиск по вопросам",
                 Key.FAQ_EMPTY to "Пока нет вопросов",
+                Key.FAQ_NO_RESULTS to "Ничего не найдено",
             ),
         )
     }

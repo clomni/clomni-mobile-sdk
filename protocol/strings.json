@@ -94,7 +94,8 @@
     "see_all": "Hamısı",
     "faq_title": "Tez-tez verilən suallar",
     "faq_search": "Sual axtarın",
-    "faq_empty": "Hələ sual yoxdur"
+    "faq_empty": "Hələ sual yoxdur",
+    "faq_no_results": "Heç nə tapılmadı"
   },
   "en": {
     "today": "Today",
@@ -190,7 +191,8 @@
     "see_all": "See all",
     "faq_title": "Frequently asked questions",
     "faq_search": "Search questions",
-    "faq_empty": "No questions yet"
+    "faq_empty": "No questions yet",
+    "faq_no_results": "Nothing found"
   },
   "ru": {
     "today": "Сегодня",
@@ -286,6 +288,7 @@
     "see_all": "Все",
     "faq_title": "Частые вопросы",
     "faq_search": "Поиск по вопросам",
-    "faq_empty": "Пока нет вопросов"
+    "faq_empty": "Пока нет вопросов",
+    "faq_no_results": "Ничего не найдено"
   }
 }
