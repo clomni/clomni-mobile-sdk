@@ -20,14 +20,15 @@ Both native SDKs render the same `protocol/fixtures`; their tests fail when a fi
 
 | Platform | Version | Install |
 |---|---|---|
-| Android | 1.0.6 | `implementation("ai.clomni:messenger:1.0.6")` (Maven Central) |
-| React Native | 1.0.6 | `npm install @clomni/react-native@1.0.6` |
-| Flutter | 1.0.6 | `clomni_flutter: ^1.0.6` (pub.dev) |
+| Android | 1.0.7 | `implementation("ai.clomni:messenger:1.0.7")` (Maven Central) |
+| React Native | 1.0.7 | `npm install @clomni/react-native@1.0.7` |
+| Flutter | 1.0.7 | `clomni_flutter: ^1.0.7` (pub.dev) |
 | Unity | 1.0.7 | `https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.7` |
 | iOS | 1.0.7 | Swift Package Manager or CocoaPods from the tag `1.0.7` (below) |
 
-1.0.7 changed iOS only (Send empties the field on the tap, so a second tap can no longer send a message twice); Android,
-React Native and Flutter stay at 1.0.6. What each version brought is in each platform's `CHANGELOG.md`.
+1.0.7 is the same on every platform: the user deletes their own message while the conversation is open, a bottom
+tab bar, a FAQ and the number of news on Home, all switched on in the panel; a drag that starts on a message
+scrolls the conversation on iOS 18. What each version brought is in each platform's `CHANGELOG.md`.
 
 ## iOS
 

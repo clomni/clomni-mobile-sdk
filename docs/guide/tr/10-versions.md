@@ -4,18 +4,26 @@
 
 | Paket | Sürüm |
 |---|---|
+| Android `ai.clomni:messenger` | 1.0.7 |
 | iOS `ClomniMessenger` | 1.0.7 |
+| React Native `@clomni/react-native` | 1.0.7 |
+| Flutter `clomni_flutter` | 1.0.7 |
 | Unity | `unity-1.0.7` etiketi |
-| Android `ai.clomni:messenger` | 1.0.6, değişmedi |
-| React Native `@clomni/react-native` | 1.0.6, değişmedi |
-| Flutter `clomni_flutter` | 1.0.6, değişmedi |
 
-Yalnızca iOS değişti. "Gönder"e dokunulduğu anda metin alanı boşalır; mesaj gönderilemezse metin (veya seçilen dosya)
-geri gelir. Alan önceden yalnızca gönderim bitince boşalıyordu; yeni bir sohbetin ilk mesajında bu, sunucunun sohbeti
-oluşturmasını beklemek demekti ve bu sürede ikinci dokunuş mesajı iki kez gönderiyordu. Kodda değişiklik gerekmez.
+Tüm platformlarda aynı:
+- Kullanıcı sohbet açıkken kendi mesajını silebilir: mesaja basılı tutup «Sil». Kapanmış sohbette mesaj silinmez.
+  Silinen mesaj iki tarafta da "Bu mesaj silindi" olarak görünür. Operatör de panelde mesajı silebilir ve mesaja
+  alıntıyla yanıt verebilir.
+- Alt menü: Ana sayfa, Sohbetler (okunmamış sayısıyla), Haberler, Sorular. Panelde Görünüm › Ana sayfa bölümünden açılır.
+- Sorular (SSS): paneldeki SSS bölümünde yazılan sorular ve cevaplar, aramayla. Ana sayfada ilk 3 soru kart olarak
+  gösterilebilir.
+- Ana sayfa panelde seçilen sayıda (1–3, varsayılan 2) haber gösterir, gerisi Haberler bölümündedir.
+- iOS 18'de mesajın üzerinden başlayan kaydırma sohbeti kaydırmıyordu, artık kaydırıyor; sesli mesajın üzerinden de
+  (Android'de de). iOS'ta "Gönder"e iki kez hızlı basınca mesaj iki kez gitmiyor.
 
-Güncellemek için: iOS 1.0.7 Swift Package Manager'da (veya `pod update`), Unity `#unity-1.0.7` (ardından EDM4U ile
-resolve). React Native ve Flutter iOS pod'unu `~> 1.0` ile alır: `pod update ClomniMessenger` yeterli.
+Kodda değişiklik gerekmez, yeni özellikler panelden açılır. Güncellemek için sürümü 1.0.7 yapın: Android
+`ai.clomni:messenger:1.0.7`, iOS 1.0.7, React Native `@clomni/react-native@1.0.7`, Flutter `clomni_flutter: ^1.0.7`,
+Unity `#unity-1.0.7` (ardından EDM4U ile resolve).
 
 ## 1.0.6
 

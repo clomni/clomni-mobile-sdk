@@ -9,7 +9,7 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
 - Android: Minimum API Level 23, compileSdk 35 və ya daha yeni.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 və ya daha yeni.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Native
-  SDK-ları o gətirir: `ai.clomni:messenger:1.0.6`-ü Gradle ilə, `ClomniMessenger` pod-unu CocoaPods ilə.
+  SDK-ları o gətirir: `ai.clomni:messenger:1.0.7`-ü Gradle ilə, `ClomniMessenger` pod-unu CocoaPods ilə.
 - Paneldə kanalın ayarlar sütununun **Quraşdırma** bölməsindən App ID və hər iki API açarı (`android_…`, `ios_…`).
 
 ## Quraşdırma

@@ -9,7 +9,7 @@
 - Android: Minimum API Level 23, compileSdk 35 или новее.
 - iOS: Target minimum iOS Version 15.0, Xcode 15 или новее.
 - [External Dependency Manager for Unity](https://github.com/googlesamples/unity-jar-resolver) (EDM4U). Он подтягивает
-  нативные SDK: `ai.clomni:messenger:1.0.6` через Gradle и pod `ClomniMessenger` через CocoaPods.
+  нативные SDK: `ai.clomni:messenger:1.0.7` через Gradle и pod `ClomniMessenger` через CocoaPods.
 - App ID и оба API-ключа (`android_…`, `ios_…`) из раздела **Installation** в колонке настроек канала.
 
 ## Установка

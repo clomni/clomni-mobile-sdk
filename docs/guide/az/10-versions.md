@@ -4,18 +4,27 @@
 
 | Paket | Versiya |
 |---|---|
+| Android `ai.clomni:messenger` | 1.0.7 |
 | iOS `ClomniMessenger` | 1.0.7 |
+| React Native `@clomni/react-native` | 1.0.7 |
+| Flutter `clomni_flutter` | 1.0.7 |
 | Unity | `unity-1.0.7` teqi |
-| Android `ai.clomni:messenger` | 1.0.6, dəyişməyib |
-| React Native `@clomni/react-native` | 1.0.6, dəyişməyib |
-| Flutter `clomni_flutter` | 1.0.6, dəyişməyib |
 
-Yalnız iOS dəyişib. «Göndər» basılan kimi yazı sahəsi boşalır, mesaj gedə bilməsə mətn (və ya seçilmiş fayl) geri
-qayıdır. Əvvəl sahə yalnız göndərmə bitəndə boşalırdı. Yeni söhbətin ilk mesajında bu, serverin söhbəti yaratmasını
-gözləmək deməkdir və bu müddətdə ikinci toxunuş mesajı iki dəfə göndərirdi. Kodda heç nə dəyişmir.
+Bütün platformalarda eynidir:
+- İstifadəçi söhbət açıq olanda öz mesajını silə bilir: mesajın üstünə basıb saxlayıb «Sil». Bağlanmış söhbətdə mesaj
+  silinmir. Silinmiş mesaj hər iki tərəfdə «Bu mesaj silindi» kimi görünür. Operator da paneldə mesajı silə və mesaja
+  cavab (sitat) verə bilir.
+- Alt menyu: Əsas səhifə, Söhbətlər (oxunmamış sayı ilə), Xəbərlər, Suallar. Paneldə Görünüş › Ana səhifə bölməsində
+  açılır.
+- Suallar (FAQ): paneldə FAQ bölməsində yazılan suallar və cavablar, axtarışla. Əsas səhifədə ilk 3 sual kart kimi
+  göstərilə bilər.
+- Əsas səhifə panelin seçdiyi sayda (1–3, susmaya görə 2) xəbər göstərir, qalanları Xəbərlər bölməsindədir.
+- iOS 18-də mesajın üstündən başlayan sürüşdürmə söhbəti sürüşdürmürdü, indi sürüşdürür. Səsli mesajın üstündən də
+  (Android-də də). iOS-da «Göndər»ə iki dəfə tez basanda mesaj iki dəfə getmir.
 
-Yeniləmək üçün: iOS Swift Package Manager-də 1.0.7 (və ya `pod update`), Unity `#unity-1.0.7` (sonra EDM4U ilə
-resolve). React Native və Flutter iOS pod-u `~> 1.0` ilə götürür: `pod update ClomniMessenger` kifayətdir.
+Kodda heç nə dəyişmir, yeni funksiyalar paneldən açılır. Yeniləmək üçün versiyanı 1.0.7 edin: Android
+`ai.clomni:messenger:1.0.7`, iOS 1.0.7, React Native `@clomni/react-native@1.0.7`, Flutter `clomni_flutter: ^1.0.7`,
+Unity `#unity-1.0.7` (sonra EDM4U ilə resolve).
 
 ## 1.0.6
 

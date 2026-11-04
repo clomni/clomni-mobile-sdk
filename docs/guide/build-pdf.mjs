@@ -28,10 +28,10 @@ const languages = option('lang', null) ? [option('lang')] : ['en', 'az', 'tr', '
 const outDir = path.resolve(option('out', path.join(here, 'dist')));
 
 const TEXTS = {
-  en: { title: 'Clomni Mobile SDK', subtitle: 'Integration guide', contents: 'Contents', version: 'SDK 1.0.6' },
-  az: { title: 'Clomni Mobile SDK', subtitle: 'İnteqrasiya təlimatı', contents: 'Mündəricat', version: 'SDK 1.0.6' },
-  tr: { title: 'Clomni Mobile SDK', subtitle: 'Entegrasyon kılavuzu', contents: 'İçindekiler', version: 'SDK 1.0.6' },
-  ru: { title: 'Clomni Mobile SDK', subtitle: 'Руководство по интеграции', contents: 'Содержание', version: 'SDK 1.0.6' },
+  en: { title: 'Clomni Mobile SDK', subtitle: 'Integration guide', contents: 'Contents', version: 'SDK 1.0.7' },
+  az: { title: 'Clomni Mobile SDK', subtitle: 'İnteqrasiya təlimatı', contents: 'Mündəricat', version: 'SDK 1.0.7' },
+  tr: { title: 'Clomni Mobile SDK', subtitle: 'Entegrasyon kılavuzu', contents: 'İçindekiler', version: 'SDK 1.0.7' },
+  ru: { title: 'Clomni Mobile SDK', subtitle: 'Руководство по интеграции', contents: 'Содержание', version: 'SDK 1.0.7' },
 };
 const GREEN = '#10A670';
 

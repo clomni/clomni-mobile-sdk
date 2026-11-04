@@ -50,7 +50,7 @@ To build against a checkout of this repository instead:
 
   ```sh
   cd path/to/clomni-mobile-sdk/android
-  ./gradlew -Pclomni.version=1.0.6 :messenger:publishReleasePublicationToMavenLocal
+  ./gradlew -Pclomni.version=1.0.7 :messenger:publishReleasePublicationToMavenLocal
   ```
 
 ## Use

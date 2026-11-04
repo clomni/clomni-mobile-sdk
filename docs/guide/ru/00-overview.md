@@ -26,7 +26,7 @@ Instagram и чат на сайте.
 
 | Платформа | Пакет | Минимальные требования |
 |---|---|---|
-| Android | `ai.clomni:messenger:1.0.6` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
+| Android | `ai.clomni:messenger:1.0.7` (Maven Central) | Android 6.0 (API 23), Kotlin 1.8 |
 | iOS | Swift Package `https://github.com/clomni/clomni-mobile-sdk.git`, версия 1.0.7, продукт `ClomniMessenger` | iOS 15, Xcode 15 |
 | React Native | `@clomni/react-native` | React Native 0.75 |
 | Flutter | `clomni_flutter` | Flutter 3.16, iOS 15, Android API 24 |

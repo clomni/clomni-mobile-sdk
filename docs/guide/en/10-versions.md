@@ -4,18 +4,26 @@
 
 | Package | Version |
 |---|---|
+| Android `ai.clomni:messenger` | 1.0.7 |
 | iOS `ClomniMessenger` | 1.0.7 |
+| React Native `@clomni/react-native` | 1.0.7 |
+| Flutter `clomni_flutter` | 1.0.7 |
 | Unity | tag `unity-1.0.7` |
-| Android `ai.clomni:messenger` | 1.0.6, unchanged |
-| React Native `@clomni/react-native` | 1.0.6, unchanged |
-| Flutter `clomni_flutter` | 1.0.6, unchanged |
 
-Only iOS changed. Send empties the text field on the tap, and puts the text (or the picked file) back if the message
-could not go. The field used to empty only when the send finished; for a new conversation's first message that means
-waiting for the server to create the conversation, and a second tap in that time sent the message twice. No code changes.
+The same on every platform:
+- The user deletes their own message while the conversation is open: press and hold it, then «Delete». A closed
+  conversation's messages cannot be deleted. A deleted message shows as "This message was deleted" on both sides. In the
+  panel, operators can delete a message and reply to one (quote it) too.
+- A bottom tab bar: Home, Chats (with the unread count), News, FAQ. Switched on in the panel under Appearance › Home.
+- FAQ: the questions and answers written in the panel's FAQ section, with search. Home can show the first three as a
+  card.
+- Home shows as many news items as the panel chooses (1–3, two by default); the rest are in News.
+- On iOS 18 a drag that started on a message did not scroll the conversation; now it does, on a voice message too
+  (also on Android). On iOS, tapping Send twice quickly no longer sends the message twice.
 
-To update: iOS 1.0.7 in Swift Package Manager (or `pod update`), Unity `#unity-1.0.7` (then resolve with EDM4U).
-React Native and Flutter take the iOS pod with `~> 1.0`: `pod update ClomniMessenger` is enough.
+No code changes; the new features are switched on in the panel. To update, set the version to 1.0.7: Android
+`ai.clomni:messenger:1.0.7`, iOS 1.0.7, React Native `@clomni/react-native@1.0.7`, Flutter `clomni_flutter: ^1.0.7`,
+Unity `#unity-1.0.7` (then resolve with EDM4U).
 
 ## 1.0.6
 

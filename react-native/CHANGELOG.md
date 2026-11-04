@@ -1,5 +1,12 @@
 # @clomni/react-native — changelog
 
+## 1.0.7
+
+The native SDKs are 1.0.7 on both platforms. The user deletes their own message while the conversation is open;
+a bottom tab bar (Home, Chats, News, FAQ), a FAQ with search and the number of news on Home come from the panel; a drag
+that starts on a message scrolls the conversation on iOS 18 and from a voice message on Android; on iOS a second quick
+tap on Send no longer sends a message twice. Nothing changes in the wrapper's API.
+
 ## 1.0.6
 
 Android: a push that starts the app no longer counts as the app being open, so the replies after the first still come

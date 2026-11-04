@@ -1,6 +1,6 @@
 # ai.clomni:messenger (Android) changelog
 
-## Unreleased
+## 1.0.7
 
 - A drag up or down that starts on a voice message scrolls the conversation: the waveform takes a drag only once it
   goes sideways (it took every touch before). Other bubbles already scrolled.
