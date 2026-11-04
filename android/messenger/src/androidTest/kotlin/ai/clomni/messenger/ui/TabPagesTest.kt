@@ -97,8 +97,10 @@ class TabPagesTest {
         tap("Söhbətlər, 7 oxunmamış")
         compose.onNodeWithText("Söhbətlərin siyahısı").assertIsDisplayed()
         // Kept, but not placed while another tab is open: not drawn, not touched, not read out.
-        val placed = compose.onAllNodesWithTag("home").fetchSemanticsNodes().count { it.layoutInfo.isPlaced }
-        assertEquals("Home placed under the conversations", 0, placed)
+        assertEquals("the fade is over: nothing under the open tab", null, stack.under)
+        val homes = compose.onAllNodesWithTag("home", useUnmergedTree = true).fetchSemanticsNodes()
+        val placed = homes.count { node -> generateSequence(node.layoutInfo) { it.parentInfo }.all { it.isPlaced } }
+        assertEquals("Home placed under the conversations (${homes.size} found, open ${stack.selected})", 0, placed)
 
         tap("Əsas səhifə")
         compose.onNodeWithTag("home").assertIsDisplayed()
