@@ -200,7 +200,7 @@ struct BubbleRow: View {
                     .frame(maxWidth: maxWidth, alignment: incoming ? .leading : .trailing)
             }
             .frame(maxWidth: .infinity, alignment: incoming ? .leading : .trailing)
-            .modifier(SwipeToReply(enabled: bubble.replyable && bubble.messageId != nil,
+            .modifier(SwipeToReply(enabled: bubble.replyable && bubble.messageId != nil, outgoing: !incoming,
                                    pulled: $pulled) {
                 if let id = bubble.messageId { actions.reply(id) }
             })

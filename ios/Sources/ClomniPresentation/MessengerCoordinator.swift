@@ -349,6 +349,10 @@ package final class MessengerCoordinator {
     @discardableResult
     package func presentNewConversation(source: String? = nil) async -> String? {
         guard readiness != .disabled else { return nil }
+        if config?.singleConversation == true,
+           let resume = SingleConversation.existing(resume: await session.resumeConversation(), config: config) {
+            return open(.conversation(resume), source: source) ? resume : nil
+        }
         let draft = await session.draftConversation(openedFrom: route == nil ? source : self.source)
         return open(.conversation(draft), source: source) ? draft : nil
     }

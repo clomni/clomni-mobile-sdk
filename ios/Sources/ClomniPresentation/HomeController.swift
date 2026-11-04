@@ -154,6 +154,10 @@ package final class HomeController {
     /// "Bizə mesaj göndərin": a draft's id; the server creates the conversation with its first message. With
     /// `conversation.single`, the conversation the server would resume instead (`SingleConversation`).
     package func startConversation(openedFrom: String?) async -> String {
+        if snapshot.config?.singleConversation == true,
+           let resume = SingleConversation.existing(resume: await source.resumeConversation(), config: snapshot.config) {
+            return resume
+        }
         return await source.draftConversation(openedFrom: openedFrom)
     }
 

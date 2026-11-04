@@ -39,7 +39,14 @@ the screen under as it was. The tabs keep their lists while the messenger is ope
 scrolled where it was left. With Reduce Motion the content comes without the fade, after the spinner all the same.
 
 The user can answer their own message too: a drag to the right or "Cavabla" in its long-press menu; the quote over the
-field says "Siz". Not a deleted message, nor one still on its way.
+field says "Siz". Not a deleted message, nor one still on its way. A message on the right answers at 40 pt of drag
+rather than 80, which a short one at the screen's edge never had room for.
+
+With `conversation.single` on in the config (the inbox keeps one conversation per user), "Bizə mesaj göndərin", the
+list's new conversation and `Clomni.presentNewConversation` open the conversation the server would resume
+(`resume_conversation_id` of the conversation list), with its history, instead of an empty new one that jumped to it at
+the first message. The server decides which one; when it names none, or is older and sends no such field, a new
+conversation as before.
 
 ## 1.0.4
 
