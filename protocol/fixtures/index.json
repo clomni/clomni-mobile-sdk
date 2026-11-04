@@ -519,12 +519,12 @@
   {
     "file": "109-config-tab-bar-faq.json",
     "schema": "config.json",
-    "note": "Config, SDK 1.0.7: tab bar açıq (Əsas səhifə, Söhbətlər nişanla, Xəbərlər, Suallar), əsas səhifədə 1 xəbər və altında «Hamısı», FAQ kartı (ilk 3 sual + «Hamısı»); söhbət ekranında tab bar gizlidir"
+    "note": "Config, SDK 1.0.7: tab bar açıq (Əsas səhifə, Söhbətlər nişanla, Xəbərlər, Suallar), əsas səhifədə 1 xəbər, «Hamısı» yalnız xəbər 1-dən çox olanda; FAQ kartı ilk 3 sual, «Hamısı» yalnız sual 3-dən çox olanda; söhbət ekranında tab bar gizlidir"
   },
   {
     "file": "110-faq.json",
     "schema": "faq.json",
-    "note": "FAQ siyahısı: «Tez-tez verilən suallar», axtarış sahəsi, 4 sual paneldəki sırayla; sual açılanda cavab (qalın, siyahı, link, sətir keçidi) və /events-ə faq_opened {faq_id}; FAQ kartı ilk üçünü göstərir"
+    "note": "FAQ siyahısı: «Tez-tez verilən suallar», axtarış sahəsi, 4 sual paneldəki sırayla; sual açılanda cavab (qalın, siyahı, link, sətir keçidi) və /events-ə faq_opened {faq_id}; FAQ kartı ilk üçünü və (4 sual olduğu üçün) «Hamısı» göstərir"
   },
   {
     "file": "111-faq-empty.json",

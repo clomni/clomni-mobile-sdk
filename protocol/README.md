@@ -94,10 +94,10 @@ the first login instead of leaving users unverified.
 - `config.home.tab_bar` (absent: false) puts tabs under the list screens: Home, the conversations (with the unread
   count), News while there is a news item, FAQ while `config.faq.enabled` and there is a question. A conversation
   hides them.
-- `config.home.news_on_home` (1–3, absent: 2) is how many news items Home's card shows; `see_all` under it unless
-  there are fewer.
-- `GET /faq` gives the published questions (empty while FAQ is off); the `faq` card shows the first three. Opening
-  one is the app event `faq_opened {faq_id}`.
+- `config.home.news_on_home` (1–3, absent: 2) is how many news items Home's card shows; `see_all` under it only when
+  there are more news than that.
+- `GET /faq` gives the published questions (empty while FAQ is off); the `faq` card shows the first three, `see_all`
+  only when there are more. Opening one is the app event `faq_opened {faq_id}`.
 
 ## Flow and the composer
 

@@ -86,7 +86,7 @@
         },
         "cards": {
           "type": "array",
-          "description": "In the order shown. messages (opens the conversation list, also with a tab bar) and send are always there. news: the first news_on_home published news (GET /news) with see_all under them unless there are fewer than news_on_home, not drawn when there is none. faq: the first three questions (GET /faq) with see_all, drawn only while faq.enabled and there is a question. An SDK skips a card it does not know.",
+          "description": "In the order shown. messages (opens the conversation list, also with a tab bar) and send are always there. news: the first news_on_home published news (GET /news), see_all under them only when there are more, not drawn when there is none. faq: the first three questions (GET /faq), see_all under them only when there are more, drawn only while faq.enabled and there is a question. An SDK skips a card it does not know.",
           "items": { "enum": ["messages", "recent", "send", "news", "channels", "faq"] }
         },
         "tab_bar": {
@@ -97,7 +97,7 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 3,
-          "description": "SDK 1.0.7. How many news items Home's news card shows. see_all (strings.see_all) under them leads to the news tab, or to the news list without a tab bar; it is left out when there are fewer items than this. Absent: 2."
+          "description": "SDK 1.0.7. How many news items Home's news card shows. see_all (strings.see_all) under them, only when there are more news than this, leads to the news tab, or to the news list without a tab bar. Absent: 2."
         },
         "channels": {
           "type": "array",
