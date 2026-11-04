@@ -22,6 +22,14 @@ internal interface ChatDataSource {
 
     fun refreshConversation(id: String): Future<Unit>
 
+    /**
+     * The conversation a new one is, by the server's last list (`resume_conversation_id`, contract 1.0.7b §5.4); null
+     * when it said none or no list came yet. [refreshConversations] asks the server.
+     */
+    val resumeConversationId: String?
+
+    fun refreshConversations(): Future<Unit>
+
     fun messages(conversationId: String): List<Message>
 
     fun pending(conversationId: String): List<PendingMessage>

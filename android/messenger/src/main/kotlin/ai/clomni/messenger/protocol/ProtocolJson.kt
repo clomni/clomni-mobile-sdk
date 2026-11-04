@@ -101,7 +101,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
     /** GET /conversations. */
     fun parseConversationPage(json: String): ConversationPage? = guard("conversations") {
         val o = json.toJsonObject()
-        ConversationPage(o.items("conversations", ::conversation), o.string("next_cursor"))
+        ConversationPage(o.items("conversations", ::conversation), o.string("next_cursor"), o.string("resume_conversation_id"))
     }
 
     /** GET /conversations/{id}/messages. */
@@ -652,6 +652,7 @@ internal class ProtocolJson(private val logger: (String) -> Unit = {}) {
             ),
             poweredBy = o.boolean("powered_by") ?: true,
             startsWithFlow = o.section("conversation").boolean("starts_with_flow") ?: false,
+            singleConversation = o.section("conversation").boolean("single") ?: false,
             sounds = o.boolean("sounds") ?: true,
             faqEnabled = o.section("faq").boolean("enabled") ?: false,
         )

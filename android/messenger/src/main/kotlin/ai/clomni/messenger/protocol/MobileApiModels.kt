@@ -46,7 +46,15 @@ internal data class Conversation(
     }
 }
 
-internal data class ConversationPage(val conversations: List<Conversation>, val nextCursor: String?)
+internal data class ConversationPage(
+    val conversations: List<Conversation>,
+    val nextCursor: String?,
+    /**
+     * The conversation POST /conversations would answer with (contract 1.0.7b §5.4); null: a new one, or a server from
+     * before it was sent.
+     */
+    val resumeConversationId: String? = null,
+)
 
 /** A page of history, sorted by `seq`. */
 internal data class MessagePage(val messages: List<Message>, val hasMore: Boolean)

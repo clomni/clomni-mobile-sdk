@@ -518,6 +518,14 @@ internal class HomePresenter(
         fun botName(sender: Sender?, config: MessengerConfig?): String =
             sender?.name?.takeIf { it.isNotBlank() } ?: config?.bot?.name?.takeIf { it.isNotBlank() } ?: config?.brand?.name.orEmpty()
 
+        /**
+         * Contract 1.0.7b §5.4: with the panel's single conversation on, a new conversation is the one the server
+         * names ([resume], `resume_conversation_id`: the one POST /conversations would answer with), opened with its
+         * history; null (the switch off, or none named): a new one. The server, not the SDK, knows which still count
+         * (a bot conversation idle for 30 minutes or one its flow ended does not, CM-291).
+         */
+        fun openConversation(config: MessengerConfig?, resume: String?): String? = resume?.takeIf { config?.singleConversation == true }
+
         /** A bot's picture: the sender's, else the panel's bot picture, else the brand's logo (the initial without one). */
         fun botAvatar(config: MessengerConfig?, sender: Sender? = null): String? =
             sender?.avatarUrl?.takeIf { it.isNotBlank() } ?: config?.bot?.avatarUrl ?: config?.brand?.logoUrl

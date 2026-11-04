@@ -236,6 +236,11 @@ internal class ClomniEngine(
 
     override fun conversations(): List<Conversation> = store.conversations()
 
+    /** As the last list said (contract 1.0.7b §5.4); null before one came in this run. */
+    @Volatile
+    override var resumeConversationId: String? = null
+        private set
+
     /** One conversation as the store knows it. */
     override fun conversation(id: String): Conversation? = store.conversation(id)
 
@@ -609,6 +614,7 @@ internal class ClomniEngine(
 
     private fun clearLocalData() {
         store.clear()
+        resumeConversationId = null
         readSent.clear()
         typingSentAt.clear()
     }
@@ -735,7 +741,9 @@ internal class ClomniEngine(
     }
 
     private fun loadConversations() {
-        store.putConversations(authed { api.listConversations() }.conversations)
+        val page = authed { api.listConversations() }
+        store.putConversations(page.conversations)
+        resumeConversationId = page.resumeConversationId
     }
 
     private fun update(conversationId: String) {

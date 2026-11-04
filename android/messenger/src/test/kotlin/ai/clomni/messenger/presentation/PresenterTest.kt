@@ -249,6 +249,27 @@ class PresenterTest {
     }
 
     /**
+     * Contract 1.0.7b §5.4, the choice behind "Bizə mesaj göndərin" and every other way to a new conversation: with
+     * config.conversation.single, the conversation the server's list names (resume_conversation_id); none named (only
+     * closed ones), the switch off, or a server from before the field: a new one (null).
+     */
+    @Test
+    fun aNewConversationWithThePanelsSingleConversation() {
+        val single = Fixture.exampleConfig.copy(singleConversation = true)
+        assertEquals("single and an open one named: that one", "conv_open", HomePresenter.openConversation(single, "conv_open"))
+        assertNull("single, only closed ones: none named, a new one", HomePresenter.openConversation(single, null))
+        assertNull("the switch off: a new one", HomePresenter.openConversation(Fixture.exampleConfig, "conv_open"))
+        assertNull("no config: a new one", HomePresenter.openConversation(null, "conv_open"))
+        // From the server: conversation.single in the config, resume_conversation_id over the list; absent, off and null.
+        assertTrue(ProtocolJson().parseConfig("""{"conversation":{"single":true}}""")!!.singleConversation)
+        assertFalse(ProtocolJson().parseConfig("""{"conversation":{}}""")!!.singleConversation)
+        val page = """{"conversations":[],"next_cursor":null"""
+        assertEquals("conv_9", ProtocolJson().parseConversationPage("""$page,"resume_conversation_id":"conv_9"}""")!!.resumeConversationId)
+        assertNull(ProtocolJson().parseConversationPage("""$page,"resume_conversation_id":null}""")!!.resumeConversationId)
+        assertNull("an older server", ProtocolJson().parseConversationPage("""$page}""")!!.resumeConversationId)
+    }
+
+    /**
      * Contract 1.0.7b §2: the conversations' badge is the server's count, none at 0, "99+" over 99; TalkBack reads the
      * tab with the number, in the texts the SDK already has ("Söhbətlər, 7 oxunmamış").
      */
