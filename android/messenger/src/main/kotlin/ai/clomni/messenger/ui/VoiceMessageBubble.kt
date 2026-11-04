@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
 /** [VoicePlayer] for Compose: [version] moves with every change, so a bubble reading it redraws. */
 internal class VoicePlayback(val player: VoicePlayer) {
@@ -198,15 +199,35 @@ internal fun WaveformBar(
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val width = size.width.coerceAtLeast(1).toFloat()
-                    var at = down.position.x
-                    do {
-                        dragged = (at / width).coerceIn(0f, 1f)
-                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
-                        change?.consume()
-                        at = change?.position?.x ?: at
-                    } while (change?.pressed == true)
-                    dragged?.let(seek)
-                    dragged = null
+                    val slop = viewConfiguration.touchSlop
+                    // Nothing is taken until the finger has gone a touch slop: sideways it seeks, up or down it is the
+                    // transcript's scroll (CM-341; taking every move at once kept a voice bubble from scrolling the
+                    // list). Let go before that, it was a tap: the playhead goes there.
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                        if (change.isConsumed) return@awaitEachGesture
+                        if (!change.pressed) return@awaitEachGesture seek((change.position.x / width).coerceIn(0f, 1f))
+                        when (SeekTouch.of(change.position - down.position, slop)) {
+                            SeekTouch.SCROLL -> return@awaitEachGesture
+                            SeekTouch.SEEK -> {
+                                change.consume()
+                                dragged = (change.position.x / width).coerceIn(0f, 1f)
+                                break
+                            }
+                            null -> Unit
+                        }
+                    }
+                    try {
+                        while (true) {
+                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                            change.consume()
+                            if (!change.pressed) break
+                            dragged = (change.position.x / width).coerceIn(0f, 1f)
+                        }
+                        dragged?.let(seek)
+                    } finally {
+                        dragged = null
+                    }
                 }
             }
             .clearAndSetSemantics {
@@ -227,6 +248,25 @@ internal fun WaveformBar(
 
 private val BAR = 2.5.dp
 private val GAP = 2.dp
+
+/** What a touch on a waveform has become once it moved [moved] (px) from where it went down. */
+internal enum class SeekTouch {
+    /** Sideways: the playhead follows the finger. */
+    SEEK,
+
+    /** Up or down: the list's scroll, left to it. */
+    SCROLL,
+    ;
+
+    companion object {
+        /** Null while the finger is still within [slop] of where it went down. */
+        fun of(moved: Offset, slop: Float): SeekTouch? = when {
+            abs(moved.x) > slop && abs(moved.x) >= abs(moved.y) -> SEEK
+            abs(moved.y) > slop -> SCROLL
+            else -> null
+        }
+    }
+}
 
 /** How many bars fit the drawing's width. */
 internal fun DrawScope.barCount(): Int = ((size.width + GAP.toPx()) / (BAR + GAP).toPx()).toInt().coerceAtLeast(1)
