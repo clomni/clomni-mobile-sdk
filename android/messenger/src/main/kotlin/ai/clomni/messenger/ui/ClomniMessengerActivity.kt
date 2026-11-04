@@ -272,7 +272,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         }
         val forward = coordinator.forward
         AnimatedContent(
-            if (tabRoute != null || route == MessengerRoute.Home) RootScreen else route,
+            if (tabRoute != null || route == MessengerRoute.Home) ROOT_SCREEN else route,
             Modifier.fillMaxSize(),
             // A screen over the tabs slides in over them, their bar with it.
             transitionSpec = { pushPop(forward, still) },
@@ -282,7 +282,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
         ) { shown ->
             val screenTheme = rememberTheme(screens.config ?: state.config)
             when (shown) {
-                RootScreen -> saved.SaveableStateProvider("root") {
+                ROOT_SCREEN -> saved.SaveableStateProvider(ROOT_SCREEN) {
                     val bar = screens.home.tabBar
                     if (bar != null && stack.selected != null) {
                         TabPages(bar, stack, screenTheme, actions.selectTab) { tab -> TabScreen(tab, screens, home, screenTheme, actions) }
@@ -321,7 +321,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
 }
 
 /** Home, or with the panel's bar the tabs (the one shown is [TabStack]'s): the screen under all others. */
-private data object RootScreen
+private const val ROOT_SCREEN = "root"
 
 /**
  * A list a tab shows: the conversations, the news, the questions; [tab] false is the same list pushed over Home (no

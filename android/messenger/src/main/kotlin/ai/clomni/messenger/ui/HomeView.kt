@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.FloatState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -88,7 +89,7 @@ internal fun HomeView(screen: HomeScreen, theme: ClomniTheme, actions: Messenger
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .homeBackdrop(screen.header, theme) { greetingBottom.floatValue }
+                .homeBackdrop(screen.header, theme, greetingBottom)
                 .windowInsetsPadding(WindowInsets.statusBars),
         ) {
             HomeTop(screen.header, theme, actions.close)
@@ -120,7 +121,7 @@ private fun lighter(color: RgbColor): RgbColor = RgbColor.WHITE.over(color, 0.25
  * greeting ([greetingBottom], px); then the page's own colour rising over it for 160 dp, so it fades with no edge.
  */
 @Composable
-private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme, greetingBottom: () -> Float): Modifier {
+private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme, greetingBottom: FloatState): Modifier {
     val picture = header.imageUrl.takeIf { header.style == MessengerConfig.HeaderStyle.IMAGE }
     val bitmap = picture?.let { LocalPreviewImages.current[it] }
     val painter = if (picture != null && bitmap == null && !LocalInspectionMode.current) {
@@ -135,7 +136,7 @@ private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme,
     val light = lighter(theme.colors.headerFrom).color
     val page = homePage(theme).color
     return drawBehind {
-        val fadeStart = greetingBottom() + 16.dp.toPx()
+        val fadeStart = greetingBottom.floatValue + 16.dp.toPx()
         val end = fadeStart + 160.dp.toPx()
         val area = Size(size.width, end)
         when {

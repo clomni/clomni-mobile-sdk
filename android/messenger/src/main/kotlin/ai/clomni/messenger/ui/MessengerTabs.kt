@@ -44,7 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -55,7 +56,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 
 /**
  * A tab's screen with the tab bar under it (contract 1.0.7 §3). The bar keeps the navigation bar's room, so the screen
@@ -101,33 +101,40 @@ internal class TabStack {
 }
 
 /**
- * The tabs of [bar] over the bar, [page] drawing each: every tab [stack] opened stays composed, only the open one (and,
- * for its fade, the one before, under it) is placed: the others are not drawn, touched or read out. A change of tab is
- * a 200 ms fade (ease-out) of the new tab over the old, nothing slides; with the system's animations off it is at once.
+ * The tabs of [bar] over the bar, [page] drawing each: every tab [stack] opened stays composed, but only the open one
+ * (and, for its fade, the one before, under it) is placed; the others are not drawn, touched or read out. A change of
+ * tab is a 200 ms fade (ease-out) of the new tab over the old, nothing slides; with the system's animations off it is
+ * at once.
  */
 @Composable
 internal fun TabPages(bar: TabBar, stack: TabStack, theme: ClomniTheme, select: (MessengerTab) -> Unit, page: @Composable (MessengerTab) -> Unit) {
     val selected = stack.selected ?: MessengerTab.HOME
+    val under = stack.under
     val still = reduceMotion()
     WithTabBar(bar, selected, theme, select) {
-        for (tab in stack.opened) {
-            if (tab !in bar) continue
-            key(tab) {
-                val open = tab == selected
-                val drawn = open || tab == stack.under
-                // A tab a change opens starts unseen; the first one, and the open one when the tabs come back, are there.
-                val fade = remember { Animatable(if (open && stack.under == null) 1f else 0f) }
-                LaunchedEffect(open) {
-                    if (!open) return@LaunchedEffect fade.snapTo(0f)
-                    if (still) fade.snapTo(1f) else fade.animateTo(1f, tween(TAB_FADE_MS, easing = LinearOutSlowInEasing))
-                    stack.settled()
+        Layout(
+            content = {
+                for (tab in stack.opened) {
+                    if (tab !in bar) continue
+                    key(tab) {
+                        val open = tab == selected
+                        // A tab a change opens starts unseen; the first one, and the open one when the tabs come back, are there.
+                        val fade = remember { Animatable(if (open && under == null) 1f else 0f) }
+                        LaunchedEffect(open) {
+                            if (!open) return@LaunchedEffect fade.snapTo(0f)
+                            if (still) fade.snapTo(1f) else fade.animateTo(1f, tween(TAB_FADE_MS, easing = LinearOutSlowInEasing))
+                            stack.settled()
+                        }
+                        Box(Modifier.layoutId(tab).graphicsLayer { alpha = if (open) fade.value else 1f }) { page(tab) }
+                    }
                 }
-                Box(
-                    Modifier.zIndex(if (open) 1f else 0f).graphicsLayer { alpha = if (open) fade.value else 1f }.layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-                        layout(placeable.width, placeable.height) { if (drawn) placeable.place(0, 0) }
-                    },
-                ) { page(tab) }
+            },
+        ) { measurables, constraints ->
+            // A tab its parent does not place is not drawn, hit or in the accessibility tree; it keeps its state.
+            val shown = measurables.filter { it.layoutId == selected || it.layoutId == under }
+                .map { it.layoutId to it.measure(constraints) }
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                for ((tab, placeable) in shown) placeable.place(0, 0, if (tab == selected) 1f else 0f)
             }
         }
     }

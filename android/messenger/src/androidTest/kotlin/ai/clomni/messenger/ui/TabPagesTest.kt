@@ -97,7 +97,8 @@ class TabPagesTest {
         tap("Söhbətlər, 7 oxunmamış")
         compose.onNodeWithText("Söhbətlərin siyahısı").assertIsDisplayed()
         // Kept, but not placed while another tab is open: not drawn, not touched, not read out.
-        assertTrue(compose.onAllNodesWithTag("home").fetchSemanticsNodes().none { it.layoutInfo.isPlaced })
+        val placed = compose.onAllNodesWithTag("home").fetchSemanticsNodes().count { it.layoutInfo.isPlaced }
+        assertEquals("Home placed under the conversations", 0, placed)
 
         tap("Əsas səhifə")
         compose.onNodeWithTag("home").assertIsDisplayed()
