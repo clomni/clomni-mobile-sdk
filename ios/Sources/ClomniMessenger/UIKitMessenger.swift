@@ -17,6 +17,8 @@ import ClomniPresentation
 final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationControllerDelegate,
     UINavigationControllerDelegate {
     private let engine: ClomniEngine
+    /// What Home and the lists read: the engine, or the UI tests' demo (`Clomni.presentDemoTabs`).
+    private let listSource: MessengerDataSource?
     private weak var coordinator: MessengerCoordinator?
     private let rootModel = MessengerRootModel()
     private let launcher = LauncherController()
@@ -30,8 +32,9 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     /// Waiting for a window to present from (`present`).
     private var windowObservers: [NSObjectProtocol] = []
 
-    init(engine: ClomniEngine, coordinator: MessengerCoordinator) {
+    init(engine: ClomniEngine, coordinator: MessengerCoordinator, lists: MessengerDataSource? = nil) {
         self.engine = engine
+        listSource = lists
         self.coordinator = coordinator
         super.init()
         // A launcher with no session yet (no network at launch) tries again when the network is back.
@@ -97,7 +100,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         navigation.presentationController?.delegate = self
         self.navigation = navigation
         shown = []
-        home = MessengerModel(engine: engine, language: coordinator.language, userName: nil, config: coordinator.config)
+        home = makeLists(coordinator, config: coordinator.config)
         follow(coordinator.stack, animated: false)
         top.present(navigation, animated: true)
     }
@@ -162,7 +165,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     @ViewBuilder
     private func screen(_ route: MessengerRoute, root: Bool) -> some View {
         if let coordinator {
-            let lists = home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil)
+            let lists = home ?? makeLists(coordinator, config: nil)
             switch route {
             case .home:
                 HomeScreenRoot(model: rootModel, home: lists, coordinator: coordinator)
@@ -183,6 +186,12 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
                                    close: { [weak coordinator] in coordinator?.dismiss() })
             }
         }
+    }
+
+    private func makeLists(_ coordinator: MessengerCoordinator, config: MessengerConfig?) -> MessengerModel {
+        let source: MessengerDataSource = listSource ?? engine
+        return MessengerModel(controller: HomeController(source: source, language: coordinator.language, userName: nil,
+                                                         config: config))
     }
 
     // MARK: - The system's own moves
