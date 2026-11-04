@@ -161,7 +161,7 @@ private fun Modifier.homeBackdrop(header: HomeScreen.Header, theme: ClomniTheme,
  * Home's page under the cards and the fade: the light neutral grey (canvas, as the list) so the white cards keep their
  * edge without leaning on a shadow; dark mode keeps iOS's tokens, the page background under surface cards.
  */
-private fun homePage(theme: ClomniTheme) = if (theme.isDark) theme.colors.background else theme.colors.canvas
+internal fun homePage(theme: ClomniTheme) = if (theme.isDark) theme.colors.background else theme.colors.canvas
 
 private val VEIL_TOP = Color.Black.copy(alpha = 0.35f)
 private val VEIL_BOTTOM = Color.Black.copy(alpha = 0.55f)

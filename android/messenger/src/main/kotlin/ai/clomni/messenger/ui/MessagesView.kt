@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,15 +43,14 @@ private fun MessagesBody(screen: MessagesScreen, theme: ClomniTheme, closeLabel:
         }
         val padding = Modifier.padding(ClomniTheme.Space.l.dp)
         val spacing = Arrangement.spacedBy(ClomniTheme.Space.m.dp)
-        // The first time: the indicator in the middle (after 150 ms), then the list fading in over 200 ms (contract
-        // 1.0.7b §3); a cached list is there at once.
-        val late = remember { screen.phase != HomeScreen.Phase.READY }
+        // Not loaded yet: the indicator in the middle. Opened just now, the screen's own opening waits for the list
+        // instead and fades it in (contract 1.0.7b §5.1).
         when (screen.phase) {
             HomeScreen.Phase.LOADING -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 LoadingSpinner(true, theme.colors.primary, screen.loadingLabel)
             }
             HomeScreen.Phase.FAILED -> screen.failure?.let { Box(padding) { FailureView(it, theme, actions.retry) } }
-            HomeScreen.Phase.READY -> Column(Modifier.entrance(late, 0f, 1f, 200).verticalScroll(scroll).then(padding), spacing) {
+            HomeScreen.Phase.READY -> Column(Modifier.verticalScroll(scroll).then(padding), spacing) {
                 NewConversationCardView(screen.newConversation, theme, actions.newConversation)
                 val empty = screen.empty
                 if (empty != null) {

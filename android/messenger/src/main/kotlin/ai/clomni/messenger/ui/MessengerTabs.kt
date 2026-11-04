@@ -5,9 +5,6 @@ import ai.clomni.messenger.presentation.ClomniTheme
 import ai.clomni.messenger.presentation.MessengerTab
 import ai.clomni.messenger.presentation.RgbColor
 import ai.clomni.messenger.presentation.TabBar
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,18 +31,13 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -71,9 +63,8 @@ internal fun WithTabBar(bar: TabBar?, selected: MessengerTab, theme: ClomniTheme
 }
 
 /**
- * Which tabs are alive (contract 1.0.7b §3): a tab opened once stays composed while the tab bar is on screen, so going
- * back to it finds it as it was (its scroll, its search, its pictures) at once, with no empty frame. The open tab fades
- * in over the one it replaced, which stays drawn under it until then.
+ * Which tabs are alive (contract 1.0.7b §3, §5.1): a tab opened once stays composed while the tab bar is on screen, so
+ * going back to it finds it as it was (its scroll, its search, its pictures) once its spinner is over.
  */
 internal class TabStack {
     /** Every tab opened, first opened first. */
@@ -82,69 +73,36 @@ internal class TabStack {
     var selected by mutableStateOf<MessengerTab?>(null)
         private set
 
-    /** The tab [selected] replaced, drawn under it while it fades in; null once it has. */
-    var under by mutableStateOf<MessengerTab?>(null)
-        private set
-
     /** [tab] is the one shown; the same again changes nothing. */
     fun show(tab: MessengerTab) {
         if (tab == selected) return
-        under = selected
         selected = tab
         if (tab !in opened) opened += tab
-    }
-
-    /** The fade is over: only [selected] is drawn. */
-    fun settled() {
-        under = null
     }
 }
 
 /**
- * The tabs of [bar] over the bar, [page] drawing each: every tab [stack] opened stays composed, but only the open one
- * (and, for its fade, the one before, under it) is placed; the others are not drawn, touched or read out. A change of
- * tab is a 200 ms fade (ease-out) of the new tab over the old, nothing slides; with the system's animations off it is
- * at once.
+ * The tabs of [bar] over the bar, [page] drawing each, through [OpeningPages]: the tab left goes at once, the one
+ * chosen shows its background and the spinner for at least 350 ms and until [ready], then fades in where it was. The
+ * tabs on screen first (the messenger opening, back from a conversation) are there at once.
  */
 @Composable
-internal fun TabPages(bar: TabBar, stack: TabStack, theme: ClomniTheme, select: (MessengerTab) -> Unit, page: @Composable (MessengerTab) -> Unit) {
+@NonRestartableComposable
+internal fun TabPages(
+    bar: TabBar,
+    stack: TabStack,
+    theme: ClomniTheme,
+    ready: Boolean,
+    loading: String,
+    select: (MessengerTab) -> Unit,
+    page: @Composable (MessengerTab) -> Unit,
+) {
     val selected = stack.selected ?: MessengerTab.HOME
-    val under = stack.under
-    val still = reduceMotion()
     WithTabBar(bar, selected, theme, select) {
-        Layout(
-            content = {
-                for (tab in stack.opened) {
-                    if (tab !in bar) continue
-                    key(tab) {
-                        val open = tab == selected
-                        // A tab a change opens starts unseen; the first one, and the open one when the tabs come back, are there.
-                        val fade = remember { Animatable(if (open && under == null) 1f else 0f) }
-                        LaunchedEffect(open) {
-                            if (!open) return@LaunchedEffect fade.snapTo(0f)
-                            if (still) fade.snapTo(1f) else fade.animateTo(1f, tween(TAB_FADE_MS, easing = LinearOutSlowInEasing))
-                            stack.settled()
-                        }
-                        Box(Modifier.layoutId(tab).graphicsLayer { alpha = if (open) fade.value else 1f }) { page(tab) }
-                    }
-                }
-            },
-        ) { measurables, constraints ->
-            // Read here, not captured: a change of tab, or the end of its fade, lays the tabs out again by itself. A tab
-            // its parent does not place is not drawn, hit or in the accessibility tree; it keeps its state.
-            val top = stack.selected ?: MessengerTab.HOME
-            val below = stack.under
-            val shown = measurables.filter { it.layoutId == top || (below != null && it.layoutId == below) }
-                .map { it.layoutId to it.measure(constraints) }
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                for ((tab, placeable) in shown) placeable.place(0, 0, if (tab == top) 1f else 0f)
-            }
-        }
+        val background = if (selected == MessengerTab.HOME) homePage(theme) else theme.colors.canvas
+        OpeningPages(stack.opened.filter { it in bar }, selected, ready, enter = false, background.color, theme, loading, page)
     }
 }
-
-/** Contract 1.0.7b §3: 180–220 ms. */
-internal const val TAB_FADE_MS = 200
 
 /**
  * Brief 7.3: the tabs side by side over a hairline, each an icon 22 over its label 11; the open tab's icon is filled in
@@ -173,21 +131,22 @@ private fun RowScope.TabItem(tab: TabBar.Tab, isSelected: Boolean, theme: Clomni
                 role = Role.Tab
                 selected = isSelected
             }
-            // 2 more over the icon than under the label: the badge, half over the icon's top, stays inside the tab.
-            .padding(top = 10.dp, bottom = 6.dp, start = 4.dp, end = 4.dp),
+            // 4 more over the icon than under the label: the badge over the icon's top stays 4 under the bar's line.
+            .padding(top = BADGE_OVER_ICON + 4.dp, bottom = 6.dp, start = 4.dp, end = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         Box(Modifier.size(TAB_ICON)) {
             Icon(tab.kind.icon(isSelected), if (isSelected) theme.colors.primaryText else theme.colors.textSecondary, TAB_ICON)
-            // Contract 1.0.7b §2: 16 high, a circle for one figure and wider for more (4 each side), white 10 semibold
-            // on the unread red, ringed 1.5 in the bar's colour so it stands apart from the icon. Its start 4 past the
-            // icon's centre, its middle on the icon's top edge (mirrored right to left); it takes no room, so the icon
-            // stays in the middle of its tab whatever the number. A fixed size: TalkBack reads the number with the tab.
+            // Contract 1.0.7b §2, §5.2: 16 high, a circle for one figure and wider for more (4 each side), white 10
+            // semibold on the unread red, ringed 1.5 in the bar's colour so it stands apart from the icon. Its start 4
+            // past the icon's centre; its ring's top 6 over the icon's, so 4 under the bar's line: wholly inside the bar,
+            // the line never across it (mirrored right to left). It takes no room, so the icon stays in the middle of
+            // its tab whatever the number. A fixed size: TalkBack reads the number with the tab.
             tab.badge?.let { count ->
                 BasicText(
                     count,
-                    Modifier.offset(TAB_ICON / 2 + 4.dp - BADGE_RING, -(8.dp + BADGE_RING))
+                    Modifier.offset(TAB_ICON / 2 + 4.dp - BADGE_RING, -BADGE_OVER_ICON)
                         .wrapContentSize(Alignment.TopStart, unbounded = true)
                         .border(BADGE_RING, theme.colors.background.color, CircleShape)
                         .padding(BADGE_RING)
@@ -212,6 +171,9 @@ private fun RowScope.TabItem(tab: TabBar.Tab, isSelected: Boolean, theme: Clomni
 
 private val TAB_ICON = 22.dp
 private val BADGE_RING = 1.5.dp
+
+/** How far the badge's ring stands over the icon's top edge. */
+private val BADGE_OVER_ICON = 6.dp
 
 /** Material's icons, outlined, and filled for the open tab. */
 private fun MessengerTab.icon(filled: Boolean): Int = when (this) {

@@ -5,6 +5,7 @@ import ai.clomni.messenger.core.AndroidMessenger
 import ai.clomni.messenger.presentation.ClomniStrings
 import ai.clomni.messenger.presentation.HomeController
 import ai.clomni.messenger.presentation.HomePresenter
+import ai.clomni.messenger.presentation.HomeScreen
 import ai.clomni.messenger.presentation.MessengerRoute
 import ai.clomni.messenger.presentation.MessengerTab
 import ai.clomni.messenger.presentation.MessengerSnapshot
@@ -20,12 +21,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -187,9 +187,9 @@ internal fun Window.barIcons(darkStatus: Boolean, darkNavigation: Boolean) {
 
 /**
  * The open messenger: a sheet over the app (DESIGN-PASS-2 7), then grey skeletons with the indicator until the SDK is
- * ready ("Yenidən cəhd et" when nothing could be reached), fading into the screen the coordinator's route names: Home,
- * the list, a conversation. Screens change with Material's shared-axis X (300 ms): deeper slides in from the end, back
- * from the start. The panel's tabs are one screen, Home's: they fade from one to another and keep their state.
+ * ready ("Yenidən cəhd et" when nothing could be reached), then the screen the coordinator's route names: Home, the
+ * list, a conversation. Screens slide (300 ms): deeper in from the end, back from the start; one pushed shows its
+ * spinner first, then fades in (Opening). The panel's tabs are one screen, Home's: they keep their state.
  */
 @Composable
 internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, restored: Boolean = false, closed: () -> Unit = {}) {
@@ -251,9 +251,7 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
     val still = reduceMotion()
     CompositionLocalProvider(LocalHomeIntro provides intro, LocalOpenLink provides openLink) {
     MessengerSheet(theme, closing, closed, dismiss = close, restored = restored) {
-        // Contract 1.0.7b §3: what comes once the SDK is ready fades in over the skeleton, never after an empty frame.
-        Crossfade(state.ready && route != null, animationSpec = if (still) snap() else tween(200), label = "ready") { ready ->
-        if (!ready || route == null) {
+        if (!state.ready || route == null) {
             // Not ready yet: the grey skeleton, the indicator in the middle while there is no look kept, ✕ working.
             val snapshot = if (state.failed) {
                 MessengerSnapshot(configLoad = MessengerSnapshot.Load.FAILED, isOffline = state.offline)
@@ -268,41 +266,31 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
                     LoadingSpinner(!state.failed, theme.colors.primary, skeleton.loadingLabel)
                 }
             }
-            return@Crossfade
+            return@MessengerSheet
         }
         val forward = coordinator.forward
         AnimatedContent(
             if (tabRoute != null || route == MessengerRoute.Home) ROOT_SCREEN else route,
             Modifier.fillMaxSize(),
-            // A screen over the tabs slides in over them, their bar with it.
+            // A screen over the tabs slides in over them, their bar with it; the tabs change inside (TabPages).
             transitionSpec = { pushPop(forward, still) },
             // A draft that became a conversation is the same screen: no transition for it.
             contentKey = { (it as? MessengerRoute.Conversation)?.let { open -> "chat:" + coordinator.screenKey(open.id) } ?: it },
             label = "screen",
         ) { shown ->
             val screenTheme = rememberTheme(screens.config ?: state.config)
+            // Contract 1.0.7b §5.1: a screen pushed opens with the spinner first; one gone back to is there at once.
+            val entered = remember { coordinator.forward }
+            val loading = screens.home.loadingLabel
             when (shown) {
                 ROOT_SCREEN -> saved.SaveableStateProvider(ROOT_SCREEN) {
                     val bar = screens.home.tabBar
                     if (bar != null && stack.selected != null) {
-                        TabPages(bar, stack, screenTheme, actions.selectTab) { tab -> TabScreen(tab, screens, home, screenTheme, actions) }
+                        val ready = stack.selected != MessengerTab.MESSAGES || screens.messages.phase != HomeScreen.Phase.LOADING
+                        TabPages(bar, stack, screenTheme, ready, loading, actions.selectTab) { tab -> TabScreen(tab, screens, home, screenTheme, actions) }
                     } else {
                         HomeView(screens.home, screenTheme, actions)
                     }
-                }
-                // Without the panel's bar the lists are pushed over Home.
-                MessengerRoute.Messages -> TabScreen(MessengerTab.MESSAGES, screens, home, screenTheme, actions, tab = false)
-                MessengerRoute.NewsList -> TabScreen(MessengerTab.NEWS, screens, home, screenTheme, actions, tab = false)
-                MessengerRoute.Faq -> TabScreen(MessengerTab.FAQ, screens, home, screenTheme, actions, tab = false)
-                is MessengerRoute.News -> {
-                    // The item as Home has it; withdrawn meanwhile, back to where it was opened from.
-                    val news = remember(shown.id, screens.home) { home.newsScreen(shown.id) }
-                    if (news != null) NewsView(news, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
-                }
-                is MessengerRoute.FaqItem -> {
-                    // An answer is drawn as a news item is; withdrawn meanwhile, back to where it was opened from.
-                    val answer = remember(shown.id, screens.home) { home.faqItemScreen(shown.id) }
-                    if (answer != null) NewsView(answer, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
                 }
                 is MessengerRoute.Conversation -> key(coordinator.screenKey(shown.id)) {
                     val context = LocalContext.current
@@ -311,10 +299,35 @@ internal fun MessengerRoot(runtime: MessengerRuntime, closing: Boolean = false, 
                         chat.isOffline = state.offline
                         onDispose {}
                     }
-                    ClomniChat(chat, back = back, close = close)
+                    ClomniChat(chat, back = back, close = close, enter = entered)
+                }
+                else -> OpeningPages(
+                    ONE_PAGE,
+                    Unit,
+                    ready = shown != MessengerRoute.Messages || screens.messages.phase != HomeScreen.Phase.LOADING,
+                    entered,
+                    (if (shown is MessengerRoute.News || shown is MessengerRoute.FaqItem) screenTheme.colors.background else screenTheme.colors.canvas).color,
+                    screenTheme,
+                    loading,
+                ) {
+                    when (shown) {
+                        // Without the panel's bar the lists are pushed over Home.
+                        MessengerRoute.Messages -> TabScreen(MessengerTab.MESSAGES, screens, home, screenTheme, actions, tab = false)
+                        MessengerRoute.NewsList -> TabScreen(MessengerTab.NEWS, screens, home, screenTheme, actions, tab = false)
+                        MessengerRoute.Faq -> TabScreen(MessengerTab.FAQ, screens, home, screenTheme, actions, tab = false)
+                        is MessengerRoute.News -> {
+                            // The item as Home has it; withdrawn meanwhile, back to where it was opened from.
+                            val news = remember(shown.id, screens.home) { home.newsScreen(shown.id) }
+                            if (news != null) NewsView(news, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
+                        }
+                        is MessengerRoute.FaqItem -> {
+                            // An answer is drawn as a news item is; withdrawn meanwhile, back to where it was opened from.
+                            val answer = remember(shown.id, screens.home) { home.faqItemScreen(shown.id) }
+                            if (answer != null) NewsView(answer, screenTheme, back, close, openLink) else LaunchedEffect(Unit) { back() }
+                        }
+                    }
                 }
             }
-        }
         }
     }
     }
@@ -366,21 +379,20 @@ internal class ShownRoute {
 }
 
 /**
- * M2, push and pop: 300 ms, emphasized decelerate. The new screen comes 24% of the width from the end, fading in, over
- * the old one, which goes 8% the other way and dims to 0.9. Going back is the same played backwards: the screen on
- * top leaves to the end. With "Remove animations", a plain fade.
+ * M2, push and pop: 300 ms, emphasized decelerate. The new screen, opaque (its spinner on its background, contract
+ * 1.0.7b §5.1), slides in from the end over the old one, which goes 8% the other way; nothing fades, so no screen
+ * shows through another. Going back is the same played backwards: the screen on top leaves to the end. With "Remove
+ * animations", the screen changes at once.
  */
 private fun pushPop(forward: Boolean, still: Boolean): ContentTransform {
-    if (still) return fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+    if (still) return EnterTransition.None togetherWith ExitTransition.None
     val move = tween<IntOffset>(300, easing = Motion.EmphasizedDecelerate)
-    val fade = tween<Float>(300, easing = Motion.EmphasizedDecelerate)
-    val top = { width: Int -> (width * 0.24f).roundToInt() }
+    val top = { width: Int -> width }
     val under = { width: Int -> -(width * 0.08f).roundToInt() }
     return if (forward) {
-        (slideInHorizontally(move, top) + fadeIn(fade)) togetherWith (slideOutHorizontally(move, under) + fadeOut(fade, targetAlpha = 0.9f))
+        slideInHorizontally(move, top) togetherWith slideOutHorizontally(move, under)
     } else {
-        ((slideInHorizontally(move, under) + fadeIn(fade, initialAlpha = 0.9f)) togetherWith (slideOutHorizontally(move, top) + fadeOut(fade)))
-            .apply { targetContentZIndex = -1f }
+        (slideInHorizontally(move, under) togetherWith slideOutHorizontally(move, top)).apply { targetContentZIndex = -1f }
     }
 }
 

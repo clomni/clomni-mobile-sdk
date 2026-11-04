@@ -16,14 +16,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
@@ -36,9 +38,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * CM-347 (contract 1.0.7b §3): going back to a tab finds it as it was. On iOS every return to Home showed one white
- * frame, then the page; on Android Home was built again: its scroll back at the top, and for one frame the brand
- * colour only 16 dp high under a white greeting. Home here is a long scrolled page that counts how often it is built.
+ * CM-347 (contract 1.0.7b §3, §5.1). Going back to a tab finds it as it was: on Android Home used to be built again,
+ * its scroll back at the top. And a screen opens the way the operator asked: the one before gone at once, the spinner
+ * alone in the middle for at least 350 ms and until the data is there, then the screen; never two screens at once.
+ * Home here is a long scrolled page that counts how often it is built.
  */
 @RunWith(AndroidJUnit4::class)
 class TabPagesTest {
@@ -64,7 +67,7 @@ class TabPagesTest {
                 repeat(60) { BasicText("Sətir $it", Modifier.fillMaxWidth().height(48.dp)) }
             }
         } else {
-            BasicText("Söhbətlərin siyahısı", Modifier.fillMaxSize())
+            BasicText("Söhbətlərin siyahısı", Modifier.fillMaxSize().testTag("messages"))
         }
     }
 
@@ -77,9 +80,25 @@ class TabPagesTest {
         compose.waitForIdle()
     }
 
-    private fun tap(tab: String) {
+    /** How many of these are on screen: placed, as is every node above them (a page its parent does not place is not). */
+    private fun SemanticsNodeInteractionCollection.placed(): Int =
+        fetchSemanticsNodes().count { node: SemanticsNode -> generateSequence(node.layoutInfo) { it.parentInfo }.all { it.isPlaced } }
+
+    private fun placed(tag: String) = compose.onAllNodesWithTag(tag, useUnmergedTree = true).placed()
+
+    private fun spinners() = compose.onAllNodesWithContentDescription(LOADING).placed()
+
+    /** Taps [tab] and checks the moment after: the spinner alone. Then waits for the tab's page. */
+    private fun open(tab: String, page: String) {
+        compose.mainClock.autoAdvance = false
         compose.onNodeWithContentDescription(tab).performClick()
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeByFrame()
+        assertEquals("the spinner in the middle", 1, spinners())
+        assertEquals("the tab left is gone at once", 0, placed("home") + placed("messages"))
+        compose.mainClock.autoAdvance = true
+        compose.waitUntil(5_000) { placed(page) == 1 }
+        assertEquals("then the page alone", 0, spinners())
     }
 
     @Test
@@ -88,22 +107,19 @@ class TabPagesTest {
         compose.setContent {
             var selected by remember { mutableStateOf(MessengerTab.HOME) }
             stack.show(selected)
-            TabPages(bar, stack, theme, { selected = it }) { Page(it) }
+            TabPages(bar, stack, theme, ready = true, loading = LOADING, select = { selected = it }) { Page(it) }
         }
+        assertEquals("the first tab is there at once", 1, placed("home"))
+        assertEquals(0, spinners())
         scrollHome()
         val scrolled = homePosition()
         assertTrue("Home scrolled: $scrolled", scrolled > 0f)
 
-        tap("Söhbətlər, 7 oxunmamış")
-        compose.onNodeWithText("Söhbətlərin siyahısı").assertIsDisplayed()
-        // Kept, but not placed while another tab is open: not drawn, not touched, not read out.
-        assertEquals("the fade is over: nothing under the open tab", null, stack.under)
-        val homes = compose.onAllNodesWithTag("home", useUnmergedTree = true).fetchSemanticsNodes()
-        val placed = homes.count { node -> generateSequence(node.layoutInfo) { it.parentInfo }.all { it.isPlaced } }
-        assertEquals("Home placed under the conversations (${homes.size} found, open ${stack.selected})", 0, placed)
+        open("Söhbətlər, 7 oxunmamış", "messages")
+        assertEquals("Home kept, but not placed: not drawn, not touched, not read out", 0, placed("home"))
 
-        tap("Əsas səhifə")
-        compose.onNodeWithTag("home").assertIsDisplayed()
+        open("Əsas səhifə", "home")
+        assertEquals(0, placed("messages"))
         assertEquals("built once", 1, builds)
         assertEquals("where it was left", scrolled, homePosition())
     }
@@ -117,9 +133,44 @@ class TabPagesTest {
         }
         scrollHome()
         assertTrue(homePosition() > 0f)
-        tap("Söhbətlər, 7 oxunmamış")
-        tap("Əsas səhifə")
+        compose.onNodeWithContentDescription("Söhbətlər, 7 oxunmamış").performClick()
+        compose.onNodeWithContentDescription("Əsas səhifə").performClick()
+        compose.waitForIdle()
         assertEquals("built twice", 2, builds)
         assertEquals("back at its top", 0f, homePosition())
+    }
+
+    /** A screen pushed: the spinner for at least 350 ms, then, only once its data is there, the screen. */
+    @Test
+    fun aPushedScreenWaitsForItsData() {
+        var ready by mutableStateOf(false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            OpeningPages(ONE_PAGE, Unit, ready = ready, enter = true, Color.White, theme, LOADING) { BasicText("Xəbər", Modifier.testTag("news")) }
+        }
+        compose.mainClock.advanceTimeByFrame()
+        assertEquals(1, spinners())
+        assertEquals(0, placed("news"))
+        compose.mainClock.advanceTimeBy(1_000)
+        assertEquals("no data yet: still the spinner", 1, spinners())
+        assertEquals(0, placed("news"))
+        ready = true
+        compose.mainClock.autoAdvance = true
+        compose.waitUntil(5_000) { placed("news") == 1 }
+        assertEquals(0, spinners())
+    }
+
+    /** A screen gone back to (or the first one) is there at once, with no spinner. */
+    @Test
+    fun aScreenGoneBackToIsThereAtOnce() {
+        compose.setContent {
+            OpeningPages(ONE_PAGE, Unit, ready = true, enter = false, Color.White, theme, LOADING) { BasicText("Söhbətlər", Modifier.testTag("list")) }
+        }
+        assertEquals(1, placed("list"))
+        assertEquals(0, spinners())
+    }
+
+    private companion object {
+        const val LOADING = "Yüklənir"
     }
 }

@@ -187,6 +187,26 @@ class Sdk107SnapshotTest {
         semantics.assertTouchTargets(name)
     }
 
+    /**
+     * Contract 1.0.7b §5.1: a tab (or a screen pushed) opening: the screen before gone, this one's background and the
+     * brand's spinner in the middle, nothing else; the bar stays. Light and dark.
+     */
+    @Test
+    fun opening() {
+        val state = state()
+        val presenter = presenter(state)
+        val home = presenter.home(state)
+        for (dark in listOf(false, true)) {
+            snap("opening_${if (dark) "dark" else "light"}", dark) { theme ->
+                WithTabBar(home.tabBar, MessengerTab.MESSAGES, theme, {}) {
+                    OpeningPages(ONE_PAGE, Unit, ready = true, enter = true, theme.colors.canvas.color, theme, home.loadingLabel) {
+                        MessagesView(presenter.messages(state), theme, home.header.closeLabel, MessengerActions(), tab = true)
+                    }
+                }
+            }
+        }
+    }
+
     /** The questions as a tab: the search field, then the questions in one card. */
     @Test
     fun faqList() {
@@ -266,6 +286,17 @@ class Sdk107SnapshotTest {
                 }
             }
         }
+    }
+
+    /**
+     * Contract 1.0.7b §5.3: the user answers their own message: its quote over the field says "Siz". (Its «Cavabla» is in
+     * the menu of chat_delete_menu.)
+     */
+    @Test
+    fun replyToOwnMessage() {
+        val mine = ChatFixture.message("03-text-user.json")
+        val screen = chat(conversation(mine).copy(replyingTo = mine.id))
+        snap("chat_reply_own") { theme -> WithVoice { ChatScreenView(screen, theme, ChatActions(), draft = "Hələ də davam edir") } }
     }
 
     /** "Mesaj silinsin?" over the dimmed conversation. */

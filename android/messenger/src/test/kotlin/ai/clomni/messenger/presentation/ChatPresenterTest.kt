@@ -716,6 +716,26 @@ class ChatPresenterTest {
     }
 
     /** Every message fixture, valid or not, reaches the screen as something. */
+    /**
+     * Contract 1.0.7b §5.3: the user answers their own message (the swipe and «Cavabla» go by [Bubble.replyable]) once
+     * the server has it, quoted as "Siz"; not one deleted, nor one still on its way. The server takes such a reply_to.
+     */
+    @Test
+    fun theUserAnswersTheirOwnMessage() {
+        val mine = ChatFixture.message("03-text-user.json")
+        val open: (ChatSnapshot) -> ChatSnapshot = { it.copy(conversation = ChatFixture.conversation("open")) }
+        val bubble = bubbles(screen(listOf(mine), open)).single()
+        assertEquals(Bubble.Side.OUTGOING, bubble.side)
+        assertTrue("sent: it can be answered", bubble.replyable)
+        val answering = screen(listOf(mine)) { open(it).copy(replyingTo = mine.id) }
+        assertEquals(Bubble.Quote(mine.id, "Siz", "Gedişim bitmədi, pul çıxılmağa davam edir"), answering.composer.quote)
+        val answer = screen(listOf(mine)) { open(it).copy(pending = listOf(pending(ClientMessage.Text("Hələ də", replyTo = mine.id), "Hələ də"))) }
+        assertEquals("the answer on its way quotes it", "Siz", bubbles(answer).last().quote?.author)
+        assertFalse("still on its way: nothing to answer yet", bubbles(answer).last().replyable)
+        val deleted = ChatFixture.message("03-text-user.json", "content" to mapOf("type" to "deleted"))
+        assertFalse("deleted: nothing to answer", bubbles(screen(listOf(deleted), open)).single().replyable)
+    }
+
     /** DESIGN-PASS-3 F2: the quote in the bubble, over the field, and who may be answered. */
     @Test
     fun replies() {
