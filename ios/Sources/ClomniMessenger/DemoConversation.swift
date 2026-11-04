@@ -144,13 +144,14 @@ actor DemoSession: MessengerSession {
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID { UUID() }
 }
 
-/// What the demo tabs' Home and lists read (`Clomni.presentDemoTabs`): a company with the tab bar on, in light mode,
-/// every Home card (taller than the sheet, so Home scrolls), twelve conversations with 7 unread, three news items and
-/// four questions.
+/// What the demo tabs' Home and lists read (`Clomni.presentDemoTabs`): a company with the tab bar on, in light mode
+/// (dark with `-ClomniDemoDark`), every Home card (taller than the sheet, so Home scrolls), twelve conversations with 7
+/// unread, three news items and four questions.
 actor DemoLists: MessengerDataSource {
+    private static let mode = ProcessInfo.processInfo.arguments.contains("-ClomniDemoDark") ? "dark" : "light"
     static let config = ProtocolJSON.parseConfig(Data(#"""
     {"version":1,"brand":{"name":"Clomni","primary_color":"#1A2EB8","header_style":"gradient","glow":false},
-     "theme":{"mode":"light","launcher":{"enabled":false}},
+     "theme":{"mode":"\#(DemoLists.mode)","launcher":{"enabled":false}},
      "home":{"cards":["messages","send","recent","news","faq","channels"],"tab_bar":true,"news_on_home":3,
              "channels":[{"type":"instagram","url":"https://instagram.com/example"},
                          {"type":"whatsapp","url":"https://wa.me/994501234567"},
