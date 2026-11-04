@@ -8,6 +8,6 @@
     <androidPackage spec="ai.clomni:messenger:1.0.6" />
   </androidPackages>
   <iosPods>
-    <iosPod name="ClomniMessenger" version="1.0.4" minTargetSdk="15.0" addToAllTargets="false" />
+    <iosPod name="ClomniMessenger" version="1.0.7" minTargetSdk="15.0" addToAllTargets="false" />
   </iosPods>
 </dependencies>

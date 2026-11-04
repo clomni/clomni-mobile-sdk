@@ -18,7 +18,7 @@
 2. Откройте **Window → Package Manager → + → Add package from git URL** и введите:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.6
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.7
    ```
 
    > **Путь:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,12 +33,12 @@
    `.xcworkspace`, а не `.xcodeproj`. Если Xcode просит указать версию Swift, задайте `SWIFT_VERSION = 5.0` для
    таргета `UnityFramework`.
 
-   EDM4U записывает в Podfile iOS-сборки `pod 'ClomniMessenger', '1.0.4'`, а в такой форме pod ищется в CocoaPods
+   EDM4U записывает в Podfile iOS-сборки `pod 'ClomniMessenger', '1.0.7'`, а в такой форме pod ищется в CocoaPods
    trunk, где SDK не опубликован. После каждой сборки под iOS замените эту строку в `Podfile` папки сборки и
    выполните там `pod install`:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.4'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.7'
    ```
 
 Чтобы быстро попробовать: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Добавьте

@@ -18,7 +18,7 @@ and on other platforms every call does nothing, and the first call says so once 
 2. **Window → Package Manager → + → Add package from git URL**, and enter:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.6
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.7
    ```
 
    > **Path:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,12 +33,12 @@ and on other platforms every call does nothing, and the first call says so once 
    `.xcworkspace`, not the `.xcodeproj`. If Xcode asks for a Swift version, set `SWIFT_VERSION = 5.0` on the
    `UnityFramework` target.
 
-   EDM4U writes `pod 'ClomniMessenger', '1.0.4'` into the Podfile of the iOS build, and that form looks for the pod on
+   EDM4U writes `pod 'ClomniMessenger', '1.0.7'` into the Podfile of the iOS build, and that form looks for the pod on
    CocoaPods trunk, where the SDK is not published. After each iOS build, change that line in the build folder's
    `Podfile` and run `pod install` there:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.4'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.7'
    ```
 
 To try it quickly: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Add `ClomniBasicSample` to an

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7
+
+iOS: Send empties the field on the tap and puts the text (or the picked file) back if it could not go, so a second
+tap can no longer send a message twice. The iOS SDK is 1.0.7; Android is unchanged and stays 1.0.6.
+
 ## 1.0.6
 
 Android: a push that starts the app no longer counts as the app being open, so the replies after the first still come

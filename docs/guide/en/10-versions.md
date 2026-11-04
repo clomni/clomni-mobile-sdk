@@ -1,5 +1,22 @@
 # Versions
 
+## 1.0.7
+
+| Package | Version |
+|---|---|
+| iOS `ClomniMessenger` | 1.0.7 |
+| Unity | tag `unity-1.0.7` |
+| Android `ai.clomni:messenger` | 1.0.6, unchanged |
+| React Native `@clomni/react-native` | 1.0.6, unchanged |
+| Flutter `clomni_flutter` | 1.0.6, unchanged |
+
+Only iOS changed. Send empties the text field on the tap, and puts the text (or the picked file) back if the message
+could not go. The field used to empty only when the send finished; for a new conversation's first message that means
+waiting for the server to create the conversation, and a second tap in that time sent the message twice. No code changes.
+
+To update: iOS 1.0.7 in Swift Package Manager (or `pod update`), Unity `#unity-1.0.7` (then resolve with EDM4U).
+React Native and Flutter take the iOS pod with `~> 1.0`: `pod update ClomniMessenger` is enough.
+
 ## 1.0.6
 
 | Package | Version |

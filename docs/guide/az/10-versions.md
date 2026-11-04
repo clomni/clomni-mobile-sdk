@@ -1,5 +1,22 @@
 # Versiyalar
 
+## 1.0.7
+
+| Paket | Versiya |
+|---|---|
+| iOS `ClomniMessenger` | 1.0.7 |
+| Unity | `unity-1.0.7` teqi |
+| Android `ai.clomni:messenger` | 1.0.6, dəyişməyib |
+| React Native `@clomni/react-native` | 1.0.6, dəyişməyib |
+| Flutter `clomni_flutter` | 1.0.6, dəyişməyib |
+
+Yalnız iOS dəyişib. «Göndər» basılan kimi yazı sahəsi boşalır, mesaj gedə bilməsə mətn (və ya seçilmiş fayl) geri
+qayıdır. Əvvəl sahə yalnız göndərmə bitəndə boşalırdı. Yeni söhbətin ilk mesajında bu, serverin söhbəti yaratmasını
+gözləmək deməkdir və bu müddətdə ikinci toxunuş mesajı iki dəfə göndərirdi. Kodda heç nə dəyişmir.
+
+Yeniləmək üçün: iOS Swift Package Manager-də 1.0.7 (və ya `pod update`), Unity `#unity-1.0.7` (sonra EDM4U ilə
+resolve). React Native və Flutter iOS pod-u `~> 1.0` ilə götürür: `pod update ClomniMessenger` kifayətdir.
+
 ## 1.0.6
 
 | Paket | Versiya |

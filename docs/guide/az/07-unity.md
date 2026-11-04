@@ -18,7 +18,7 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
 2. **Window → Package Manager → + → Add package from git URL** və bu ünvanı yazın:
 
    ```
-   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.6
+   https://github.com/clomni/clomni-mobile-sdk.git?path=unity#unity-1.0.7
    ```
 
    > **Yol:** `Window → Package Manager → + → Add package from git URL → Add`
@@ -33,12 +33,12 @@ platformalarda çağırışlar heç nə etmir, ilk çağırış bunu log-a bir d
    yox, `.xcworkspace`-i açın. Xcode Swift versiyasını soruşsa, `UnityFramework` hədəfinə `SWIFT_VERSION = 5.0`
    yazın.
 
-   EDM4U iOS build-inin Podfile-ına `pod 'ClomniMessenger', '1.0.4'` yazır. Bu forma pod-u CocoaPods trunk-da
+   EDM4U iOS build-inin Podfile-ına `pod 'ClomniMessenger', '1.0.7'` yazır. Bu forma pod-u CocoaPods trunk-da
    axtarır, SDK isə orada dərc olunmayıb. Hər iOS build-dən sonra build qovluğundakı `Podfile`-da həmin sətri
    dəyişin və orada `pod install` işlədin:
 
    ```ruby
-   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.4'
+   pod 'ClomniMessenger', :git => 'https://github.com/clomni/clomni-mobile-sdk.git', :tag => '1.0.7'
    ```
 
 Tez sınamaq üçün: Package Manager → Clomni Messenger → Samples → **Basic** → Import. Boş GameObject-ə

@@ -1,5 +1,22 @@
 # Sürümler
 
+## 1.0.7
+
+| Paket | Sürüm |
+|---|---|
+| iOS `ClomniMessenger` | 1.0.7 |
+| Unity | `unity-1.0.7` etiketi |
+| Android `ai.clomni:messenger` | 1.0.6, değişmedi |
+| React Native `@clomni/react-native` | 1.0.6, değişmedi |
+| Flutter `clomni_flutter` | 1.0.6, değişmedi |
+
+Yalnızca iOS değişti. "Gönder"e dokunulduğu anda metin alanı boşalır; mesaj gönderilemezse metin (veya seçilen dosya)
+geri gelir. Alan önceden yalnızca gönderim bitince boşalıyordu; yeni bir sohbetin ilk mesajında bu, sunucunun sohbeti
+oluşturmasını beklemek demekti ve bu sürede ikinci dokunuş mesajı iki kez gönderiyordu. Kodda değişiklik gerekmez.
+
+Güncellemek için: iOS 1.0.7 Swift Package Manager'da (veya `pod update`), Unity `#unity-1.0.7` (ardından EDM4U ile
+resolve). React Native ve Flutter iOS pod'unu `~> 1.0` ile alır: `pod update ClomniMessenger` yeterli.
+
 ## 1.0.6
 
 | Paket | Sürüm |

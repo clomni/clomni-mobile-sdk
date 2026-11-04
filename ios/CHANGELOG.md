@@ -1,6 +1,6 @@
 # ClomniMessenger for iOS — changelog
 
-## Unreleased
+## 1.0.7
 
 Send empties the field on the tap, as on Android, and puts the text (or the picked file) back if it could not go. It
 used to empty only when the send returned, which for a new conversation's first message is after the server has created
