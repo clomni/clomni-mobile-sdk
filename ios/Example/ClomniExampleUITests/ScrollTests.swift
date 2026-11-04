@@ -59,9 +59,11 @@ final class ScrollTests: XCTestCase {
         let start = bubble.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 130, dy: 0)), withVelocity: .default,
                     thenHoldForDuration: 0.1)
-        XCTAssertTrue(eventually { count(text) == 2 }, "the quote stands over the field")
+        let answered = eventually { count(text) == 2 }
         keep("swiped-to-answer")
-        XCTAssertEqual(settled(bubble).minY, before.minY, accuracy: 2, "the list did not move")
+        let after = settled(bubble)
+        XCTAssertTrue(answered, "the quote stands over the field (the bubble \(before), then \(after))")
+        XCTAssertEqual(after.minY, before.minY, accuracy: 2, "the list did not move")
     }
 
     /// A voice message just sent (the demo's microphone, held for three seconds) stands at the end: a drag down from
@@ -73,7 +75,9 @@ final class ScrollTests: XCTestCase {
         XCTAssertTrue(mic.waitForExistence(timeout: 15))
         Thread.sleep(forTimeInterval: 2.5)
         mic.press(forDuration: 3)
-        let waveform = labelled("Səsli mesaj")
+        // The waveform reads "Səsli mesaj, 0:03"; the microphone's "Səsli mesaj yaz" is not it.
+        let waveform = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label MATCHES %@", "Səsli mesaj, [0-9]+:[0-9]+")).firstMatch
         XCTAssertTrue(waveform.waitForExistence(timeout: 10), "the voice message stands in the conversation")
         let length = waveform.value as? String
         let before = settled(waveform)
@@ -82,9 +86,11 @@ final class ScrollTests: XCTestCase {
         let start = waveform.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: before.width * 0.6, dy: 0)),
                     withVelocity: .default, thenHoldForDuration: 0.1)
-        XCTAssertTrue(eventually { (waveform.value as? String) != length }, "the time under the waveform moved from \(length ?? "nil")")
+        let seeked = eventually { (waveform.value as? String) != length }
         keep("voice-seeked")
-        XCTAssertEqual(settled(waveform).minY, before.minY, accuracy: 2, "a drag along the waveform did not move the list")
+        let along = settled(waveform)
+        XCTAssertTrue(seeked, "the time under the waveform \(before) moved from \(length ?? "nil"); then \(along)")
+        XCTAssertEqual(along.minY, before.minY, accuracy: 2, "a drag along the waveform did not move the list")
 
         drag(waveform, dy: 140)
         let after = settled(waveform)

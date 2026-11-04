@@ -36,6 +36,12 @@ final class SidewaysPanRecognizer: UIPanGestureRecognizer {
         super.reset()
         start = nil
     }
+
+    /// The list's pan waits for this one to decide: a drag across is this pan's, not taken first by the scroll view
+    /// (which otherwise begins on any move); a vertical one fails it within `DragDirection.slop`, and the list scrolls.
+    override func shouldBeRequiredToFail(by other: UIGestureRecognizer) -> Bool {
+        isEnabled && other is UIPanGestureRecognizer && other.view is UIScrollView
+    }
 }
 
 #if compiler(>=6.0)
