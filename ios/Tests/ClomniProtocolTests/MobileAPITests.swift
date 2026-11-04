@@ -95,6 +95,17 @@ final class MobileAPITests: ProtocolTestCase {
         XCTAssertEqual(page.conversations.map(\.id), ["conv_5521"])
         XCTAssertEqual(page.nextCursor, "c2")
         XCTAssertTrue(log.contains("conversations.conversations[1].status: expected a string; item dropped"), "\(log.lines)")
+        XCTAssertNil(page.resumeConversationId, "an older server: no resume_conversation_id")
+
+        // CM-346 § 5.4 (fixtures 116, 117): the conversation a new one would be answered with; a conv_ id or none.
+        func resume(_ value: String) -> String? {
+            ProtocolJSON.parseConversationPage(data(#"{"conversations":[],"resume_conversation_id":\#(value)}"#))?
+                .resumeConversationId
+        }
+        XCTAssertEqual(resume(#""conv_5521""#), "conv_5521")
+        XCTAssertNil(resume("null"))
+        XCTAssertNil(resume(#""5521""#), "not a conversation's id (fixture 117): none, the list kept")
+        XCTAssertNil(resume("5521"))
 
         let messages = try XCTUnwrap(ProtocolJSON.parseMessagePage(data(#"{"messages":[\#(message),{"id":"x"}],"has_more":true}"#)))
         XCTAssertEqual(messages.messages.map(\.id), ["msg_f02"])

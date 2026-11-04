@@ -260,7 +260,9 @@ extension ProtocolJSON {
         decode(data, "conversations") {
             ConversationPage(conversations: try $0.items("conversations") { try Conversation($0) },
                              nextCursor: $0.optionalString("next_cursor"),
-                             resumeConversationId: $0.optionalString("resume_conversation_id"))
+                             // Only a conversation's id (fixture 117: "5521" is not one, and is left out).
+                             resumeConversationId: $0.optionalString("resume_conversation_id")
+                                 .flatMap { $0.hasPrefix("conv_") ? $0 : nil })
         }
     }
 
