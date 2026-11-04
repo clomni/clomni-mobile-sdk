@@ -8,7 +8,11 @@ import ai.clomni.messenger.presentation.MessengerSnapshot
 import ai.clomni.messenger.protocol.Message
 import ai.clomni.messenger.protocol.ProtocolJson
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
@@ -26,7 +30,9 @@ import java.util.TimeZone
  * CM-341: a drag up or down that starts on a bubble scrolls the transcript, as one from the empty space beside it does
  * (iOS 18 kept it still when it started on a bubble; on Android the waveform of a voice message took every move).
  * A long conversation of text and voice messages opens at its end; a finger put on the newest bubble and pulled down
- * must take the list with it.
+ * must take the list with it. What is checked is the list's own position, as it reports it to accessibility (its node
+ * stays in the tree): the bubble that was dragged may be scrolled out of the tree, and a node looked up again after
+ * the drag may be another one (CI run 41819745573: "The node is no longer in the tree").
  */
 @RunWith(AndroidJUnit4::class)
 class TranscriptScrollTest {
@@ -56,31 +62,46 @@ class TranscriptScrollTest {
         compose.waitForIdle()
     }
 
-    private fun SemanticsNodeInteraction.top(): Float = fetchSemanticsNode().boundsInRoot.top
+    /** The transcript: the one lazy list of the screen (it can scroll to an item). */
+    private val transcript get() = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollToIndex))
 
-    /** Pulls the finger 300 px down from the middle of [node], slowly enough to be a drag, not a fling. */
-    private fun dragDown(node: SemanticsNodeInteraction) {
+    /** Where the transcript is scrolled to: larger further down; the list's own figure, read from its node. */
+    private fun position(): Float = transcript.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
+
+    /**
+     * Puts the finger on the middle of [node] (found once, before anything moves) and pulls it 300 px down, slowly
+     * enough to be a drag, not a fling; answers where the list was and is.
+     */
+    private fun dragDown(node: SemanticsNodeInteraction): Pair<Float, Float> {
+        val before = position()
         node.performTouchInput { swipe(center, center + Offset(0f, 300f), durationMillis = 400) }
         compose.waitForIdle()
+        return before to position()
     }
 
     @Test
     fun aDragFromATextBubbleScrollsTheList() {
         show((1..40).map(::text))
         val newest = compose.onAllNodesWithContentDescription("Mesaj nömrə 40", substring = true).onFirst()
-        val before = newest.top()
-        dragDown(newest)
-        assertTrue("the newest bubble went down with the list: $before → ${newest.top()}", newest.top() > before + 100f)
+        newest.assertIsDisplayed()
+        val (before, after) = dragDown(newest)
+        assertTrue("the list moved towards its start: $before → $after", after < before)
     }
 
     @Test
     fun aDragFromAVoiceBubbleScrollsTheList() {
         show((1..40).map { if (it % 3 == 0) voice(it) else text(it) })
-        // The waveform of the newest voice message (39): the part of the bubble that seeks.
-        val waveforms = compose.onAllNodesWithContentDescription("Səsli mesaj", substring = true)
-        val newest = waveforms.onLast()
-        val before = newest.top()
-        dragDown(newest)
-        assertTrue("the voice bubble went down with the list: $before → ${newest.top()}", newest.top() > before + 100f)
+        // The waveform of the newest voice message (39): the part of the bubble that seeks, and took every move before.
+        val newest = compose.onAllNodesWithContentDescription("Səsli mesaj", substring = true).onLast()
+        newest.assertIsDisplayed()
+        val (before, after) = dragDown(newest)
+        assertTrue("the list moved towards its start: $before → $after", after < before)
+    }
+
+    /** The figure the two above compare is the list's: it opens at its end, away from the start. */
+    @Test
+    fun theListOpensAtItsEnd() {
+        show((1..40).map(::text))
+        assertTrue("opens at its end: ${position()}", position() > 0f)
     }
 }
