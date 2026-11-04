@@ -1,5 +1,11 @@
 # ClomniMessenger for iOS — changelog
 
+## Unreleased
+
+Send empties the field on the tap, as on Android, and puts the text (or the picked file) back if it could not go. It
+used to empty only when the send returned, which for a new conversation's first message is after the server has created
+the conversation; a second tap in that time sent the message twice.
+
 ## 1.0.4
 
 A flow decides whether the user can type, as its steps are set in Clomni. Buttons whose step lets the user type keep

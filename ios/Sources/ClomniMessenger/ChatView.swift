@@ -371,22 +371,27 @@ struct ChatView: View {
     }
 
     /// The text, or a picked file with the text as its caption.
+    ///
+    /// The field empties on the tap, as on Android, and gets the text back if it could not go. It used to empty only once
+    /// the send returned, which for a new conversation's first message means the server has created the conversation;
+    /// until then Send stayed live with the same text, and a second tap sent the message twice.
     private func send() {
         let text = draft
+        draft = ""
         if let file = staged {
             let caption = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            staged = nil
             Task { @MainActor in
                 refusal = await model.controller.sendFile(file.data, fileName: file.fileName, mime: file.mime,
                                                           caption: caption.isEmpty ? nil : caption)
-                if refusal == nil {
-                    staged = nil
-                    if draft == text { draft = "" }
-                }
+                guard refusal != nil else { return }
+                if staged == nil { staged = file }
+                if draft.isEmpty { draft = text }
             }
             return
         }
         Task { @MainActor in
-            if await model.controller.send(text), draft == text { draft = "" }
+            if !(await model.controller.send(text)), draft.isEmpty { draft = text }
         }
     }
 
