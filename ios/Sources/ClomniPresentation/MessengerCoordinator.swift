@@ -62,6 +62,39 @@ package enum MessengerRoute: Sendable, Equatable, Hashable {
         case .conversation, .news, .faqAnswer: return nil
         }
     }
+
+    /// A tab's list at the bottom of the stack is made once per open messenger and kept (CM-346): back on its tab it
+    /// is there at once, loaded and scrolled as it was left. Made again, Home blanked the sheet for a frame.
+    package func keptAlive(atBottom: Bool) -> Bool {
+        atBottom && tab != nil
+    }
+}
+
+/// How the messenger's navigation goes from one stack of screens to the next (CM-346).
+package enum StackTransition: Sendable, Equatable {
+    /// The system's push or pop: the list under it stays.
+    case push
+    /// Another tab: the lists cross-fade, nothing slides.
+    case crossfade
+    /// At once: the opening (the sheet has its own move), a whole new stack, or Reduce Motion.
+    case none
+
+    /// The tabs' cross-fade, ease-out.
+    package static let crossfadeSeconds = 0.2
+    /// Content that was not there yet (the spinner's place) fades in, ease-out.
+    package static let fadeInSeconds = 0.18
+
+    package init(from shown: [MessengerRoute], to stack: [MessengerRoute], reduceMotion: Bool) {
+        if reduceMotion || shown.isEmpty || stack.isEmpty {
+            self = .none
+        } else if shown[0] == stack[0] {
+            self = .push
+        } else if shown.count == 1, stack.count == 1, shown[0].tab != nil, stack[0].tab != nil {
+            self = .crossfade
+        } else {
+            self = .none
+        }
+    }
 }
 
 /// The optional floating button (brief 8 · 7.2): off unless the app or the panel turns it on.

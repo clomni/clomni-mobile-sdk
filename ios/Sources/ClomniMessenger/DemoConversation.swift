@@ -61,6 +61,22 @@ extension Clomni {
         DemoSession.kept = (coordinator, messenger)
         Task { await coordinator.start() }
     }
+
+    /// Debug builds, for UI tests: the messenger with the tab bar (SDK 1.0.7), opened on Home through its own
+    /// coordinator and renderer, as `present()` opens it; Home, the conversations (7 unread), the news and the FAQ come
+    /// from memory (`DemoLists`). No server.
+    @_spi(ClomniUITesting) @MainActor
+    public static func presentDemoTabs() {
+        let coordinator = MessengerCoordinator(session: DemoSession(config: DemoLists.config), language: "az")
+        let messenger = UIKitMessenger(engine: ClomniEngine(appId: "app_demo", apiKey: "ios_demo"), coordinator: coordinator,
+                                       lists: DemoLists())
+        coordinator.onChange = { [weak messenger] in messenger?.render() }
+        DemoSession.kept = (coordinator, messenger)
+        Task {
+            await coordinator.start()
+            coordinator.present(source: "demo")
+        }
+    }
 }
 
 /// The demo conversation's microphone (CM-130): a double, as the simulator's is not to be relied on in a UI test. It
@@ -106,13 +122,19 @@ actor DemoSession: MessengerSession {
     /// weakly, as the runtime keeps both).
     @MainActor static var kept: (MessengerCoordinator, UIKitMessenger)?
 
+    private let look: MessengerConfig?
+
+    init(config: MessengerConfig? = DemoChat.demoConfig) {
+        look = config
+    }
+
     var isLoggedIn: Bool { true }
     var isAppDisabled: Bool { false }
     var unreadTotal: Int { 2 }
-    var config: MessengerConfig? { DemoChat.demoConfig }
-    nonisolated func cachedConfigFromDisk() -> MessengerConfig? { DemoChat.demoConfig }
+    var config: MessengerConfig? { look }
+    nonisolated func cachedConfigFromDisk() -> MessengerConfig? { look }
     func loginUnidentifiedUser() async throws {}
-    func refreshConfig(language: String?) async -> MessengerConfig? { DemoChat.demoConfig }
+    func refreshConfig(language: String?) async -> MessengerConfig? { look }
     func connect() async {}
     func draftConversation(openedFrom: String?) async -> String { DemoChat.conversationId }
     func startFlow(_ event: String, data: [String: JSONValue], openMessenger: Bool,
@@ -120,6 +142,80 @@ actor DemoSession: MessengerSession {
     func messages(in conversationId: String) async -> [Message] { [] }
     func conversationExists(_ id: String) async -> Bool? { true }
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID { UUID() }
+}
+
+/// What the demo tabs' Home and lists read (`Clomni.presentDemoTabs`): a company with the tab bar on, in light mode,
+/// every Home card (taller than the sheet, so Home scrolls), twelve conversations with 7 unread, three news items and
+/// four questions.
+actor DemoLists: MessengerDataSource {
+    static let config = ProtocolJSON.parseConfig(Data(#"""
+    {"version":1,"brand":{"name":"Clomni","primary_color":"#1A2EB8","header_style":"gradient","glow":false},
+     "theme":{"mode":"light","launcher":{"enabled":false}},
+     "home":{"cards":["messages","send","recent","news","faq","channels"],"tab_bar":true,"news_on_home":3,
+             "channels":[{"type":"instagram","url":"https://instagram.com/example"},
+                         {"type":"whatsapp","url":"https://wa.me/994501234567"},
+                         {"type":"email","url":"mailto:support@example.com"}]},
+     "faq":{"enabled":true},
+     "team":{"show":true,"avatars":[],"reply_time":"Adətən bir neçə dəqiqəyə cavab veririk"},
+     "bot":{"name":"Clomni"},"composer":{},"languages":["az"],"strings":{},"limits":{},"powered_by":true}
+    """#.utf8))
+
+    private static let previews = [
+        "Kuryer bu gün saat 18:00-a qədər çatdıracaq.", "Qəbzi e-poçtunuza göndərdim.", "Ünvanı dəyişdim.",
+        "Kartınızı yoxladıq, hər şey qaydasındadır.", "Sifarişiniz yoldadır.", "Bəli, 42 ölçü anbarda var.",
+        "Balansınıza 2 AZN qaytarıldı.", "Gediş bitdi, təşəkkür edirik.", "Kodu yenidən göndərdik.",
+        "Şikayətinizi qeydə aldıq.", "Tarif dəyişdi.", "Xoş gəlmisiniz!",
+    ]
+
+    var config: MessengerConfig? { Self.config }
+    func refreshConfig(language: String?) async -> MessengerConfig? { Self.config }
+    var unreadTotal: Int { 7 }
+    var userName: String? { "Aysel" }
+    func refreshConversations() async throws {}
+    func draftConversation(openedFrom: String?) async -> String { DemoChat.conversationId }
+    func refreshNews() async -> [NewsItem] { news }
+    func newsOpened(_ id: String) async {}
+    func refreshFaq() async -> [FaqItem] { faq }
+    func faqOpened(_ id: String) async {}
+    func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) async -> UUID { UUID() }
+    func stopObserving(_ token: UUID) async {}
+
+    /// Newest first; the first two unread (3 and 4).
+    func conversations() async -> [Conversation] {
+        Self.previews.enumerated().compactMap { index, text in
+            let sender = index % 3 == 2 ? #"{"type":"bot","name":"Clomni"}"# : #"{"type":"operator","name":"Leyla"}"#
+            let at = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-Double(index + 1) * 3_600))
+            let unread = index == 0 ? 3 : index == 1 ? 4 : 0
+            return ProtocolJSON.parseConversation(Data(#"""
+            {"id":"conv_demo_\#(index)","status":"open","assignee":{"name":"Leyla"},"unread_count":\#(unread),
+             "created_at":"\#(at)",
+             "last_message":{"id":"msg_demo_last_\#(index)","conversation_id":"conv_demo_\#(index)","type":"text",
+               "created_at":"\#(at)","sender":\#(sender),"seq":1,"lang":"az","content":{"text":"\#(text)"},
+               "fallback_text":"\#(text)"}}
+            """#.utf8))
+        }
+    }
+
+    var news: [NewsItem] {
+        ProtocolJSON.parseNews(Data(#"""
+        {"items":[
+          {"id":"news_1","title":"Noyabr kampaniyası","summary":"Yeni qoşulanlara ilk ay pulsuz.","body_markdown":"Yeni qoşulanlara ilk ay pulsuz.","image_url":null,"button":null,"published_at":"2026-11-01T09:00:00Z"},
+          {"id":"news_2","title":"Bayram iş saatları","summary":"9 noyabrda dəstək 10:00-dan 16:00-dək işləyir.","body_markdown":"9 noyabrda dəstək 10:00-dan 16:00-dək işləyir.","image_url":null,"button":null,"published_at":"2026-10-30T09:00:00Z"},
+          {"id":"news_3","title":"Yeni zonalar","summary":"Yasamal və Nərimanovda 40 yeni parklanma zonası var.","body_markdown":"40 yeni zona.","image_url":null,"button":null,"published_at":"2026-10-20T09:00:00Z"}
+        ]}
+        """#.utf8)) ?? []
+    }
+
+    var faq: [FaqItem] {
+        ProtocolJSON.parseFaq(Data(#"""
+        {"items":[
+          {"id":"faq_1","question":"Clomni nədir?","answer":"Müştərilərlə yazışma platforması.","updated_at":"2026-11-01T09:00:00Z"},
+          {"id":"faq_2","question":"Mesajımı necə silə bilərəm?","answer":"Mesajı basıb saxlayın və «Sil» seçin.","updated_at":"2026-11-01T09:00:00Z"},
+          {"id":"faq_3","question":"Operatorla necə əlaqə saxlaya bilərəm?","answer":"«Bizə mesaj göndərin» kartına toxunun.","updated_at":"2026-11-01T09:00:00Z"},
+          {"id":"faq_4","question":"Fayl və şəkil göndərmək olar?","answer":"Bəli, 25 MB-a qədər.","updated_at":"2026-11-01T09:00:00Z"}
+        ]}
+        """#.utf8)) ?? []
+    }
 }
 
 extension DemoChat {

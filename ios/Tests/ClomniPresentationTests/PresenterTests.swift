@@ -225,13 +225,13 @@ final class PresenterTests: XCTestCase {
         XCTAssertNil(noLogo.avatarUrl, "no logo: the company's initial, still not Rauf's picture")
         XCTAssertEqual(noLogo.initial, "C")
 
-        // A bot's quick replies: its fallback text on one line; the bot speaks as the brand, with its logo.
+        // A bot's quick replies: its fallback text on one line; the bot by the name and picture it came with (CM-346).
         let fromBot = Fixture.conversation("conv_3", message: "10-example-level2-S-chips.json")
         let bot = try XCTUnwrap(presenter().row(fromBot, config: Fixture.exampleConfig))
         XCTAssertEqual(bot.preview,
                        "Probleminiz nə ilə bağlıdır? Parking zona / Velosiped dayandı / Texniki nasazlıq / Kilidləmə / Əşyamı itirdim")
-        XCTAssertEqual(bot.detail, "Example · 2 dəq")
-        XCTAssertEqual(bot.avatarUrl?.absoluteString, "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN")
+        XCTAssertEqual(bot.detail, "Clomni · 2 dəq")
+        XCTAssertEqual(bot.avatarUrl?.absoluteString, "https://app.clomni.ai/a/bot.png")
 
         // A system message: the brand speaks.
         let system = try XCTUnwrap(presenter(config: Fixture.minimalConfig)
@@ -240,8 +240,8 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(system.preview, "Leyla söhbətə qoşuldu")
     }
 
-    /// A bot's last message shows the bot as the conversation does (DESIGN-PASS-3 A2): the brand's logo, else the
-    /// panel's bot picture, else the picture it came with, else the initial. An operator's keeps the operator's own
+    /// A bot's last message shows the bot as the conversation does (CM-346, `BotIdentity`): the picture it came with,
+    /// else the panel's bot picture, else the brand's logo, else the initial. An operator's keeps the operator's own
     /// picture, whatever the bot's.
     func testRecentRowAvatarOfTheBot() throws {
         func config(bot: String?, logo: String?) throws -> MessengerConfig {
@@ -260,16 +260,16 @@ final class PresenterTests: XCTestCase {
         }
         XCTAssertNil(faceless.lastMessage?.sender.avatarUrl)
 
-        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString, logo,
-                       "the brand's logo first, as in the conversation")
-        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: nil)).avatarUrl?.absoluteString, panelBot,
-                       "no logo: the panel's bot picture before the sender's own")
-        XCTAssertEqual(try row(fromBot, config(bot: nil, logo: nil)).avatarUrl?.absoluteString,
-                       "https://app.clomni.ai/a/bot.png", "nor that: the picture the bot came with")
+        XCTAssertEqual(try row(fromBot, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString,
+                       "https://app.clomni.ai/a/bot.png", "the picture the bot came with first, as in the conversation")
+        XCTAssertEqual(try row(faceless, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString, panelBot,
+                       "none: the panel's bot picture before the logo")
+        XCTAssertEqual(try row(faceless, config(bot: nil, logo: logo)).avatarUrl?.absoluteString, logo,
+                       "nor that: the brand's logo")
         let neither = try row(faceless, config(bot: nil, logo: nil))
         XCTAssertNil(neither.avatarUrl)
-        XCTAssertEqual(neither.initial, "E", "nothing: the brand's initial")
-        XCTAssertEqual(neither.detail, "Example · 2 dəq", "the bot's name in the panel is not shown (DESIGN-PASS-3 B2)")
+        XCTAssertEqual(neither.initial, "C", "nothing: the bot's initial")
+        XCTAssertEqual(neither.detail, "Clomni · 2 dəq", "the bot's own name")
 
         let fromOperator = Fixture.conversation("conv_1", message: "02-text-operator-markdown.json")
         XCTAssertEqual(try row(fromOperator, config(bot: panelBot, logo: logo)).avatarUrl?.absoluteString,

@@ -130,7 +130,7 @@ package struct ChatPresenter: Sendable {
         let date: Date
         let body: Bubble.Body
         var avatar: ChatAvatar?
-        /// Who wrote it, over an incoming run: the brand for the bot, the operator's name; nil for the user.
+        /// Who wrote it, over an incoming run: the bot's or the operator's name; nil for the user.
         let author: String?
         var status: Bubble.Status?
         let accessibilityLabel: String
@@ -610,11 +610,8 @@ package struct ChatPresenter: Sendable {
         let brand = config?.brand.name ?? ""
         switch sender.type {
         case .bot:
-            // The bot speaks as the brand (DESIGN-PASS-3 B2): its own name in the panel is not shown.
-            let name = brand.isEmpty ? sender.name ?? config?.bot.name ?? "" : brand
-            // The bot is the company: its logo first.
-            return (name, ChatAvatar(url: config?.brand.logoUrl ?? config?.bot.avatarUrl ?? sender.avatarUrl, initial: initial(name),
-                                     isBot: true))
+            let bot = BotIdentity(sender, config: config)
+            return (bot.name, ChatAvatar(url: bot.avatarUrl, initial: initial(bot.name), isBot: true))
         case .operator:
             let assignee = snapshot.conversation?.assignee
             let name = sender.name ?? assignee?.name ?? brand

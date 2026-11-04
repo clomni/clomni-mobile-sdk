@@ -3,15 +3,17 @@ import Foundation
 @_spi(ClomniUITesting) import ClomniMessenger
 #endif
 
-/// ClomniExampleUITests start the app with `-ClomniDemoConversation`, `-ClomniDemoHome` or `-ClomniDemoLauncher`: no
-/// Clomni account and no push prompt; the messenger's conversation screen (over a fixed conversation) or Home opens
-/// as soon as the app is up, or the launcher is turned on where an app initializes the SDK. Not for an app to copy.
+/// ClomniExampleUITests start the app with `-ClomniDemoConversation`, `-ClomniDemoHome`, `-ClomniDemoTabs` or
+/// `-ClomniDemoLauncher`: no Clomni account and no push prompt; the messenger's conversation screen (over a fixed
+/// conversation), Home, or the messenger with its tab bar opens as soon as the app is up, or the launcher is turned on
+/// where an app initializes the SDK. Not for an app to copy.
 @MainActor
 enum UITestMode {
     static var isOn: Bool {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
-        return arguments.contains("-ClomniDemoConversation") || arguments.contains("-ClomniDemoHome") || launcher
+        return arguments.contains("-ClomniDemoConversation") || arguments.contains("-ClomniDemoHome")
+            || arguments.contains("-ClomniDemoTabs") || launcher
         #else
         return false
         #endif
@@ -33,9 +35,15 @@ enum UITestMode {
         #if DEBUG
         if launcher { return }
         // Once the app's window is there to present from.
-        let home = ProcessInfo.processInfo.arguments.contains("-ClomniDemoHome")
+        let arguments = ProcessInfo.processInfo.arguments
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            if home { Clomni.presentDemoHome() } else { Clomni.presentDemoConversation() }
+            if arguments.contains("-ClomniDemoTabs") {
+                Clomni.presentDemoTabs()
+            } else if arguments.contains("-ClomniDemoHome") {
+                Clomni.presentDemoHome()
+            } else {
+                Clomni.presentDemoConversation()
+            }
         }
         #endif
     }

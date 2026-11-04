@@ -72,40 +72,55 @@ struct FaqListView: View {
     /// The FAQ tab's list: no back, the tab bar under it.
     var isTab = false
     @State private var query = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let entries = screen.matching(query)
         VStack(spacing: 0) {
             MessagesTitleBar(title: screen.title, closeLabel: screen.closeLabel, backLabel: screen.backLabel,
                              theme: theme, back: isTab ? nil : actions.back, close: actions.close)
-            ScrollView {
-                VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
-                    if !screen.entries.isEmpty { search }
-                    if entries.isEmpty {
-                        Text(screen.entries.isEmpty ? screen.empty : screen.noResults)
-                            .clomniFont(ClomniTheme.FontSize.text, .semibold)
-                            .foregroundStyle(theme.colors.textPrimary.color)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, CGFloat(ClomniTheme.Space.xxl))
-                    } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(entries) { entry in
-                                if entry.id != entries.first?.id {
-                                    Rectangle().fill(theme.colors.border.color).frame(height: 1)
-                                }
-                                FaqRow(question: entry.question, theme: theme) { actions.openFaq(entry.id) }
-                            }
-                        }
-                        .clomniCard(theme)
-                    }
+            // Nothing yet: the spinner in the middle, not "Hələ sual yoxdur"; the questions fade in over it (CM-346).
+            ZStack {
+                if screen.loading {
+                    LoadingIndicator(loading: true, label: screen.loadingLabel, theme: theme)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity)
+                } else {
+                    questions.transition(.opacity)
                 }
-                .padding(CGFloat(ClomniTheme.Space.l))
             }
+            .animation(reduceMotion ? nil : .easeOut(duration: StackTransition.fadeInSeconds), value: screen.loading)
         }
         .background(theme.colors.canvas.color.ignoresSafeArea())
         .messengerTabBar(isTab ? screen.tabBar : nil, selected: .faq, theme: theme, select: actions.selectTab)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+    }
+
+    private var questions: some View {
+        let entries = screen.matching(query)
+        return ScrollView {
+            VStack(spacing: CGFloat(ClomniTheme.Space.m)) {
+                if !screen.entries.isEmpty { search }
+                if entries.isEmpty {
+                    Text(screen.entries.isEmpty ? screen.empty : screen.noResults)
+                        .clomniFont(ClomniTheme.FontSize.text, .semibold)
+                        .foregroundStyle(theme.colors.textPrimary.color)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, CGFloat(ClomniTheme.Space.xxl))
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(entries) { entry in
+                            if entry.id != entries.first?.id {
+                                Rectangle().fill(theme.colors.border.color).frame(height: 1)
+                            }
+                            FaqRow(question: entry.question, theme: theme) { actions.openFaq(entry.id) }
+                        }
+                    }
+                    .clomniCard(theme)
+                }
+            }
+            .padding(CGFloat(ClomniTheme.Space.l))
+        }
     }
 
     /// "Sual axtarın": radius 10 on the page, the magnifier in front.

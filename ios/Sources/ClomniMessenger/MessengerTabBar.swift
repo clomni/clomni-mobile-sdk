@@ -15,6 +15,8 @@ struct MessengerTabBarView: View {
 
     static let iconSize: CGFloat = 22
     static let labelSize = 11.0
+    /// Over the icon, inside the tab: room for the badge, which stands half above the icon (CM-346).
+    static let topInset: CGFloat = 8
 
     var body: some View {
         HStack(spacing: 0) {
@@ -24,16 +26,19 @@ struct MessengerTabBarView: View {
                     VStack(spacing: 3) {
                         Image(systemName: Self.symbol(item.tab, filled: current))
                             .font(.system(size: Self.iconSize))
-                            .frame(height: Self.iconSize + 4)
-                            .overlay(alignment: .topTrailing) {
+                            // On the glyph itself, so it is placed by the icon and not by the row.
+                            .overlay(alignment: .top) {
                                 if let badge = item.badge { TabBadge(text: badge, theme: theme) }
                             }
+                            .frame(height: Self.iconSize + 4)
                         Text(item.title)
                             .clomniFont(Self.labelSize, current ? .semibold : .regular, relativeTo: .caption2)
                             .lineLimit(1)
                     }
+                    .padding(.top, Self.topInset)
+                    .padding(.bottom, 1)
                     .foregroundStyle((current ? theme.colors.textPrimary : theme.colors.textSecondary).color)
-                    .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.touchTarget + 5))
+                    .frame(maxWidth: .infinity, minHeight: CGFloat(ClomniTheme.Size.touchTarget + 5), alignment: .top)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -44,7 +49,6 @@ struct MessengerTabBarView: View {
             }
         }
         .padding(.horizontal, CGFloat(ClomniTheme.Space.s))
-        .padding(.top, 2)
         .background(theme.colors.background.color.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) { Rectangle().fill(theme.colors.border.color).frame(height: 0.5) }
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -63,21 +67,36 @@ struct MessengerTabBarView: View {
     }
 }
 
-/// The unread count on the conversations' tab: white 11 semibold on the unread red, at least a circle.
+/// The unread count on the conversations' icon (CM-346; TestFlight #19 had it 18 pt and over the icon): white 11
+/// semibold on the unread red, 16 high and at least a circle, 4 either side of the number; ringed 1.5 in the bar's
+/// colour, which sets it off the icon in light and dark mode. Its left edge 4 right of the icon's centre and its middle
+/// on the icon's top edge, so it covers less than half of the icon and stays inside its tab.
 private struct TabBadge: View {
+    static let height: CGFloat = 16
+    static let ring: CGFloat = 1.5
+    static let fromCentre: CGFloat = 4
+
     let text: String
     let theme: ClomniTheme
 
     var body: some View {
         Text(verbatim: text)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold).monospacedDigit())
             .foregroundStyle(Color.white)
-            .padding(.horizontal, 5)
-            .frame(minWidth: 18, minHeight: 18)
+            .lineLimit(1)
+            .padding(.horizontal, 4)
+            .frame(minWidth: Self.height)
+            .frame(height: Self.height)
             .background(Capsule().fill(theme.colors.unread.color))
+            .padding(Self.ring)
+            .background(Capsule().fill(theme.colors.background.color))
             .fixedSize()
-            .offset(x: 12, y: -6)
             .accessibilityHidden(true)
+            // Its top left corner on a point, the middle of the icon's top edge (the overlay's .top), then moved: the
+            // ring's left edge 2.5 right of it, so the red one is 4 right; its middle on the edge. Alignment guides
+            // for the same were not honoured here (CI 41828351378: the badge stood centred on the icon).
+            .offset(x: Self.fromCentre - Self.ring, y: -(Self.height / 2 + Self.ring))
+            .frame(width: 0, height: 0, alignment: .topLeading)
     }
 }
 

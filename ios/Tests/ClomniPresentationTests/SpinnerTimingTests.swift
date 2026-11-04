@@ -2,8 +2,8 @@ import Foundation
 import XCTest
 @testable import ClomniPresentation
 
-/// DESIGN-PASS 5: the indicator shows after 300 ms of loading and then stays at least 400 ms. Time is the test's
-/// (ManualTimer): no real waiting.
+/// DESIGN-PASS 5, CM-346: the indicator shows after 150 ms of loading and then stays at least 400 ms. Time is the
+/// test's (ManualTimer): no real waiting.
 @MainActor
 final class SpinnerTimingTests: XCTestCase {
     private let timer = ManualTimer()
@@ -28,7 +28,7 @@ final class SpinnerTimingTests: XCTestCase {
         spinner.set(loading: false)
         await timer.fire()
         await spinner.waiting?.value
-        XCTAssertFalse(spinner.visible, "done within 300 ms: no flash")
+        XCTAssertFalse(spinner.visible, "done within 150 ms: no flash")
     }
 
     func testASlowLoadShowsAfterTheDelayAndStaysTheMinimum() async {
@@ -38,7 +38,7 @@ final class SpinnerTimingTests: XCTestCase {
         spinner.set(loading: true)
         XCTAssertFalse(spinner.visible, "not at once")
         await pass(spinner)
-        XCTAssertTrue(spinner.visible, "300 ms later")
+        XCTAssertTrue(spinner.visible, "150 ms later")
 
         // Loading ends at once: it stays until 400 ms have passed.
         spinner.set(loading: false)
@@ -71,7 +71,7 @@ final class SpinnerTimingTests: XCTestCase {
     }
 
     func testTheDelayAndTheMinimum() async {
-        XCTAssertEqual(SpinnerTiming.delay, 0.3)
+        XCTAssertEqual(SpinnerTiming.delay, 0.15)
         XCTAssertEqual(SpinnerTiming.minimum, 0.4)
         let recorded = Recorded()
         let timer = timer
@@ -83,7 +83,7 @@ final class SpinnerTimingTests: XCTestCase {
         await pass(spinner)
         await timer.waitForSleepers(1)
         let asked = await recorded.values
-        XCTAssertEqual(asked, [0.3, 0.4])
+        XCTAssertEqual(asked, [0.15, 0.4])
     }
 }
 

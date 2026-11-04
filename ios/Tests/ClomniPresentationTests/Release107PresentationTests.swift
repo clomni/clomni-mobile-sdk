@@ -175,7 +175,7 @@ final class TabsNewsFaqPresenterTests: XCTestCase {
         XCTAssertEqual(all.items.map(\.tab), [.home, .messages, .news, .faq])
         XCTAssertEqual(all.items.map(\.title), ["Əsas səhifə", "Söhbətlər", "Xəbərlər", "Suallar"])
         XCTAssertEqual(all.items.map(\.badge), [nil, "3", nil, nil])
-        XCTAssertEqual(all.items[1].accessibilityLabel, "Söhbətlər, Oxunmamış mesaj var")
+        XCTAssertEqual(all.items[1].accessibilityLabel, "Söhbətlər, 3 oxunmamış")
         XCTAssertEqual(presenter(tabbed).tabBar(snapshot(tabbed, news: news, faq: faq, unread: 120))?.items[1].badge, "99+")
 
         XCTAssertEqual(presenter(tabbed).tabBar(snapshot(tabbed))?.items.map(\.tab), [.home, .messages],

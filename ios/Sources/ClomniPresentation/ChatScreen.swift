@@ -167,8 +167,8 @@ package struct Bubble: Sendable, Equatable, Identifiable {
     package let position: Position
     /// Next to the last bubble of an incoming run.
     package let avatar: ChatAvatar?
-    /// Over the first bubble of an incoming run, outside it: who, the brand for the bot ("Clomni"), "Leyla"
-    /// (DESIGN-PASS-3 B2).
+    /// Over the first bubble of an incoming run, outside it: who, the bot's name (`BotIdentity`) or the operator's,
+    /// "Leyla" (DESIGN-PASS-3 B2).
     package let nameLine: String?
     /// In the bubble's bottom-trailing corner, every bubble's (operator, 2026-10-07, G7): "12:42".
     package let time: String

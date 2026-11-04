@@ -17,6 +17,8 @@ import ClomniPresentation
 final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationControllerDelegate,
     UINavigationControllerDelegate {
     private let engine: ClomniEngine
+    /// What Home and the lists read: the engine, or the UI tests' demo (`Clomni.presentDemoTabs`).
+    private let listSource: MessengerDataSource?
     private weak var coordinator: MessengerCoordinator?
     private let rootModel = MessengerRootModel()
     private let launcher = LauncherController()
@@ -25,13 +27,18 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     private var shown: [MessengerRoute] = []
     /// Home's state, kept while the messenger is open: going back to Home draws it as it was (DESIGN-PASS-2 9).
     private var home: MessengerModel?
+    /// The tabs' lists, made once per open messenger (`MessengerRoute.keptAlive`, CM-346): another tab and back shows
+    /// the list as it was, loaded and scrolled, in its first frame. Made again each time, Home's 120 ms entrance
+    /// left the sheet blank white for a frame (TestFlight #19).
+    private var tabs: [MessengerRoute: UIViewController] = [:]
     private var typeface: Typeface?
     private var themeOverride = ThemeOverride()
     /// Waiting for a window to present from (`present`).
     private var windowObservers: [NSObjectProtocol] = []
 
-    init(engine: ClomniEngine, coordinator: MessengerCoordinator) {
+    init(engine: ClomniEngine, coordinator: MessengerCoordinator, lists: MessengerDataSource? = nil) {
         self.engine = engine
+        listSource = lists
         self.coordinator = coordinator
         super.init()
         // A launcher with no session yet (no network at launch) tries again when the network is back.
@@ -86,6 +93,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         navigation = nil
         shown = []
         home = nil
+        tabs = [:]
     }
 
     private func present(_ coordinator: MessengerCoordinator) {
@@ -97,7 +105,8 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
         navigation.presentationController?.delegate = self
         self.navigation = navigation
         shown = []
-        home = MessengerModel(engine: engine, language: coordinator.language, userName: nil, config: coordinator.config)
+        tabs = [:]
+        home = makeLists(coordinator, config: coordinator.config)
         follow(coordinator.stack, animated: false)
         top.present(navigation, animated: true)
     }
@@ -122,19 +131,34 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     }
 
     /// Brings the navigation stack to `stack`: a push or a pop when only the top changed, else the whole stack. A new
-    /// screen at the bottom is another tab (SDK 1.0.7): it replaces the list without a push.
+    /// screen at the bottom is another tab (SDK 1.0.7): it replaces the list, cross-fading over 200 ms (CM-346); with
+    /// Reduce Motion nothing moves.
     private func follow(_ stack: [MessengerRoute], animated: Bool = true) {
         guard let navigation, stack != shown else { return }
         let kept = zip(shown, stack).prefix { $0 == $1 }.count
-        let animate = animated && kept > 0 && !UIAccessibility.isReduceMotionEnabled
-        var controllers = Array(navigation.viewControllers.prefix(kept))
-        for (index, route) in stack.enumerated().dropFirst(kept) { controllers.append(host(route, root: index == 0)) }
+        let transition = animated
+            ? StackTransition(from: shown, to: stack, reduceMotion: UIAccessibility.isReduceMotionEnabled) : .none
+        let controllers = Array(navigation.viewControllers.prefix(kept))
+            + stack.enumerated().dropFirst(kept).map { host($0.element, root: $0.offset == 0) }
         shown = stack
-        navigation.setViewControllers(controllers, animated: animate)
+        switch transition {
+        case .push:
+            navigation.setViewControllers(controllers, animated: true)
+        case .crossfade:
+            UIView.transition(with: navigation.view, duration: StackTransition.crossfadeSeconds,
+                              options: [.transitionCrossDissolve, .curveEaseOut, .allowUserInteraction],
+                              animations: { navigation.setViewControllers(controllers, animated: false) })
+        case .none:
+            navigation.setViewControllers(controllers, animated: false)
+        }
     }
 
     private func host(_ route: MessengerRoute, root: Bool) -> UIViewController {
-        Self.host(ScreenRoot(model: rootModel, content: screen(route, root: root)))
+        let keep = route.keptAlive(atBottom: root)
+        if keep, let kept = tabs[route] { return kept }
+        let made = Self.host(ScreenRoot(model: rootModel, content: screen(route, root: root)))
+        if keep { tabs[route] = made }
+        return made
     }
 
     /// The messenger's sheet: a card over the app, which stays visible behind it; swiping it down closes the messenger.
@@ -162,7 +186,7 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
     @ViewBuilder
     private func screen(_ route: MessengerRoute, root: Bool) -> some View {
         if let coordinator {
-            let lists = home ?? MessengerModel(engine: engine, language: coordinator.language, userName: nil)
+            let lists = home ?? makeLists(coordinator, config: nil)
             switch route {
             case .home:
                 HomeScreenRoot(model: rootModel, home: lists, coordinator: coordinator)
@@ -183,6 +207,12 @@ final class UIKitMessenger: NSObject, MessengerRenderer, UIAdaptivePresentationC
                                    close: { [weak coordinator] in coordinator?.dismiss() })
             }
         }
+    }
+
+    private func makeLists(_ coordinator: MessengerCoordinator, config: MessengerConfig?) -> MessengerModel {
+        let source: MessengerDataSource = listSource ?? engine
+        return MessengerModel(controller: HomeController(source: source, language: coordinator.language, userName: nil,
+                                                         config: config))
     }
 
     // MARK: - The system's own moves
