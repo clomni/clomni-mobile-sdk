@@ -92,9 +92,11 @@ private struct TabBadge: View {
             .background(Capsule().fill(theme.colors.background.color))
             .fixedSize()
             .accessibilityHidden(true)
-            // The ring's left edge 2.5 right of the icon's centre, so the red one is 4 right of it; the middle on top.
-            .alignmentGuide(HorizontalAlignment.center) { _ in -(Self.fromCentre - Self.ring) }
-            .alignmentGuide(VerticalAlignment.top) { $0.height / 2 }
+            // Its top left corner on a point, the middle of the icon's top edge (the overlay's .top), then moved: the
+            // ring's left edge 2.5 right of it, so the red one is 4 right; its middle on the edge. Alignment guides
+            // for the same were not honoured here (CI 41828351378: the badge stood centred on the icon).
+            .offset(x: Self.fromCentre - Self.ring, y: -(Self.height / 2 + Self.ring))
+            .frame(width: 0, height: 0, alignment: .topLeading)
     }
 }
 

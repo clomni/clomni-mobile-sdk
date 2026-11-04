@@ -42,7 +42,8 @@ final class TabTests: XCTestCase {
     }
 
     /// The unread count on the conversations' tab (operator, 2026-11-04: it had "burst", big and over the icon): 16 pt
-    /// high, at least a circle, its left edge about 4 pt right of the icon's centre, inside its tab; VoiceOver reads it.
+    /// high, at least a circle, its left edge about 4 pt right of the icon's centre and its middle on the icon's top
+    /// edge, inside its tab; VoiceOver reads it.
     func testTheUnreadCountSitsOnTheIcon() throws {
         continueAfterFailure = false
         let app = launch()
@@ -50,15 +51,21 @@ final class TabTests: XCTestCase {
         XCTAssertTrue(messages.waitForExistence(timeout: 20), "the tab bar")
         XCTAssertTrue(messages.label.contains("7"), "VoiceOver reads the count: \(messages.label)")
         let frame = settled(messages)
-        let shot = app.screenshot()
+        let pixels = try XCTUnwrap(Pixels(app.screenshot()))
         keep(app, "tabs-badge")
         // The unread red (#E5484D) in the tab and the band over it, where a badge that sticks out would be.
         let area = CGRect(x: frame.minX, y: frame.minY - 8, width: frame.width, height: frame.height + 8)
-        let badge = try XCTUnwrap(Pixels(shot)?.bounds(in: area) { $0 > 180 && $1 < 120 && $2 < 120 }, "a red badge")
+        let badge = try XCTUnwrap(pixels.bounds(in: area) { $0 > 180 && $1 < 120 && $2 < 120 }, "a red badge")
+        // The icon: the grey of a tab not chosen (#707480), above the label.
+        let top = CGRect(x: frame.minX, y: frame.minY, width: frame.width, height: 34)
+        let icon = try XCTUnwrap(pixels.bounds(in: top) { max($0, $1, $2) < 200 && max($0, $1, $2) - min($0, $1, $2) < 40 },
+                                 "the icon")
+        continueAfterFailure = true
         XCTAssertTrue(frame.insetBy(dx: -0.5, dy: -0.5).contains(badge), "the badge \(badge) inside its tab \(frame)")
         XCTAssertEqual(badge.height, 16, accuracy: 1.5, "16 pt high: \(badge)")
         XCTAssertGreaterThanOrEqual(badge.width, badge.height - 1, "at least a circle: \(badge)")
-        XCTAssertEqual(badge.minX - frame.midX, 4, accuracy: 2, "its left edge ~4 pt right of the icon's centre: \(badge)")
+        XCTAssertEqual(badge.minX - icon.midX, 4, accuracy: 2, "its left edge ~4 pt right of the icon's centre: \(badge), \(icon)")
+        XCTAssertEqual(badge.midY, icon.minY, accuracy: 3, "its middle on the icon's top edge: \(badge), \(icon)")
     }
 
     private func launch() -> XCUIApplication {
