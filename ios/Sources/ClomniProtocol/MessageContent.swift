@@ -13,6 +13,9 @@ package enum MessageContent: Sendable, Equatable {
     case system(System)
     case card([CardItem])
     case rating(Rating)
+    /// A message its user deleted in the app, or an operator in the panel (SDK 1.0.7): only who sent it and when are
+    /// left. Nothing can be done with it.
+    case deleted
     /// A type this SDK does not know, or a known type whose content is broken: shown through `fallbackText`.
     case unknown(type: String, raw: JSONValue)
 }
@@ -220,6 +223,8 @@ extension MessageContent {
             case "system": self = .system(try System(f))
             case "card": self = .card(try f.nonEmptyArray("cards") { try CardItem($0) })
             case "rating": self = .rating(try Rating(f))
+            // Whatever else such a content carries (it should carry nothing) is not shown.
+            case "deleted": self = .deleted
             default:
                 ClomniLog.info("\(prefix)unknown type \"\(type)\", shown as fallback_text")
                 self = .unknown(type: type, raw: json)

@@ -97,6 +97,8 @@ extension MessageContent {
         case .rating(let rating):
             return ["text": .string(rating.text), "scale": .string(rating.scale.rawValue),
                     "comment": .string(rating.comment.rawValue), "submitted": rating.submitted.map(JSONValue.object) ?? .null]
+        case .deleted:
+            return ["type": "deleted"]
         case .unknown(_, let raw):
             return raw
         }

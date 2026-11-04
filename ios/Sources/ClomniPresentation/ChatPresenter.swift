@@ -43,7 +43,7 @@ package struct ChatPresenter: Sendable {
             failure: phase == .failed ? HomeScreen.Failure(message: strings[.error], retry: strings[.retry]) : nil,
             announcement: lastIncoming.map { Announcement(id: $0.id, text: label($0, snapshot)) },
             loadingLabel: strings[.loading], replyLabel: strings[.reply], copyLabel: strings[.copy],
-            newMessageLabel: strings[.newMessage])
+            deleting: DeleteTexts(strings), newMessageLabel: strings[.newMessage])
     }
 
     // MARK: - Header
@@ -110,7 +110,8 @@ package struct ChatPresenter: Sendable {
             limit: config?.limits.textChars ?? 4_000, sendLabel: strings[.send], attachLabel: strings[.attach],
             mediaLabel: strings[.pickMedia], cameraLabel: strings[.pickCamera],
             fileLabel: strings[.pickFile], removeAttachmentLabel: strings[.removeAttachment],
-            quote: mode == .open ? snapshot.replyingTo.flatMap { id in snapshot.messages.first { $0.id == id } }
+            quote: mode == .open ? snapshot.replyingTo
+                .flatMap { id in snapshot.messages.first { $0.id == id && !$0.isDeleted } }
                 .map { quote($0, snapshot) } : nil,
             cancelQuoteLabel: strings[.close])
         composer.voiceSeconds = config?.limits.voiceSeconds ?? MessengerConfig.Limits.defaultVoiceSeconds
@@ -137,6 +138,7 @@ package struct ChatPresenter: Sendable {
         var messageId: String?
         var replyable = false
         var copyText: String?
+        var deleteId: String?
         /// Who wrote it; nil for the user's pending messages.
         var from: Sender?
     }
@@ -160,6 +162,8 @@ package struct ChatPresenter: Sendable {
         }
 
         let choicesFor = Self.liveChoices(snapshot)
+        // The user's own messages can be deleted until the conversation is closed (SDK 1.0.7).
+        let deletable = snapshot.conversation?.status != .closed
 
         for message in Self.joinedFirst(snapshot.messages) {
             separate(key(message), message.createdAt)
@@ -170,14 +174,18 @@ package struct ChatPresenter: Sendable {
             }
             if let body = body(message, snapshot) {
                 var draft = draft(message, body, snapshot)
-                draft.quote = message.replyTo.map { quote($0, snapshot) }
                 draft.messageId = message.id
-                // A form or a rating is answered in its card, not quoted.
-                switch body {
-                case .form, .rating: break
-                default: draft.replyable = canReply
+                // Nothing can be done with a deleted message.
+                if !message.isDeleted {
+                    draft.quote = message.replyTo.map { quote($0, snapshot) }
+                    // A form or a rating is answered in its card, not quoted.
+                    switch body {
+                    case .form, .rating: break
+                    default: draft.replyable = canReply
+                    }
+                    draft.copyText = copyText(message.content)
+                    if deletable, message.sender.type == .user { draft.deleteId = message.id }
                 }
-                draft.copyText = copyText(message.content)
                 entries.append(.draft(draft))
             }
             if case .quickReplies(let replies) = message.content, message.id == choicesFor {
@@ -196,7 +204,9 @@ package struct ChatPresenter: Sendable {
                     snapshot.messages.first { $0.id == id }.map { quote($0, snapshot) }
                         ?? Bubble.Quote(messageId: id, author: "", excerpt: strings[.quoteDeleted])
                 },
-                copyText: pending.preview)))
+                copyText: pending.preview,
+                // Not sent yet: "Sil" takes it off the outbox.
+                deleteId: deletable ? pending.id : nil)))
         }
         // A row of its own at the end; none while a flow waits for a choice.
         if let sender = snapshot.typing, !snapshot.awaitsChoice {
@@ -262,6 +272,8 @@ package struct ChatPresenter: Sendable {
         let seqs = Dictionary(snapshot.messages.map { (key($0), $0.seq) }, uniquingKeysWith: { first, _ in first })
         for index in entries.indices {
             guard case .draft(var draft) = entries[index], draft.side == .outgoing, draft.status == nil else { continue }
+            // A deleted message keeps its time, not its ticks.
+            if case .deleted = draft.body { continue }
             let mark: Bubble.Status.Mark
             if pending.contains(draft.id) {
                 mark = .sending
@@ -316,7 +328,7 @@ package struct ChatPresenter: Sendable {
                                             accessibilityLabel: draft.accessibilityLabel + (status.map { ". \($0)" } ?? ""),
                                             accessibilityHint: hint(draft.body), quote: draft.quote,
                                             messageId: draft.messageId, replyable: draft.replyable,
-                                            copyText: draft.copyText)))
+                                            copyText: draft.copyText, deleteId: draft.deleteId)))
             }
             index += run.count
         }
@@ -344,7 +356,7 @@ package struct ChatPresenter: Sendable {
         switch body {
         case .image: return strings[.opensImage]
         case .file(let file): return file.url == nil ? nil : strings[.opensFile]
-        case .text, .voice, .form, .rating: return nil
+        case .text, .voice, .form, .rating, .deleted: return nil
         }
     }
 
@@ -368,6 +380,7 @@ package struct ChatPresenter: Sendable {
         case .form(let form): return form.text.map(LimitedMarkdown.plainText) ?? message.fallbackText
         case .rating(let rating): return LimitedMarkdown.plainText(rating.text)
         case .audio(let audio): return strings[.voiceMessage] + (audio.durationMs.map { ", \(VoiceTime.length($0))" } ?? "")
+        case .deleted: return strings[.messageDeleted]
         default: return message.fallbackText
         }
     }
@@ -395,6 +408,8 @@ package struct ChatPresenter: Sendable {
             return .voice(VoiceNote(id: message.id, audio: audio, outgoing: message.sender.type == .user), strings)
         case .system:
             return nil
+        case .deleted:
+            return .deleted(strings[.messageDeleted])
         case .card, .unknown:
             // Phase 2 types and anything unknown read as a plain bot bubble with the fallback text.
             return .text(TextLinks.linkify([TextRun(message.fallbackText)]))
@@ -547,7 +562,9 @@ package struct ChatPresenter: Sendable {
 
     /// The server's description of the quoted message.
     private func quote(_ ref: ReplyRef, _ snapshot: ChatSnapshot) -> Bubble.Quote {
-        let excerpt = ref.excerpt.map(oneLine) ?? ""
+        // The quoted message deleted since: the server does not send its quotes again (protocol/README.md).
+        let gone = snapshot.messages.contains { $0.id == ref.id && $0.isDeleted }
+        let excerpt = gone ? "" : ref.excerpt.map(oneLine) ?? ""
         return Bubble.Quote(messageId: ref.id, author: ref.sender.map { author($0, snapshot) } ?? "",
                             excerpt: excerpt.isEmpty ? strings[.quoteDeleted] : excerpt)
     }
@@ -559,6 +576,7 @@ package struct ChatPresenter: Sendable {
         case .image(let image): excerpt = image.caption ?? strings[.image]
         case .file(let file): excerpt = file.name
         case .audio: excerpt = strings[.voiceMessage]
+        case .deleted: excerpt = strings[.quoteDeleted]
         default: excerpt = readable(message)
         }
         return Bubble.Quote(messageId: message.id, author: author(message.sender, snapshot),

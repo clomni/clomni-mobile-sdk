@@ -73,6 +73,8 @@ struct ChatView: View {
     @State private var atBottom = false
     @State private var fullScreenImage: ImageURL?
     @State private var refusal: String?
+    /// "Sil" was chosen for this bubble's `deleteId`: the question is up.
+    @State private var deleting: String?
     @State private var announced: String?
     @State private var hasOlder = true
     @State private var loadingOlder = false
@@ -118,7 +120,9 @@ struct ChatView: View {
             focus: { key, focused in
                 if focused { focusedField = key } else if focusedField == key { focusedField = nil }
             },
-            highlighted: lit, replyLabel: model.screen.replyLabel, copyLabel: model.screen.copyLabel)
+            delete: { deleting = $0 },
+            highlighted: lit, replyLabel: model.screen.replyLabel, copyLabel: model.screen.copyLabel,
+            deleteLabel: model.screen.deleting.action)
     }
 
     var body: some View {
@@ -134,6 +138,17 @@ struct ChatView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.screen.phase)
+            // "Mesaj silinsin?" with "Sil" and "Ləğv et" (SDK 1.0.7); here, apart from the refusal's alert.
+            .alert(model.screen.deleting.title,
+                   isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                   presenting: deleting) { id in
+                Button(model.screen.deleting.action, role: .destructive) {
+                    Task { @MainActor in refusal = await model.controller.delete(id) }
+                }
+                Button(model.screen.deleting.cancel, role: .cancel) {}
+            } message: { _ in
+                Text(model.screen.deleting.body)
+            }
             // While a flow waits for a choice there is no composer at all (operator, 2026-10-04): the choices stand at
             // the end of the conversation. It comes back, sliding up and fading in over 200 ms, when the flow takes
             // text, ends, or an operator joins.

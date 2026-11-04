@@ -286,7 +286,8 @@ final class PresenterTests: XCTestCase {
         XCTAssertEqual(preview("👍🙏"), "👍🙏")
     }
 
-    /// The news card: the first three, in the panel's order; none, no card; off in the panel, no card.
+    /// The news card: the first two (news_on_home absent) and "Hamısı", in the panel's order; none, no card; off in the
+    /// panel, no card.
     func testNewsCard() throws {
         let news = try XCTUnwrap(ProtocolJSON.parseNews(Fixture.data("61-news.json")))
         var withNews = snapshot(Fixture.exampleConfig)
@@ -294,7 +295,8 @@ final class PresenterTests: XCTestCase {
             ProtocolJSON.parseNews(Data(#"{"items":[{"id":"\#(item.id)_b","title":"\#(item.title)","published_at":"2026-10-01T00:00:00Z"}]}"#.utf8))![0]
         }
         let home = presenter().home(withNews)
-        XCTAssertEqual(home.news?.items.map(\.id), ["news_12", "news_9", "news_12_b"], "three at most")
+        XCTAssertEqual(home.news?.items.map(\.id), ["news_12", "news_9"], "two unless the panel says")
+        XCTAssertEqual(home.news?.seeAll, "Hamısı")
         XCTAssertEqual(home.news?.items.first?.accessibilityLabel,
                        "Yeni zonalar açıldı. Yasamal və Nərimanovda 40 yeni parklanma zonası var.")
         XCTAssertEqual(home.order, [.messages, .send, .news, .channels], "fixture 42's order, recent has no conversation")

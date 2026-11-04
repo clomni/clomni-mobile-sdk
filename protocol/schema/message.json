@@ -9,7 +9,7 @@
     "id": { "type": "string", "pattern": "^msg_.+" },
     "client_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 64, "description": "UUID v4 the client sent with its own message; null for messages it did not send." },
     "conversation_id": { "type": "string", "pattern": "^conv_.+" },
-    "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, quick_replies, image, file, audio, form, system, card, rating. Any other value is valid and rendered with fallback_text." },
+    "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Known in v1: text, quick_replies, image, file, audio, form, system, card, rating, deleted. Any other value is valid and rendered with fallback_text." },
     "sender": { "$ref": "#/$defs/sender" },
     "created_at": { "type": "string", "format": "date-time" },
     "seq": { "type": "integer", "minimum": 1, "description": "Rises within the conversation; ordering uses it, never the id." },
@@ -29,7 +29,8 @@
     { "if": { "properties": { "type": { "const": "form" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/form" } } } },
     { "if": { "properties": { "type": { "const": "system" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/system" } } } },
     { "if": { "properties": { "type": { "const": "card" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/card" } } } },
-    { "if": { "properties": { "type": { "const": "rating" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/rating" } } } }
+    { "if": { "properties": { "type": { "const": "rating" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/rating" } } } },
+    { "if": { "properties": { "type": { "const": "deleted" } } }, "then": { "properties": { "content": { "$ref": "#/$defs/deleted" }, "reply_to": { "type": "null" } } } }
   ],
   "$defs": {
     "sender": {
@@ -204,6 +205,13 @@
           }
         }
       }
+    },
+    "deleted": {
+      "type": "object",
+      "description": "A message its user deleted in the app, or an operator in the panel (SDK 1.0.7). Arrives as message.updated and stays so in the history: id, sender, created_at and seq are kept, reply_to is null and the files are gone. fallback_text is strings.message_deleted in the message's language, which an older SDK shows for this unknown type. Nothing can be done with it: no reply, copy or delete.",
+      "required": ["type"],
+      "properties": { "type": { "const": "deleted" } },
+      "additionalProperties": false
     },
     "rating": {
       "type": "object",

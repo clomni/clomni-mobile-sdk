@@ -86,8 +86,18 @@
         },
         "cards": {
           "type": "array",
-          "description": "In the order shown. messages (opens the conversation list; there is no tab bar) and send are always there. news: the published news (GET /news), not drawn when there is none. An SDK skips a card it does not know.",
-          "items": { "enum": ["messages", "recent", "send", "news", "channels"] }
+          "description": "In the order shown. messages (opens the conversation list, also with a tab bar) and send are always there. news: the first news_on_home published news (GET /news) with see_all under them unless there are fewer than news_on_home, not drawn when there is none. faq: the first three questions (GET /faq) with see_all, drawn only while faq.enabled and there is a question. An SDK skips a card it does not know.",
+          "items": { "enum": ["messages", "recent", "send", "news", "channels", "faq"] }
+        },
+        "tab_bar": {
+          "type": "boolean",
+          "description": "SDK 1.0.7. true: tabs at the bottom of the list screens, in this order: home (strings.tab_home), messages (tab_messages, with the unread count), news (tab_news, only while there is a published news item), faq (tab_faq, only while faq.enabled and there is a question). A conversation's screen hides the bar. false or absent: no tab bar; the messages card opens the conversation list and the news card's see_all the news list."
+        },
+        "news_on_home": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "SDK 1.0.7. How many news items Home's news card shows. see_all (strings.see_all) under them leads to the news tab, or to the news list without a tab bar; it is left out when there are fewer items than this. Absent: 2."
         },
         "channels": {
           "type": "array",
@@ -155,7 +165,13 @@
         "voice_seconds": { "type": "integer", "minimum": 1, "description": "The longest voice message; the recorder stops there. An SDK uses 300 when it is absent." }
       }
     },
-    "powered_by": { "type": "boolean", "description": "Show \"Powered by Clomni\" under Home; false only on a plan that allows it." }
+    "powered_by": { "type": "boolean", "description": "Show \"Powered by Clomni\" under Home; false only on a plan that allows it." },
+    "faq": {
+      "type": "object",
+      "description": "SDK 1.0.7. The questions the panel shares (GET /faq): the faq tab and the faq card. Absent: off.",
+      "required": ["enabled"],
+      "properties": { "enabled": { "type": "boolean" } }
+    }
   },
   "$defs": {
     "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },

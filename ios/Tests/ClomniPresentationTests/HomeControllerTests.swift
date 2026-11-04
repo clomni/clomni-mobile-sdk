@@ -41,6 +41,16 @@ actor FakeSource: MessengerDataSource {
     var opened: [String] = []
     func newsOpened(_ id: String) async { opened.append(id) }
 
+    var questions: [FaqItem] = []
+    var faq: [FaqItem] { questions }
+    var faqRefreshes = 0
+    func refreshFaq() async -> [FaqItem] {
+        faqRefreshes += 1
+        return questions
+    }
+    func set(faq: [FaqItem]) { questions = faq }
+    func faqOpened(_ id: String) async { opened.append(id) }
+
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {
         let token = UUID()
         observers[token] = handler

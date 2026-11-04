@@ -1,0 +1,201 @@
+{
+  "version": 12,
+  "brand": {
+    "name": "Example",
+    "initial": "A",
+    "logo_url": "https://app.clomni.ai/v1/images/img_Lq3T8vXw2KpA9mZc4RbN",
+    "logo_dark_url": null,
+    "logo_style": "mark",
+    "logo_scale": 100,
+    "wordmark_url": null,
+    "wordmark_dark_url": null,
+    "primary_color": "#1F9D63",
+    "header_style": "gradient",
+    "header_image_url": null,
+    "glow": false,
+    "colors": {
+      "light": {
+        "primary": "#1F9D63",
+        "on_primary": "#000000",
+        "primary_soft": "#E9F5EF",
+        "primary_line": "#CEE9DD",
+        "primary_strong": "#0E482D",
+        "header_from": "#1F9D63",
+        "header_to": "#177248",
+        "header_text": "#FFFFFF"
+      },
+      "dark": {
+        "primary": "#27C87E",
+        "on_primary": "#000000",
+        "primary_soft": "#142520",
+        "primary_line": "#173B2D",
+        "primary_strong": "#0E482D",
+        "header_from": "#1F9D63",
+        "header_to": "#0E482D",
+        "header_text": "#FFFFFF"
+      }
+    }
+  },
+  "team": {
+    "show": true,
+    "mode": "auto",
+    "avatars": [
+      "https://my.clomni.co/rails/active_storage/representations/redirect/leyla.png",
+      "https://my.clomni.co/rails/active_storage/representations/redirect/rauf.png",
+      "https://my.clomni.co/rails/active_storage/representations/redirect/nigar.png"
+    ],
+    "reply_time": "Adətən bir neçə dəqiqəyə cavab veririk",
+    "reply_time_offline": "Hazırda iş saatı deyil, sizə səhər cavab verəcəyik",
+    "office_hours": {
+      "tz": "Asia/Baku",
+      "open_now": true,
+      "next_open_at": null
+    }
+  },
+  "bot": {
+    "name": "Clomni",
+    "avatar_url": null
+  },
+  "home": {
+    "cards": [
+      "messages",
+      "recent",
+      "send",
+      "news",
+      "faq",
+      "channels"
+    ],
+    "channels": [
+      {
+        "type": "instagram",
+        "url": "https://instagram.com/example"
+      },
+      {
+        "type": "whatsapp",
+        "url": "https://wa.me/994501234567"
+      },
+      {
+        "type": "linkedin",
+        "url": "https://linkedin.com/company/example"
+      },
+      {
+        "type": "email",
+        "url": "mailto:support@example.com"
+      }
+    ],
+    "title_scale": 100,
+    "tab_bar": true,
+    "news_on_home": 4
+  },
+  "theme": {
+    "mode": "system",
+    "launcher": {
+      "enabled": false,
+      "position": "right",
+      "bottom_padding": 20
+    }
+  },
+  "composer": {
+    "attachments": true,
+    "emoji": true
+  },
+  "conversation": {
+    "starts_with_flow": true
+  },
+  "sounds": true,
+  "languages": {
+    "enabled": [
+      "az",
+      "en",
+      "ru"
+    ],
+    "default": "az"
+  },
+  "strings": {
+    "today": "Bu gün",
+    "yesterday": "Dünən",
+    "send": "Göndər",
+    "send_card_title": "Bizə mesaj göndərin",
+    "greeting_line1": "Salam, {first_name}",
+    "greeting_line1_anonymous": "Salam",
+    "greeting_line2": "Bizdən nəsə soruşun",
+    "recent_message": "Ən son mesaj",
+    "follow_us": "Bizi izləyin",
+    "empty_list": "Hələ söhbət yoxdur",
+    "error": "Nəsə səhv getdi",
+    "retry": "Yenidən cəhd et",
+    "offline": "İnternet yoxdur",
+    "now": "indi",
+    "you": "Siz",
+    "close": "Bağla",
+    "unread": "Oxunmamış",
+    "email": "E-poçt",
+    "phone": "Telefon",
+    "header_subtitle": "Adətən bir neçə dəqiqəyə cavab veririk",
+    "online": "onlayn",
+    "away": "Hazırda iş saatı deyil",
+    "composer_placeholder": "Mesaj yazın…",
+    "choose_above": "Yuxarıdan birini seçin",
+    "sending": "Göndərilir",
+    "sent": "Göndərildi",
+    "read": "Oxundu",
+    "failed": "Göndərilmədi",
+    "closed": "Söhbət bağlanıb",
+    "start_new_conversation": "Yeni söhbət başlat",
+    "back": "← Geri",
+    "go_back": "Geri",
+    "bot": "Bot",
+    "typing": "yazır",
+    "attach": "Fayl əlavə et",
+    "emoji": "Emoji",
+    "image": "Şəkil",
+    "file": "Fayl",
+    "field_required": "Bu sahəni doldurun",
+    "invalid_email": "E-poçt düzgün deyil",
+    "invalid_phone": "Telefon nömrəsi düzgün deyil",
+    "invalid_number": "Rəqəm yazın",
+    "too_long": "Ən çox %d simvol",
+    "choose_option": "Variantlardan birini seçin",
+    "file_too_large": "Fayl çox böyükdür (maks. %d MB)",
+    "unread_messages": "Oxunmamış mesaj var",
+    "minutes_short": "%d dəq",
+    "hours_short": "%d saat",
+    "days_short": "%d gün",
+    "away_until": "Növbəti iş saatı: %@",
+    "tomorrow": "sabah",
+    "support_messages": "Dəstək mesajları",
+    "loading": "Yüklənir",
+    "messages_title": "Mesajlar",
+    "news_title": "Xəbərlər",
+    "pick_media": "Şəkil və ya video",
+    "pick_camera": "Kamera",
+    "pick_file": "Fayl",
+    "remove_attachment": "Sil",
+    "reply": "Cavabla",
+    "copy": "Kopyala",
+    "quote_deleted": "Mesaj silinib",
+    "delete": "Sil",
+    "cancel": "Ləğv et",
+    "delete_confirm_title": "Mesaj silinsin?",
+    "delete_confirm_body": "Mesaj hər kəs üçün silinəcək.",
+    "delete_closed": "Söhbət bağlanıb, mesaj silinmir.",
+    "message_deleted": "Bu mesaj silindi",
+    "tab_home": "Əsas səhifə",
+    "tab_messages": "Söhbətlər",
+    "tab_news": "Xəbərlər",
+    "tab_faq": "Suallar",
+    "see_all": "Hamısı",
+    "faq_title": "Tez-tez verilən suallar",
+    "faq_search": "Sual axtarın",
+    "faq_empty": "Hələ sual yoxdur"
+  },
+  "limits": {
+    "image_mb": 10,
+    "file_mb": 25,
+    "text_chars": 4000
+  },
+  "powered_by": true,
+  "faq": {
+    "enabled": true
+  }
+}

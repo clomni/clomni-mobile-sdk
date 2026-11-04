@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://app.clomni.ai/protocol/v1/conversation-start.json",
   "title": "Start a conversation",
-  "description": "Body of POST /v1/conversations. With a client_id it is idempotent within the session (its chain, which a refresh keeps): the same client_id again starts nothing new and is answered, with 200, the conversation the first request made. Without one every request starts a new conversation (201).",
+  "description": "Body of POST /v1/conversations. With a client_id it is idempotent within the session (its chain, which a refresh keeps): the same client_id again starts nothing new and is answered, with 200, the conversation the first request made. Without one every request starts a new conversation (201), except in an inbox that keeps the user to one conversation at a time: while theirs is not resolved it is answered with 200 and nothing new starts.",
   "type": "object",
   "properties": {
     "opened_from": {

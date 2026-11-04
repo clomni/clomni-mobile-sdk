@@ -5,7 +5,8 @@ import XCTest
 /// Every file of protocol/fixtures and protocol/examples/brief goes through the parser its index names, the way the
 /// server's validator (protocol/scripts/validate.mjs) checks them against the schemas.
 final class FixtureIndexTests: ProtocolTestCase {
-    private static let contentTypes: Set = ["text", "quick_replies", "image", "file", "audio", "form", "system", "card", "rating"]
+    private static let contentTypes: Set = ["text", "quick_replies", "image", "file", "audio", "form", "system", "card", "rating",
+                                            "deleted"]
     private static let events: Set = ["ready", "message.created", "message.updated", "typing", "read",
                                       "conversation.updated", "unread.changed", "config.changed"]
 
@@ -90,6 +91,11 @@ final class FixtureIndexTests: ProtocolTestCase {
             let news = ProtocolJSON.parseNews(data)
             XCTAssertNotNil(news, label)
             if entry.isValid { XCTAssertEqual(news?.count, ProtocolJSON.decode(data)?["items"]?.arrayValue?.count, label) }
+        case ("faq.json", nil):
+            // An invalid question is left out, the rest stay.
+            let faq = ProtocolJSON.parseFaq(data)
+            XCTAssertNotNil(faq, label)
+            if entry.isValid { XCTAssertEqual(faq?.count, ProtocolJSON.decode(data)?["items"]?.arrayValue?.count, label) }
         case ("appearance.json", nil):
             // The panel's document; the SDK reads only what the server makes of it, config.json.
             XCTAssertNotNil(ProtocolJSON.decode(data), label)
@@ -161,6 +167,25 @@ final class InvalidFixtureTests: ProtocolTestCase {
         XCTAssertNil(audio.waveform)
         XCTAssertEqual(audio.durationMs, 8_000)
         XCTAssertTrue(log.contains("msg_f103: audio.waveform: expected 1–128 levels of 0–100"), "\(log.lines)")
+    }
+
+    func testAnFaqQuestionWithAnEmptyAnswerIsLeftOut() throws {
+        XCTAssertEqual(ProtocolJSON.parseFaq(try Fixtures.data("112-invalid-faq-empty-answer.json")), [])
+        XCTAssertTrue(log.contains("faq item left out: faq.items[0]: an empty question or answer"), "\(log.lines)")
+    }
+
+    func testNewsOnHomeOutOfRangeTakesTheDefault() throws {
+        let config = try XCTUnwrap(ProtocolJSON.parseConfig(try Fixtures.data("113-invalid-config-news-on-home.json")))
+        XCTAssertEqual(config.home.newsOnHome, 2)
+        XCTAssertTrue(config.home.tabBar)
+    }
+
+    func testADeletedMessageShowsNothingOfWhatCameWithIt() throws {
+        let withText = try Fixtures.message("114-invalid-deleted-with-text.json")
+        XCTAssertEqual(withText.content, .deleted, "the text is not shown")
+        let withQuote = try Fixtures.message("115-invalid-deleted-with-reply-to.json")
+        XCTAssertEqual(withQuote.content, .deleted)
+        XCTAssertNil(withQuote.replyTo, "nor the quote")
     }
 
     func testCardButtonWithPayloadAndUrlKeepsBoth() throws {

@@ -54,6 +54,9 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
     let newsETag = "W/\"n1\""
     /// GET /news's body: fixture 61 unless a test sets another.
     var newsBody: JSONValue?
+    let faqETag = "W/\"f1\""
+    /// GET /faq's body (SDK 1.0.7): no questions unless a test sets some.
+    var faqBody: JSONValue?
 
     init(time: TimeSource) {
         self.time = time
@@ -112,6 +115,11 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
 
     func storedMessages(_ conversationId: String) -> [JSONValue] {
         locked { conversations[conversationId]?.messages ?? [] }
+    }
+
+    /// The conversation's status on the server: "closed" refuses deletes (SDK 1.0.7).
+    func setStatus(_ status: String, of conversationId: String) {
+        locked { conversations[conversationId]?.status = status }
     }
 
     /// A bot message created on the server; sent to the sockets unless `silently`.
@@ -249,6 +257,11 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
         case ("GET", ["news"]):
             if request.headers["If-None-Match"] == newsETag { return HTTPResponse(status: 304) }
             return Self.json(200, newsBody ?? ["items": []], headers: ["ETag": newsETag])
+        case ("GET", ["faq"]):
+            if request.headers["If-None-Match"] == faqETag { return HTTPResponse(status: 304) }
+            return Self.json(200, faqBody ?? ["items": []], headers: ["ETag": faqETag])
+        case ("DELETE", let path) where path.count == 4 && path[0] == "conversations" && path[2] == "messages":
+            return delete(path[3], in: path[1], user: user, frames: &frames)
         case ("GET", ["conversations"]):
             let list = conversations.values.filter { $0.user == user }.sorted { $0.id > $1.id }
             return Self.json(200, ["conversations": .array(list.map(conversationJSON)), "next_cursor": nil])
@@ -430,6 +443,26 @@ final class FakeServer: HTTPTransport, @unchecked Sendable {
         byClientId[clientId] = message
         frames.append(Self.frame("message.created", message))
         return Self.json(201, message)
+    }
+
+    /// SDK 1.0.7: the user's own message, deleted for everyone and sent again as message.updated.
+    private func delete(_ messageId: String, in conversationId: String, user: String,
+                        frames: inout [String]) -> HTTPResponse {
+        guard let conversation = conversations[conversationId], conversation.user == user else {
+            return Self.error(404, "conversation_not_found")
+        }
+        guard let index = conversation.messages.firstIndex(where: { $0["id"]?.stringValue == messageId }),
+              case .object(var fields) = conversation.messages[index] else { return Self.error(404, "not_found") }
+        if fields["type"] == "deleted" { return HTTPResponse(status: 204) }
+        guard fields["sender"]?["type"] == "user" else { return Self.error(403, "forbidden") }
+        if conversation.status == "closed" { return Self.error(409, "conversation_closed") }
+        fields["type"] = "deleted"
+        fields["content"] = ["type": "deleted"]
+        fields["fallback_text"] = "Bu mesaj silindi"
+        fields["reply_to"] = .null
+        conversations[conversationId]?.messages[index] = .object(fields)
+        frames.append(Self.frame("message.updated", .object(fields)))
+        return HTTPResponse(status: 204)
     }
 
     private func makeMessage(in conversationId: String, type: String, sender: JSONValue, content: JSONValue,

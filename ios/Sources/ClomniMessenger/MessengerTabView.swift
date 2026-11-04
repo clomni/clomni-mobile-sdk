@@ -14,6 +14,8 @@ import ClomniPresentation
 final class MessengerModel: ObservableObject {
     @Published private(set) var home: HomeScreen
     @Published private(set) var messages: MessagesScreen
+    @Published private(set) var newsList: NewsListScreen
+    @Published private(set) var faq: FaqScreen
     @Published private(set) var config: MessengerConfig?
     let controller: HomeController
     private var loaded = false
@@ -22,6 +24,8 @@ final class MessengerModel: ObservableObject {
         self.controller = controller
         home = controller.home
         messages = controller.messages
+        newsList = controller.newsList
+        faq = controller.faq
         config = controller.config
         controller.onChange = { [weak self] in self?.sync() }
         NetworkMonitor.shared.follow(controller) { $0.isOffline = $1 }
@@ -41,6 +45,8 @@ final class MessengerModel: ObservableObject {
     private func sync() {
         home = controller.home
         messages = controller.messages
+        newsList = controller.newsList
+        faq = controller.faq
         config = controller.config
     }
 }
@@ -67,8 +73,11 @@ struct HomeTabView: View {
                 }
             },
             openConversation: { [coordinator] in coordinator.navigate(to: .conversation($0)) },
-            openMessages: { [coordinator] in coordinator.navigate(to: .messages) },
+            openMessages: { [coordinator] in coordinator.show(.messages) },
             openNews: { [coordinator] in coordinator.navigate(to: .news($0)) },
+            openNewsList: { [coordinator] in coordinator.show(.newsList) },
+            openFaq: { [coordinator] in coordinator.show($0.map(MessengerRoute.faqAnswer) ?? .faq) },
+            selectTab: { [coordinator] in coordinator.select($0) },
             retry: { [model] in
                 Task { @MainActor in await model.controller.retry() }
             })
@@ -76,6 +85,7 @@ struct HomeTabView: View {
 
     var body: some View {
         HomeView(screen: model.home, theme: theme, actions: actions)
+            .messengerTabBar(model.home.tabBar, selected: .home, theme: theme, select: actions.selectTab)
             // Text grows with Dynamic Type up to about twice its size.
             .dynamicTypeSize(...DynamicTypeSize.accessibility3)
             .configCrossfade(model.config)
@@ -83,10 +93,12 @@ struct HomeTabView: View {
     }
 }
 
-/// The conversations, newest first, with back to Home.
+/// The conversations, newest first, with back to Home; with the tab bar (SDK 1.0.7) the conversations' tab.
 struct MessagesTabView: View {
     @ObservedObject var model: MessengerModel
     let coordinator: MessengerCoordinator
+    /// At the bottom of the stack: a tab's list.
+    var isTab = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.clomniThemeOverride) private var themeOverride
 
@@ -106,9 +118,62 @@ struct MessagesTabView: View {
                             }
                         },
                         openConversation: { [coordinator] in coordinator.navigate(to: .conversation($0)) },
+                        selectTab: { [coordinator] in coordinator.select($0) },
                         back: { [coordinator] in coordinator.back() },
-                        retry: { [model] in Task { @MainActor in await model.controller.retry() } }))
+                        retry: { [model] in Task { @MainActor in await model.controller.retry() } }),
+                     isTab: isTab)
             .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+            .configCrossfade(model.config)
+            .task { await model.load() }
+    }
+}
+
+/// Every news item (SDK 1.0.7): pushed from Home's "Hamısı", or the news tab.
+struct NewsListTabView: View {
+    @ObservedObject var model: MessengerModel
+    let coordinator: MessengerCoordinator
+    var isTab = false
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
+
+    private var theme: ClomniTheme {
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
+    }
+
+    var body: some View {
+        NewsListView(screen: model.newsList, theme: theme,
+                     actions: MessengerActions(
+                        close: { [coordinator] in coordinator.dismiss() },
+                        openNews: { [coordinator] in coordinator.navigate(to: .news($0)) },
+                        selectTab: { [coordinator] in coordinator.select($0) },
+                        back: { [coordinator] in coordinator.back() }),
+                     isTab: isTab)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+            .configCrossfade(model.config)
+            .task { await model.load() }
+    }
+}
+
+/// The FAQ's questions (SDK 1.0.7): pushed from Home's FAQ card, or the FAQ tab; a question pushes its answer.
+struct FaqTabView: View {
+    @ObservedObject var model: MessengerModel
+    let coordinator: MessengerCoordinator
+    var isTab = false
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.clomniThemeOverride) private var themeOverride
+
+    private var theme: ClomniTheme {
+        ClomniTheme.make(config: model.config, systemIsDark: colorScheme == .dark, override: themeOverride)
+    }
+
+    var body: some View {
+        FaqListView(screen: model.faq, theme: theme,
+                    actions: MessengerActions(
+                        close: { [coordinator] in coordinator.dismiss() },
+                        openFaq: { [coordinator] in if let id = $0 { coordinator.navigate(to: .faqAnswer(id)) } },
+                        selectTab: { [coordinator] in coordinator.select($0) },
+                        back: { [coordinator] in coordinator.back() }),
+                    isTab: isTab)
             .configCrossfade(model.config)
             .task { await model.load() }
     }

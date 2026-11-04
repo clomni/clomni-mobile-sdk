@@ -432,6 +432,20 @@ actor DemoChat: ChatDataSource {
     }
 
     func retry(_ clientId: String) {}
+
+    /// The user's message is deleted at once, as the server would; a voice message still waiting leaves the queue.
+    func deleteMessage(_ id: String, in conversationId: String) -> DeleteOutcome {
+        if let index = waiting.firstIndex(where: { $0.id == id }) {
+            waiting.remove(at: index)
+        } else if let index = stored.firstIndex(where: { $0.id == id }) {
+            stored[index] = stored[index].deleted()
+        } else {
+            return .failed
+        }
+        notify()
+        return .deleted
+    }
+
     func draftConversation(openedFrom: String?) -> String { Self.conversationId }
 
     func observe(_ handler: @escaping @Sendable (ClomniChange) -> Void) -> UUID {

@@ -505,5 +505,54 @@
     "file": "106-quick-replies-typing-allowed.json",
     "schema": "message.json",
     "note": "Flow düymələri, müştəri yaza da bilər (input_disabled false): düymələrin altında yazı qutusu (SDK 1.0.4)"
+  },
+  {
+    "file": "107-deleted-user-message.json",
+    "schema": "message.json",
+    "note": "İstifadəçinin sildiyi mesaj (SDK 1.0.7): sağ tərəf, neytral səssiz balon, kursiv strings.message_deleted («Bu mesaj silindi»), vaxt qalır; uzun basışda heç bir hərəkət yoxdur (cavabla/kopyala/sil). Köhnə SDK fallback_text göstərir"
+  },
+  {
+    "file": "108-event-message-deleted-by-operator.json",
+    "schema": "event.json",
+    "note": "WS: message.updated, operator mesajı paneldə sildi: eyni id-li balon yerində silinmiş balona çevrilir (sol tərəf, «This message was deleted»); bu mesajı sitat gətirən balonlarda sitat strings.quote_deleted olur"
+  },
+  {
+    "file": "109-config-tab-bar-faq.json",
+    "schema": "config.json",
+    "note": "Config, SDK 1.0.7: tab bar açıq (Əsas səhifə, Söhbətlər nişanla, Xəbərlər, Suallar), əsas səhifədə 1 xəbər və altında «Hamısı», FAQ kartı (ilk 3 sual + «Hamısı»); söhbət ekranında tab bar gizlidir"
+  },
+  {
+    "file": "110-faq.json",
+    "schema": "faq.json",
+    "note": "FAQ siyahısı: «Tez-tez verilən suallar», axtarış sahəsi, 4 sual paneldəki sırayla; sual açılanda cavab (qalın, siyahı, link, sətir keçidi) və /events-ə faq_opened {faq_id}; FAQ kartı ilk üçünü göstərir"
+  },
+  {
+    "file": "111-faq-empty.json",
+    "schema": "faq.json",
+    "note": "Sual yoxdur: FAQ kartı və «Suallar» tab-ı görünmür; siyahı açıqdırsa strings.faq_empty"
+  },
+  {
+    "file": "112-invalid-faq-empty-answer.json",
+    "schema": "faq.json",
+    "note": "Səhv: cavab boşdur",
+    "valid": false
+  },
+  {
+    "file": "113-invalid-config-news-on-home.json",
+    "schema": "config.json",
+    "note": "Səhv: news_on_home 1–3 olmalıdır",
+    "valid": false
+  },
+  {
+    "file": "114-invalid-deleted-with-text.json",
+    "schema": "message.json",
+    "note": "Səhv: silinmiş mesajın content-ində yalnız type olur",
+    "valid": false
+  },
+  {
+    "file": "115-invalid-deleted-with-reply-to.json",
+    "schema": "message.json",
+    "note": "Səhv: silinmiş mesajda reply_to null olur",
+    "valid": false
   }
 ]

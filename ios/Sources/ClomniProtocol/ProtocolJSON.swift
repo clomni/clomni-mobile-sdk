@@ -47,6 +47,20 @@ package enum ProtocolJSON {
         }
     }
 
+    /// The FAQ (SDK 1.0.7); a question that cannot be read is left out (and logged), the rest stay.
+    package static func parseFaq(_ data: Data) -> [FaqItem]? {
+        decode(data, "faq") { fields in
+            (fields["items"]?.arrayValue ?? []).enumerated().compactMap { index, item in
+                do {
+                    return try FaqItem(try JSONFields(item, path: "faq.items[\(index)]"))
+                } catch {
+                    ClomniLog.warning("faq item left out: \(error)")
+                    return nil
+                }
+            }
+        }
+    }
+
     /// nil when the payload is not a Clomni push.
     package static func parsePush(_ data: Data) -> PushPayload? {
         decode(data, "push") { try PushPayload($0) }

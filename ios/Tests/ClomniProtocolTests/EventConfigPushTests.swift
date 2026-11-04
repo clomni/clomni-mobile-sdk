@@ -157,7 +157,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         let older = try XCTUnwrap(ProtocolJSON.parseConfig(Data(#"{"brand":{"name":"Example"},"home":{}}"#.utf8)))
         XCTAssertEqual(older.brand.logoStyle, .mark)
         XCTAssertEqual([older.brand.logoScale, older.home.titleScale], [100, 100])
-        XCTAssertEqual(older.home.cards, [.messages, .recent, .send, .news, .channels])
+        XCTAssertEqual(older.home.cards, [.messages, .recent, .send, .news, .channels, .faq])
     }
 
     func testMinimalConfigTakesDefaults() throws {
@@ -206,7 +206,7 @@ final class MessengerConfigTests: ProtocolTestCase {
         let empty = try XCTUnwrap(ProtocolJSON.parseConfig(Data("{}".utf8)))
         XCTAssertEqual(empty.version, 0)
         XCTAssertEqual(empty.brand.name, "")
-        XCTAssertEqual(empty.home.cards, [.messages, .recent, .send, .news, .channels], "no list: every card")
+        XCTAssertEqual(empty.home.cards, [.messages, .recent, .send, .news, .channels, .faq], "no list: every card")
         XCTAssertEqual(empty.languages, MessengerConfig.Languages(), "absent: all three, az the default")
 
         let odd = try XCTUnwrap(ProtocolJSON.parseConfig(Data(##"""

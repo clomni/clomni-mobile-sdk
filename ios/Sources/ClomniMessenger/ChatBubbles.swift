@@ -36,10 +36,13 @@ struct ChatActions {
     var jump: (_ messageId: String) -> Void = { _ in }
     /// A form field took or lost the focus: the list keeps it over the keyboard (G4).
     var focus: (_ key: String, _ focused: Bool) -> Void = { _, _ in }
+    /// "Sil" in the long-press menu (SDK 1.0.7): the bubble's `deleteId`, to confirm before it goes.
+    var delete: (_ deleteId: String) -> Void = { _ in }
     /// The bubble a quote has just led to, lit for a second.
     var highlighted: String?
     var replyLabel = ""
     var copyLabel = ""
+    var deleteLabel = ""
 }
 
 /// The styled runs as one text: bold and italic through presentation intents, links underlined and tappable.
@@ -298,7 +301,32 @@ struct BubbleBody: View {
             RatingCardView(card: card, theme: theme, bubble: shape, bubbleFill: fill, stamp: stamp,
                            rate: { score, comment in await actions.rate(card.messageId, score, comment) },
                            focus: actions.focus)
+        case .deleted(let text):
+            DeletedBubble(text: text, time: BubbleStamp(deleted: bubble), theme: theme,
+                          shape: shape, label: bubble.accessibilityLabel)
         }
+    }
+}
+
+/// A deleted message (SDK 1.0.7), on either side: "Bu mesaj silindi" in italics, muted, on the neutral bubble with a
+/// hairline, its time kept in the corner.
+private struct DeletedBubble: View {
+    let text: String
+    let time: BubbleStamp
+    let theme: ClomniTheme
+    let shape: BubbleShape
+    let label: String
+
+    var body: some View {
+        StampedText(text: attributedText([TextRun(text, italic: true)]), size: ClomniTheme.FontSize.message, stamp: time,
+                    theme: theme)
+            .foregroundStyle(theme.colors.textSecondary.color)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(EdgeInsets(top: 10, leading: 14, bottom: 8, trailing: 14))
+            .background(shape.fill(theme.colors.background.color))
+            .overlay(shape.stroke(theme.colors.border.color, lineWidth: 1))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(label))
     }
 }
 
@@ -526,6 +554,13 @@ struct BubbleStamp {
         time = bubble.time
         mark = bubble.status?.mark
         outgoing = bubble.side == .outgoing
+    }
+
+    /// A deleted message's: the time alone, muted on either side.
+    init(deleted bubble: Bubble) {
+        time = bubble.time
+        mark = nil
+        outgoing = false
     }
 
     /// The time and `mark` as one text, so the room kept for it in a message's last line is exactly as wide. No

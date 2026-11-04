@@ -146,8 +146,9 @@ struct SwipeToReply: ViewModifier {
     }
 }
 
-/// A long press: "Cavabla" (while there is a composer) and "Kopyala" (when there is text). VoiceOver has the same
-/// two as actions of the bubble.
+/// A long press: "Cavabla" (while there is a composer), "Kopyala" (when there is text) and "Sil" (the user's own message
+/// while the conversation is open, SDK 1.0.7), which asks first. VoiceOver has the same as actions of the bubble. A
+/// deleted message has none of them.
 struct MessageMenu: ViewModifier {
     let bubble: Bubble
     let actions: ChatActions
@@ -156,17 +157,21 @@ struct MessageMenu: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if replyId == nil && bubble.copyText == nil {
+        if replyId == nil && bubble.copyText == nil && bubble.deleteId == nil {
             content
         } else {
             content
                 .contextMenu {
                     if let replyId { Button(actions.replyLabel) { actions.reply(replyId) } }
                     if let text = bubble.copyText { Button(actions.copyLabel) { UIPasteboard.general.string = text } }
+                    if let deleteId = bubble.deleteId {
+                        Button(role: .destructive) { actions.delete(deleteId) } label: { Text(actions.deleteLabel) }
+                    }
                 }
                 .modifier(NamedAction(name: actions.replyLabel, run: replyId.map { id in { actions.reply(id) } }))
                 .modifier(NamedAction(name: actions.copyLabel,
                                       run: bubble.copyText.map { text in { UIPasteboard.general.string = text } }))
+                .modifier(NamedAction(name: actions.deleteLabel, run: bubble.deleteId.map { id in { actions.delete(id) } }))
         }
     }
 }

@@ -109,6 +109,7 @@ extension MessageContent {
         case .system: return "system"
         case .card: return "card"
         case .rating: return "rating"
+        case .deleted: return "deleted"
         case .unknown: return "unknown"
         }
     }

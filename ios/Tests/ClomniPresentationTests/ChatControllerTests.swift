@@ -121,6 +121,21 @@ actor FakeChat: ChatDataSource {
 
     func retry(_ clientId: String) throws { calls.append("retry \(clientId)") }
 
+    /// What the server answers a delete (`.deleted` unless a test says otherwise); the engine's work is in EngineTests.
+    var deleteAnswer = DeleteOutcome.deleted
+    func setDeleteAnswer(_ answer: DeleteOutcome) { deleteAnswer = answer }
+
+    func deleteMessage(_ id: String, in conversationId: String) -> DeleteOutcome {
+        calls.append("delete \(id)")
+        guard deleteAnswer == .deleted else { return deleteAnswer }
+        if outbox.contains(where: { $0.id == id }) {
+            outbox.removeAll { $0.id == id }
+        } else if let message = stored[conversationId]?.first(where: { $0.id == id }) {
+            stored[conversationId] = stored[conversationId]?.map { $0.id == id ? message.deleted() : $0 }
+        }
+        return .deleted
+    }
+
     func draftConversation(openedFrom: String?) async -> String {
         calls.append("draft")
         return "draft_1"

@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "id": "faq_12",
+      "question": "Gedişin pulunu necə qaytara bilərəm?",
+      "answer": "Gediş bitəndən sonra **24 saat** ərzində müraciət edin.\n\n- Tətbiqdə «Gedişlərim» bölməsini açın\n- Gedişi seçin və «Problem bildir» düyməsinə basın\n\nƏtraflı: [qaydalar](https://example.com/refunds)",
+      "updated_at": "2026-11-03T14:20:00.000Z"
+    },
+    {
+      "id": "faq_9",
+      "question": "Kartı necə dəyişim?",
+      "answer": "«Profil» → «Ödəniş üsulları» bölməsində yeni kart əlavə edin.",
+      "updated_at": "2026-10-28T08:05:00.000Z"
+    },
+    {
+      "id": "faq_15",
+      "question": "Dəstək xidməti nə vaxt işləyir?",
+      "answer": "Hər gün 09:00-dan 23:00-dək.\nGecə yazdığınız mesajlara səhər cavab veririk.",
+      "updated_at": "2026-11-01T10:00:00.000Z"
+    },
+    {
+      "id": "faq_16",
+      "question": "Promokodu harada yazım?",
+      "answer": "Ödəniş ekranında «Promokod» sahəsinə.",
+      "updated_at": "2026-11-02T11:30:00.000Z"
+    }
+  ]
+}

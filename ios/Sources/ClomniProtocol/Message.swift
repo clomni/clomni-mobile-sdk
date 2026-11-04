@@ -38,6 +38,18 @@ package struct Message: Sendable, Equatable, Identifiable {
     }
 }
 
+extension Message {
+    /// Deleted by its user or an operator (SDK 1.0.7).
+    package var isDeleted: Bool { content == .deleted }
+
+    /// The message as the server makes it once deleted: who sent it, when and its place stay; its content, text,
+    /// files and quote are gone. Shown as soon as the server has said yes, before its `message.updated` comes.
+    package func deleted() -> Message {
+        Message(id: id, clientId: clientId, conversationId: conversationId, type: "deleted", sender: sender,
+                createdAt: createdAt, seq: seq, lang: lang, content: .deleted, fallbackText: "")
+    }
+}
+
 /// `reply_to`: the quoted message as the server describes it, so it shows even when it is not loaded here.
 package struct ReplyRef: Sendable, Equatable {
     package let id: String
@@ -115,7 +127,8 @@ extension Message {
             }
         }
         var replyTo: ReplyRef?
-        if let value = f["reply_to"], value != .null {
+        // A deleted message quotes nothing, whatever came with it.
+        if type != "deleted", let value = f["reply_to"], value != .null {
             do {
                 let q = try JSONFields(value, path: "\(f.path).reply_to")
                 replyTo = ReplyRef(id: try q.string("id"), sender: try? Sender(q.object("sender")),
