@@ -153,23 +153,34 @@ struct ComposerView: View {
 
     @ViewBuilder
     private var input: some View {
-        // The placeholder is gone once something is written; the label stays.
+        // The placeholder is gone once something is written; the label stays. The text, the placeholder and the
+        // caret take the messenger's theme, not the system's: the screens keep their own light or dark whatever the
+        // phone is set to, so on a dark phone the system's colours would be drawn for a dark screen on this light
+        // surface. The form's fields and the Android composer do the same.
         if #available(iOS 16.0, *) {
-            TextField(composer.placeholder, text: $text, axis: .vertical)
+            TextField("", text: $text, prompt: prompt, axis: .vertical)
                 .lineLimit(1...5)
                 .clomniFont(ClomniTheme.FontSize.text)
+                .foregroundStyle(theme.colors.textPrimary.color)
+                .tint(theme.colors.primary.color)
                 .focused($focused)
                 .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .accessibilityLabel(Text(composer.placeholder))
                 .accessibilityIdentifier("clomni.composer.field")
         } else {
-            TextField(composer.placeholder, text: $text)
+            TextField("", text: $text, prompt: prompt)
                 .clomniFont(ClomniTheme.FontSize.text)
+                .foregroundStyle(theme.colors.textPrimary.color)
+                .tint(theme.colors.primary.color)
                 .focused($focused)
                 .padding(.vertical, CGFloat(ClomniTheme.Space.s))
                 .accessibilityLabel(Text(composer.placeholder))
                 .accessibilityIdentifier("clomni.composer.field")
         }
+    }
+
+    private var prompt: Text {
+        Text(composer.placeholder).foregroundColor(theme.colors.textSecondary.color)
     }
 
     private func iconButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
